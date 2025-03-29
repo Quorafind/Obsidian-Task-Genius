@@ -196,3 +196,27 @@ export function getTasksAPI(plugin: TaskProgressBarPlugin) {
 	// Access the API v1 from the Tasks plugin
 	return tasksPlugin.apiV1;
 }
+
+/**
+ * Format a date using a template string
+ * @param date - The date to format
+ * @param format - The format string
+ * @returns The formatted date string
+ */
+export function formatDate(date: Date, format: string): string {
+	const tokens: Record<string, () => string> = {
+		YYYY: () => date.getFullYear().toString(),
+		MM: () => (date.getMonth() + 1).toString().padStart(2, "0"),
+		DD: () => date.getDate().toString().padStart(2, "0"),
+		HH: () => date.getHours().toString().padStart(2, "0"),
+		mm: () => date.getMinutes().toString().padStart(2, "0"),
+		ss: () => date.getSeconds().toString().padStart(2, "0"),
+	};
+
+	let result = format;
+	for (const [token, func] of Object.entries(tokens)) {
+		result = result.replace(token, func());
+	}
+
+	return result;
+}

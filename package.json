@@ -39,7 +39,9 @@
 		"builtin-modules": "^3.2.0",
 		"codemirror": "^6.0.0",
 		"esbuild": "0.13.12",
+		"monkey-around": "^3.0.0",
 		"obsidian": "^1.8.7",
+		"obsidian-typings": "^2.39.0",
 		"regexp-match-indices": "^1.0.2",
 		"tslib": "2.4.0",
 		"typescript": "4.7.3"

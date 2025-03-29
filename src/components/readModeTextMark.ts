@@ -32,7 +32,6 @@ export function applyTaskTextMarks({
 			".task-list-item-checkbox"
 		) as HTMLInputElement;
 
-		console.log(checkbox);
 		if (!checkbox) continue;
 
 		// Get the current task mark
@@ -85,8 +84,6 @@ class TaskTextMark extends Component {
 				this.markContainerEl,
 				this.originalCheckbox.nextSibling
 			);
-
-			console.log(this.markEl);
 
 			// Register click handler for status cycling
 			this.registerDomEvent(this.markEl, "click", (e) => {
@@ -150,9 +147,6 @@ class TaskTextMark extends Component {
 		// Get the section info to locate the task in the file
 		const sectionInfo = this.ctx.getSectionInfo(this.taskItem);
 
-		// Remove TypeScript errors by simplifying debug logging
-		console.log("Section info:", sectionInfo);
-
 		const file = this.ctx.sourcePath
 			? this.plugin.app.vault.getFileByPath(this.ctx.sourcePath)
 			: null;
@@ -172,7 +166,6 @@ class TaskTextMark extends Component {
 			if (this.ctx.containerEl?.cmView) {
 				// @ts-ignore - Accessing dynamic properties
 				const cmView = this.ctx.containerEl.cmView;
-				console.log(cmView);
 				// Check if this is a callout
 				if (cmView.widget.clazz === "cm-callout") {
 					calloutInfo = {
@@ -181,7 +174,6 @@ class TaskTextMark extends Component {
 						end: cmView.widget.end,
 						text: cmView.widget.text,
 					};
-					console.log("Found callout info:", calloutInfo);
 				}
 			}
 
@@ -189,7 +181,6 @@ class TaskTextMark extends Component {
 			if (!calloutInfo) return;
 		}
 
-		console.log("Section info:", sectionInfo);
 		// Get cycle configuration from plugin settings
 		const cycle = this.plugin.settings.taskStatusCycle || [];
 		const marks = this.plugin.settings.taskStatusMarks || {};
@@ -218,8 +209,6 @@ class TaskTextMark extends Component {
 		const tasksApi = getTasksAPI(this.plugin);
 		const isDoneState = nextState === "DONE" && tasksApi;
 		const isCurrentDone = currentState === "DONE";
-
-		console.log(isDoneState, calloutInfo);
 
 		// Update the underlying file using the process method for atomic operations
 		this.plugin.app.vault.process(file, (content) => {
@@ -252,13 +241,10 @@ class TaskTextMark extends Component {
 				);
 				const linesBefore = contentBeforeCallout.split("\n").length - 1;
 				actualLineIndex = linesBefore + dataLine;
-				console.log(actualLineIndex);
 				taskLine = lines[actualLineIndex];
 			} else {
 				return content; // Can't proceed without location info
 			}
-
-			console.log(`Task at line ${actualLineIndex}:`, taskLine);
 
 			if (isDoneState) {
 				// Use Tasks API to toggle the task

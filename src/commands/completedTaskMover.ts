@@ -454,13 +454,28 @@ export class CompletedTaskFileSelectionModal extends FuzzySuggestModal<
 			(a, b) => b - a
 		);
 
-		// Remove the lines
-		for (const lineIndex of linesToRemove) {
-			lines.splice(lineIndex, 1);
-		}
+		// Create a transaction to remove the lines
+		this.editor.transaction({
+			changes: linesToRemove.map((lineIndex) => {
+				// Calculate start and end positions
+				const startPos = {
+					line: lineIndex,
+					ch: 0,
+				};
 
-		// Update the editor content
-		this.editor.setValue(lines.join("\n"));
+				// For the end position, use the next line's start or end of document
+				const endPos =
+					lineIndex + 1 < lines.length
+						? { line: lineIndex + 1, ch: 0 }
+						: { line: lineIndex, ch: lines[lineIndex].length };
+
+				return {
+					from: startPos,
+					to: endPos,
+					text: "",
+				};
+			}),
+		});
 
 		// Clear the lines to remove
 		this.plugin.linesToRemove = [];
@@ -506,7 +521,7 @@ export class CompletedTaskFileSelectionModal extends FuzzySuggestModal<
 		const blockidMatch = taskLine.match(/^(.*?)(?:\s+^[a-zA-Z0-9]{6}$)?$/);
 		if (!blockidMatch) return taskLine;
 
-		const mainContent = blockidMatch[1].trim();
+		const mainContent = blockidMatch[1].trimEnd();
 		const blockid = blockidMatch[2]?.trim();
 
 		// Create base task line with marker
@@ -591,7 +606,6 @@ export class CompletedTaskFileSelectionModal extends FuzzySuggestModal<
 
 		return completedMarks.includes(mark);
 	}
-
 	// Complete tasks if the setting is enabled
 	private completeTaskIfNeeded(taskLine: string): string {
 		// If completeAllMovedTasks is not enabled, return the original line
@@ -601,6 +615,7 @@ export class CompletedTaskFileSelectionModal extends FuzzySuggestModal<
 
 		// Check if it's a task line with checkbox
 		const taskMatch = taskLine.match(/^(\s*(?:-|\d+\.|\*)\s+\[)(.)(].*)$/);
+
 		if (!taskMatch) {
 			return taskLine; // Not a task line, return as is
 		}
@@ -1088,13 +1103,28 @@ export class CompletedTaskBlockSelectionModal extends SuggestModal<{
 			(a, b) => b - a
 		);
 
-		// Remove the lines
-		for (const lineIndex of linesToRemove) {
-			lines.splice(lineIndex, 1);
-		}
+		// Create a transaction to remove the lines
+		this.editor.transaction({
+			changes: linesToRemove.map((lineIndex) => {
+				// Calculate start and end positions
+				const startPos = {
+					line: lineIndex,
+					ch: 0,
+				};
 
-		// Update the editor content
-		this.editor.setValue(lines.join("\n"));
+				// For the end position, use the next line's start or end of document
+				const endPos =
+					lineIndex + 1 < lines.length
+						? { line: lineIndex + 1, ch: 0 }
+						: { line: lineIndex, ch: lines[lineIndex].length };
+
+				return {
+					from: startPos,
+					to: endPos,
+					text: "",
+				};
+			}),
+		});
 
 		// Clear the lines to remove
 		this.plugin.linesToRemove = [];
@@ -1149,12 +1179,12 @@ export class CompletedTaskBlockSelectionModal extends SuggestModal<{
 			customMarker,
 			withCurrentFileLink,
 		} = this.plugin.settings.completedTaskMover;
-
 		// Extract blockid if exists
 		const blockidMatch = taskLine.match(/^(.*?)(?:\s+^[a-zA-Z0-9]{6}$)?$/);
 		if (!blockidMatch) return taskLine;
 
-		const mainContent = blockidMatch[1].trim();
+		// Don't trim mainContent to preserve indentation
+		const mainContent = blockidMatch[1].trimEnd();
 		const blockid = blockidMatch[2]?.trim();
 
 		// Create base task line with marker

@@ -7,7 +7,7 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { SearchCursor } from "@codemirror/search";
-import { App, editorInfoField, MarkdownView, TFile } from "obsidian";
+import { App } from "obsidian";
 import { EditorState, Range, Text } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { foldable, syntaxTree, tokenClassNodeProp } from "@codemirror/language";
@@ -381,6 +381,7 @@ export function taskProgressBarExtension(
 				for (let part of view.visibleRanges) {
 					let taskBulletCursor: RegExpCursor | SearchCursor;
 					let headingCursor: RegExpCursor | SearchCursor;
+					let nonTaskBulletCursor: RegExpCursor | SearchCursor;
 					try {
 						taskBulletCursor = new RegExpCursor(
 							state.doc,
@@ -417,6 +418,30 @@ export function taskProgressBarExtension(
 						);
 					}
 
+					// Process non-task bullets if enabled in settings
+					if (plugin?.settings.addProgressBarToNonTaskBullet) {
+						try {
+							// Pattern to match bullets without task markers
+							nonTaskBulletCursor = new RegExpCursor(
+								state.doc,
+								"^[\\t|\\s]*([-*+]|\\d+\\.)\\s(?!\\[.\\])",
+								{},
+								part.from,
+								part.to
+							);
+						} catch (err) {
+							console.debug(err);
+							continue;
+						}
+
+						// Process non-task bullets
+						this.processNonTaskBullets(
+							nonTaskBulletCursor,
+							progressDecos,
+							view
+						);
+					}
+
 					// Process task bullets
 					this.processBullets(taskBulletCursor, progressDecos, view);
 				}
@@ -445,8 +470,6 @@ export function taskProgressBarExtension(
 						headingLine.from
 					);
 
-					console.log(range, headingLine);
-
 					if (!range) continue;
 
 					const tasksNum = this.extractTasksFromRange(
@@ -454,8 +477,6 @@ export function taskProgressBarExtension(
 						view.state,
 						false
 					);
-
-					console.log(tasksNum);
 
 					if (tasksNum.total === 0) continue;
 
@@ -532,6 +553,88 @@ export function taskProgressBarExtension(
 						range.from,
 						range.to
 					);
+					if (!rangeText || rangeText.length === 1) continue;
+
+					const tasksNum = this.extractTasksFromRange(
+						range,
+						view.state,
+						true
+					);
+
+					if (tasksNum.total === 0) continue;
+
+					let startDeco = Decoration.widget({
+						widget: new TaskProgressBarWidget(
+							app,
+							plugin,
+							view,
+							line.to,
+							line.to,
+							tasksNum.completed,
+							tasksNum.total,
+							tasksNum.inProgress || 0,
+							tasksNum.abandoned || 0,
+							tasksNum.notStarted || 0,
+							tasksNum.planned || 0
+						),
+						side: 1,
+					});
+
+					decorations.push(startDeco.range(line.to, line.to));
+				}
+			}
+
+			/**
+			 * Process non-task bullet matches and add decorations
+			 * This handles regular list items (not tasks) that have child tasks
+			 * For non-task bullets, we still calculate progress based on child tasks
+			 * and add a progress bar widget to show completion status
+			 */
+			private processNonTaskBullets(
+				cursor: RegExpCursor | SearchCursor,
+				decorations: Range<Decoration>[],
+				view: EditorView
+			) {
+				while (!cursor.next().done) {
+					let { from } = cursor.value;
+					const linePos = view.state.doc.lineAt(from)?.from;
+
+					// Don't parse any bullets in code blocks or frontmatter
+					const syntaxNode = syntaxTree(view.state).resolveInner(
+						linePos + 1
+					);
+					const nodeProps = syntaxNode.type.prop(tokenClassNodeProp);
+					const excludedSection = [
+						"hmd-codeblock",
+						"hmd-frontmatter",
+					].find((token) => nodeProps?.split(" ").includes(token));
+
+					if (excludedSection) continue;
+
+					const line = view.state.doc.lineAt(linePos);
+
+					// Get the complete line text
+					const lineText = this.getDocumentText(
+						view.state.doc,
+						line.from,
+						line.to
+					);
+
+					if (!lineText) continue;
+
+					const range = this.calculateRangeForTransform(
+						view.state,
+						line.to
+					);
+
+					if (!range) continue;
+
+					const rangeText = this.getDocumentText(
+						view.state.doc,
+						range.from,
+						range.to
+					);
+
 					if (!rangeText || rangeText.length === 1) continue;
 
 					const tasksNum = this.extractTasksFromRange(

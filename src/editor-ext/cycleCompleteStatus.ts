@@ -37,6 +37,7 @@ function getTaskStatusConfig(plugin: TaskProgressBarPlugin) {
 		marks: plugin.settings.taskStatusMarks,
 	};
 }
+
 /**
  * Finds a task status change event in the transaction
  * @param tr The transaction to check
@@ -153,6 +154,11 @@ function findTaskStatusChanges(
 			const pos = fromB;
 			const originalLine = tr.startState.doc.lineAt(pos);
 			const originalLineText = originalLine.text;
+
+			if (originalLineText.trim() === "") {
+				return;
+			}
+
 			const newLine = tr.newDoc.lineAt(pos);
 			const newLineText = newLine.text;
 
@@ -302,21 +308,14 @@ export function handleCycleCompleteStatusTransaction(
 		return tr;
 	}
 
+	if (tr.isUserEvent("input.paste")) {
+		return tr;
+	}
+
 	// Check if any task statuses were changed in this transaction
 	const taskStatusChanges = findTaskStatusChanges(tr, !!getTasksAPI(plugin));
 	if (taskStatusChanges.length === 0) {
 		return tr;
-	}
-
-	console.log(taskStatusChanges, tr);
-
-	if (
-		taskStatusChanges.length === 1 &&
-		taskStatusChanges[0].tasksInfo?.isTaskChange
-	) {
-		if (tr.isUserEvent("input.paste")) {
-			return tr;
-		}
 	}
 
 	// Get the task cycle and marks from plugin settings
