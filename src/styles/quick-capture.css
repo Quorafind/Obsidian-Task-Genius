@@ -1,0 +1,102 @@
+/* Quick Capture Panel */
+.quick-capture-panel {
+	padding: var(--size-4-2);
+	background-color: var(--background-primary);
+	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.quick-capture-header-container {
+	display: flex;
+	align-items: center;
+	margin-bottom: var(--size-4-2);
+	gap: var(--size-4-2);
+	font-size: var(--font-ui-medium);
+	font-weight: bold;
+	color: var(--text-normal);
+	padding: var(--size-2-1) var(--size-4-2);
+}
+
+.quick-capture-title {
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+.quick-capture-target {
+	flex: 1;
+	border-radius: var(--radius-s);
+	color: var(--text-accent);
+	font-size: var(--font-text-size);
+	font-weight: normal;
+	min-width: 100px;
+	max-width: 500px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.quick-capture-target:focus {
+	/* box-shadow: 0 0 0 2px var(--background-modifier-border-focus); */
+	outline: none;
+}
+
+.quick-capture-hint {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-bottom: 8px;
+	margin-top: -4px;
+	text-align: right;
+}
+
+.quick-capture-editor {
+	min-height: 200px;
+	background-color: var(--background-primary);
+}
+
+.quick-capture-file-suggest {
+	max-width: 500px;
+}
+
+.quick-capture-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.quick-capture-submit,
+.quick-capture-cancel {
+	padding: 6px 12px;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.quick-capture-submit {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.quick-capture-cancel {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.quick-capture-modal .modal-title {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+	gap: 10px;
+
+	font-size: var(--font-ui-medium);
+	font-weight: bold;
+}
+.quick-capture-modal-editor {
+	min-height: 150px;
+	margin-bottom: 20px;
+}
+.quick-capture-modal-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}

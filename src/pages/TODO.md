@@ -1,0 +1,7 @@
+- [ ] Support quick capture button
+- [ ] Support better focus mode.
+    - Focus Mode — Select what to concentrate on, and make Task Genius temporarily hide all other items. Concentrate on work when you’re on the job — or forget about work when you’re at home.
+    - Focus mode should only works for project/tag, when select one of them and then the focus button is available for applying the focus mode.
+- [ ] Support tree mode or flow mode for view that contains tasks list.
+    - For example when generate task list, if one task has children, it should be a task tree rather than flat task list.
+    - People can press button on the header of each view to easily switch between tree mode/flow mode

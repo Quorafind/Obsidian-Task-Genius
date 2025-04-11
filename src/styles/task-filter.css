@@ -1,0 +1,134 @@
+/* Task filter panel styles */
+.task-filter-panel {
+	padding: var(--size-4-4) var(--size-4-4);
+	padding-bottom: var(--size-2-2);
+	padding-left: var(--size-4-8);
+	background-color: var(--background-primary);
+	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.task-filter-active {
+	color: var(--color-accent-2);
+	font-weight: bold;
+}
+
+.task-filter-panel > .setting-item {
+	border-top: unset;
+}
+
+.task-filter-header-container {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
+
+.task-filter-title {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.task-filter-options {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.task-filter-section {
+	display: flex;
+	flex-direction: column;
+}
+
+.task-filter-section h3 {
+	font-size: 14px;
+	margin: 5px 0;
+	color: var(--text-muted);
+}
+
+.task-filter-section:last-child {
+	border-bottom: unset;
+}
+
+.task-filter-option {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.task-filter-option input[type="checkbox"] {
+	margin: 0;
+}
+
+.task-filter-option label {
+	font-size: 13px;
+	color: var(--text-normal);
+}
+
+.task-filter-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-filter-apply,
+.task-filter-reset,
+.task-filter-close {
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.task-filter-apply {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.task-filter-reset {
+	background-color: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.task-filter-close {
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+}
+
+.task-filter-query-input {
+	width: 100%;
+	min-width: 250px;
+	border-radius: 4px;
+	padding: 8px 12px;
+	font-family: var(--font-monospace);
+	font-size: 14px;
+}
+
+.task-filter-query-input:focus {
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+	outline: none;
+}
+
+.task-filter-section .setting-item-description {
+	margin-top: 5px;
+	margin-bottom: 10px;
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.task-filter-options {
+	max-height: 70vh;
+	overflow-y: auto;
+	padding-right: 5px;
+}
+
+.task-filter-options {
+	margin-bottom: 10px;
+	padding-top: var(--size-4-4);
+}

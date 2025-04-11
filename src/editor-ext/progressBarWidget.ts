@@ -14,6 +14,7 @@ import { foldable, syntaxTree, tokenClassNodeProp } from "@codemirror/language";
 import { RegExpCursor } from "./regexp-cursor";
 import TaskProgressBarPlugin, { showPopoverWithProgressBar } from "..";
 import { shouldHideProgressBarInLivePriview } from "../utils";
+import "../styles/progressbar.css";
 
 interface Tasks {
 	completed: number;
@@ -32,6 +33,214 @@ interface TextRange {
 
 export interface HTMLElementWithView extends HTMLElement {
 	view: EditorView;
+}
+
+export interface ProgressData {
+	completed: number;
+	total: number;
+	inProgress?: number;
+	abandoned?: number;
+	notStarted?: number;
+	planned?: number;
+}
+
+/**
+ * Format the progress text according to settings and data
+ * Supports various display modes including fraction, percentage, and custom formats
+ *
+ * This function is exported for use in the settings UI for previews
+ */
+export function formatProgressText(
+	data: ProgressData,
+	plugin: TaskProgressBarPlugin
+): string {
+	if (!data.total) return "";
+
+	// Calculate percentages
+	const completedPercentage =
+		Math.round((data.completed / data.total) * 10000) / 100;
+	const inProgressPercentage = data.inProgress
+		? Math.round((data.inProgress / data.total) * 10000) / 100
+		: 0;
+	const abandonedPercentage = data.abandoned
+		? Math.round((data.abandoned / data.total) * 10000) / 100
+		: 0;
+	const plannedPercentage = data.planned
+		? Math.round((data.planned / data.total) * 10000) / 100
+		: 0;
+
+	// Create a full data object with percentages for expression evaluation
+	const fullData = {
+		...data,
+		percentages: {
+			completed: completedPercentage,
+			inProgress: inProgressPercentage,
+			abandoned: abandonedPercentage,
+			planned: plannedPercentage,
+			notStarted: data.notStarted
+				? Math.round((data.notStarted / data.total) * 10000) / 100
+				: 0,
+		},
+	};
+
+	// Get status symbols
+	const completedSymbol = "✓";
+	const inProgressSymbol = "⟳";
+	const abandonedSymbol = "✗";
+	const plannedSymbol = "?";
+
+	// Get display mode from settings, with fallbacks for backwards compatibility
+	const displayMode =
+		plugin?.settings.displayMode ||
+		(plugin?.settings.progressBarDisplayMode === "text" ||
+		plugin?.settings.progressBarDisplayMode === "both"
+			? plugin?.settings.showPercentage
+				? "percentage"
+				: "bracketFraction"
+			: "bracketFraction");
+
+	// Process text with template formatting
+	let resultText = "";
+
+	// Handle different display modes
+	switch (displayMode) {
+		case "percentage":
+			// Simple percentage (e.g., "75%")
+			resultText = `${completedPercentage}%`;
+			break;
+
+		case "bracketPercentage":
+			// Percentage with brackets (e.g., "[75%]")
+			resultText = `[${completedPercentage}%]`;
+			break;
+
+		case "fraction":
+			// Simple fraction (e.g., "3/4")
+			resultText = `${data.completed}/${data.total}`;
+			break;
+
+		case "bracketFraction":
+			// Fraction with brackets (e.g., "[3/4]")
+			resultText = `[${data.completed}/${data.total}]`;
+			break;
+
+		case "detailed":
+			// Detailed format showing all task statuses
+			resultText = `[${data.completed}${completedSymbol} ${
+				data.inProgress || 0
+			}${inProgressSymbol} ${data.abandoned || 0}${abandonedSymbol} ${
+				data.planned || 0
+			}${plannedSymbol} / ${data.total}]`;
+			break;
+
+		case "custom":
+			// Handle custom format if available in settings
+			if (plugin?.settings.customFormat) {
+				resultText = plugin.settings.customFormat
+					.replace(/{{COMPLETED}}/g, data.completed.toString())
+					.replace(/{{TOTAL}}/g, data.total.toString())
+					.replace(
+						/{{IN_PROGRESS}}/g,
+						(data.inProgress || 0).toString()
+					)
+					.replace(/{{ABANDONED}}/g, (data.abandoned || 0).toString())
+					.replace(/{{PLANNED}}/g, (data.planned || 0).toString())
+					.replace(
+						/{{NOT_STARTED}}/g,
+						(data.notStarted || 0).toString()
+					)
+					.replace(/{{PERCENT}}/g, completedPercentage.toString())
+					.replace(/{{PROGRESS}}/g, completedPercentage.toString())
+					.replace(
+						/{{PERCENT_IN_PROGRESS}}/g,
+						inProgressPercentage.toString()
+					)
+					.replace(
+						/{{PERCENT_ABANDONED}}/g,
+						abandonedPercentage.toString()
+					)
+					.replace(
+						/{{PERCENT_PLANNED}}/g,
+						plannedPercentage.toString()
+					)
+					.replace(/{{COMPLETED_SYMBOL}}/g, completedSymbol)
+					.replace(/{{IN_PROGRESS_SYMBOL}}/g, inProgressSymbol)
+					.replace(/{{ABANDONED_SYMBOL}}/g, abandonedSymbol)
+					.replace(/{{PLANNED_SYMBOL}}/g, plannedSymbol);
+			} else {
+				resultText = `[${data.completed}/${data.total}]`;
+			}
+			break;
+
+		case "range-based":
+			// Check if custom progress ranges are enabled
+			if (plugin?.settings.customizeProgressRanges) {
+				// Find a matching range for the current percentage
+				const matchingRange = plugin.settings.progressRanges.find(
+					(range) =>
+						completedPercentage >= range.min &&
+						completedPercentage <= range.max
+				);
+
+				// If a matching range is found, use its custom text
+				if (matchingRange) {
+					resultText = matchingRange.text.replace(
+						"{{PROGRESS}}",
+						completedPercentage.toString()
+					);
+				} else {
+					resultText = `${completedPercentage}%`;
+				}
+			} else {
+				resultText = `${completedPercentage}%`;
+			}
+			break;
+
+		default:
+			// Legacy behavior for compatibility
+			if (
+				plugin?.settings.progressBarDisplayMode === "text" ||
+				plugin?.settings.progressBarDisplayMode === "both"
+			) {
+				// If using text mode, check if percentage is preferred
+				if (plugin?.settings.showPercentage) {
+					resultText = `${completedPercentage}%`;
+				} else {
+					// Show detailed counts if we have in-progress, abandoned, or planned tasks
+					if (
+						(data.inProgress && data.inProgress > 0) ||
+						(data.abandoned && data.abandoned > 0) ||
+						(data.planned && data.planned > 0)
+					) {
+						resultText = `[${data.completed}✓ ${
+							data.inProgress || 0
+						}⟳ ${data.abandoned || 0}✗ ${data.planned || 0}? / ${
+							data.total
+						}]`;
+					} else {
+						// Simple fraction format with brackets
+						resultText = `[${data.completed}/${data.total}]`;
+					}
+				}
+			} else {
+				// Default to bracket fraction if no specific text mode is set
+				resultText = `[${data.completed}/${data.total}]`;
+			}
+	}
+
+	// Process JavaScript expressions enclosed in ${= }
+	resultText = resultText.replace(/\${=(.+?)}/g, (match, expr) => {
+		try {
+			// Create a safe function to evaluate the expression with the data context
+			const evalFunc = new Function("data", `return ${expr}`);
+			return evalFunc(fullData);
+		} catch (error) {
+			console.error("Error evaluating expression:", expr, error);
+			return match; // Return the original match on error
+		}
+	});
+
+	return resultText;
 }
 
 class TaskProgressBarWidget extends WidgetType {
@@ -160,47 +369,21 @@ class TaskProgressBarWidget extends WidgetType {
 	}
 
 	changeNumber() {
-		if (this.plugin?.settings.addNumberToProgressBar) {
-			let text;
-			if (this.plugin?.settings.showPercentage) {
-				// Calculate percentage of completed tasks
-				const percentage =
-					Math.round((this.completed / this.total) * 10000) / 100;
-
-				// Check if custom progress ranges are enabled
-				if (this.plugin?.settings.customizeProgressRanges) {
-					// Find a matching range for the current percentage
-					const matchingRange =
-						this.plugin.settings.progressRanges.find(
-							(range) =>
-								percentage >= range.min &&
-								percentage <= range.max
-						);
-
-					// If a matching range is found, use its custom text
-					if (matchingRange) {
-						text = matchingRange.text.replace(
-							"{{PROGRESS}}",
-							percentage.toString()
-						);
-					} else {
-						text = `${percentage}%`;
-					}
-				} else {
-					text = `${percentage}%`;
-				}
-			} else {
-				// Show detailed counts if we have in-progress, abandoned, or planned tasks
-				if (
-					this.inProgress > 0 ||
-					this.abandoned > 0 ||
-					this.planned > 0
-				) {
-					text = `[${this.completed}✓ ${this.inProgress}⟳ ${this.abandoned}✗ ${this.planned}? / ${this.total}]`;
-				} else {
-					text = `[${this.completed}/${this.total}]`;
-				}
-			}
+		if (
+			this.plugin?.settings.progressBarDisplayMode === "both" ||
+			this.plugin?.settings.progressBarDisplayMode === "text"
+		) {
+			let text = formatProgressText(
+				{
+					completed: this.completed,
+					total: this.total,
+					inProgress: this.inProgress,
+					abandoned: this.abandoned,
+					notStarted: this.notStarted,
+					planned: this.planned,
+				},
+				this.plugin
+			);
 
 			if (!this.numberEl) {
 				this.numberEl = this.progressBarEl.createEl("div", {
@@ -210,17 +393,17 @@ class TaskProgressBarWidget extends WidgetType {
 			} else {
 				this.numberEl.innerText = text;
 			}
-		} else if (this.numberEl) {
-			this.numberEl.innerText = `[${this.completed}/${this.total}]`;
 		}
 	}
 
 	toDOM() {
 		if (
-			!this.plugin?.settings.addNumberToProgressBar &&
-			this.numberEl !== undefined
+			this.plugin?.settings.progressBarDisplayMode === "both" ||
+			this.plugin?.settings.progressBarDisplayMode === "text"
 		) {
-			this.numberEl.detach();
+			if (this.numberEl !== undefined) {
+				this.numberEl.detach();
+			}
 		}
 
 		if (this.progressBarEl !== undefined) {
@@ -230,7 +413,8 @@ class TaskProgressBarWidget extends WidgetType {
 		}
 
 		this.progressBarEl = createSpan(
-			this.plugin?.settings.addNumberToProgressBar
+			this.plugin?.settings.progressBarDisplayMode === "both" ||
+				this.plugin?.settings.progressBarDisplayMode === "text"
 				? "cm-task-progress-bar with-number"
 				: "cm-task-progress-bar",
 			(el) => {
@@ -259,83 +443,67 @@ class TaskProgressBarWidget extends WidgetType {
 				}
 			}
 		);
-		this.progressBackGroundEl = this.progressBarEl.createEl("div", {
-			cls: "progress-bar-inline-background",
-		});
 
-		this.progressBackGroundEl.toggleClass(
-			"hidden",
-			!this.plugin?.settings.showProgressBar
-		);
+		// Check if graphical progress bar should be shown
+		const showGraphicalBar =
+			this.plugin?.settings.progressBarDisplayMode === "graphical" ||
+			this.plugin?.settings.progressBarDisplayMode === "both";
 
-		// Create elements for each status type
-		this.progressEl = this.progressBackGroundEl.createEl("div", {
-			cls: "progress-bar-inline progress-completed",
-		});
-
-		// Only create these elements if we have tasks of these types
-		if (this.inProgress > 0) {
-			this.inProgressEl = this.progressBackGroundEl.createEl("div", {
-				cls: "progress-bar-inline progress-in-progress",
+		if (showGraphicalBar) {
+			this.progressBackGroundEl = this.progressBarEl.createEl("div", {
+				cls: "progress-bar-inline-background",
 			});
-		}
 
-		if (this.abandoned > 0) {
-			this.abandonedEl = this.progressBackGroundEl.createEl("div", {
-				cls: "progress-bar-inline progress-abandoned",
+			// Create elements for each status type
+			this.progressEl = this.progressBackGroundEl.createEl("div", {
+				cls: "progress-bar-inline progress-completed",
 			});
-		}
 
-		if (this.planned > 0) {
-			this.plannedEl = this.progressBackGroundEl.createEl("div", {
-				cls: "progress-bar-inline progress-planned",
-			});
-		}
-
-		if (this.plugin?.settings.addNumberToProgressBar && this.total) {
-			let text;
-			if (this.plugin?.settings.showPercentage) {
-				const percentage =
-					Math.round((this.completed / this.total) * 10000) / 100;
-
-				// Check if custom progress ranges are enabled
-				if (this.plugin?.settings.customizeProgressRanges) {
-					// Find a matching range for the current percentage
-					const matchingRange =
-						this.plugin.settings.progressRanges.find(
-							(range) =>
-								percentage >= range.min &&
-								percentage <= range.max
-						);
-
-					// If a matching range is found, use its custom text
-					if (matchingRange) {
-						text = matchingRange.text.replace(
-							"{{PROGRESS}}",
-							percentage.toString()
-						);
-					} else {
-						text = `${percentage}%`;
-					}
-				} else {
-					text = `${percentage}%`;
-				}
-			} else {
-				// Show detailed counts if we have in-progress or abandoned tasks
-				if (this.inProgress > 0 || this.abandoned > 0) {
-					text = `[${this.completed}✓ ${this.inProgress}⟳ ${this.abandoned}✗ / ${this.total}]`;
-				} else {
-					text = `[${this.completed}/${this.total}]`;
-				}
+			// Only create these elements if we have tasks of these types
+			if (this.inProgress > 0) {
+				this.inProgressEl = this.progressBackGroundEl.createEl("div", {
+					cls: "progress-bar-inline progress-in-progress",
+				});
 			}
+
+			if (this.abandoned > 0) {
+				this.abandonedEl = this.progressBackGroundEl.createEl("div", {
+					cls: "progress-bar-inline progress-abandoned",
+				});
+			}
+
+			if (this.planned > 0) {
+				this.plannedEl = this.progressBackGroundEl.createEl("div", {
+					cls: "progress-bar-inline progress-planned",
+				});
+			}
+
+			this.changePercentage();
+		}
+
+		// Check if text progress should be shown (either as the only option or together with graphic bar)
+		const showText =
+			this.plugin?.settings.progressBarDisplayMode === "text" ||
+			this.plugin?.settings.progressBarDisplayMode === "both";
+
+		if (showText && this.total) {
+			const text = formatProgressText(
+				{
+					completed: this.completed,
+					total: this.total,
+					inProgress: this.inProgress,
+					abandoned: this.abandoned,
+					notStarted: this.notStarted,
+					planned: this.planned,
+				},
+				this.plugin
+			);
 
 			this.numberEl = this.progressBarEl.createEl("div", {
 				cls: "progress-status",
 				text: text,
 			});
 		}
-
-		this.changePercentage();
 
 		return this.progressBarEl;
 	}

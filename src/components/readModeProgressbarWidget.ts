@@ -7,6 +7,7 @@ import {
 	TFile,
 } from "obsidian";
 import { shouldHideProgressBarInPreview } from "../utils";
+import { formatProgressText } from "../editor-ext/progressBarWidget";
 
 interface GroupElement {
 	parentElement: HTMLElement;
@@ -110,6 +111,7 @@ function addHeadingProgressBars(
 	tasksByHeading: Map<HTMLElement | null, HTMLElement[]>,
 	type: "dataview" | "normal"
 ) {
+	if (!plugin.settings.addTaskProgressBarToHeading) return;
 	tasksByHeading.forEach((tasks, heading) => {
 		// Skip if heading is null or tasks array is empty
 		if (!heading || tasks.length === 0) return;
@@ -142,7 +144,7 @@ export function updateProgressBarInElement({
 
 	// Handle heading elements directly
 	if (
-		plugin.settings.enableHeadingProgressBar &&
+		plugin.settings.addTaskProgressBarToHeading &&
 		element.children[0] &&
 		element.children[0].matches("h1, h2, h3, h4, h5, h6")
 	) {
@@ -262,7 +264,7 @@ export function updateProgressBarInElement({
 		loadProgressbar(plugin, groupedElements, "normal");
 
 		// Add heading progress bars if enabled in settings
-		if (plugin.settings.enableHeadingProgressBar) {
+		if (plugin.settings.addTaskProgressBarToHeading) {
 			const tasksByHeading = groupTasksByHeading(element);
 			addHeadingProgressBars(plugin, tasksByHeading, "normal");
 		}
@@ -276,7 +278,7 @@ export function updateProgressBarInElement({
 		loadProgressbar(plugin, groupedElements, "dataview");
 
 		// Add heading progress bars if enabled in settings
-		if (plugin.settings.enableHeadingProgressBar === true) {
+		if (plugin.settings.addTaskProgressBarToHeading) {
 			const tasksByHeading = groupTasksByHeading(
 				parentElement as HTMLElement
 			);
@@ -570,6 +572,13 @@ class ProgressBar extends Component {
 				// Remove old element after unloading
 				this.progressBarEl.remove();
 				parent.appendChild(newProgressBar);
+
+				if (
+					this.plugin?.settings.progressBarDisplayMode === "text" ||
+					this.plugin?.settings.progressBarDisplayMode === "none"
+				) {
+					this.progressBackGroundEl.hide();
+				}
 			}
 		} else {
 			// Just update values on existing elements
@@ -1186,46 +1195,22 @@ class ProgressBar extends Component {
 	}
 
 	changeNumber() {
-		if (this.plugin?.settings.addNumberToProgressBar) {
-			let text;
-			if (this.plugin?.settings.showPercentage) {
-				// Calculate percentage of completed tasks
-				const percentage =
-					Math.round((this.completed / this.total) * 10000) / 100;
-
-				// Use custom progress range text if enabled
-				if (this.plugin?.settings.customizeProgressRanges) {
-					const ranges = this.plugin.settings.progressRanges;
-					let rangeText = `${percentage}%`;
-
-					for (const range of ranges) {
-						if (
-							percentage >= range.min &&
-							percentage <= range.max
-						) {
-							rangeText = range.text.replace(
-								"{{PROGRESS}}",
-								percentage.toString()
-							);
-							break;
-						}
-					}
-					text = rangeText;
-				} else {
-					text = `${percentage}%`;
-				}
-			} else {
-				// Show detailed counts if we have in-progress or abandoned tasks
-				if (
-					this.inProgress > 0 ||
-					this.abandoned > 0 ||
-					this.planned > 0
-				) {
-					text = `[${this.completed}✓ ${this.inProgress}⟳ ${this.abandoned}✗ ${this.planned}? / ${this.total}]`;
-				} else {
-					text = `[${this.completed}/${this.total}]`;
-				}
-			}
+		if (
+			this.plugin?.settings.progressBarDisplayMode === "text" ||
+			this.plugin?.settings.progressBarDisplayMode === "both"
+		) {
+			// 使用formatProgressText函数来生成进度文本
+			const text = formatProgressText(
+				{
+					completed: this.completed,
+					total: this.total,
+					inProgress: this.inProgress,
+					abandoned: this.abandoned,
+					notStarted: this.notStarted,
+					planned: this.planned,
+				},
+				this.plugin
+			);
 
 			if (!this.numberEl) {
 				this.numberEl = this.progressBarEl.createEl("div", {
@@ -1235,14 +1220,13 @@ class ProgressBar extends Component {
 			} else {
 				this.numberEl.innerText = text;
 			}
-		} else if (this.numberEl) {
-			this.numberEl.innerText = `[${this.completed}/${this.total}]`;
 		}
 	}
 
 	onload() {
 		this.progressBarEl = createSpan(
-			this.plugin?.settings.addNumberToProgressBar
+			this.plugin?.settings.progressBarDisplayMode === "both" ||
+				this.plugin?.settings.progressBarDisplayMode === "text"
 				? "cm-task-progress-bar with-number"
 				: "cm-task-progress-bar"
 		);
@@ -1274,45 +1258,22 @@ class ProgressBar extends Component {
 			});
 		}
 
-		if (this.plugin?.settings.addNumberToProgressBar && this.total) {
-			let text;
-			if (this.plugin?.settings.showPercentage) {
-				const percentage =
-					Math.round((this.completed / this.total) * 10000) / 100;
-
-				// Use custom progress range text if enabled
-				if (this.plugin?.settings.customizeProgressRanges) {
-					const ranges = this.plugin.settings.progressRanges;
-					let rangeText = `${percentage}%`;
-
-					for (const range of ranges) {
-						if (
-							percentage >= range.min &&
-							percentage <= range.max
-						) {
-							rangeText = range.text.replace(
-								"{{PROGRESS}}",
-								percentage.toString()
-							);
-							break;
-						}
-					}
-					text = rangeText;
-				} else {
-					text = `${percentage}%`;
-				}
-			} else {
-				// Show detailed counts if we have in-progress or abandoned tasks
-				if (
-					this.inProgress > 0 ||
-					this.abandoned > 0 ||
-					this.planned > 0
-				) {
-					text = `[${this.completed}✓ ${this.inProgress}⟳ ${this.abandoned}✗ ${this.planned}? / ${this.total}]`;
-				} else {
-					text = `[${this.completed}/${this.total}]`;
-				}
-			}
+		if (
+			this.plugin?.settings.progressBarDisplayMode === "both" ||
+			this.plugin?.settings.progressBarDisplayMode === "text"
+		) {
+			// 使用 formatProgressText 函数生成进度文本
+			const text = formatProgressText(
+				{
+					completed: this.completed,
+					total: this.total,
+					inProgress: this.inProgress,
+					abandoned: this.abandoned,
+					notStarted: this.notStarted,
+					planned: this.planned,
+				},
+				this.plugin
+			);
 
 			this.numberEl = this.progressBarEl.createEl("div", {
 				cls: "progress-status",
@@ -1321,6 +1282,13 @@ class ProgressBar extends Component {
 		}
 
 		this.changePercentage();
+
+		if (
+			this.plugin?.settings.progressBarDisplayMode === "text" ||
+			this.plugin?.settings.progressBarDisplayMode === "none"
+		) {
+			this.progressBackGroundEl.hide();
+		}
 
 		return this.progressBarEl;
 	}

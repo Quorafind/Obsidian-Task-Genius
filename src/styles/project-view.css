@@ -1,0 +1,139 @@
+/* Projects View Styles */
+.projects-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+.projects-content {
+	display: flex;
+	flex-direction: row;
+	flex: 1;
+	overflow: hidden;
+}
+
+.projects-left-column {
+	width: 250px;
+	min-width: 200px;
+	max-width: 300px;
+	display: flex;
+	flex-direction: column;
+	border-right: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.projects-right-column {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.projects-sidebar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-4-2) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+	height: var(--size-4-10);
+}
+
+.projects-sidebar-title {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.projects-multi-select-btn {
+	cursor: pointer;
+	color: var(--text-muted);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.projects-multi-select-btn:hover {
+	color: var(--text-normal);
+}
+
+.projects-sidebar-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-4-2);
+}
+
+.project-list-item {
+	display: flex;
+	align-items: center;
+	padding: 4px 12px;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+}
+
+.project-list-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.project-list-item.selected {
+	background-color: var(--background-modifier-active);
+}
+
+.project-icon {
+	margin-right: 8px;
+	color: var(--text-muted);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.project-name {
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.project-count {
+	margin-left: 8px;
+	font-size: 0.8em;
+	color: var(--text-muted);
+	background-color: var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 1px 6px;
+}
+
+.projects-task-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-4-2) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+	height: var(--size-4-10);
+}
+
+.projects-task-title {
+	font-weight: 600;
+	font-size: 16px;
+}
+
+.projects-task-count {
+	color: var(--text-muted);
+}
+
+.projects-task-list {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.projects-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 16px;
+}

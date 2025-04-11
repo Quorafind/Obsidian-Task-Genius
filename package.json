@@ -1,14 +1,14 @@
 {
 	"name": "obsidian-task-progress-bar",
-	"version": "6.2.2",
+	"version": "7.0.0",
 	"description": "Comprehensive task management plugin for Obsidian with progress bars, task status cycling, and advanced task tracking features.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
-		"extract-translations": "cross-env node scripts/extract-translations.cjs",
-		"generate-locale-files": "cross-env node scripts/generate-locale-files.cjs"
+		"e-t": "cross-env node scripts/extract-translations.cjs",
+		"g-l": "cross-env node scripts/generate-locale-files.cjs"
 	},
 	"keywords": [
 		"obsidian",
@@ -35,6 +35,7 @@
 		"@codemirror/state": "^6.0.0",
 		"@codemirror/stream-parser": "https://github.com/lishid/stream-parser",
 		"@codemirror/view": "^6.0.0",
+		"@datastructures-js/queue": "^4.2.3",
 		"@types/node": "^16.11.6",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
 		"@typescript-eslint/parser": "^5.2.0",
@@ -42,11 +43,16 @@
 		"codemirror": "^6.0.0",
 		"cross-env": "^7.0.3",
 		"esbuild": "0.13.12",
+		"esbuild-plugin-inline-worker": "https://github.com/mitschabaude/esbuild-plugin-inline-worker",
 		"monkey-around": "^3.0.0",
 		"obsidian": "^1.8.7",
 		"obsidian-typings": "^2.39.0",
 		"regexp-match-indices": "^1.0.2",
 		"tslib": "2.4.0",
 		"typescript": "4.7.3"
+	},
+	"dependencies": {
+		"localforage": "^1.10.0",
+		"uuid": "^11.1.0"
 	}
 }

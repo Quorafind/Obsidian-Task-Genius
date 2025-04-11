@@ -82,6 +82,11 @@ export function shouldHideProgressBarInLivePriview(
 	plugin: TaskProgressBarPlugin,
 	view: EditorView
 ): boolean {
+	// If progress display mode is set to "none", hide progress bars
+	if (plugin.settings.progressBarDisplayMode === "none") {
+		return true;
+	}
+
 	if (!plugin.settings.hideProgressBarBasedOnConditions) {
 		return false;
 	}

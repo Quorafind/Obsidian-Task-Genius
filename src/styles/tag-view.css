@@ -1,0 +1,146 @@
+/* Tags View Styles */
+.tags-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+.tags-content {
+	display: flex;
+	flex-direction: row;
+	flex: 1;
+	overflow: hidden;
+}
+
+.tags-left-column {
+	width: 250px;
+	min-width: 300px;
+	max-width: 400px;
+	display: flex;
+	flex-direction: column;
+	border-right: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.tags-right-column {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.tags-sidebar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-4-2) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+	height: var(--size-4-10);
+}
+
+.tags-sidebar-title {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.tags-multi-select-btn {
+	cursor: pointer;
+	color: var(--text-muted);
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tags-multi-select-btn:hover {
+	color: var(--text-normal);
+}
+
+.tags-sidebar-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-4-2);
+}
+
+.tag-list-item {
+	display: flex;
+	align-items: center;
+	padding: 4px 12px;
+	cursor: pointer;
+	position: relative;
+	border-radius: var(--radius-s);
+}
+
+.tag-list-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tag-list-item.selected {
+	background-color: var(--background-modifier-active);
+}
+
+.tag-indent {
+	flex-shrink: 0;
+}
+
+.tag-icon {
+	margin-right: var(--size-2-2);
+	color: var(--text-muted);
+	display: flex;
+	--icon-size: var(--size-4-4);
+}
+
+.tag-name {
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tag-count {
+	margin-left: 8px;
+	font-size: 0.8em;
+	color: var(--text-muted);
+	background-color: var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 1px 6px;
+}
+
+.tag-children {
+	width: 100%;
+}
+
+.tags-task-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-4-2) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+	height: var(--size-4-10);
+}
+
+.tags-task-title {
+	font-weight: 600;
+	font-size: 16px;
+}
+
+.tags-task-count {
+	color: var(--text-muted);
+}
+
+.tags-task-list {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.tags-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 16px;
+}

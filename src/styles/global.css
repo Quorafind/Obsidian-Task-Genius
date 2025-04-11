@@ -1,0 +1,71 @@
+/* Define theme variables */
+:root {
+	/* Task status colors */
+	--task-completed-color: #4caf50;
+	--task-doing-color: #80dee5;
+	--task-in-progress-color: #f9d923;
+	--task-abandoned-color: #eb5353;
+	--task-planned-color: #9c27b0; /* Planned task color */
+	--task-question-color: #2196f3; /* Question tasks */
+	--task-important-color: #f44336; /* Important tasks */
+	--task-star-color: #ffc107; /* Star tasks */
+	--task-quote-color: #607d8b; /* Quote tasks */
+	--task-location-color: #795548; /* Location tasks */
+	--task-bookmark-color: #ff9800; /* Bookmark tasks */
+	--task-information-color: #00bcd4; /* Information tasks */
+	--task-idea-color: #9c27b0; /* Idea tasks */
+	--task-pros-color: #4caf50; /* Pros tasks */
+	--task-cons-color: #f44336; /* Cons tasks */
+	--task-fire-color: #ff5722; /* Fire tasks */
+	--task-key-color: #ffd700; /* Key tasks */
+	--task-win-color: #66bb6a; /* Win tasks */
+	--task-up-color: #4caf50; /* Up tasks */
+	--task-down-color: #f44336; /* Down tasks */
+	--task-note-color: #9e9e9e; /* Note tasks */
+	--task-amount-color: #8bc34a; /* Amount/savings tasks */
+	--task-speech-color: #03a9f4; /* Speech bubble tasks */
+
+	/* Progress bar gradient colors - light theme */
+	--progress-0-color: #ae431e;
+	--progress-25-color: #e5890a;
+	--progress-50-color: #b4c6a6;
+	--progress-75-color: #6bcb77;
+	--progress-100-color: #4d96ff;
+
+	--progress-background-color: #f1f1f1;
+}
+
+/* Dark theme color adjustments */
+.theme-dark {
+	--task-completed-color: #4caf50;
+	--task-doing-color: #379fa7;
+	--task-in-progress-color: #ffc107;
+	--task-abandoned-color: #f44336;
+	--task-planned-color: #ce93d8; /* Planned task color for dark theme */
+	--task-question-color: #42a5f5; /* Question tasks dark theme */
+	--task-important-color: #ef5350; /* Important tasks dark theme */
+	--task-star-color: #ffd54f; /* Star tasks dark theme */
+	--task-quote-color: #90a4ae; /* Quote tasks dark theme */
+	--task-location-color: #8d6e63; /* Location tasks dark theme */
+	--task-bookmark-color: #ffb74d; /* Bookmark tasks dark theme */
+	--task-information-color: #26c6da; /* Information tasks dark theme */
+	--task-idea-color: #ce93d8; /* Idea tasks dark theme */
+	--task-pros-color: #66bb6a; /* Pros tasks dark theme */
+	--task-cons-color: #ef5350; /* Cons tasks dark theme */
+	--task-fire-color: #ff7043; /* Fire tasks dark theme */
+	--task-key-color: #ffd700; /* Key tasks dark theme */
+	--task-win-color: #81c784; /* Win tasks dark theme */
+	--task-up-color: #66bb6a; /* Up tasks dark theme */
+	--task-down-color: #ef5350; /* Down tasks dark theme */
+	--task-note-color: #bdbdbd; /* Note tasks dark theme */
+	--task-amount-color: #aed581; /* Amount/savings tasks dark theme */
+	--task-speech-color: #29b6f6; /* Speech bubble tasks dark theme */
+
+	--progress-0-color: #ae431e;
+	--progress-25-color: #e5890a;
+	--progress-50-color: #b4c6a6;
+	--progress-75-color: #6bcb77;
+	--progress-100-color: #4d96ff;
+
+	--progress-background-color: #f1f1f1;
+}

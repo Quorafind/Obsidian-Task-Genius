@@ -19,6 +19,7 @@ import {
 import TaskProgressBarPlugin from "../index";
 import { saveCapture } from "../utils/fileUtils";
 import { t } from "../translations/helper";
+import "../styles/quick-capture.css";
 // Effect to toggle the quick capture panel
 export const toggleQuickCapture = StateEffect.define<boolean>();
 

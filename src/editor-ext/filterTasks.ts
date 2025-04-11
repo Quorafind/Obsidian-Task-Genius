@@ -29,6 +29,7 @@ import {
 	evaluateFilterNode,
 } from "../utils/filterUtils";
 import { t } from "../translations/helper";
+import "../styles/task-filter.css";
 // Effect to toggle the filter panel
 export const toggleTaskFilter = StateEffect.define<boolean>();
 

@@ -20,6 +20,7 @@ import TaskProgressBarPlugin from "..";
 import { Annotation, EditorSelection, SelectionRange } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { foldable, syntaxTree, tokenClassNodeProp } from "@codemirror/language";
+import "../styles/task-status.css";
 
 export type TaskState = string;
 export const taskStatusChangeAnnotation = Annotation.define();

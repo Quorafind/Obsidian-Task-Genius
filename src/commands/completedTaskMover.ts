@@ -630,8 +630,6 @@ export class TaskUtils {
 			}
 		}
 
-		console.log(resultLines);
-
 		return {
 			content: resultLines.join("\n"),
 			linesToRemove: linesToRemove,
@@ -1057,7 +1055,6 @@ export function moveCompletedTasksCommand(
 
 	// Get all selections to support multi-line selection
 	const selections = editor.listSelections();
-	console.log(selections);
 
 	// Extract all selected lines from the selections
 	const selectedLinesSet = new Set<number>();

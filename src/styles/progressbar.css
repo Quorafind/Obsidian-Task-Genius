@@ -1,0 +1,156 @@
+/* Set Default Progress Bar For Plugin */
+.cm-task-progress-bar {
+	display: inline-block;
+	position: relative;
+	margin-left: 5px;
+	margin-bottom: 1px;
+}
+
+.HyperMD-header .cm-task-progress-bar {
+	display: inline-block;
+	position: relative;
+	margin-left: 5px;
+	margin-bottom: 5px;
+}
+
+.progress-bar-inline {
+	height: 8px;
+	position: relative;
+}
+
+/* Progress bar colors for different percentages of completion */
+.progress-bar-inline-empty {
+	background-color: var(--progress-background-color);
+}
+
+.progress-bar-inline-0 {
+	background-color: var(--progress-0-color);
+}
+
+.progress-bar-inline-1 {
+	background-color: var(--progress-25-color);
+}
+
+.progress-bar-inline-2 {
+	background-color: var(--progress-50-color);
+}
+
+.progress-bar-inline-3 {
+	background-color: var(--progress-75-color);
+}
+
+.progress-bar-inline-complete {
+	background-color: var(--progress-100-color);
+}
+
+/* Colors for different task statuses */
+.progress-completed {
+	background-color: var(--task-completed-color);
+	z-index: 3;
+}
+
+.progress-in-progress {
+	background-color: var(--task-in-progress-color);
+	z-index: 2;
+	position: absolute;
+	top: 0;
+	height: 100%;
+}
+
+.progress-abandoned {
+	background-color: var(--task-abandoned-color);
+	z-index: 1;
+	position: absolute;
+	top: 0;
+	height: 100%;
+}
+
+.progress-planned {
+	background-color: var(--task-planned-color);
+	z-index: 1;
+	position: absolute;
+	top: 0;
+	height: 100%;
+}
+
+.progress-bar-inline-background {
+	color: #000 !important;
+	background-color: var(--progress-background-color);
+	border-radius: 10px;
+	flex-direction: row;
+	justify-content: flex-start;
+	align-items: center;
+	width: 85px;
+	position: relative;
+	overflow: hidden;
+}
+
+.progress-bar-inline-background.hidden {
+	display: none;
+}
+
+/* Status indicators in the task number display */
+.cm-task-progress-bar .task-status-indicator {
+	display: inline-block;
+	margin-right: 2px;
+}
+
+.cm-task-progress-bar .completed-indicator {
+	color: var(--task-completed-color);
+}
+
+.cm-task-progress-bar .in-progress-indicator {
+	color: var(--task-in-progress-color);
+}
+
+.cm-task-progress-bar .abandoned-indicator {
+	color: var(--task-abandoned-color);
+}
+
+.cm-task-progress-bar .planned-indicator {
+	color: var(--task-planned-color);
+}
+
+/* Set Default Progress Bar With Number For Plugin */
+.cm-task-progress-bar.with-number {
+	display: inline-flex;
+	align-items: center;
+}
+
+.HyperMD-header
+	.cm-task-progress-bar.with-number
+	.progress-bar-inline-background,
+.HyperMD-header .cm-task-progress-bar.with-number .progress-status {
+	margin-bottom: 5px;
+}
+
+.cm-task-progress-bar.with-number .progress-bar-inline-background {
+	margin-bottom: -2px;
+	width: 42px;
+}
+
+.cm-task-progress-bar.with-number .progress-status {
+	font-size: 13px;
+	margin-left: 3px;
+}
+
+/* Adaptations for dark theme */
+.theme-dark .progress-completed {
+	background-color: var(--task-completed-color);
+}
+
+.theme-dark .progress-in-progress {
+	background-color: var(--task-in-progress-color);
+}
+
+.theme-dark .progress-abandoned {
+	background-color: var(--task-abandoned-color);
+}
+
+.theme-dark .progress-planned {
+	background-color: var(--task-planned-color);
+}
+
+.task-progress-bar-popover {
+	width: 400px;
+}

@@ -1,0 +1,157 @@
+/* Task Status Switcher Styles */
+.task-status-widget {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-bold);
+}
+
+.task-state.live-preview-mode {
+	padding-inline-start: var(--size-4-2);
+	padding-inline-end: var(--size-2-1);
+}
+
+.task-status-widget .list-bullet::after {
+	background-color: var(--list-marker-color) !important;
+}
+
+/* TODO status style */
+.task-state[data-task-state=" "] {
+	color: var(--text-accent);
+}
+
+/* DOING status style */
+.task-state[data-task-state="/"] {
+	color: var(--task-doing-color);
+}
+
+/* IN-PROGRESS status style */
+.task-state[data-task-state=">"] {
+	color: var(--task-in-progress-color);
+}
+
+/* DONE status style */
+.task-state[data-task-state="x"],
+.task-state[data-task-state="X"] {
+	color: var(--task-completed-color);
+}
+
+/* CANCELLED status style */
+.task-state[data-task-state="-"] {
+	color: var(--task-abandoned-color);
+}
+
+/* SCHEDULED status style */
+.task-state[data-task-state="<"] {
+	color: var(--task-planned-color);
+}
+
+/* QUESTION status style */
+.task-state[data-task-state="?"] {
+	color: var(--task-question-color);
+}
+
+/* IMPORTANT status style */
+.task-state[data-task-state="!"] {
+	color: var(--task-important-color);
+}
+
+/* STAR status style */
+.task-state[data-task-state="*"] {
+	color: var(--task-star-color);
+}
+
+/* QUOTE status style */
+.task-state[data-task-state='"'] {
+	color: var(--task-quote-color);
+}
+
+/* LOCATION status style */
+.task-state[data-task-state="l"] {
+	color: var(--task-location-color);
+}
+
+/* BOOKMARK status style */
+.task-state[data-task-state="b"] {
+	color: var(--task-bookmark-color);
+}
+
+/* INFORMATION status style */
+.task-state[data-task-state="i"] {
+	color: var(--task-information-color);
+}
+
+/* IDEA status style */
+.task-state[data-task-state="I"] {
+	color: var(--task-idea-color);
+}
+
+/* PROS status style */
+.task-state[data-task-state="p"] {
+	color: var(--task-pros-color);
+}
+
+/* CONS status style */
+.task-state[data-task-state="c"] {
+	color: var(--task-cons-color);
+}
+
+/* FIRE status style */
+.task-state[data-task-state="f"] {
+	color: var(--task-fire-color);
+}
+
+/* KEY status style */
+.task-state[data-task-state="k"] {
+	color: var(--task-key-color);
+}
+
+/* WIN status style */
+.task-state[data-task-state="w"] {
+	color: var(--task-win-color);
+}
+
+/* UP status style */
+.task-state[data-task-state="u"] {
+	color: var(--task-up-color);
+}
+
+/* DOWN status style */
+.task-state[data-task-state="d"] {
+	color: var(--task-down-color);
+}
+
+/* NOTE status style */
+.task-state[data-task-state="n"] {
+	color: var(--task-note-color);
+}
+
+/* AMOUNT/SAVINGS status style */
+.task-state[data-task-state="S"] {
+	color: var(--task-amount-color);
+}
+
+/* SPEECH BUBBLE status style */
+.task-state[data-task-state="0"],
+.task-state[data-task-state="1"],
+.task-state[data-task-state="2"],
+.task-state[data-task-state="3"],
+.task-state[data-task-state="4"],
+.task-state[data-task-state="5"],
+.task-state[data-task-state="6"],
+.task-state[data-task-state="7"],
+.task-state[data-task-state="8"],
+.task-state[data-task-state="9"] {
+	color: var(--task-speech-color);
+}
+
+.task-fake-bullet {
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background-color: var(--text-normal);
+	margin-right: 4px;
+	vertical-align: middle;
+}

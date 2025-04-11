@@ -5,6 +5,7 @@ import {
 	Modal,
 	setIcon,
 	ButtonComponent,
+	TextAreaComponent,
 } from "obsidian";
 import TaskProgressBarPlugin from ".";
 import { allStatusCollections } from "./task-status";
@@ -14,10 +15,9 @@ import {
 } from "./editor-ext/filterTasks";
 import { t } from "./translations/helper";
 import { WorkflowDefinitionModal } from "./components/WorkflowDefinitionModal";
-import {
-	DEFAULT_SETTINGS,
-	TaskProgressBarSettings,
-} from "./common/setting-definition";
+import { DEFAULT_SETTINGS } from "./common/setting-definition";
+import { formatProgressText } from "./editor-ext/progressBarWidget";
+import "./styles/setting.css";
 
 export class TaskProgressBarSettingTab extends PluginSettingTab {
 	plugin: TaskProgressBarPlugin;
@@ -170,7 +170,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				);
 				button.buttonEl.createEl("span", {
 					cls: "header-button-text",
-					text: "Back to main settings",
+					text: t("Back to main settings"),
 				});
 			}
 		);
@@ -236,18 +236,24 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName(t("Show progress bar"))
-			.setDesc(t("Toggle this to show the progress bar."))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showProgressBar)
-					.onChange(async (value) => {
-						this.plugin.settings.showProgressBar = value;
+			.setName(t("Progress display mode"))
+			.setDesc(t("Choose how to display task progress"))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("none", t("No progress indicators"))
+					.addOption("graphical", t("Graphical progress bar"))
+					.addOption("text", t("Text progress indicator"))
+					.addOption("both", t("Both graphical and text"))
+					.setValue(this.plugin.settings.progressBarDisplayMode)
+					.onChange(async (value: any) => {
+						this.plugin.settings.progressBarDisplayMode = value;
 						this.applySettingsUpdate();
+						this.display();
 					})
 			);
 
-		if (this.plugin.settings.showProgressBar) {
+		// Only show these options if some form of progress bar is enabled
+		if (this.plugin.settings.progressBarDisplayMode !== "none") {
 			new Setting(containerEl)
 				.setName(t("Support hover to show progress info"))
 				.setDesc(
@@ -306,27 +312,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				);
 
 			new Setting(containerEl)
-				.setName(t("Enable heading progress bars"))
-				.setDesc(
-					t(
-						"Add progress bars to headings to show progress of all tasks under that heading."
-					)
-				)
-				.addToggle((toggle) =>
-					toggle
-						.setValue(this.plugin.settings.enableHeadingProgressBar)
-						.onChange(async (value) => {
-							this.plugin.settings.enableHeadingProgressBar =
-								value;
-							this.applySettingsUpdate();
-						})
-				);
-
-			new Setting(containerEl)
 				.setName(t("Count sub children of current Task"))
 				.setDesc(
 					t(
-						"Toggle this to allow this plugin to count sub tasks when generating progress bar	."
+						"Toggle this to allow this plugin to count sub tasks when generating progress bar."
 					)
 				)
 				.addToggle((toggle) =>
@@ -338,7 +327,13 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 						})
 				);
 
-			this.displayNumberToProgressbar(containerEl);
+			// Only show the number settings for modes that include text display
+			if (
+				this.plugin.settings.progressBarDisplayMode === "text" ||
+				this.plugin.settings.progressBarDisplayMode === "both"
+			) {
+				this.displayNumberToProgressbar(containerEl);
+			}
 
 			new Setting(containerEl)
 				.setName(t("Hide progress bars"))
@@ -434,30 +429,219 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		}
 	}
 
-	// Renamed from showNumberToProgressbar() to match the pattern
 	private displayNumberToProgressbar(containerEl: HTMLElement): void {
+		// Add setting for display mode
 		new Setting(containerEl)
-			.setName(t("Add number to the Progress Bar"))
-			.setDesc(
-				t(
-					"Toggle this to allow this plugin to add tasks number to progress bar."
-				)
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.addNumberToProgressBar)
-					.onChange(async (value) => {
-						this.plugin.settings.addNumberToProgressBar = value;
+			.setName(t("Progress format"))
+			.setDesc(t("Choose how to display the task progress"))
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("percentage", t("Percentage (75%)"))
+					.addOption(
+						"bracketPercentage",
+						t("Bracketed percentage ([75%])")
+					)
+					.addOption("fraction", t("Fraction (3/4)"))
+					.addOption(
+						"bracketFraction",
+						t("Bracketed fraction ([3/4])")
+					)
+					.addOption("detailed", t("Detailed ([3✓ 1⟳ 0✗ 1? / 5])"))
+					.addOption("custom", t("Custom format"))
+					.addOption("range-based", t("Range-based text"))
+					.setValue(
+						this.plugin.settings.displayMode || "bracketFraction"
+					)
+					.onChange(async (value: any) => {
+						this.plugin.settings.displayMode = value;
 						this.applySettingsUpdate();
-					})
+						this.display();
+					});
+			});
+
+		// Show custom format setting only when custom format is selected
+		if (this.plugin.settings.displayMode === "custom") {
+			const fragment = document.createDocumentFragment();
+			fragment.createEl("div", {
+				cls: "custom-format-placeholder-info",
+				text: t(
+					"Use placeholders like {{COMPLETED}}, {{TOTAL}}, {{PERCENT}}, etc."
+				),
+			});
+
+			fragment.createEl("div", {
+				cls: "custom-format-placeholder-info",
+				text: t(
+					"Available placeholders: {{COMPLETED}}, {{TOTAL}}, {{IN_PROGRESS}}, {{ABANDONED}}, {{PLANNED}}, {{NOT_STARTED}}, {{PERCENT}}, {{COMPLETED_SYMBOL}}, {{IN_PROGRESS_SYMBOL}}, {{ABANDONED_SYMBOL}}, {{PLANNED_SYMBOL}}"
+				),
+			});
+
+			fragment.createEl("div", {
+				cls: "custom-format-placeholder-info",
+				text: t(
+					"Support expression in format, like using data.percentages to get the percentage of completed tasks. And using math or even repeat functions to get the result."
+				),
+			});
+
+			new Setting(containerEl)
+				.setName(t("Custom format"))
+				.setDesc(fragment);
+
+			const previewEl = containerEl.createDiv({
+				cls: "custom-format-preview-container",
+			});
+
+			const previewLabel = previewEl.createDiv({
+				cls: "custom-format-preview-label",
+				text: t("Preview:"),
+			});
+
+			const previewContent = previewEl.createDiv({
+				cls: "custom-format-preview-content",
+			});
+
+			// 初始预览
+			this.updateFormatPreview(
+				containerEl,
+				this.plugin.settings.customFormat || "[{{COMPLETED}}/{{TOTAL}}]"
 			);
 
-		if (this.plugin.settings.addNumberToProgressBar) {
+			const textarea = containerEl.createEl(
+				"div",
+				{
+					cls: "custom-format-textarea-container",
+				},
+				(el) => {
+					const textAreaComponent = new TextAreaComponent(el);
+					textAreaComponent.inputEl.toggleClass(
+						"custom-format-textarea",
+						true
+					);
+					textAreaComponent
+						.setPlaceholder("[{{COMPLETED}}/{{TOTAL}}]")
+						.setValue(
+							this.plugin.settings.customFormat ||
+								"[{{COMPLETED}}/{{TOTAL}}]"
+						)
+						.onChange(async (value) => {
+							this.plugin.settings.customFormat = value;
+							this.applySettingsUpdate();
+							// 更新预览
+							this.updateFormatPreview(containerEl, value);
+						});
+				}
+			);
+
+			// 添加预览区域
+
+			// Show examples of advanced formats using expressions
+			new Setting(containerEl)
+				.setName(t("Expression examples"))
+				.setDesc(t("Examples of advanced formats using expressions"))
+				.setHeading();
+
+			const exampleContainer = containerEl.createEl("div", {
+				cls: "expression-examples",
+			});
+
+			const examples = [
+				{
+					name: t("Text Progress Bar"),
+					code: '[${="=".repeat(Math.floor(data.percentages.completed/10)) + " ".repeat(10-Math.floor(data.percentages.completed/10))}] {{PERCENT}}%',
+				},
+				{
+					name: t("Emoji Progress Bar"),
+					code: '${="⬛".repeat(Math.floor(data.percentages.completed/10)) + "⬜".repeat(10-Math.floor(data.percentages.completed/10))} {{PERCENT}}%',
+				},
+				{
+					name: t("Color-coded Status"),
+					code: "{{COMPLETED}}/{{TOTAL}} ${=data.percentages.completed < 30 ? '🔴' : data.percentages.completed < 70 ? '🟠' : '🟢'}",
+				},
+				{
+					name: t("Status with Icons"),
+					code: "[{{COMPLETED_SYMBOL}}:{{COMPLETED}} {{IN_PROGRESS_SYMBOL}}:{{IN_PROGRESS}} {{PLANNED_SYMBOL}}:{{PLANNED}} / {{TOTAL}}]",
+				},
+			];
+
+			examples.forEach((example) => {
+				const exampleItem = exampleContainer.createEl("div", {
+					cls: "expression-example-item",
+				});
+
+				exampleItem.createEl("div", {
+					cls: "expression-example-name",
+					text: example.name,
+				});
+
+				const codeEl = exampleItem.createEl("code", {
+					cls: "expression-example-code",
+					text: example.code,
+				});
+
+				// 添加预览效果
+				const previewEl = exampleItem.createEl("div", {
+					cls: "expression-example-preview",
+				});
+
+				// 创建示例数据来渲染预览
+				const sampleData = {
+					completed: 3,
+					total: 5,
+					inProgress: 1,
+					abandoned: 0,
+					notStarted: 0,
+					planned: 1,
+					percentages: {
+						completed: 60,
+						inProgress: 20,
+						abandoned: 0,
+						notStarted: 0,
+						planned: 20,
+					},
+				};
+
+				try {
+					const renderedText = this.renderFormatPreview(
+						example.code,
+						sampleData
+					);
+					previewEl.setText(`${t("Preview")}: ${renderedText}`);
+				} catch (error) {
+					previewEl.setText(`${t("Preview")}: Error`);
+					previewEl.addClass("expression-preview-error");
+				}
+
+				const useButton = exampleItem.createEl("button", {
+					cls: "expression-example-use",
+					text: t("Use"),
+				});
+
+				useButton.addEventListener("click", () => {
+					this.plugin.settings.customFormat = example.code;
+					this.applySettingsUpdate();
+
+					const inputs = containerEl.querySelectorAll("textarea");
+					for (const input of Array.from(inputs)) {
+						if (input.placeholder === "[{{COMPLETED}}/{{TOTAL}}]") {
+							input.value = example.code;
+							break;
+						}
+					}
+
+					this.updateFormatPreview(containerEl, example.code);
+				});
+			});
+		}
+		// Only show legacy percentage toggle for range-based or when displayMode is not set
+		else if (
+			this.plugin.settings.displayMode === "range-based" ||
+			!this.plugin.settings.displayMode
+		) {
 			new Setting(containerEl)
 				.setName(t("Show percentage"))
 				.setDesc(
 					t(
-						"Toggle this to allow this plugin to show percentage in the progress bar."
+						"Toggle this to show percentage instead of completed/total count."
 					)
 				)
 				.addToggle((toggle) =>
@@ -469,12 +653,16 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 						})
 				);
 
-			if (this.plugin.settings.showPercentage) {
+			// If percentage display and range-based mode is selected
+			if (
+				this.plugin.settings.showPercentage &&
+				this.plugin.settings.displayMode === "range-based"
+			) {
 				new Setting(containerEl)
-					.setName(t("Customize progress text"))
+					.setName(t("Customize progress ranges"))
 					.setDesc(
 						t(
-							"Toggle this to customize text representation for different progress percentage ranges."
+							"Toggle this to customize the text for different progress ranges."
 						)
 					)
 					.addToggle((toggle) =>
@@ -486,6 +674,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 								this.plugin.settings.customizeProgressRanges =
 									value;
 								this.applySettingsUpdate();
+								this.display();
 							})
 					);
 
@@ -2353,6 +2542,68 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// Add default presets to settings
 		this.plugin.settings.taskFilter.presetTaskFilters = defaultPresets;
 		this.applySettingsUpdate();
+	}
+
+	// 添加渲染格式文本的辅助方法
+	private renderFormatPreview(formatText: string, sampleData: any): string {
+		try {
+			// 保存原始的customFormat值
+			const originalFormat = this.plugin.settings.customFormat;
+
+			// 临时设置customFormat为我们要预览的格式
+			this.plugin.settings.customFormat = formatText;
+
+			// 使用插件的formatProgressText函数计算预览
+			const result = formatProgressText(sampleData, this.plugin);
+
+			// 恢复原始的customFormat值
+			this.plugin.settings.customFormat = originalFormat;
+
+			return result;
+		} catch (error) {
+			console.error("Error in renderFormatPreview:", error);
+			throw error;
+		}
+	}
+
+	// 更新预览的方法
+	private updateFormatPreview(
+		containerEl: HTMLElement,
+		formatText: string
+	): void {
+		const previewContainer = containerEl.querySelector(
+			".custom-format-preview-content"
+		);
+		if (!previewContainer) return;
+
+		// 创建示例数据
+		const sampleData = {
+			completed: 3,
+			total: 5,
+			inProgress: 1,
+			abandoned: 0,
+			notStarted: 0,
+			planned: 1,
+			percentages: {
+				completed: 60,
+				inProgress: 20,
+				abandoned: 0,
+				notStarted: 0,
+				planned: 20,
+			},
+		};
+
+		try {
+			const renderedText = this.renderFormatPreview(
+				formatText,
+				sampleData
+			);
+			previewContainer.setText(renderedText);
+			previewContainer.removeClass("custom-format-preview-error");
+		} catch (error) {
+			previewContainer.setText("Error rendering format");
+			previewContainer.addClass("custom-format-preview-error");
+		}
 	}
 }
 

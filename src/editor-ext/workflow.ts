@@ -199,7 +199,6 @@ export function handleWorkflowTransaction(
 		return tr;
 	}
 
-	console.log(tr.annotation(workflowChangeAnnotation), tr);
 	// Skip if this transaction already has a workflow or task status annotation
 	if (
 		tr.annotation(workflowChangeAnnotation) ||
@@ -230,18 +229,7 @@ export function handleWorkflowTransaction(
 
 	// Check if any change is a task completion
 	const completedStatuses = plugin.settings.taskStatuses.completed.split("|");
-	console.log(
-		completedStatuses,
-		changes,
-		changes.some(
-			(c) =>
-				completedStatuses.includes(c.text) ||
-				completedStatuses.some(
-					(status) =>
-						c.text === `- [${status}]` || c.text === `[${status}]`
-				)
-		)
-	);
+
 	if (
 		!changes.some(
 			(c) =>
@@ -828,8 +816,6 @@ export function updateWorkflowContextMenu(
 								undefined
 							);
 
-							console.log(changes, "changes");
-
 							editor.cm.dispatch({
 								changes,
 								annotations:
@@ -926,8 +912,6 @@ export function isLastWorkflowStageOrNotWorkflow(
 ): boolean {
 	const workflowInfo = extractWorkflowInfo(lineText);
 
-	console.log(workflowInfo, "workflowInfo");
-
 	// If not a workflow task, treat as "final" for parent completion purposes
 	if (!workflowInfo) {
 		console.log("not a workflow task");
@@ -950,8 +934,6 @@ export function isLastWorkflowStageOrNotWorkflow(
 		workflowType = parentWorkflow;
 	}
 
-	console.log(workflowType, "workflowType");
-
 	// Find the workflow definition
 	const workflow = plugin.settings.workflow.definitions.find(
 		(wf: WorkflowDefinition) => wf.id === workflowType
@@ -961,7 +943,6 @@ export function isLastWorkflowStageOrNotWorkflow(
 		return true; // Definition missing, treat as non-workflow
 	}
 
-	console.log(currentStageId, "currentStageId");
 	// Handle root tasks - they are never the "last stage" in the sense of triggering parent completion
 	// A root task completion should trigger the first stage, not parent completion.
 	if (currentStageId === "root") {

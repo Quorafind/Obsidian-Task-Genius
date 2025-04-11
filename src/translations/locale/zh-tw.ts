@@ -425,6 +425,47 @@ const translations = {
 	"Make the text mark in source mode follow the task status cycle when clicked.":
 		"點擊時使源碼模式中的文本標記跟隨任務狀態循環。",
 	"Status name": "狀態名稱",
+	"Progress display mode": "進度顯示模式",
+	"Choose how to display task progress": "選擇如何顯示任務進度",
+	"No progress indicators": "無進度指示器",
+	"Graphical progress bar": "圖形進度條",
+	"Text progress indicator": "文本進度指示器",
+	"Both graphical and text": "圖形和文本都顯示",
+	"Toggle this to allow this plugin to count sub tasks when generating progress bar.":
+		"切換此選項以允許此插件在生成進度條時計算子任務。",
+	"Progress format": "進度格式",
+	"Choose how to display the task progress": "選擇如何顯示任務進度",
+	"Percentage (75%)": "百分比 (75%)",
+	"Bracketed percentage ([75%])": "帶括號的百分比 ([75%])",
+	"Fraction (3/4)": "分數 (3/4)",
+	"Bracketed fraction ([3/4])": "帶括號的分數 ([3/4])",
+	"Detailed ([3✓ 1⟳ 0✗ 1? / 5])": "詳細 ([3✓ 1⟳ 0✗ 1? / 5])",
+	"Custom format": "自定義格式",
+	"Range-based text": "基於範圍的文本",
+	"Use placeholders like {{COMPLETED}}, {{TOTAL}}, {{PERCENT}}, etc.":
+		"使用佔位符如 {{COMPLETED}}、{{TOTAL}}、{{PERCENT}} 等。",
+	"Preview:": "預覽：",
+	"Available placeholders": "可用佔位符",
+	"Available placeholders: {{COMPLETED}}, {{TOTAL}}, {{IN_PROGRESS}}, {{ABANDONED}}, {{PLANNED}}, {{NOT_STARTED}}, {{PERCENT}}, {{COMPLETED_SYMBOL}}, {{IN_PROGRESS_SYMBOL}}, {{ABANDONED_SYMBOL}}, {{PLANNED_SYMBOL}}":
+		"可用佔位符：{{COMPLETED}}、{{TOTAL}}、{{IN_PROGRESS}}、{{ABANDONED}}、{{PLANNED}}、{{NOT_STARTED}}、{{PERCENT}}、{{COMPLETED_SYMBOL}}、{{IN_PROGRESS_SYMBOL}}、{{ABANDONED_SYMBOL}}、{{PLANNED_SYMBOL}}",
+	"Expression examples": "表達式示例",
+	"Examples of advanced formats using expressions":
+		"使用表達式的高級格式示例",
+	"Text Progress Bar": "文本進度條",
+	"Emoji Progress Bar": "表情符號進度條",
+	"Color-coded Status": "顏色編碼狀態",
+	"Status with Icons": "帶圖標的狀態",
+	Preview: "預覽",
+	Use: "使用",
+	"Toggle this to show percentage instead of completed/total count.":
+		"切換此選項以顯示百分比而不是已完成/總計數。",
+	"Customize progress ranges": "自定義進度範圍",
+	"Toggle this to customize the text for different progress ranges.":
+		"切換此選項以自定義不同進度範圍的文本。",
+	"Apply Theme": "應用主題",
+	"Back to main settings": "返回主設置",
+	"Support expression in format, like using data.percentages to get the percentage of completed tasks. And using math or even repeat functions to get the result.":
+		"支持在格式中使用表达式，例如使用 data.percentages 获取已完成任务的百分比。使用 Math 或 Repeat 函数来获取结果。",
 };
 
 export default translations;

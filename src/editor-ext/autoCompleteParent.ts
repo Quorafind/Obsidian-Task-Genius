@@ -48,8 +48,6 @@ export function handleParentTaskUpdateTransaction(
 	// Check if a task status was changed or a new task was added in this transaction
 	const taskStatusChangeInfo = findTaskStatusChange(tr);
 
-	console.log(taskStatusChangeInfo, "taskStatusChangeInfo");
-
 	if (!taskStatusChangeInfo) {
 		return tr;
 	}
@@ -84,14 +82,6 @@ export function handleParentTaskUpdateTransaction(
 	const isAutoCompleteAnnotation =
 		typeof annotationValue === "string" &&
 		annotationValue.includes("autoCompleteParent");
-
-	console.log(
-		isAutoCompleteAnnotation,
-		allSiblingsCompleted,
-		isParentCompleted,
-		parentStatus,
-		"isAutoCompleteAnnotation"
-	);
 
 	// If all siblings are completed, mark the parent task as completed
 	if (allSiblingsCompleted && !isParentCompleted) {
@@ -180,8 +170,6 @@ function findTaskStatusChange(tr: Transaction): {
 					/\n[\s|\t]*([-*+]|\d+\.)\s\[ \]/
 				);
 
-				console.log(insertedText, newTaskMatch, "newTaskMatch");
-
 				if (newTaskMatch) {
 					// A new task was added, find the line number
 					try {
@@ -219,8 +207,6 @@ function findTaskStatusChange(tr: Transaction): {
 			// Check if this line contains a task marker
 			const taskRegex = /^[\s|\t]*([-*+]|\d+\.)\s\[(.)]/i;
 			const taskMatch = lineText.match(taskRegex);
-
-			console.log(lineText, taskMatch, "lineText");
 
 			if (taskMatch) {
 				// Get the old line if it exists in the old document
@@ -479,16 +465,6 @@ function completeParentTask(
 	// Find the exact position of the checkbox character
 	const checkboxStart = parentLineText.indexOf("[") + 1;
 	const markerStart = parentLine.from + checkboxStart;
-
-	console.log(
-		tr.changes,
-		{
-			from: markerStart,
-			to: markerStart + 1,
-			insert: "x",
-		},
-		"markerStart"
-	);
 
 	// Create a new transaction that adds the completion marker 'x' to the parent task
 	return {

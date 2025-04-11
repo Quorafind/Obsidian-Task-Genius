@@ -442,6 +442,47 @@ const translations = {
 	"Make the text mark in source mode follow the task status cycle when clicked.":
 		"ソースモードでテキストマークをクリックするとタスクステータスサイクルに従う",
 	"Status name": "ステータス名",
+	"Progress display mode": "進捗表示モード",
+	"Choose how to display task progress": "タスク進捗の表示方法を選択",
+	"No progress indicators": "進捗インジケーターなし",
+	"Graphical progress bar": "グラフィカル進捗バー",
+	"Text progress indicator": "テキスト進捗インジケーター",
+	"Both graphical and text": "グラフィカルとテキストの両方",
+	"Toggle this to allow this plugin to count sub tasks when generating progress bar.":
+		"進捗バーを生成する際にサブタスクをカウントするためにこのプラグインを許可するには切り替えてください。",
+	"Progress format": "進捗フォーマット",
+	"Choose how to display the task progress": "タスク進捗の表示方法を選択",
+	"Percentage (75%)": "パーセンテージ (75%)",
+	"Bracketed percentage ([75%])": "括弧付きパーセンテージ ([75%])",
+	"Fraction (3/4)": "分数 (3/4)",
+	"Bracketed fraction ([3/4])": "括弧付き分数 ([3/4])",
+	"Detailed ([3✓ 1⟳ 0✗ 1? / 5])": "詳細 ([3✓ 1⟳ 0✗ 1? / 5])",
+	"Custom format": "カスタムフォーマット",
+	"Range-based text": "範囲ベースのテキスト",
+	"Use placeholders like {{COMPLETED}}, {{TOTAL}}, {{PERCENT}}, etc.":
+		"{{COMPLETED}}、{{TOTAL}}、{{PERCENT}}などのプレースホルダーを使用",
+	"Preview:": "プレビュー：",
+	"Available placeholders": "利用可能なプレースホルダー",
+	"Available placeholders: {{COMPLETED}}, {{TOTAL}}, {{IN_PROGRESS}}, {{ABANDONED}}, {{PLANNED}}, {{NOT_STARTED}}, {{PERCENT}}, {{COMPLETED_SYMBOL}}, {{IN_PROGRESS_SYMBOL}}, {{ABANDONED_SYMBOL}}, {{PLANNED_SYMBOL}}":
+		"利用可能なプレースホルダー：{{COMPLETED}}、{{TOTAL}}、{{IN_PROGRESS}}、{{ABANDONED}}、{{PLANNED}}、{{NOT_STARTED}}、{{PERCENT}}、{{COMPLETED_SYMBOL}}、{{IN_PROGRESS_SYMBOL}}、{{ABANDONED_SYMBOL}}、{{PLANNED_SYMBOL}}",
+	"Expression examples": "表現例",
+	"Examples of advanced formats using expressions":
+		"表現を使用した高度なフォーマットの例",
+	"Text Progress Bar": "テキスト進捗バー",
+	"Emoji Progress Bar": "絵文字進捗バー",
+	"Color-coded Status": "色分けされたステータス",
+	"Status with Icons": "アイコン付きステータス",
+	Preview: "プレビュー",
+	Use: "使用",
+	"Toggle this to show percentage instead of completed/total count.":
+		"完了/合計カウントの代わりにパーセンテージを表示するには切り替えてください。",
+	"Customize progress ranges": "進捗範囲をカスタマイズ",
+	"Toggle this to customize the text for different progress ranges.":
+		"異なる進捗範囲のテキストをカスタマイズするには切り替えてください。",
+	"Apply Theme": "テーマを適用",
+	"Back to main settings": "メイン設定に戻る",
+	"Support expression in format, like using data.percentages to get the percentage of completed tasks. And using math or even repeat functions to get the result.":
+		"フォーマットで式をサポートする、例えばdata.percentagesを使用して完了したタスクのパーセンテージを取得する。また、数学や繰り返し関数を使用して結果を取得する。",
 };
 
 export default translations;

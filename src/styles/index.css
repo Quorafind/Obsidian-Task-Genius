@@ -1,0 +1,248 @@
+/* @settings
+
+name: Task Genius
+id: task-genius
+settings:
+    - 
+        id: task-colors-heading
+        title: Task Status Colors
+        type: heading
+        level: 1
+    - 
+        id: task-completed-color
+        title: Completed Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#4caf50'
+        default-dark: '#4caf50'
+    - 
+        id: task-doing-color
+        title: Doing Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#80dee5'
+        default-dark: '#379fa7'
+    - 
+        id: task-in-progress-color
+        title: In Progress Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#f9d923'
+        default-dark: '#ffc107'
+    - 
+        id: task-abandoned-color
+        title: Abandoned Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#eb5353'
+        default-dark: '#f44336'
+    - 
+        id: task-planned-color
+        title: Planned Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#9c27b0'
+        default-dark: '#ce93d8'
+    - 
+        id: task-question-color
+        title: Question Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#2196f3'
+        default-dark: '#42a5f5'
+    - 
+        id: task-important-color
+        title: Important Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#f44336'
+        default-dark: '#ef5350'
+    - 
+        id: task-star-color
+        title: Star Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#ffc107'
+        default-dark: '#ffd54f'
+    - 
+        id: task-quote-color
+        title: Quote Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#607d8b'
+        default-dark: '#90a4ae'
+    - 
+        id: task-location-color
+        title: Location Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#795548'
+        default-dark: '#8d6e63'
+    - 
+        id: task-bookmark-color
+        title: Bookmark Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#ff9800'
+        default-dark: '#ffb74d'
+    - 
+        id: task-information-color
+        title: Information Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#00bcd4'
+        default-dark: '#26c6da'
+    - 
+        id: task-idea-color
+        title: Idea Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#9c27b0'
+        default-dark: '#ce93d8'
+    - 
+        id: task-pros-color
+        title: Pros Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#4caf50'
+        default-dark: '#66bb6a'
+    - 
+        id: task-cons-color
+        title: Cons Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#f44336'
+        default-dark: '#ef5350'
+    - 
+        id: task-fire-color
+        title: Fire Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#ff5722'
+        default-dark: '#ff7043'
+    - 
+        id: task-key-color
+        title: Key Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#ffd700'
+        default-dark: '#ffd700'
+    - 
+        id: task-win-color
+        title: Win Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#66bb6a'
+        default-dark: '#81c784'
+    - 
+        id: task-up-color
+        title: Up Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#4caf50'
+        default-dark: '#66bb6a'
+    - 
+        id: task-down-color
+        title: Down Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#f44336'
+        default-dark: '#ef5350'
+    - 
+        id: task-note-color
+        title: Note Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#9e9e9e'
+        default-dark: '#bdbdbd'
+    - 
+        id: task-amount-color
+        title: Amount/Savings Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#8bc34a'
+        default-dark: '#aed581'
+    - 
+        id: task-speech-color
+        title: Speech Bubble Task Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#03a9f4'
+        default-dark: '#29b6f6'
+    - 
+        id: progress-bar-colors
+        title: Progress Bar Colors
+        type: heading
+        level: 1
+    - 
+        id: progress-0-color
+        title: 0% Progress Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#ae431e'
+        default-dark: '#ae431e'
+    - 
+        id: progress-25-color
+        title: 25% Progress Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#e5890a'
+        default-dark: '#e5890a'
+    - 
+        id: progress-50-color
+        title: 50% Progress Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#b4c6a6'
+        default-dark: '#b4c6a6'
+    - 
+        id: progress-75-color
+        title: 75% Progress Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#6bcb77'
+        default-dark: '#6bcb77'
+    - 
+        id: progress-100-color
+        title: 100% Progress Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#4d96ff'
+        default-dark: '#4d96ff'
+    - 
+        id: progress-background-color
+        title: Progress Bar Background Color
+        type: variable-themed-color
+        opacity: false
+        format: hex
+        default-light: '#f1f1f1'
+		default-dark: '#f1f1f1'
+*/
