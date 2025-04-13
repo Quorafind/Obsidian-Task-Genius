@@ -329,6 +329,22 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 						})
 				);
 
+			new Setting(containerEl)
+				.setName(t("Use custom goal for progress bar"))
+				.setDesc(
+					t(
+						"Toggle this to allow this plugin to find the pattern g::number as goal of the parent task."
+					)
+				)
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.allowCustomProgressGoal)
+						.onChange(async (value) => {
+							this.plugin.settings.allowCustomProgressGoal = value;
+							this.applySettingsUpdate();
+						})
+				);
+
 			// Only show the number settings for modes that include text display
 			if (
 				this.plugin.settings.progressBarDisplayMode === "text" ||

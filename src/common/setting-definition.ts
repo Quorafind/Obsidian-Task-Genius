@@ -39,6 +39,7 @@ export interface TaskProgressBarSettings {
 	supportHoverToShowProgressInfo: boolean;
 	markParentInProgressWhenPartiallyComplete: boolean;
 	countSubLevel: boolean;
+	allowCustomProgressGoal: boolean;
 	hideProgressBarBasedOnConditions: boolean;
 	hideProgressBarTags: string;
 	hideProgressBarFolders: string;
@@ -145,6 +146,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	markParentInProgressWhenPartiallyComplete: false,
 	showPercentage: false,
 	countSubLevel: true,
+	allowCustomProgressGoal: false,
 	hideProgressBarBasedOnConditions: false,
 	hideProgressBarTags: "no-progress-bar",
 	hideProgressBarFolders: "",
