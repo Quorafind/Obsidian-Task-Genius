@@ -91,6 +91,8 @@ export class TaskManager extends Component {
 					{
 						maxWorkers: this.options.maxWorkers,
 						debug: this.options.debug,
+						preferMetadataFormat:
+							this.plugin.settings.preferMetadataFormat,
 					}
 				);
 				this.log("Worker manager initialized");
@@ -882,18 +884,18 @@ export class TaskManager extends Component {
 			throw new Error(`Task with ID ${updatedTask.id} not found`);
 		}
 
+		// Determine the metadata format from plugin settings
+		const useDataviewFormat =
+			this.plugin.settings.preferMetadataFormat === "dataview";
+
 		try {
-			// Get the file from the vault
 			const file = this.vault.getFileByPath(updatedTask.filePath);
 			if (!(file instanceof TFile) || !file) {
 				throw new Error(`File not found: ${updatedTask.filePath}`);
 			}
 
-			// Read the file content
 			const content = await this.vault.read(file);
 			const lines = content.split("\n");
-
-			// Get the line with the task
 			const taskLine = lines[updatedTask.line];
 			console.log("taskLine", taskLine);
 			if (!taskLine) {
@@ -902,33 +904,27 @@ export class TaskManager extends Component {
 				);
 			}
 
-			// Extract and preserve indentation
 			const indentMatch = taskLine.match(/^(\s*)/);
 			const indentation = indentMatch ? indentMatch[0] : "";
-
-			// Build the updated task line
 			let updatedLine = taskLine;
 
-			// Update the task content (description)
+			// Update content
 			if (originalTask.content !== updatedTask.content) {
-				// Replace the content part after the checkbox
-				// This regex looks for the checkbox pattern and preserves it
 				updatedLine = updatedLine.replace(
 					/(\s*[-*+]\s*\[[^\]]*\]\s*).*$/,
 					`$1${updatedTask.content}`
 				);
 			}
 
-			const status = updatedTask.status;
-			if (status) {
+			// Update status if it exists in the updated task
+			if (updatedTask.status) {
 				updatedLine = updatedLine.replace(
 					/(\s*[-*+]\s*\[)[^\]]*(\]\s*)/,
-					`$1${status}$2`
+					`$1${updatedTask.status}$2`
 				);
 			}
-
-			// Update completion status if changed
-			if (originalTask.completed !== updatedTask.completed) {
+			// Otherwise, update completion status if it changed
+			else if (originalTask.completed !== updatedTask.completed) {
 				const statusMark = updatedTask.completed ? "x" : " ";
 				updatedLine = updatedLine.replace(
 					/(\s*[-*+]\s*\[)[^\]]*(\]\s*)/,
@@ -936,7 +932,6 @@ export class TaskManager extends Component {
 				);
 			}
 
-			// Format date to string in YYYY-MM-DD format
 			const formatDate = (
 				date: number | undefined
 			): string | undefined => {
@@ -948,160 +943,249 @@ export class TaskManager extends Component {
 				)}-${String(d.getDate()).padStart(2, "0")}`;
 			};
 
-			// Remove existing metadata symbols
-			// Due dates
+			// --- Remove existing metadata (both formats) ---
+			// Emoji dates
 			updatedLine = updatedLine.replace(/📅\s*\d{4}-\d{2}-\d{2}/g, "");
-			// Start dates
 			updatedLine = updatedLine.replace(/🛫\s*\d{4}-\d{2}-\d{2}/g, "");
-			// Scheduled dates
 			updatedLine = updatedLine.replace(/⏳\s*\d{4}-\d{2}-\d{2}/g, "");
-			// Completion dates
 			updatedLine = updatedLine.replace(/✅\s*\d{4}-\d{2}-\d{2}/g, "");
-			// Priority markers
+			updatedLine = updatedLine.replace(/➕\s*\d{4}-\d{2}-\d{2}/g, ""); // Added created date emoji
+			// Dataview dates (inline field format) - match key or emoji
+			updatedLine = updatedLine.replace(
+				/\[(?:due|🗓️)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(
+				/\[(?:completion|✅)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(
+				/\[(?:created|➕)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(
+				/\[(?:start|🛫)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(
+				/\[(?:scheduled|⏳)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
+
+			// Emoji Priority markers
 			updatedLine = updatedLine.replace(
 				/\s+(🔼|🔽|⏫|⏬|🔺|\[#[A-C]\])/g,
 				""
 			);
-			// Recurrence
+			// Dataview Priority
+			updatedLine = updatedLine.replace(/\[priority::\s*\w+\]/gi, ""); // Assuming priority value is a word like high, medium, etc. or number
+
+			// Emoji Recurrence
 			updatedLine = updatedLine.replace(/🔁\s*[a-zA-Z0-9, !]+/g, "");
+			// Dataview Recurrence
+			updatedLine = updatedLine.replace(
+				/\[(?:repeat|recurrence)::\s*[^\]]+\]/gi,
+				""
+			); // Allow 'repeat' or 'recurrence'
 
-			// Add updated metadata at the end of the line
-			const metadata = [];
+			// Dataview Project and Context
+			updatedLine = updatedLine.replace(/\[project::\s*[^\]]+\]/gi, "");
+			updatedLine = updatedLine.replace(/\[context::\s*[^\]]+\]/gi, "");
 
-			// Add priority if set
-			if (updatedTask.priority) {
-				let priorityMarker = "";
-				switch (updatedTask.priority) {
-					case 5:
-						priorityMarker = "🔺";
-						break; // Highest
-					case 4:
-						priorityMarker = "⏫";
-						break; // High
-					case 3:
-						priorityMarker = "🔼";
-						break; // Medium
-					case 2:
-						priorityMarker = "🔽";
-						break; // Low
-					case 1:
-						priorityMarker = "⏬";
-						break; // Lowest
-					default:
-						priorityMarker = "";
-				}
-				if (priorityMarker) {
-					metadata.push(priorityMarker);
-				}
-			}
+			// --- Clean up the content part after removal ---
+			const contentStartIndex = updatedLine.indexOf("] ") + 2;
+			let taskTextContent = updatedLine
+				.substring(contentStartIndex)
+				.trim();
 
-			// Add dates if set
-			if (updatedTask.dueDate) {
-				metadata.push(`📅 ${formatDate(updatedTask.dueDate)}`);
-			}
-
-			if (updatedTask.startDate) {
-				metadata.push(`🛫 ${formatDate(updatedTask.startDate)}`);
-			}
-
-			if (updatedTask.scheduledDate) {
-				metadata.push(`⏳ ${formatDate(updatedTask.scheduledDate)}`);
-			}
-
-			if (updatedTask.completedDate && updatedTask.completed) {
-				metadata.push(`✅ ${formatDate(updatedTask.completedDate)}`);
-			}
-
-			// Add recurrence if set
-			if (updatedTask.recurrence) {
-				metadata.push(`🔁 ${updatedTask.recurrence}`);
-			}
-
-			// Update project tag
-			// First, remove any existing project tag
-			updatedLine = updatedLine.replace(/#project\/[^\s]+/g, "");
-			// Add new project tag if set
-			if (updatedTask.project) {
-				metadata.push(`#project/${updatedTask.project}`);
-			}
-
-			// Update context
-			// First, remove any existing context
-			updatedLine = updatedLine.replace(/@[^\s]+/g, "");
-			// Add new context if set
-			if (updatedTask.context) {
-				metadata.push(`@${updatedTask.context}`);
-			}
-
-			// Add all tags that aren't project tags
-			if (updatedTask.tags) {
-				const nonProjectTags = updatedTask.tags.filter(
+			// Remove existing tags and context from the content part only
+			taskTextContent = taskTextContent
+				.replace(/#project\/[^\s]+/g, "")
+				.trim(); // Remove #project tags
+			taskTextContent = taskTextContent.replace(/@[^\s]+/g, "").trim(); // Remove @context tags
+			// Remove general tags (ensure not removing parts of words)
+			if (originalTask.tags) {
+				// Filter out project tags as they are handled differently now based on format
+				const generalTags = originalTask.tags.filter(
 					(tag) => !tag.startsWith("#project/")
 				);
+				for (const tag of generalTags) {
+					const tagRegex = new RegExp(
+						`\s#${tag
+							.replace(/^#/, "")
+							.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\b`,
+						"g"
+					);
+					taskTextContent = taskTextContent
+						.replace(tagRegex, "")
+						.trim();
+				}
+			}
+			// Reconstruct the beginning of the line
+			updatedLine =
+				updatedLine.substring(0, contentStartIndex) + taskTextContent;
 
-				// Remove existing non-project tags
-				for (const tag of originalTask.tags || []) {
-					if (!tag.startsWith("#project/")) {
-						updatedLine = updatedLine.replace(
-							new RegExp(
-								tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
-									"\\b",
-								"g"
-							),
-							""
-						);
+			// --- Add updated metadata ---
+			const metadata = [];
+			const formattedDueDate = formatDate(updatedTask.dueDate);
+			const formattedStartDate = formatDate(updatedTask.startDate);
+			const formattedScheduledDate = formatDate(
+				updatedTask.scheduledDate
+			);
+			const formattedCompletedDate = formatDate(
+				updatedTask.completedDate
+			);
+
+			// Priority
+			if (updatedTask.priority) {
+				if (useDataviewFormat) {
+					// Use the boolean flag
+					let priorityValue: string | number;
+					switch (updatedTask.priority) {
+						case 5:
+							priorityValue = "highest";
+							break;
+						case 4:
+							priorityValue = "high";
+							break;
+						case 3:
+							priorityValue = "medium";
+							break;
+						case 2:
+							priorityValue = "low";
+							break;
+						case 1:
+							priorityValue = "lowest";
+							break;
+						default:
+							priorityValue = updatedTask.priority;
+					}
+					metadata.push(`[priority:: ${priorityValue}]`);
+				} else {
+					// Emoji format
+					let priorityMarker = "";
+					switch (updatedTask.priority) {
+						case 5:
+							priorityMarker = "🔺";
+							break;
+						case 4:
+							priorityMarker = "⏫";
+							break;
+						case 3:
+							priorityMarker = "🔼";
+							break;
+						case 2:
+							priorityMarker = "🔽";
+							break;
+						case 1:
+							priorityMarker = "⏬";
+							break; // Use ⏬ for lowest
+					}
+					if (priorityMarker) metadata.push(priorityMarker);
+				}
+			}
+
+			// Dates
+			if (formattedDueDate) {
+				metadata.push(
+					useDataviewFormat
+						? `[due:: ${formattedDueDate}]`
+						: `🗓️ ${formattedDueDate}`
+				); // Use boolean flag
+			}
+			if (formattedStartDate) {
+				metadata.push(
+					useDataviewFormat
+						? `[start:: ${formattedStartDate}]`
+						: `🛫 ${formattedStartDate}`
+				);
+			}
+			if (formattedScheduledDate) {
+				metadata.push(
+					useDataviewFormat
+						? `[scheduled:: ${formattedScheduledDate}]`
+						: `⏳ ${formattedScheduledDate}`
+				);
+			}
+			if (formattedCompletedDate && updatedTask.completed) {
+				metadata.push(
+					useDataviewFormat
+						? `[completion:: ${formattedCompletedDate}]`
+						: `✅ ${formattedCompletedDate}`
+				);
+			}
+			// Optionally add created date if missing and using dataview
+			// if (!taskLine.includes('[created::') && !taskLine.includes('➕') && updatedTask.createdDate && useDataviewFormat) {
+			//    const formattedCreatedDate = formatDate(updatedTask.createdDate);
+			//    if(formattedCreatedDate) metadata.push(`[created:: ${formattedCreatedDate}]`);
+			// }
+
+			// Recurrence
+			if (updatedTask.recurrence) {
+				metadata.push(
+					useDataviewFormat
+						? `[repeat:: ${updatedTask.recurrence}]`
+						: `🔁 ${updatedTask.recurrence}`
+				);
+			}
+
+			// Project
+			if (updatedTask.project) {
+				if (useDataviewFormat) {
+					metadata.push(`[project:: ${updatedTask.project}]`);
+				} else {
+					if (!updatedTask.tags) updatedTask.tags = [];
+					const projectTag = `#project/${updatedTask.project}`;
+					if (!updatedTask.tags.includes(projectTag)) {
+						updatedTask.tags.push(projectTag); // Will be added with other tags below
 					}
 				}
+			}
 
-				// Add new non-project tags
-				metadata.push(...nonProjectTags);
+			// Context
+			if (updatedTask.context) {
+				if (useDataviewFormat) {
+					metadata.push(`[context:: ${updatedTask.context}]`);
+				} else {
+					metadata.push(`@${updatedTask.context}`); // Add directly for emoji format
+				}
+			}
+
+			// Add non-project/context tags for emoji format
+			if (!useDataviewFormat && updatedTask.tags) {
+				// Check if NOT using dataview format
+				const generalTags = updatedTask.tags.filter(
+					(tag) => !tag.startsWith("#project/") // Project tags added separately if needed
+				);
+				// Avoid adding duplicate tags; context already added above for emoji
+				const uniqueGeneralTags = [...new Set(generalTags)];
+				metadata.push(...uniqueGeneralTags);
 			}
 
 			// Append all metadata to the line
 			if (metadata.length > 0) {
-				// Clean up any duplicate spaces but preserve the task structure
-				updatedLine = updatedLine.trim();
+				updatedLine = updatedLine.trim(); // Trim first to remove trailing space before adding metadata
 				updatedLine = `${updatedLine} ${metadata.join(" ")}`;
 			}
 
-			// Ensure indentation is preserved by adding it back
+			// Ensure indentation is preserved
 			if (indentation && !updatedLine.startsWith(indentation)) {
 				updatedLine = `${indentation}${updatedLine.trimStart()}`;
 			}
 
-			// Update the line in the file
+			// Update the line in the file content
 			if (updatedLine !== taskLine) {
 				lines[updatedTask.line] = updatedLine;
 				await this.vault.modify(file, lines.join("\n"));
+				await this.indexFile(file); // Re-index the modified file
+				this.log(
+					`Updated task ${updatedTask.id} and re-indexed file ${updatedTask.filePath}`
+				);
+			} else {
+				this.log(
+					`Task ${updatedTask.id} content did not change. No file modification needed.`
+				);
 			}
-
-			const currentTasks = this.getTasksForFile(
-				updatedTask.filePath
-			).filter((task) => task.id !== updatedTask.id);
-
-			// Update the task in the indexer
-			// We'll temporarily update the task in memory and then reindex the file
-			// to ensure all indices are properly updated
-			this.indexer.updateIndexWithTasks(updatedTask.filePath, [
-				...currentTasks,
-				updatedTask,
-			]);
-
-			// Store in cache
-			await this.persister.storeFile(updatedTask.filePath, [
-				...currentTasks,
-				updatedTask,
-			]);
-
-			// Trigger the task update event
-			this.app.workspace.trigger(
-				"task-genius:task-cache-updated",
-				this.indexer.getCache()
-			);
-
-			this.log(
-				`Updated task ${updatedTask.id} in file ${updatedTask.filePath}`
-			);
 		} catch (error) {
 			console.error("Error updating task:", error);
 			throw error;

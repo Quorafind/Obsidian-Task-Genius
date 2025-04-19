@@ -52,7 +52,7 @@ export class CalendarComponent extends Component {
 	onload() {
 		// Create calendar container
 		this.containerEl = this.parentEl.createDiv({
-			cls: "calendar-container",
+			cls: "mini-calendar-container",
 		});
 
 		// Create header with navigation

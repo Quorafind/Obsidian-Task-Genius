@@ -169,3 +169,20 @@
 		max-height: 40%;
 	}
 }
+
+.quick-capture-config-panel .details-status-selector {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+
+	margin-bottom: var(--size-4-2);
+	margin-top: var(--size-4-2);
+}
+
+.quick-capture-config-panel .quick-capture-status-selector {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+
+	gap: var(--size-4-3);
+}

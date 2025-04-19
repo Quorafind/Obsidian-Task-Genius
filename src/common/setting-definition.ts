@@ -53,7 +53,22 @@ export interface ViewConfig {
 	visible: boolean; // Show in sidebar
 	hideCompletedAndAbandonedTasks: boolean; // Per-view setting
 	filterRules?: ViewFilterRule; // ADDED: Optional filter rules for ALL views
+	specificConfig?: SpecificViewConfig; // ADDED: Optional property for view-specific settings
 }
+
+// ADDED: Specific config interfaces
+export interface KanbanSpecificConfig {
+	viewType: "kanban"; // Discriminator
+	showCheckbox: boolean;
+}
+
+export interface CalendarSpecificConfig {
+	viewType: "calendar"; // Discriminator
+	firstDayOfWeek?: number; // 0=Sun, 1=Mon, ..., 6=Sat; undefined=locale default
+}
+
+// ADDED: Union type for specific configs
+export type SpecificViewConfig = KanbanSpecificConfig | CalendarSpecificConfig;
 
 /** Define the structure for task statuses */
 export interface TaskStatusConfig extends Record<string, string> {
@@ -211,6 +226,7 @@ export interface TaskProgressBarSettings {
 
 	// View Settings (Updated Structure)
 	enableView: boolean;
+	preferMetadataFormat: "dataview" | "tasks";
 	viewConfiguration: ViewConfig[]; // Manages order, visibility, basic info, AND filter rules
 
 	// Review Settings
@@ -377,10 +393,11 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 
 	// View Defaults (Updated Structure)
 	enableView: true,
+	preferMetadataFormat: "tasks",
 	viewConfiguration: [
 		{
 			id: "inbox",
-			name: "Inbox",
+			name: t("Inbox"),
 			icon: "inbox",
 			type: "default",
 			visible: true,
@@ -389,7 +406,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		},
 		{
 			id: "forecast",
-			name: "Forecast",
+			name: t("Forecast"),
 			icon: "calendar-days",
 			type: "default",
 			visible: true,
@@ -398,7 +415,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		},
 		{
 			id: "projects",
-			name: "Projects",
+			name: t("Projects"),
 			icon: "folders",
 			type: "default",
 			visible: true,
@@ -407,7 +424,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		},
 		{
 			id: "tags",
-			name: "Tags",
+			name: t("Tags"),
 			icon: "tag",
 			type: "default",
 			visible: true,
@@ -416,7 +433,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		},
 		{
 			id: "flagged",
-			name: "Flagged",
+			name: t("Flagged"),
 			icon: "flag",
 			type: "default",
 			visible: true,
@@ -425,12 +442,38 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		},
 		{
 			id: "review",
-			name: "Review",
+			name: t("Review"),
 			icon: "eye",
 			type: "default",
 			visible: true,
 			hideCompletedAndAbandonedTasks: false,
 			filterRules: {},
+		},
+		{
+			id: "calendar",
+			name: t("Calendar"),
+			icon: "calendar",
+			type: "default",
+			visible: true,
+			hideCompletedAndAbandonedTasks: false,
+			filterRules: {},
+			specificConfig: {
+				viewType: "calendar",
+				firstDayOfWeek: undefined, // Use locale default initially
+			} as CalendarSpecificConfig,
+		},
+		{
+			id: "kanban",
+			name: t("Status"),
+			icon: "kanban",
+			type: "default",
+			visible: true,
+			hideCompletedAndAbandonedTasks: false,
+			filterRules: {},
+			specificConfig: {
+				viewType: "kanban",
+				showCheckbox: true, // Example default, adjust if needed
+			} as KanbanSpecificConfig,
 		},
 	],
 
@@ -445,34 +488,65 @@ export function getViewSettingOrDefault(
 ): ViewConfig {
 	const viewConfiguration =
 		plugin.settings.viewConfiguration || DEFAULT_SETTINGS.viewConfiguration;
+
+	// First check if the view exists in user settings
 	const savedConfig = viewConfiguration.find((v) => v.id === viewId);
+
+	// Then check if it exists in default settings
 	const defaultConfig = DEFAULT_SETTINGS.viewConfiguration.find(
 		(v) => v.id === viewId
-	) || {
+	);
+
+	// If neither exists, create a fallback default for custom views
+	// IMPORTANT: Fallback needs to determine if it *should* have specificConfig based on ID pattern or other logic if possible.
+	// For simplicity now, fallback won't have specificConfig unless explicitly added later for new custom types.
+	const fallbackConfig: ViewConfig = {
+		// Explicitly type fallback
 		id: viewId,
-		name: viewId,
+		name: viewId, // Consider using a better default name generation
 		icon: "list-plus",
 		type: "custom",
 		visible: true,
 		hideCompletedAndAbandonedTasks: false,
 		filterRules: {},
-	}; // Ensure default has empty rules
+		// No specificConfig for generic custom views by default
+	};
 
-	// Merge saved config onto default config, ensuring filterRules are merged or taken if present
-	const mergedConfig = {
-		...defaultConfig,
-		...(savedConfig || {}),
-		// Explicitly handle merging filterRules: Use saved rules if they exist, otherwise default (which is likely empty)
+	// Use default config if it exists, otherwise use fallback
+	const baseConfig = defaultConfig || fallbackConfig;
+
+	// Merge saved config onto base config
+	const mergedConfig: ViewConfig = {
+		// Explicitly type merged
+		...baseConfig,
+		...(savedConfig || {}), // Spread saved config properties, overriding base
+		// Explicitly handle merging filterRules
 		filterRules: savedConfig?.filterRules
 			? {
-					...(defaultConfig.filterRules || {}),
-					...savedConfig.filterRules,
+					...(baseConfig.filterRules || {}), // Start with base's filterRules
+					...savedConfig.filterRules, // Override with saved filterRules properties
 			  }
-			: defaultConfig.filterRules || {},
-	} as ViewConfig;
+			: baseConfig.filterRules || {}, // If no saved filterRules, use base's
+		// Merge specificConfig: Saved overrides default, default overrides base (which might be fallback without specificConfig)
+		// Ensure that the spread of savedConfig doesn't overwrite specificConfig object entirely if base has one and saved doesn't.
+		specificConfig:
+			savedConfig?.specificConfig !== undefined
+				? {
+						// If saved has specificConfig, merge it onto base's
+						...(baseConfig.specificConfig || {}),
+						...savedConfig.specificConfig,
+				  }
+				: baseConfig.specificConfig, // Otherwise, just use base's specificConfig (could be undefined)
+	};
 
 	// Ensure essential properties exist even if defaults are weird
 	mergedConfig.filterRules = mergedConfig.filterRules || {};
+	// Optional: If specificConfig is expected for certain default types but missing after merge, could add fallback logic here.
+	// For example:
+	// if (mergedConfig.type === 'default' && (mergedConfig.id === 'kanban' || mergedConfig.id === 'calendar') && mergedConfig.specificConfig === undefined) {
+	//   console.warn(`Specific config missing for default view ${mergedConfig.id}, attempting to use default.`);
+	//   mergedConfig.specificConfig = DEFAULT_SETTINGS.viewConfiguration.find(v => v.id === mergedConfig.id)?.specificConfig;
+	// }
 
 	return mergedConfig;
 }

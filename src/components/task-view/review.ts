@@ -276,7 +276,8 @@ export class ReviewComponent extends Component {
 	// Events (will be passed to the renderer)
 	public onTaskSelected: (task: Task) => void;
 	public onTaskCompleted: (task: Task) => void;
-	public onTaskContextMenu: (event: MouseEvent, task: Task) => void;
+	public onTaskContextMenu: (event: MouseEvent, task: Task) => void =
+		() => {};
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -852,7 +853,8 @@ export class ReviewComponent extends Component {
 		this.taskRenderer.renderTasks(
 			this.selectedProject.tasks,
 			false, // isTreeView = false
-			t("No tasks found for this project.")
+			undefined, // allTasksMap (not needed for list view)
+			t("No tasks found for this project.") // emptyMessage
 		);
 	}
 
@@ -1074,6 +1076,7 @@ export class ReviewComponent extends Component {
 		this.taskRenderer.renderTasks(
 			[], // No tasks
 			false, // Not tree view
+			undefined, // allTasksMap (not needed)
 			message // The specific empty message
 		);
 	}

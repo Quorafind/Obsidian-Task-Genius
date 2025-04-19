@@ -200,7 +200,8 @@ export function filterTasks(
 			case "flagged":
 				filtered = filtered.filter(
 					(task) =>
-						task.priority === 3 || task.tags?.includes("flagged")
+						(task.priority ?? 0) >= 3 ||
+						task.tags?.includes("flagged")
 				);
 				break;
 			// Projects, Tags, Review logic are handled by their specific components / options

@@ -35,6 +35,8 @@ export interface WorkerPoolOptions {
 	cpuUtilization: number;
 	/** Whether to enable debug logging */
 	debug?: boolean;
+	/** Whether to use dataview format */
+	preferMetadataFormat?: "dataview" | "tasks";
 }
 
 /**
@@ -434,6 +436,7 @@ export class TaskWorkerManager extends Component {
 								this.metadataCache.getFileCache(file) ||
 								undefined,
 						},
+						preferMetadataFormat: this.options.preferMetadataFormat,
 					};
 
 					worker.worker.postMessage(command);

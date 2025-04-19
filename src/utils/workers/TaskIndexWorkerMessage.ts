@@ -24,6 +24,8 @@ export interface ParseTasksCommand {
 		/** Full file metadata cache */
 		fileCache?: CachedMetadata;
 	};
+	/** Whether to use dataview format */
+	preferMetadataFormat?: "dataview" | "tasks";
 }
 
 /**

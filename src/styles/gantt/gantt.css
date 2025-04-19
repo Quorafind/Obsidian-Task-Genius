@@ -1,0 +1,92 @@
+/* styles/gantt/gantt.css */
+
+.gantt-chart-container {
+	width: 100%;
+	height: 100%;
+	overflow: auto; /* Enable scrolling */
+	position: relative; /* Needed for potential absolute positioning inside */
+	background-color: var(--background-secondary);
+}
+
+.gantt-svg {
+	display: block; /* Prevent extra space below SVG */
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+	user-select: none; /* Prevent text selection during interaction */
+}
+
+/* Header */
+.gantt-header-bg {
+	fill: var(--background-secondary-alt);
+	stroke: var(--background-modifier-border);
+	stroke-width: 1px;
+}
+
+.gantt-header-text {
+	fill: var(--text-muted);
+	font-weight: 500;
+}
+
+/* Grid */
+.gantt-grid-bg {
+	fill: transparent; /* Or var(--background-primary) */
+	stroke: var(--background-modifier-border);
+	stroke-width: 0;
+}
+
+.gantt-grid-line-vertical {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1px;
+	stroke-dasharray: 2, 2;
+}
+
+.gantt-grid-line-horizontal {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1px;
+}
+
+/* Tasks */
+.gantt-task-item {
+	cursor: pointer;
+}
+
+.gantt-task-bar {
+	fill: var(--interactive-accent);
+	stroke: var(--interactive-accent-hover);
+	stroke-width: 1px;
+	transition: fill 0.1s ease-in-out;
+}
+
+.gantt-task-item:hover .gantt-task-bar {
+	fill: var(--interactive-accent-hover);
+}
+
+.gantt-task-milestone {
+	fill: var(--color-orange);
+	stroke: var(--color-orange-border);
+	stroke-width: 1px;
+}
+
+.gantt-task-item:hover .gantt-task-milestone {
+	transform: scale(1.1);
+	transform-origin: center center;
+	transition: transform 0.1s ease-in-out;
+}
+
+.gantt-task-label {
+	fill: var(--text-on-accent);
+	font-size: calc(var(--font-ui-small) * 0.9);
+	pointer-events: none; /* Allow clicks to pass through to the bar */
+	white-space: pre; /* Prevent wrapping */
+	/* Consider text clipping or masking */
+}
+
+/* Add more specific styles based on task status, priority, project etc. */
+.gantt-task-bar.status-completed {
+	fill: var(--color-green);
+	stroke: var(--color-green-border);
+}
+
+.gantt-task-bar.priority-high {
+	/* Add styles for high priority */
+}

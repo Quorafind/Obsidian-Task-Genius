@@ -52,7 +52,6 @@
 		"typescript": "4.7.3"
 	},
 	"dependencies": {
-		"localforage": "^1.10.0",
-		"uuid": "^11.1.0"
+		"localforage": "^1.10.0"
 	}
 }

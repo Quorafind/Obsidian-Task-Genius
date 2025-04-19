@@ -45,7 +45,7 @@ export class ForecastComponent extends Component {
 
 	// State
 	private allTasks: Task[] = [];
-	private pastDueTasks: Task[] = [];
+	private pastTasks: Task[] = [];
 	private todayTasks: Task[] = [];
 	private futureTasks: Task[] = [];
 	private selectedDate: Date;
@@ -55,13 +55,15 @@ export class ForecastComponent extends Component {
 	private windowFocusHandler: () => void;
 	private isTreeView: boolean = false;
 	private treeComponents: TaskTreeItemComponent[] = [];
+	private allTasksMap: Map<string, Task> = new Map();
 
 	// Events
 	public onTaskSelected: (task: Task) => void;
 	public onTaskCompleted: (task: Task) => void;
 
 	// Context menu
-	public onTaskContextMenu: (event: MouseEvent, task: Task) => void;
+	public onTaskContextMenu: (event: MouseEvent, task: Task) => void =
+		() => {};
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -279,10 +281,8 @@ export class ForecastComponent extends Component {
 
 		// Set up calendar events
 		this.calendarComponent.onDateSelected = (date, tasks) => {
-			// Create a new date object to ensure we're working with a clean date
 			const selectedDate = new Date(date);
 			selectedDate.setHours(0, 0, 0, 0);
-
 			this.selectedDate = selectedDate;
 
 			// Update the Coming Up section first
@@ -336,8 +336,8 @@ export class ForecastComponent extends Component {
 
 		// Create stats for past due, today, and future
 		createStatItem("past-due", t("Past Due"), 0, "past-due");
-		createStatItem("today", t("Today"), 1, "today");
-		createStatItem("future", t("Future"), 2, "future");
+		createStatItem("today", t("Today"), 0, "today");
+		createStatItem("future", t("Future"), 0, "future");
 	}
 
 	private createDueSoonSection(parentEl: HTMLElement) {
@@ -368,6 +368,9 @@ export class ForecastComponent extends Component {
 
 	public setTasks(tasks: Task[]) {
 		this.allTasks = tasks;
+		this.allTasksMap = new Map(
+			this.allTasks.map((task) => [task.id, task])
+		);
 
 		// Update header count
 		this.updateHeaderCount();
@@ -418,34 +421,27 @@ export class ForecastComponent extends Component {
 		today.setHours(0, 0, 0, 0);
 		const todayTimestamp = today.getTime();
 
-		// Filter for incomplete tasks with due dates
-		const tasksWithDueDates = this.allTasks.filter(
-			(task) => task.dueDate !== undefined
+		// Filter for incomplete tasks with a relevant date
+		const tasksWithRelevantDate = this.allTasks.filter(
+			(task) => this.getRelevantDate(task) !== undefined
 		);
 
-		// Split into past due, today, and future
-		this.pastDueTasks = tasksWithDueDates.filter((task) => {
-			// Ensure dueDate exists before creating Date object
-			if (!task.dueDate) return false;
-			const dueDate = new Date(task.dueDate);
-			dueDate.setHours(0, 0, 0, 0); // Zero out time
-			return dueDate.getTime() < todayTimestamp; // Compare zeroed dates
+		// Split into past, today, and future based on relevantDate
+		this.pastTasks = tasksWithRelevantDate.filter((task) => {
+			const relevantTimestamp = this.getRelevantDate(task)!;
+			return relevantTimestamp < todayTimestamp;
 		});
-		this.todayTasks = tasksWithDueDates.filter((task) => {
-			if (!task.dueDate) return false;
-			const dueDate = new Date(task.dueDate!);
-			dueDate.setHours(0, 0, 0, 0);
-			return dueDate.getTime() === todayTimestamp;
+		this.todayTasks = tasksWithRelevantDate.filter((task) => {
+			const relevantTimestamp = this.getRelevantDate(task)!;
+			return relevantTimestamp === todayTimestamp;
 		});
-		this.futureTasks = tasksWithDueDates.filter((task) => {
-			if (!task.dueDate) return false;
-			const dueDate = new Date(task.dueDate!);
-			dueDate.setHours(0, 0, 0, 0); // Zero out time
-			return dueDate.getTime() > todayTimestamp; // Compare zeroed dates
+		this.futureTasks = tasksWithRelevantDate.filter((task) => {
+			const relevantTimestamp = this.getRelevantDate(task)!;
+			return relevantTimestamp > todayTimestamp;
 		});
 
-		// Sort tasks by priority and then due date
-		const sortTasksByPriorityAndDueDate = (tasks: Task[]) => {
+		// Sort tasks by priority and then relevant date
+		const sortTasksByPriorityAndRelevantDate = (tasks: Task[]) => {
 			return tasks.sort((a, b) => {
 				// First by priority (high to low)
 				const priorityA = a.priority || 0;
@@ -454,14 +450,23 @@ export class ForecastComponent extends Component {
 					return priorityB - priorityA;
 				}
 
-				// Then by due date (early to late)
-				return (a.dueDate || 0) - (b.dueDate || 0);
+				// Then by relevant date (early to late)
+				// Ensure dates exist before comparison
+				const relevantDateA = this.getRelevantDate(a);
+				const relevantDateB = this.getRelevantDate(b);
+
+				if (relevantDateA === undefined && relevantDateB === undefined)
+					return 0;
+				if (relevantDateA === undefined) return 1; // Place tasks without dates later
+				if (relevantDateB === undefined) return -1; // Place tasks without dates later
+
+				return relevantDateA - relevantDateB;
 			});
 		};
 
-		this.pastDueTasks = sortTasksByPriorityAndDueDate(this.pastDueTasks);
-		this.todayTasks = sortTasksByPriorityAndDueDate(this.todayTasks);
-		this.futureTasks = sortTasksByPriorityAndDueDate(this.futureTasks);
+		this.pastTasks = sortTasksByPriorityAndRelevantDate(this.pastTasks);
+		this.todayTasks = sortTasksByPriorityAndRelevantDate(this.todayTasks);
+		this.futureTasks = sortTasksByPriorityAndRelevantDate(this.futureTasks);
 	}
 
 	private updateTaskStats() {
@@ -470,8 +475,9 @@ export class ForecastComponent extends Component {
 		statItems.forEach((item) => {
 			const countEl = item.querySelector(".stat-count");
 			if (countEl) {
+				// Note: Labels remain "Past Due", "Today", "Future" but now include scheduled tasks.
 				if (item.classList.contains("past-due")) {
-					countEl.textContent = this.pastDueTasks.length.toString();
+					countEl.textContent = this.pastTasks.length.toString(); // Use pastTasks
 				} else if (item.classList.contains("today")) {
 					countEl.textContent = this.todayTasks.length.toString();
 				} else if (item.classList.contains("future")) {
@@ -492,15 +498,16 @@ export class ForecastComponent extends Component {
 
 		const dueSoonItems: { date: Date; tasks: Task[] }[] = [];
 
-		// Process tasks due in the next 15 days from the selected date
+		// Process tasks with relevant dates in the next 15 days from the selected date
 		for (let i = 0; i < 15; i++) {
 			const date = new Date(baseDate);
 			date.setDate(date.getDate() + i);
 
-			// Skip current day since it's shown in the stats bar
-			if (i === 0) continue;
+			// Skip the selected day itself - Coming Up should show days *after* the selected one
+			if (date.getTime() === baseDate.getTime()) continue;
 
-			const tasksForDay = this.getTasksForDate(date);
+			// Use the new function checking relevantDate
+			const tasksForDay = this.getTasksForRelevantDate(date);
 			if (tasksForDay.length > 0) {
 				dueSoonItems.push({
 					date: date,
@@ -513,9 +520,9 @@ export class ForecastComponent extends Component {
 		const headerEl = this.dueSoonContainerEl.createDiv({
 			cls: "due-soon-header",
 		});
-		headerEl.setText(t("Coming Up"));
+		headerEl.setText(t("Coming Up")); // Title remains "Coming Up"
 
-		// Create entries for upcoming due tasks
+		// Create entries for upcoming tasks based on relevant date
 		dueSoonItems.forEach((item) => {
 			const itemEl = this.dueSoonContainerEl.createDiv({
 				cls: "due-soon-item",
@@ -544,11 +551,11 @@ export class ForecastComponent extends Component {
 				`${taskCount} ${taskCount === 1 ? t("Task") : t("Tasks")}`
 			);
 
-			// Add click handler to select this date
+			// Add click handler to select this date in the calendar
 			this.registerDomEvent(itemEl, "click", () => {
 				this.calendarComponent.selectDate(item.date);
-				this.selectedDate = item.date;
-				this.refreshDateSectionsUI();
+				// this.selectedDate = item.date; // This is now handled by calendarComponent.onDateSelected
+				// this.refreshDateSectionsUI(); // This is now handled by calendarComponent.onDateSelected
 
 				if (Platform.isPhone) {
 					this.toggleLeftColumnVisibility(false);
@@ -589,20 +596,20 @@ export class ForecastComponent extends Component {
 		// Today section
 		if (this.todayTasks.length > 0) {
 			this.dateSections.push({
-				title: t("Today") + " — " + this.formatDate(this.currentDate),
+				title: this.formatSectionTitleForDate(this.currentDate), // Use helper for consistent title
 				date: new Date(this.currentDate),
-				tasks: this.todayTasks,
+				tasks: this.todayTasks, // Use categorized todayTasks
 				isExpanded: true,
 			});
 		}
 
-		// Future sections by date
+		// Future sections by relevant date
 		const dateMap = new Map<string, Task[]>();
 		this.futureTasks.forEach((task) => {
-			if (task.dueDate) {
-				const date = new Date(task.dueDate);
-				date.setHours(0, 0, 0, 0);
-				// Use local date components for the key to avoid timezone shifts
+			const relevantTimestamp = this.getRelevantDate(task);
+			if (relevantTimestamp) {
+				const date = new Date(relevantTimestamp); // Already zeroed by getRelevantDate logic implicitly via getTime()
+				// Use local date components for the key to avoid timezone shifts in map key
 				const dateKey = `${date.getFullYear()}-${String(
 					date.getMonth() + 1
 				).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -610,8 +617,10 @@ export class ForecastComponent extends Component {
 				if (!dateMap.has(dateKey)) {
 					dateMap.set(dateKey, []);
 				}
-
-				dateMap.get(dateKey)!.push(task);
+				// Ensure task is added only once per relevant date section
+				if (!dateMap.get(dateKey)!.some((t) => t.id === task.id)) {
+					dateMap.get(dateKey)!.push(task);
+				}
 			}
 		});
 
@@ -619,48 +628,34 @@ export class ForecastComponent extends Component {
 		const sortedDates = Array.from(dateMap.keys()).sort();
 
 		sortedDates.forEach((dateKey) => {
-			const date = new Date(dateKey);
-			const tasks = dateMap.get(dateKey)!;
+			const [year, month, day] = dateKey.split("-").map(Number);
+			const date = new Date(year, month - 1, day);
+			const tasks = dateMap.get(dateKey)!; // Tasks should already be sorted by priority within category
 
 			const today = new Date(this.currentDate);
 			today.setHours(0, 0, 0, 0);
 
-			const dayDiff = Math.round(
-				(date.getTime() - today.getTime()) / (1000 * 3600 * 24)
-			);
-
-			let title = this.formatDate(date);
-
-			// Add a special title for tomorrow
-			if (dayDiff === 1) {
-				title = "Tomorrow, " + title;
-			} else {
-				const dayOfWeek = [
-					"Sunday",
-					"Monday",
-					"Tuesday",
-					"Wednesday",
-					"Thursday",
-					"Friday",
-					"Saturday",
-				][date.getDay()];
-				title = `${dayOfWeek}, ${title}`;
-			}
+			// Use helper for title
+			const title = this.formatSectionTitleForDate(date);
 
 			this.dateSections.push({
 				title: title,
 				date: date,
 				tasks: tasks,
-				isExpanded: dayDiff <= 7, // Auto-expand next 7 days
+				isExpanded: this.shouldExpandFutureSection(
+					date,
+					this.currentDate
+				), // Expand based on relation to today
 			});
 		});
 
-		// Past due section (if any)
-		if (this.pastDueTasks.length > 0) {
+		// Past section (if any) - using pastTasks
+		// Title remains "Past Due" but covers overdue and past scheduled.
+		if (this.pastTasks.length > 0) {
 			this.dateSections.unshift({
-				title: "Past Due",
-				date: new Date(0), // Placeholder
-				tasks: this.pastDueTasks,
+				title: t("Past Due"), // Keep title for now
+				date: new Date(0), // Placeholder date
+				tasks: this.pastTasks, // Use pastTasks
 				isExpanded: true,
 			});
 		}
@@ -668,6 +663,11 @@ export class ForecastComponent extends Component {
 
 	private renderDateSectionsUI() {
 		this.cleanupRenderers();
+
+		// Ensure the map is up-to-date (belt and suspenders)
+		this.allTasksMap = new Map(
+			this.allTasks.map((task) => [task.id, task])
+		);
 
 		if (this.dateSections.length === 0) {
 			const emptyEl = this.taskListContainerEl.createDiv({
@@ -756,6 +756,7 @@ export class ForecastComponent extends Component {
 			section.renderer.renderTasks(
 				section.tasks,
 				this.isTreeView,
+				this.allTasksMap,
 				t("No tasks for this section.")
 			);
 		});
@@ -793,44 +794,60 @@ export class ForecastComponent extends Component {
 		} else {
 			this.focusFilter = type;
 			const activeItem = this.statsContainerEl.querySelector(
-				`.stat-item.${type}`
+				`.stat-item.${type}` // Use the type identifier passed during creation
 			);
 			if (activeItem) {
 				activeItem.classList.add("active");
 			}
 		}
 
-		// Update date sections based on filter
+		// Update date sections based on filter using new task categories
 		if (this.focusFilter === "past-due") {
-			this.dateSections = [
-				{
-					title: t("Past Due"),
-					date: new Date(0),
-					tasks: this.pastDueTasks,
-					isExpanded: true,
-				},
-			];
+			this.dateSections =
+				this.pastTasks.length > 0
+					? [
+							// Check if tasks exist
+							{
+								title: t("Past Due"), // Title kept
+								date: new Date(0),
+								tasks: this.pastTasks, // Use pastTasks
+								isExpanded: true,
+							},
+					  ]
+					: []; // Empty array if no past tasks
 		} else if (this.focusFilter === "today") {
-			this.dateSections = [
-				{
-					title:
-						t("Today") + " — " + this.formatDate(this.currentDate),
-					date: new Date(this.currentDate),
-					tasks: this.todayTasks,
-					isExpanded: true,
-				},
-			];
+			this.dateSections =
+				this.todayTasks.length > 0
+					? [
+							// Check if tasks exist
+							{
+								title: this.formatSectionTitleForDate(
+									this.currentDate
+								), // Use helper
+								date: new Date(this.currentDate),
+								tasks: this.todayTasks, // Use todayTasks
+								isExpanded: true,
+							},
+					  ]
+					: []; // Empty array if no today tasks
 		} else if (this.focusFilter === "future") {
-			// Re-create all future sections
-			this.calculateDateSections();
-			// Filter out past due and today
+			// Recalculate future sections using relevant dates
+			this.calculateDateSections(); // Recalculates all, including future
+			// Filter out past and today sections from the full recalculation
+			const todayTimestamp = new Date(this.currentDate).setHours(
+				0,
+				0,
+				0,
+				0
+			);
 			this.dateSections = this.dateSections.filter((section) => {
-				const today = new Date(this.currentDate);
-				today.setHours(0, 0, 0, 0);
-				return section.date.getTime() > today.getTime();
+				// Keep sections whose date is strictly after today
+				// Exclude the 'Past Due' section (date timestamp 0)
+				const sectionTimestamp = section.date.getTime();
+				return sectionTimestamp > todayTimestamp;
 			});
 		} else {
-			// No filter, show all sections
+			// No filter, show all sections (recalculate)
 			this.calculateDateSections();
 		}
 
@@ -857,120 +874,155 @@ export class ForecastComponent extends Component {
 	private calculateFilteredDateSections() {
 		this.dateSections = [];
 
-		const selectedTasks = this.getTasksForDate(this.selectedDate);
+		// Use the helper function to get tasks for the selected date based on relevantDate
+		const selectedTasks = this.getTasksForRelevantDate(this.selectedDate);
+
+		const todayTimestamp = new Date(this.currentDate).setHours(0, 0, 0, 0);
+		const selectedTimestamp = new Date(this.selectedDate).setHours(
+			0,
+			0,
+			0,
+			0
+		);
 
 		// Section for the selected date
 		if (selectedTasks.length > 0) {
 			this.dateSections.push({
-				title: this.formatDate(this.selectedDate),
+				// Format title based on whether it's today, tomorrow, or other day relative to today
+				title: this.formatSectionTitleForDate(this.selectedDate), // Use helper
 				date: new Date(this.selectedDate),
 				tasks: selectedTasks,
 				isExpanded: true,
 			});
 		}
 
-		// Add overdue section if applicable
-		const today = new Date(this.currentDate);
-		today.setHours(0, 0, 0, 0);
-		const selectedDay = new Date(this.selectedDate);
-		selectedDay.setHours(0, 0, 0, 0);
-		if (
-			selectedDay.getTime() >= today.getTime() &&
-			this.pastDueTasks.length > 0
-		) {
+		// Add overdue/past scheduled section if applicable (selected date is today or future, and past tasks exist)
+		if (selectedTimestamp >= todayTimestamp && this.pastTasks.length > 0) {
 			this.dateSections.unshift({
-				title: t("Past Due"),
-				date: new Date(0),
-				tasks: this.pastDueTasks,
+				title: t("Past Due"), // Keep title
+				date: new Date(0), // Placeholder
+				tasks: this.pastTasks, // Use pastTasks
 				isExpanded: true,
 			});
 		}
 
-		// Add future sections after the selected date
+		// Add future sections relative to the selected date
+		// Filter futureTasks based on their relevantDate being after selectedDate
 		const futureTasksAfterSelected = this.futureTasks.filter((task) => {
-			if (!task.dueDate) return false;
-			const taskDate = new Date(task.dueDate);
-			taskDate.setHours(0, 0, 0, 0);
-			const selectedDate = new Date(this.selectedDate);
-			selectedDate.setHours(0, 0, 0, 0);
-			return taskDate.getTime() > selectedDate.getTime();
+			const relevantTimestamp = this.getRelevantDate(task);
+			// Ensure relevantTimestamp exists and is strictly greater than selectedTimestamp
+			return (
+				relevantTimestamp !== undefined &&
+				relevantTimestamp > selectedTimestamp
+			);
 		});
+
 		const dateMap = new Map<string, Task[]>();
 		futureTasksAfterSelected.forEach((task) => {
-			if (task.dueDate) {
-				const date = new Date(task.dueDate);
-				date.setHours(0, 0, 0, 0);
-				// Use local date components for the key to avoid timezone shifts
-				const dateKey = `${date.getFullYear()}-${String(
-					date.getMonth() + 1
-				).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+			// We already know relevantTimestamp is defined from the filter above
+			const relevantTimestamp = this.getRelevantDate(task)!;
+			const date = new Date(relevantTimestamp);
+			// Create date key
+			const dateKey = `${date.getFullYear()}-${String(
+				date.getMonth() + 1
+			).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-				if (!dateMap.has(dateKey)) {
-					dateMap.set(dateKey, []);
-				}
-
+			if (!dateMap.has(dateKey)) {
+				dateMap.set(dateKey, []);
+			}
+			// Avoid duplicates if somehow a task slipped through category logic (unlikely but safe)
+			if (!dateMap.get(dateKey)!.some((t) => t.id === task.id)) {
 				dateMap.get(dateKey)!.push(task);
 			}
 		});
+
 		const sortedDates = Array.from(dateMap.keys()).sort();
 		sortedDates.forEach((dateKey) => {
-			const date = new Date(dateKey);
-			const tasks = dateMap.get(dateKey)!;
+			const [year, month, day] = dateKey.split("-").map(Number);
+			const date = new Date(year, month - 1, day);
+			const tasks = dateMap.get(dateKey)!; // Tasks within category are sorted by priority
 
-			const selectedDate = new Date(this.selectedDate);
-			selectedDate.setHours(0, 0, 0, 0);
-
-			const dayDiff = Math.round(
-				(date.getTime() - selectedDate.getTime()) / (1000 * 3600 * 24)
-			);
-
-			const dayOfWeek = [
-				"Sunday",
-				"Monday",
-				"Tuesday",
-				"Wednesday",
-				"Thursday",
-				"Friday",
-				"Saturday",
-			][date.getDay()];
-
-			let title = `${dayOfWeek}, ${this.formatDate(date)}`;
-
-			// Add a special title for tomorrow relative to selected date
-			if (dayDiff === 1) {
-				title = t("Tomorrow") + ", " + title;
-			}
+			// Format title relative to today for consistency, but could be relative to selectedDate
+			// Let's stick to formatting relative to today (Today, Tomorrow, DayOfWeek)
+			let title = this.formatSectionTitleForDate(date);
 
 			this.dateSections.push({
 				title: title,
 				date: date,
 				tasks: tasks,
-				isExpanded: dayDiff <= 7, // Auto-expand next 7 days
+				// Expand based on relation to the selected date
+				isExpanded: this.shouldExpandFutureSection(
+					date,
+					this.selectedDate
+				),
 			});
 		});
 
-		// If after all this, no sections exist (e.g., selected date has no tasks and no overdue/future)
-		if (this.dateSections.length === 0) {
-			// We'll handle the empty state message in renderDateSectionsUI
-			// Optionally add a placeholder section or let render handle it.
-		}
+		// Handle empty state in renderDateSectionsUI
 	}
 
-	private getTasksForDate(date: Date): Task[] {
+	// Helper to format section titles dynamically based on relation to today
+	private formatSectionTitleForDate(date: Date): string {
+		const dateTimestamp = new Date(date).setHours(0, 0, 0, 0);
+		const todayTimestamp = new Date(this.currentDate).setHours(0, 0, 0, 0);
+
+		let prefix = "";
+		const dayDiffFromToday = Math.round(
+			(dateTimestamp - todayTimestamp) / (1000 * 3600 * 24)
+		);
+
+		if (dayDiffFromToday === 0) {
+			prefix = t("Today") + ", ";
+		} else if (dayDiffFromToday === 1) {
+			prefix = t("Tomorrow") + ", ";
+		}
+		// else: no prefix for other days
+
+		// Use full day name
+		const dayOfWeek = [
+			"Sunday",
+			"Monday",
+			"Tuesday",
+			"Wednesday",
+			"Thursday",
+			"Friday",
+			"Saturday",
+		][date.getDay()];
+		const formattedDate = this.formatDate(date); // e.g., "January 1, 2024"
+
+		// For Today, just show "Today - Full Date"
+		if (dayDiffFromToday === 0) {
+			return t("Today") + " — " + formattedDate;
+		}
+
+		// For others, show Prefix + DayOfWeek + Full Date
+		return `${prefix}${dayOfWeek}, ${formattedDate}`;
+	}
+
+	// Helper to decide if a future section should be expanded relative to a comparison date
+	private shouldExpandFutureSection(
+		sectionDate: Date,
+		compareDate: Date
+	): boolean {
+		const compareTimestamp = new Date(compareDate).setHours(0, 0, 0, 0);
+		const sectionTimestamp = new Date(sectionDate).setHours(0, 0, 0, 0);
+		// Calculate difference in days from the comparison date
+		const dayDiff = Math.round(
+			(sectionTimestamp - compareTimestamp) / (1000 * 3600 * 24)
+		);
+		// Expand if the section date is within the next 7 days *after* the comparison date
+		return dayDiff > 0 && dayDiff <= 7;
+	}
+
+	// Renaming getTasksForDate to be more specific about its check
+	private getTasksForRelevantDate(date: Date): Task[] {
 		if (!date) return [];
 
-		const startOfDay = new Date(date);
-		startOfDay.setHours(0, 0, 0, 0);
-
-		const startTimestamp = startOfDay.getTime();
+		const targetTimestamp = new Date(date).setHours(0, 0, 0, 0);
 
 		return this.allTasks.filter((task) => {
-			if (task.dueDate) {
-				const dueDate = new Date(task.dueDate);
-				dueDate.setHours(0, 0, 0, 0);
-				return dueDate.getTime() === startTimestamp;
-			}
-			return false;
+			const relevantTimestamp = this.getRelevantDate(task);
+			return relevantTimestamp === targetTimestamp;
 		});
 	}
 
@@ -984,19 +1036,22 @@ export class ForecastComponent extends Component {
 		} else {
 			this.allTasks.push(updatedTask); // Add if new
 		}
+		this.allTasksMap.set(updatedTask.id, updatedTask);
 
-		// Re-categorize tasks (past, today, future) as due date might have changed
+		// Re-categorize tasks based on potentially changed relevantDate
 		this.categorizeTasks();
 
-		// Update dependent UI elements
+		this.updateHeaderCount();
 		this.updateTaskStats();
 		this.updateDueSoonSection();
-		this.calendarComponent.setTasks(this.allTasks); // Update calendar markers
+		this.calendarComponent.setTasks(this.allTasks);
 
-		// Find the specific section renderer where the task *should* be and update it
-		// Or simply recalculate and re-render all sections
-		this.calculateDateSections(); // Recalculate based on new categories
-		this.renderDateSectionsUI(); // Re-render the UI
+		// Refresh UI based on current view state (filtered or full)
+		if (this.focusFilter) {
+			this.focusTaskList(this.focusFilter);
+		} else {
+			this.refreshDateSectionsUI();
+		}
 	}
 
 	private cleanupRenderers() {
@@ -1037,5 +1092,16 @@ export class ForecastComponent extends Component {
 				}
 			}, 300); // Match CSS transition duration
 		}
+	}
+
+	private getRelevantDate(task: Task): number | undefined {
+		// Prioritize scheduledDate, fallback to dueDate
+		const dateToUse = task.scheduledDate || task.dueDate;
+		if (!dateToUse) return undefined;
+
+		// Return timestamp (or Date object if needed elsewhere, but timestamp is good for comparisons)
+		const date = new Date(dateToUse);
+		date.setHours(0, 0, 0, 0); // Zero out time for consistent comparison
+		return date.getTime();
 	}
 }

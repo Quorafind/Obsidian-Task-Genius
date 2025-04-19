@@ -2,63 +2,366 @@
  * Web worker for background processing of task indexing
  */
 
-import { FileStats } from "obsidian";
-import { Task } from "../types/TaskIndex";
+import { FileStats } from "obsidian"; // Assuming ListItemCache is not directly available/serializable to worker, rely on regex
+import { Task } from "../types/TaskIndex"; // Task type definition needed
 import {
-	BatchIndexResult,
-	ErrorResult,
+	// Assume these types are defined and exported from TaskIndexWorkerMessage.ts
+	// Need to add preferMetadataFormat to IndexerCommand payloads where relevant
 	IndexerCommand,
 	TaskParseResult,
+	ErrorResult,
+	BatchIndexResult, // Keep if batch processing is still used
 } from "./TaskIndexWorkerMessage";
-import {
-	DEFAULT_SYMBOLS,
-	TASK_REGEX,
-	TAG_REGEX,
-	CONTEXT_REGEX,
-} from "../../common/default-symbol";
 
-// Helper function to create date field regex
+// --- Define Regexes similar to TaskParser ---
 
-function dateFieldRegex(symbols: string) {
-	return fieldRegex(symbols, "(\\d{4}-\\d{2}-\\d{2})");
-}
+// Task identification
+const TASK_REGEX = /^(([\s>]*)?(-|\d+\.|\*|\+)\s\[(.)\])\s*(.*)$/m;
 
-function fieldRegex(symbols: string, valueRegexString: string) {
-	// \uFE0F? allows an optional Variant Selector 16 on emojis.
-	let source = symbols + "\uFE0F?";
-	if (valueRegexString !== "") {
-		source += " *" + valueRegexString;
-	}
-	return new RegExp(source, "u");
-}
+// --- Emoji/Tasks Style Regexes ---
+const EMOJI_START_DATE_REGEX = /🛫\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_COMPLETED_DATE_REGEX = /✅\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_DUE_DATE_REGEX = /📅\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_SCHEDULED_DATE_REGEX = /⏳\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_CREATED_DATE_REGEX = /➕\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_RECURRENCE_REGEX = /🔁\s*(.*?)(?=\s(?:🗓️|🛫|⏳|✅|➕|🔁|@|#)|$)/u;
+const EMOJI_PRIORITY_REGEX = /(([🔺⏫🔼🔽⏬️⏬])|(\[#[A-E]\]))/u; // Using the corrected variant selector
+const EMOJI_CONTEXT_REGEX = /@([\w-]+)/g;
+const EMOJI_TAG_REGEX = /#([\w/-]+)/g; // Includes #project/ tags
+const EMOJI_PROJECT_PREFIX = "#project/";
 
-// Regular expressions for task metadata
-const START_DATE_REGEX = dateFieldRegex(DEFAULT_SYMBOLS.startDateSymbol);
-const COMPLETED_DATE_REGEX = dateFieldRegex(DEFAULT_SYMBOLS.doneDateSymbol);
-const DUE_DATE_REGEX = dateFieldRegex(DEFAULT_SYMBOLS.dueDateSymbol);
-const SCHEDULED_DATE_REGEX = dateFieldRegex(
-	DEFAULT_SYMBOLS.scheduledDateSymbol
-);
-const RECURRENCE_REGEX = fieldRegex(
-	DEFAULT_SYMBOLS.recurrenceSymbol,
-	"([a-zA-Z0-9, !]+)"
-);
-const PRIORITY_REGEX = /🔼|⏫|🔽|⏬|🔺|\[#[A-C]\]/;
+// --- Dataview Style Regexes ---
+const DV_START_DATE_REGEX = /\[(?:start|🛫)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_COMPLETED_DATE_REGEX =
+	/\[(?:completion|✅)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_DUE_DATE_REGEX = /\[(?:due|🗓️)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_SCHEDULED_DATE_REGEX = /\[(?:scheduled|⏳)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_CREATED_DATE_REGEX = /\[(?:created|➕)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_RECURRENCE_REGEX = /\[(?:repeat|recurrence|🔁)::\s*([^\]]+)\]/i;
+const DV_PRIORITY_REGEX = /\[priority::\s*([^\]]+)\]/i;
+const DV_PROJECT_REGEX = /\[project::\s*([^\]]+)\]/i;
+const DV_CONTEXT_REGEX = /\[context::\s*([^\]]+)\]/i;
+// Dataview Tag Regex is the same, applied after DV field removal
+const ANY_DATAVIEW_FIELD_REGEX = /\[\w+(?:|🗓️|✅|➕|🛫|⏳|🔁)::\s*[^\]]+\]/gi;
+
+// --- Priority Mapping --- (Combine from TaskParser)
 const PRIORITY_MAP: Record<string, number> = {
-	"⏫": 4, // High
-	"🔼": 3, // Medium
-	"🔽": 2, // Low
-	"⏬": 1, // Lowest
-	"🔺": 5, // Highest
-	"[#A]": 4, // High (letter format)
-	"[#B]": 3, // Medium (letter format)
-	"[#C]": 2, // Low (letter format)
+	"🔺": 5,
+	"⏫": 4,
+	"🔼": 3,
+	"🔽": 2,
+	"⏬️": 1,
+	"⏬": 1,
+	"[#A]": 4,
+	"[#B]": 3,
+	"[#C]": 2, // Keep Taskpaper style? Maybe remove later
+	highest: 5,
+	high: 4,
+	medium: 3,
+	low: 2,
+	lowest: 1,
+	// Consider adding number string keys? e.g. "5": 5?
 };
 
+type MetadataFormat = "tasks" | "dataview"; // Define the type for clarity
+
+// --- Helper function to parse date string ---
+function parseLocalDate(dateString: string): number | undefined {
+	if (!dateString) return undefined;
+	const parts = dateString.split("-");
+	if (parts.length === 3) {
+		const year = parseInt(parts[0], 10);
+		const month = parseInt(parts[1], 10); // 1-based month
+		const day = parseInt(parts[2], 10);
+		if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+			// Create Date object using UTC to avoid timezone shifts affecting the date part
+			// Then get time. Or just use local date constructor if consistency is guaranteed.
+			// Using local date constructor:
+			return new Date(year, month - 1, day).getTime();
+		}
+	}
+	console.warn(`Worker: Invalid date format encountered: ${dateString}`);
+	return undefined;
+}
+
+// --- Refactored Metadata Extraction Functions ---
+
+// Each function now takes task, content, and format, returns remaining content
+// They modify the task object directly.
+
+function extractDates(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+
+	const tryParseAndAssign = (
+		regex: RegExp,
+		fieldName:
+			| "dueDate"
+			| "scheduledDate"
+			| "startDate"
+			| "completedDate"
+			| "createdDate"
+	): boolean => {
+		if (task[fieldName] !== undefined) return false; // Already assigned
+
+		const match = remainingContent.match(regex);
+		if (match && match[1]) {
+			const dateVal = parseLocalDate(match[1]);
+			if (dateVal !== undefined) {
+				task[fieldName] = dateVal; // Direct assignment is type-safe
+				remainingContent = remainingContent.replace(match[0], "");
+				return true;
+			}
+		}
+		return false;
+	};
+
+	// Due Date
+	if (useDataview) {
+		!tryParseAndAssign(DV_DUE_DATE_REGEX, "dueDate") &&
+			tryParseAndAssign(EMOJI_DUE_DATE_REGEX, "dueDate");
+	} else {
+		!tryParseAndAssign(EMOJI_DUE_DATE_REGEX, "dueDate") &&
+			tryParseAndAssign(DV_DUE_DATE_REGEX, "dueDate");
+	}
+
+	// Scheduled Date
+	if (useDataview) {
+		!tryParseAndAssign(DV_SCHEDULED_DATE_REGEX, "scheduledDate") &&
+			tryParseAndAssign(EMOJI_SCHEDULED_DATE_REGEX, "scheduledDate");
+	} else {
+		!tryParseAndAssign(EMOJI_SCHEDULED_DATE_REGEX, "scheduledDate") &&
+			tryParseAndAssign(DV_SCHEDULED_DATE_REGEX, "scheduledDate");
+	}
+
+	// Start Date
+	if (useDataview) {
+		!tryParseAndAssign(DV_START_DATE_REGEX, "startDate") &&
+			tryParseAndAssign(EMOJI_START_DATE_REGEX, "startDate");
+	} else {
+		!tryParseAndAssign(EMOJI_START_DATE_REGEX, "startDate") &&
+			tryParseAndAssign(DV_START_DATE_REGEX, "startDate");
+	}
+
+	// Completion Date
+	if (useDataview) {
+		!tryParseAndAssign(DV_COMPLETED_DATE_REGEX, "completedDate") &&
+			tryParseAndAssign(EMOJI_COMPLETED_DATE_REGEX, "completedDate");
+	} else {
+		!tryParseAndAssign(EMOJI_COMPLETED_DATE_REGEX, "completedDate") &&
+			tryParseAndAssign(DV_COMPLETED_DATE_REGEX, "completedDate");
+	}
+
+	// Created Date
+	if (useDataview) {
+		!tryParseAndAssign(DV_CREATED_DATE_REGEX, "createdDate") &&
+			tryParseAndAssign(EMOJI_CREATED_DATE_REGEX, "createdDate");
+	} else {
+		!tryParseAndAssign(EMOJI_CREATED_DATE_REGEX, "createdDate") &&
+			tryParseAndAssign(DV_CREATED_DATE_REGEX, "createdDate");
+	}
+
+	return remainingContent;
+}
+
+function extractRecurrence(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+	let match: RegExpMatchArray | null = null;
+
+	if (useDataview) {
+		match = remainingContent.match(DV_RECURRENCE_REGEX);
+		if (match && match[1]) {
+			task.recurrence = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
+			return remainingContent; // Found preferred format
+		}
+	}
+
+	// Try emoji format (primary or fallback)
+	match = remainingContent.match(EMOJI_RECURRENCE_REGEX);
+	if (match && match[1]) {
+		task.recurrence = match[1].trim();
+		remainingContent = remainingContent.replace(match[0], "");
+	}
+
+	return remainingContent;
+}
+
+function extractPriority(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+	let match: RegExpMatchArray | null = null;
+
+	if (useDataview) {
+		match = remainingContent.match(DV_PRIORITY_REGEX);
+		if (match && match[1]) {
+			const priorityValue = match[1].trim().toLowerCase();
+			const mappedPriority = PRIORITY_MAP[priorityValue];
+			if (mappedPriority !== undefined) {
+				task.priority = mappedPriority;
+				remainingContent = remainingContent.replace(match[0], "");
+				return remainingContent;
+			} else {
+				const numericPriority = parseInt(priorityValue, 10);
+				if (!isNaN(numericPriority)) {
+					task.priority = numericPriority;
+					remainingContent = remainingContent.replace(match[0], "");
+					return remainingContent;
+				}
+			}
+		}
+	}
+
+	// Try emoji format (primary or fallback)
+	match = remainingContent.match(EMOJI_PRIORITY_REGEX);
+	if (match && match[1]) {
+		task.priority = PRIORITY_MAP[match[1]] ?? undefined;
+		if (task.priority !== undefined) {
+			remainingContent = remainingContent.replace(match[0], "");
+		}
+	}
+
+	return remainingContent;
+}
+
+function extractProject(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+	let match: RegExpMatchArray | null = null;
+
+	if (useDataview) {
+		match = remainingContent.match(DV_PROJECT_REGEX);
+		if (match && match[1]) {
+			task.project = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
+			return remainingContent; // Found preferred format
+		}
+	}
+
+	// Try #project/ prefix (primary or fallback)
+	const projectTagRegex = new RegExp(EMOJI_PROJECT_PREFIX + "([\\w/-]+)");
+	match = remainingContent.match(projectTagRegex);
+	if (match && match[1]) {
+		task.project = match[1].trim();
+		// Do not remove here; let tag extraction handle it
+	}
+
+	return remainingContent;
+}
+
+function extractContext(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+	let match: RegExpMatchArray | null = null;
+
+	if (useDataview) {
+		match = remainingContent.match(DV_CONTEXT_REGEX);
+		if (match && match[1]) {
+			task.context = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
+			return remainingContent; // Found preferred format
+		}
+	}
+
+	// Try @ prefix (primary or fallback)
+	// Use .exec to find the first match only for @context
+	const contextMatch = new RegExp(EMOJI_CONTEXT_REGEX.source, "").exec(
+		remainingContent
+	); // Non-global search for first
+	if (contextMatch && contextMatch[1]) {
+		task.context = contextMatch[1].trim();
+		// Remove the first matched context tag here to avoid it being parsed as a general tag
+		remainingContent = remainingContent.replace(contextMatch[0], "");
+	}
+
+	return remainingContent;
+}
+
+function extractTags(
+	task: Task,
+	content: string,
+	format: MetadataFormat
+): string {
+	let remainingContent = content;
+	const useDataview = format === "dataview";
+
+	// If using Dataview, remove all potential DV fields first
+	if (useDataview) {
+		remainingContent = remainingContent.replace(
+			ANY_DATAVIEW_FIELD_REGEX,
+			""
+		);
+	}
+
+	// Find all #tags in the potentially cleaned content
+	const tagMatches = remainingContent.match(EMOJI_TAG_REGEX) || [];
+	task.tags = tagMatches.map((tag) => tag.trim());
+
+	// If using 'tasks' (emoji) format, derive project from tags if not set
+	// Also make sure project wasn't already set by DV format before falling back
+	if (!useDataview && !task.project) {
+		const projectTag = task.tags.find((tag) =>
+			tag.startsWith(EMOJI_PROJECT_PREFIX)
+		);
+		if (projectTag) {
+			task.project = projectTag.substring(EMOJI_PROJECT_PREFIX.length);
+		}
+	}
+
+	// If using Dataview format, filter out any remaining #project/ tags from the tag list
+	if (useDataview) {
+		task.tags = task.tags.filter(
+			(tag) => !tag.startsWith(EMOJI_PROJECT_PREFIX)
+		);
+	}
+
+	// Remove found tags (including potentially #project/ tags if format is 'tasks') from the remaining content
+	let contentWithoutTags = remainingContent;
+	for (const tag of task.tags) {
+		// Ensure the tag is not empty or just '#' before creating regex
+		if (tag && tag !== "#") {
+			const tagRegex = new RegExp(
+				`\s?${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\s|$)`,
+				"g"
+			);
+			contentWithoutTags = contentWithoutTags.replace(tagRegex, "");
+		}
+	}
+	// Also remove any remaining @context tags (if multiple existed and not handled by extractContext)
+	contentWithoutTags = contentWithoutTags.replace(/@[\w-]+/g, "").trim();
+
+	return contentWithoutTags.trim();
+}
+
 /**
- * Parse tasks from file content
+ * Parse tasks from file content using regex and metadata format preference
  */
-function parseTasksFromContent(filePath: string, content: string): Task[] {
+function parseTasksFromContent(
+	filePath: string,
+	content: string,
+	format: MetadataFormat
+): Task[] {
 	const lines = content.split(/\r?\n/);
 	const tasks: Task[] = [];
 
@@ -67,175 +370,73 @@ function parseTasksFromContent(filePath: string, content: string): Task[] {
 		const taskMatch = line.match(TASK_REGEX);
 
 		if (taskMatch) {
-			const [, prefix, status, content] = taskMatch;
-			const completed = status.toLowerCase() === "x";
+			const [fullMatch, , , , status, contentWithMetadata] = taskMatch;
+			if (status === undefined || contentWithMetadata === undefined)
+				continue;
 
-			// Generate a deterministic ID based on file path and line number
-			// This helps with task tracking across worker calls
+			const completed = status.toLowerCase() === "x";
 			const id = `${filePath}-L${i}`;
 
-			// Basic task info
 			const task: Task = {
 				id,
-				content: content.trim(),
+				content: contentWithMetadata.trim(), // Will be set after extraction
 				filePath,
 				line: i,
 				completed,
-				status: status.trim(),
+				status: status,
 				originalMarkdown: line,
 				tags: [],
 				children: [],
+				priority: undefined,
+				startDate: undefined,
+				dueDate: undefined,
+				scheduledDate: undefined,
+				completedDate: undefined,
+				createdDate: undefined,
+				recurrence: undefined,
+				project: undefined,
+				context: undefined,
 			};
 
-			// Extract metadata
-			extractDates(task, content);
-			extractTags(task, content);
-			extractContext(task, content);
-			extractPriority(task, content);
+			// Extract metadata in order
+			let remainingContent = contentWithMetadata;
+			remainingContent = extractDates(task, remainingContent, format);
+			remainingContent = extractRecurrence(
+				task,
+				remainingContent,
+				format
+			);
+			remainingContent = extractPriority(task, remainingContent, format);
+			remainingContent = extractProject(task, remainingContent, format); // Extract project before context/tags
+			remainingContent = extractContext(task, remainingContent, format);
+			remainingContent = extractTags(task, remainingContent, format); // Tags last
+
+			task.content = remainingContent.replace(/\s{2,}/g, " ").trim();
 
 			tasks.push(task);
 		}
 	}
-
-	// Build parent-child relationships
-	buildTaskHierarchy(tasks);
-
+	buildTaskHierarchy(tasks); // Call hierarchy builder if needed
 	return tasks;
 }
 
 /**
- * Extract dates from task content
- */
-function extractDates(task: Task, content: string): void {
-	// Start date
-	const startDateMatch = content.match(START_DATE_REGEX);
-	if (startDateMatch) {
-		task.startDate = new Date(startDateMatch[1]).getTime();
-	}
-
-	// Due date
-	const dueDateMatch = content.match(DUE_DATE_REGEX);
-	if (dueDateMatch) {
-		task.dueDate = new Date(dueDateMatch[1]).getTime();
-	}
-
-	// Scheduled date
-	const scheduledDateMatch = content.match(SCHEDULED_DATE_REGEX);
-	if (scheduledDateMatch) {
-		task.scheduledDate = new Date(scheduledDateMatch[1]).getTime();
-	}
-
-	// Completion date
-	const completedDateMatch = content.match(COMPLETED_DATE_REGEX);
-	if (completedDateMatch) {
-		task.completedDate = new Date(completedDateMatch[1]).getTime();
-	}
-}
-
-/**
- * Extract tags from task content
- */
-function extractTags(task: Task, content: string): void {
-	const tagMatches = content.match(TAG_REGEX) || [];
-	// Filter out priority tags like [#A], [#B], [#C]
-	task.tags = tagMatches
-		.map((tag) => tag.trim())
-		.filter((tag) => !tag.match(/#[A-C]/));
-
-	// Check for project tags
-	const projectTag = task.tags.find((tag) => tag.startsWith("#project/"));
-	if (projectTag) {
-		task.project = projectTag.substring("#project/".length);
-	}
-}
-
-/**
- * Extract context from task content
- */
-function extractContext(task: Task, content: string): void {
-	const contextMatches = content.match(CONTEXT_REGEX) || [];
-	if (contextMatches.length > 0) {
-		// Use the first context tag as the primary context
-		task.context = contextMatches[0]?.substring(1); // Remove the @ symbol
-	}
-}
-
-/**
- * Extract priority from task content
- */
-function extractPriority(task: Task, content: string): void {
-	const priorityMatch = content.match(PRIORITY_REGEX);
-	if (priorityMatch) {
-		task.priority = PRIORITY_MAP[priorityMatch[0]] || undefined;
-	}
-}
-
-/**
- * Build parent-child relationships between tasks
- */
-function buildTaskHierarchy(tasks: Task[]): void {
-	// Sort tasks by line number
-	tasks.sort((a, b) => a.line - b.line);
-
-	// Build parent-child relationships based on indentation
-	for (let i = 0; i < tasks.length; i++) {
-		const currentTask = tasks[i];
-		const currentIndent = getIndentLevel(currentTask.originalMarkdown);
-
-		// Look for potential parent tasks (must be before current task and have less indentation)
-		for (let j = i - 1; j >= 0; j--) {
-			const potentialParent = tasks[j];
-			const parentIndent = getIndentLevel(
-				potentialParent.originalMarkdown
-			);
-
-			if (parentIndent < currentIndent) {
-				// Found a parent
-				currentTask.parent = potentialParent.id;
-				potentialParent.children.push(currentTask.id);
-				break;
-			}
-		}
-	}
-}
-
-/**
- * Get indentation level of a line
- */
-function getIndentLevel(line: string): number {
-	const match = line.match(/^(\s*)/);
-	return match ? match[1].length : 0;
-}
-
-/**
- * Process a single file
+ * Process a single file - NOW ACCEPTS METADATA FORMAT
  */
 function processFile(
 	filePath: string,
 	content: string,
 	stats: FileStats,
-	metadata?: { listItems?: any[] }
+	preferMetadataFormat: MetadataFormat = "tasks"
 ): TaskParseResult {
 	const startTime = performance.now();
-
 	try {
-		// 如果提供了 listItems 元数据，优先利用它来构建任务
-		let tasks: Task[] = [];
-
-		if (metadata?.listItems && metadata.listItems.length > 0) {
-			// 使用 Obsidian 的元数据缓存来构建任务
-			tasks = parseTasksFromListItems(
-				filePath,
-				content,
-				metadata.listItems
-			);
-		} else {
-			// 回退到正则表达式解析
-			tasks = parseTasksFromContent(filePath, content);
-		}
-
+		const tasks = parseTasksFromContent(
+			filePath,
+			content,
+			preferMetadataFormat
+		);
 		const completedTasks = tasks.filter((t) => t.completed).length;
-
 		return {
 			type: "parseResult",
 			filePath,
@@ -247,124 +448,49 @@ function processFile(
 			},
 		};
 	} catch (error) {
-		console.error(`Error processing file ${filePath}:`, error);
-		// 重新抛出错误，让外层调用者处理
+		console.error(`Worker: Error processing file ${filePath}:`, error);
 		throw error;
 	}
 }
 
-/**
- * Parse tasks from Obsidian's ListItemCache
- */
-function parseTasksFromListItems(
-	filePath: string,
-	content: string,
-	listItems: any[]
-): Task[] {
-	const tasks: Task[] = [];
-	const lines = content.split(/\r?\n/);
-	const tasksByLine: Record<number, Task> = {};
-
-	// 过滤出任务项（有task属性的列表项）
-	const taskListItems = listItems.filter((item) => item.task !== undefined);
-
-	// 第一步：解析所有任务
-	for (const item of taskListItems) {
-		const line = item.position?.start?.line;
-		if (line === undefined || line >= lines.length) continue;
-
-		const lineContent = lines[line];
-		if (!lineContent) continue;
-
-		// 提取任务内容
-		const contentMatch = lineContent.match(
-			/^(([\s>]*)?(-|\d+\.|\*|\+)\s\[(.)\])\s*(.*)$/
-		);
-		if (!contentMatch) continue;
-
-		// 任务内容在第5个捕获组
-		const taskContent = contentMatch[5];
-		if (!taskContent) continue;
-
-		// 基本任务信息
-		const task: Task = {
-			id: `${filePath}-L${line}`,
-			content: taskContent.trim(),
-			filePath,
-			line,
-			completed: ["x", "X"].includes(item.task), // 空格表示未完成
-			status: item.task,
-			originalMarkdown: lineContent,
-			tags: [],
-			children: [],
-		};
-
-		// 提取元数据
-		extractDates(task, taskContent);
-		extractTags(task, taskContent);
-		extractContext(task, taskContent);
-		extractPriority(task, taskContent);
-
-		tasks.push(task);
-		tasksByLine[line] = task;
-	}
-
-	// 第二步：构建父子关系
-	for (const item of taskListItems) {
-		const line = item.position?.start?.line;
-		if (line === undefined) continue;
-
-		const task = tasksByLine[line];
-		if (!task) continue;
-
-		// 如果parent是正数，表示父项的行号
-		if (item.parent >= 0) {
-			const parentTask = tasksByLine[item.parent];
-			if (parentTask) {
-				task.parent = parentTask.id;
-				parentTask.children.push(task.id);
-			}
-		}
-	}
-
-	return tasks;
-}
-
-/**
- * Process multiple files in batch
- */
+// --- Batch processing function remains largely the same, but calls updated processFile ---
 function processBatch(
-	files: { path: string; content: string; stats: FileStats }[]
+	files: { path: string; content: string; stats: FileStats }[],
+	preferMetadataFormat: MetadataFormat
 ): BatchIndexResult {
+	// Ensure return type matches definition
 	const startTime = performance.now();
 	const results: { filePath: string; taskCount: number }[] = [];
 	let totalTasks = 0;
+	let failedFiles = 0; // Keep track for potential logging, but not returned in stats
 
 	for (const file of files) {
 		try {
 			const parseResult = processFile(
 				file.path,
 				file.content,
-				file.stats
+				file.stats,
+				preferMetadataFormat
 			);
 			totalTasks += parseResult.stats.totalTasks;
 			results.push({
-				filePath: file.path,
+				filePath: parseResult.filePath,
 				taskCount: parseResult.stats.totalTasks,
 			});
 		} catch (error) {
 			console.error(
-				`Error in batch processing for file ${file.path}:`,
+				`Worker: Error in batch processing for file ${file.path}:`,
 				error
 			);
-			// Continue with other files even if one fails
+			failedFiles++;
 		}
 	}
 
 	return {
 		type: "batchResult",
-		results,
+		results, // Now matches expected type
 		stats: {
+			// Only include fields defined in the type
 			totalFiles: files.length,
 			totalTasks,
 			processingTimeMs: Math.round(performance.now() - startTime),
@@ -372,18 +498,30 @@ function processBatch(
 	};
 }
 
-// Remove the self.onmessage handler and export the functionality directly
+// --- Update message handler to access properties directly ---
 self.onmessage = async (event) => {
 	try {
-		const message = event.data as IndexerCommand;
+		const message = event.data as IndexerCommand; // Keep using IndexerCommand union type
+
+		// Access preferMetadataFormat directly FROM message, NOT message.payload
+		// Provide default 'tasks' if missing
+		const format =
+			(message as any).preferMetadataFormat === "dataview"
+				? "dataview"
+				: "tasks";
+
+		// Using 'as any' here because I cannot modify IndexerCommand type directly,
+		// but the sending code MUST add this property to the message object.
 
 		if (message.type === "parseTasks") {
+			// Type guard for ParseTasksCommand
 			try {
+				// Access properties directly from message
 				const result = processFile(
 					message.filePath,
 					message.content,
 					message.stats,
-					message.metadata
+					format
 				);
 				self.postMessage(result);
 			} catch (error) {
@@ -391,22 +529,65 @@ self.onmessage = async (event) => {
 					type: "error",
 					error:
 						error instanceof Error ? error.message : String(error),
-					filePath: message.filePath,
+					filePath: message.filePath, // Access directly
 				} as ErrorResult);
 			}
 		} else if (message.type === "batchIndex") {
-			const result = processBatch(message.files);
+			// Type guard for BatchIndexCommand
+			// Access properties directly from message
+			const result = processBatch(message.files, format);
 			self.postMessage(result);
 		} else {
+			console.error(
+				"Worker: Unknown or invalid command message:",
+				message
+			);
 			self.postMessage({
 				type: "error",
 				error: `Unknown command type: ${(message as any).type}`,
 			} as ErrorResult);
 		}
 	} catch (error) {
+		console.error("Worker: General error in onmessage handler:", error);
 		self.postMessage({
 			type: "error",
 			error: error instanceof Error ? error.message : String(error),
 		} as ErrorResult);
 	}
 };
+
+// Remove buildTaskHierarchy and getIndentLevel if not used by parseTasksFromContent
+// Or keep them if you plan to add indentation-based hierarchy later.
+/**
+ * Build parent-child relationships based on indentation
+ */
+function buildTaskHierarchy(tasks: Task[]): void {
+	tasks.sort((a, b) => a.line - b.line);
+	const taskStack: { task: Task; indent: number }[] = [];
+	for (const currentTask of tasks) {
+		const currentIndent = getIndentLevel(currentTask.originalMarkdown);
+		while (
+			taskStack.length > 0 &&
+			taskStack[taskStack.length - 1].indent >= currentIndent
+		) {
+			taskStack.pop();
+		}
+		if (taskStack.length > 0) {
+			const parentTask = taskStack[taskStack.length - 1].task;
+			currentTask.parent = parentTask.id;
+			if (!parentTask.children) {
+				parentTask.children = [];
+			}
+			parentTask.children.push(currentTask.id);
+		}
+		taskStack.push({ task: currentTask, indent: currentIndent });
+	}
+}
+
+/**
+ * Get indentation level of a line
+ */
+function getIndentLevel(line: string): number {
+	const match = line.match(/^(\s*)/);
+	return match ? match[1].length : 0;
+}

@@ -16,6 +16,8 @@ import { saveCapture } from "../utils/fileUtils";
 import { FileSuggest } from "../editor-ext/quickCapture";
 import { t } from "../translations/helper";
 import { MarkdownRendererComponent } from "./MarkdownRenderer";
+import { StatusComponent } from "./StatusComponent";
+import { Task } from "../utils/types/TaskIndex";
 
 interface TaskMetadata {
 	startDate?: Date;
@@ -25,6 +27,7 @@ interface TaskMetadata {
 	project?: string;
 	context?: string;
 	recurrence?: string;
+	status?: string;
 }
 
 export class QuickCaptureModal extends Modal {
@@ -38,6 +41,7 @@ export class QuickCaptureModal extends Modal {
 
 	previewContainerEl: HTMLElement | null = null;
 	markdownRenderer: MarkdownRendererComponent | null = null;
+
 	constructor(
 		app: App,
 		plugin: TaskProgressBarPlugin,
@@ -169,6 +173,22 @@ export class QuickCaptureModal extends Modal {
 			text: t("Task Properties"),
 			cls: "quick-capture-section-title",
 		});
+
+		const statusComponent = new StatusComponent(
+			this.plugin,
+			configPanel,
+			{
+				status: this.taskMetadata.status,
+			} as Task,
+			{
+				type: "quick-capture",
+				onTaskStatusSelected: (status: string) => {
+					this.taskMetadata.status = status;
+					this.updatePreview();
+				},
+			}
+		);
+		statusComponent.load();
 
 		// Start Date
 		new Setting(configPanel).setName(t("Start Date")).addText((text) => {
@@ -444,14 +464,14 @@ export class QuickCaptureModal extends Modal {
 			// Check if line is already a task or a list item
 			const isTaskOrList = line
 				.trim()
-				.match(/^(-|\d+\.|\*|\+)(\s+\[[-x ]\])?/);
+				.match(/^(-|\d+\.|\*|\+)(\s+\[[^\]]+\])?/);
 
 			if (isSubTask) {
 				// Don't add metadata to sub-tasks
 				processedLines.push(line);
 			} else if (isTaskOrList) {
 				// If it's a task, add metadata
-				if (line.trim().match(/^(-|\d+\.|\*|\+)\s+\[[-x ]\]/)) {
+				if (line.trim().match(/^(-|\d+\.|\*|\+)\s+\[[^\]]+\]/)) {
 					processedLines.push(this.addMetadataToTask(line));
 				} else {
 					// If it's a list item but not a task, convert to task and add metadata
@@ -462,15 +482,22 @@ export class QuickCaptureModal extends Modal {
 						.trim()
 						.substring(listPrefix?.length || 0)
 						.trim();
+
+					// Use the specified status or default to empty checkbox
+					const statusMark = this.taskMetadata.status || " ";
 					processedLines.push(
 						this.addMetadataToTask(
-							`${listPrefix} [ ] ${restOfLine}`
+							`${listPrefix} [${statusMark}] ${restOfLine}`
 						)
 					);
 				}
 			} else {
 				// Not a list item or task, convert to task and add metadata
-				processedLines.push(this.addMetadataToTask(`- [ ] ${line}`));
+				// Use the specified status or default to empty checkbox
+				const statusMark = this.taskMetadata.status || " ";
+				processedLines.push(
+					this.addMetadataToTask(`- [${statusMark}] ${line}`)
+				);
 			}
 		}
 
@@ -553,7 +580,8 @@ export class QuickCaptureModal extends Modal {
 	}
 
 	parseDate(dateString: string): Date {
-		return new Date(dateString);
+		const [year, month, day] = dateString.split("-").map(Number);
+		return new Date(year, month - 1, day); // month is 0-indexed in JavaScript Date
 	}
 
 	onClose() {

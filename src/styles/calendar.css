@@ -1,5 +1,5 @@
 /* Calendar Component Styles */
-.task-genius-view .calendar-container {
+.task-genius-view .mini-calendar-container {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
@@ -7,7 +7,7 @@
 	padding-bottom: 10px;
 }
 
-.task-genius-view .calendar-header {
+.task-genius-view .mini-calendar-container .calendar-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -15,27 +15,27 @@
 	margin-bottom: 10px;
 }
 
-.task-genius-view .calendar-title {
+.task-genius-view .mini-calendar-container .calendar-title {
 	font-weight: 600;
 	display: flex;
 	gap: 5px;
 }
 
-.task-genius-view .calendar-month {
+.task-genius-view .mini-calendar-container .calendar-month {
 	margin-right: 5px;
 }
 
-.task-genius-view .calendar-year {
+.task-genius-view .mini-calendar-container .calendar-year {
 	color: var(--text-muted);
 }
 
-.task-genius-view .calendar-nav {
+.task-genius-view .mini-calendar-container .calendar-nav {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.task-genius-view .calendar-nav-btn {
+.task-genius-view .mini-calendar-container .calendar-nav-btn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -48,12 +48,12 @@
 	transition: opacity 0.2s ease;
 }
 
-.task-genius-view .calendar-nav-btn:hover {
+.task-genius-view .mini-calendar-container .calendar-nav-btn:hover {
 	opacity: 1;
 	background-color: var(--background-modifier-border-hover);
 }
 
-.task-genius-view .calendar-today-btn {
+.task-genius-view .mini-calendar-container .calendar-today-btn {
 	padding: 2px 8px;
 	border-radius: 4px;
 	background-color: var(--background-modifier-hover);
@@ -62,18 +62,18 @@
 	transition: background-color 0.2s ease;
 }
 
-.task-genius-view .calendar-today-btn:hover {
+.task-genius-view .mini-calendar-container .calendar-today-btn:hover {
 	background-color: var(--background-modifier-border-hover);
 }
 
-.task-genius-view .calendar-grid {
+.task-genius-view .mini-calendar-container .calendar-grid {
 	display: grid;
 	grid-template-columns: repeat(7, 1fr);
 	gap: 2px;
 	padding: 0 10px;
 }
 
-.task-genius-view .calendar-day-header {
+.task-genius-view .mini-calendar-container .calendar-day-header {
 	text-align: center;
 	font-size: 0.8em;
 	color: var(--text-muted);
@@ -82,11 +82,13 @@
 	margin-bottom: 5px;
 }
 
-.task-genius-view .calendar-day-header.calendar-weekend {
+.task-genius-view
+	.mini-calendar-container
+	.calendar-day-header.calendar-weekend {
 	color: var(--text-accent);
 }
 
-.task-genius-view .calendar-day {
+.task-genius-view .mini-calendar-container .calendar-day {
 	aspect-ratio: 1;
 	border-radius: 4px;
 	padding: 2px;
@@ -97,35 +99,35 @@
 	transition: background-color 0.2s ease;
 }
 
-.task-genius-view .calendar-day:hover {
+.task-genius-view .mini-calendar-container .calendar-day:hover {
 	background-color: var(--background-modifier-hover);
 }
 
-.task-genius-view .calendar-day.selected {
+.task-genius-view .mini-calendar-container .calendar-day.selected {
 	background-color: var(--background-modifier-border-hover);
 }
 
-.task-genius-view .calendar-day.today {
+.task-genius-view .mini-calendar-container .calendar-day.today {
 	background-color: var(--interactive-accent-hover);
 	color: var(--text-on-accent);
 }
 
-.task-genius-view .calendar-day.past-due {
+.task-genius-view .mini-calendar-container .calendar-day.past-due {
 	color: var(--text-error);
 }
 
-.task-genius-view .calendar-day.other-month {
+.task-genius-view .mini-calendar-container .calendar-day.other-month {
 	opacity: 0.5;
 }
 
-.task-genius-view .calendar-day-number {
+.task-genius-view .mini-calendar-container .calendar-day-number {
 	text-align: center;
 	font-size: 0.9em;
 	font-weight: 500;
 	padding: 2px;
 }
 
-.task-genius-view .calendar-day-count {
+.task-genius-view .mini-calendar-container .calendar-day-count {
 	background-color: var(--background-modifier-border);
 	color: var(--text-normal);
 	border-radius: 10px;
@@ -136,13 +138,15 @@
 	width: fit-content;
 }
 
-.task-genius-view .calendar-day-count.has-priority {
+.task-genius-view .mini-calendar-container .calendar-day-count.has-priority {
 	background-color: var(--text-accent);
 	color: var(--text-on-accent);
 }
 
 @media (max-width: 1400px) {
-	.task-genius-container:has(.task-details.visible) .forecast-left-column {
+	.task-genius-container:has(.task-details.visible)
+		.mini-calendar-container
+		.forecast-left-column {
 		display: none;
 	}
 }

@@ -29,6 +29,8 @@ import {
 	DEFAULT_SETTINGS,
 } from "../common/setting-definition";
 import { filterTasks } from "src/utils/taskFIlterUtils";
+import { CalendarComponent, CalendarEvent } from "src/components/calendar";
+import { KanbanComponent } from "../components/kanban/KanbanComponent";
 
 export const TASK_VIEW_TYPE = "task-genius-view";
 
@@ -44,7 +46,8 @@ export class TaskView extends ItemView {
 	private projectsComponent: ProjectsComponent;
 	private reviewComponent: ReviewComponent;
 	private detailsComponent: TaskDetailsComponent;
-
+	private calendarComponent: CalendarComponent;
+	private kanbanComponent: KanbanComponent;
 	// UI state management
 	private isSidebarCollapsed: boolean = false;
 	private isDetailsVisible: boolean = false;
@@ -54,6 +57,8 @@ export class TaskView extends ItemView {
 	private currentSelectedTaskId: string | null = null;
 	private currentSelectedTaskDOM: HTMLElement | null = null;
 	private lastToggleTimestamp: number = 0;
+
+	private tabActionButton: HTMLElement;
 
 	// Data management
 	tasks: Task[] = [];
@@ -111,7 +116,13 @@ export class TaskView extends ItemView {
 		this.createActionButtons();
 
 		(this.leaf.tabHeaderStatusContainerEl as HTMLElement).empty();
-		(this.leaf.tabHeaderStatusContainerEl as HTMLElement).createEl(
+		(this.leaf.tabHeaderEl as HTMLElement).toggleClass(
+			"task-genius-tab-header",
+			true
+		);
+		this.tabActionButton = (
+			this.leaf.tabHeaderStatusContainerEl as HTMLElement
+		).createEl(
 			"span",
 			{
 				cls: "task-genius-action-btn",
@@ -132,6 +143,10 @@ export class TaskView extends ItemView {
 			}
 		);
 
+		this.register(() => {
+			this.tabActionButton.detach();
+		});
+
 		this.tasks = this.plugin.preloadedTasks;
 		this.triggerViewUpdate();
 
@@ -147,6 +162,12 @@ export class TaskView extends ItemView {
 				)
 			);
 		});
+
+		// Load initial tasks into components that need them immediately
+		if (this.tasks && this.tasks.length > 0) {
+			this.calendarComponent?.updateTasks(this.tasks);
+			// KanbanComponent will receive tasks via switchView initially
+		}
 	}
 
 	onResize(): void {
@@ -218,6 +239,42 @@ export class TaskView extends ItemView {
 		this.addChild(this.reviewComponent);
 		this.reviewComponent.load();
 		this.reviewComponent.containerEl.hide();
+
+		this.calendarComponent = new CalendarComponent(
+			this.plugin.app,
+			this.plugin,
+			this.rootContainerEl,
+			this.tasks,
+			{
+				onTaskSelected: (task: Task | null) => {
+					this.handleTaskSelection(task);
+				},
+				onTaskCompleted: (task: Task) => {
+					this.toggleTaskCompletion(task);
+				},
+				onEventContextMenu: (ev: MouseEvent, event: CalendarEvent) => {
+					this.handleTaskContextMenu(ev, event);
+				},
+			}
+		);
+		this.addChild(this.calendarComponent);
+		this.calendarComponent.load();
+		this.calendarComponent.containerEl.hide();
+
+		// Initialize KanbanComponent
+		this.kanbanComponent = new KanbanComponent(
+			this.app,
+			this.plugin,
+			this.rootContainerEl,
+			this.tasks || [],
+			{
+				onTaskSelected: this.handleTaskSelection.bind(this),
+				onTaskCompleted: this.toggleTaskCompletion.bind(this),
+				onTaskContextMenu: this.handleTaskContextMenu.bind(this),
+			}
+		);
+		this.addChild(this.kanbanComponent);
+		this.kanbanComponent.containerEl.hide();
 
 		this.detailsComponent = new TaskDetailsComponent(
 			this.rootContainerEl,
@@ -396,8 +453,11 @@ export class TaskView extends ItemView {
 			this.reviewComponent,
 		];
 
+		console.log("componentsWithContextMenu", componentsWithContextMenu);
+
 		componentsWithContextMenu.forEach((comp) => {
 			if (comp && typeof comp.onTaskContextMenu === "function") {
+				console.log("comp", comp);
 				comp.onTaskContextMenu = (event, task) => {
 					this.handleTaskContextMenu(event, task);
 				};
@@ -407,13 +467,16 @@ export class TaskView extends ItemView {
 
 	private switchView(viewId: ViewMode, project?: string | null) {
 		this.currentViewId = viewId;
-		const viewConfig = getViewSettingOrDefault(this.plugin, viewId);
+		console.log("Switching view to:", viewId, "Project:", project);
 
+		// Hide all components first
 		this.contentComponent.containerEl.hide();
 		this.forecastComponent.containerEl.hide();
 		this.tagsComponent.containerEl.hide();
 		this.projectsComponent.containerEl.hide();
 		this.reviewComponent.containerEl.hide();
+		this.calendarComponent.containerEl.hide();
+		this.kanbanComponent.containerEl.hide();
 
 		let targetComponent: any = null;
 		let modeForComponent: ViewMode = viewId;
@@ -431,6 +494,12 @@ export class TaskView extends ItemView {
 			case "review":
 				targetComponent = this.reviewComponent;
 				break;
+			case "calendar":
+				targetComponent = this.calendarComponent;
+				break;
+			case "kanban":
+				targetComponent = this.kanbanComponent;
+				break;
 			case "inbox":
 			case "flagged":
 			default:
@@ -440,13 +509,21 @@ export class TaskView extends ItemView {
 		}
 
 		if (targetComponent) {
+			console.log(
+				`Activating component for view ${viewId}`,
+				targetComponent.constructor.name
+			);
 			targetComponent.containerEl.show();
 			if (typeof targetComponent.setTasks === "function") {
 				targetComponent.setTasks(
 					filterTasks(this.tasks, viewId, this.plugin)
 				);
 			}
+
 			if (typeof targetComponent.setViewMode === "function") {
+				console.log(
+					`Setting view mode for ${viewId} to ${modeForComponent} with project ${project}`
+				);
 				targetComponent.setViewMode(modeForComponent, project);
 			}
 			if (
@@ -455,10 +532,13 @@ export class TaskView extends ItemView {
 			) {
 				targetComponent.refreshReviewSettings();
 			}
+		} else {
+			console.warn(`No target component found for viewId: ${viewId}`);
 		}
 
 		this.app.saveLocalStorage("task-genius:view-mode", viewId);
 		this.updateHeaderDisplay();
+		this.handleTaskSelection(null);
 	}
 
 	private updateHeaderDisplay() {
@@ -564,15 +644,16 @@ export class TaskView extends ItemView {
 	}
 
 	private async loadTasks() {
-		const taskManager = (this.plugin as TaskProgressBarPlugin).taskManager;
+		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
 		this.tasks = taskManager.getAllTasks();
-		console.log("current tasks", this.tasks.length);
+		console.log(`TaskView loaded ${this.tasks.length} tasks`);
 		await this.triggerViewUpdate();
 	}
 
 	public async triggerViewUpdate() {
+		console.log(`Triggering view update for: ${this.currentViewId}`);
 		this.switchView(this.currentViewId);
 	}
 
@@ -596,24 +677,43 @@ export class TaskView extends ItemView {
 			}
 		}
 
-		const taskManager = (this.plugin as TaskProgressBarPlugin).taskManager;
+		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
 		await taskManager.updateTask(updatedTask);
 	}
 
-	private async updateTask(originalTask: Task, updatedTask: Task) {
-		const taskManager = (this.plugin as TaskProgressBarPlugin).taskManager;
+	private async updateTask(
+		originalTask: Task,
+		updatedTask: Task
+	): Promise<Task> {
+		const taskManager = this.plugin.taskManager;
 		if (!taskManager) {
+			console.error("Task manager not available for updateTask");
 			throw new Error("Task manager not available");
 		}
-		await taskManager.updateTask(updatedTask);
+		try {
+			await taskManager.updateTask(updatedTask);
+			console.log(`Task ${updatedTask.id} updated successfully.`);
 
-		if (this.currentSelectedTaskId === updatedTask.id) {
-			this.detailsComponent.showTaskDetails(updatedTask);
+			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
+			if (index !== -1) {
+				this.tasks[index] = updatedTask;
+			} else {
+				console.warn(
+					"Updated task not found in local list, might reload."
+				);
+			}
+
+			if (this.currentSelectedTaskId === updatedTask.id) {
+				this.detailsComponent.showTaskDetails(updatedTask);
+			}
+
+			return updatedTask;
+		} catch (error) {
+			console.error(`Failed to update task ${originalTask.id}:`, error);
+			throw error;
 		}
-
-		return updatedTask;
 	}
 
 	private getActiveViewComponent(): any {
@@ -626,6 +726,12 @@ export class TaskView extends ItemView {
 				return this.projectsComponent;
 			case "review":
 				return this.reviewComponent;
+			case "calendar":
+				return this.calendarComponent;
+			case "kanban":
+				return this.kanbanComponent;
+			case "inbox":
+			case "flagged":
 			default:
 				return this.contentComponent;
 		}
@@ -636,21 +742,11 @@ export class TaskView extends ItemView {
 		if (!(file instanceof TFile)) return;
 
 		const leaf = this.app.workspace.getLeaf(false);
-		await leaf.openFile(file);
-
-		const editor = this.app.workspace.activeEditor?.editor;
-		if (editor) {
-			const line = Math.max(
-				0,
-				Math.min(task.line, editor.lineCount() - 1)
-			);
-			editor.setCursor({ line: line, ch: 0 });
-			editor.scrollIntoView(
-				{ from: { line: line, ch: 0 }, to: { line: line, ch: 0 } },
-				true
-			);
-			editor.focus();
-		}
+		await leaf.openFile(file, {
+			eState: {
+				line: task.line,
+			},
+		});
 	}
 
 	async onClose() {
@@ -671,4 +767,54 @@ export class TaskView extends ItemView {
 		this.switchView(this.currentViewId);
 		this.updateHeaderDisplay();
 	}
+
+	// Method to handle status updates originating from Kanban drag-and-drop
+	private handleKanbanTaskStatusUpdate = async (
+		taskId: string,
+		newStatusMark: string
+	) => {
+		console.log(
+			`TaskView handling Kanban status update request for ${taskId} to mark ${newStatusMark}`
+		);
+		const taskToUpdate = this.tasks.find((t) => t.id === taskId);
+
+		if (taskToUpdate) {
+			const isCompleted =
+				newStatusMark.toLowerCase() ===
+				(this.plugin.settings.taskStatuses.completed || "x")
+					.split("|")[0]
+					.toLowerCase();
+			const completedDate = isCompleted ? Date.now() : undefined;
+
+			if (
+				taskToUpdate.status !== newStatusMark ||
+				taskToUpdate.completed !== isCompleted
+			) {
+				try {
+					await this.updateTask(taskToUpdate, {
+						...taskToUpdate,
+						status: newStatusMark,
+						completed: isCompleted,
+						completedDate: completedDate,
+					});
+					console.log(
+						`Task ${taskId} status update processed by TaskView.`
+					);
+				} catch (error) {
+					console.error(
+						`TaskView failed to update task status from Kanban callback for task ${taskId}:`,
+						error
+					);
+				}
+			} else {
+				console.log(
+					`Task ${taskId} status (${newStatusMark}) already matches, no update needed.`
+				);
+			}
+		} else {
+			console.warn(
+				`TaskView could not find task with ID ${taskId} for Kanban status update.`
+			);
+		}
+	};
 }

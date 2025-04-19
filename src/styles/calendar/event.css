@@ -1,0 +1,19 @@
+.full-calendar-container .calendar-event-title-container p {
+	padding-inline-start: 0;
+	padding-inline-end: 0;
+	margin-block-start: 0;
+	margin-block-end: 0;
+}
+
+.full-calendar-container .calendar-event-title-container {
+	/* Handle text overflow with ellipsis */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.full-calendar-container .calendar-event-title p {
+	margin-block-start: 0;
+	margin-block-end: 0;
+}

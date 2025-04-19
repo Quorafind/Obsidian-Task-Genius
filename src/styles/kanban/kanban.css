@@ -1,0 +1,255 @@
+.tg-kanban-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	overflow: hidden; /* Prevent view itself from scrolling */
+}
+
+.tg-kanban-filters {
+	padding: 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0; /* Don't shrink filter bar */
+	/* TODO: Style filter controls */
+	/* Style filter controls */
+	display: flex;
+	align-items: center;
+}
+
+.tg-kanban-filter-input {
+	flex-grow: 1;
+	padding: 6px 10px;
+	font-size: var(--font-ui-small);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	margin-right: 10px; /* Optional: space if other controls are added */
+}
+
+.tg-kanban-filter-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.tg-kanban-column-container {
+	display: flex;
+	flex-grow: 1; /* Take remaining height */
+	overflow-x: auto; /* Allow horizontal scrolling for columns */
+	overflow-y: hidden; /* Prevent vertical scrolling here */
+	padding: 10px;
+	gap: 10px; /* Space between columns */
+	height: 100%; /* Needed for children height */
+}
+
+.tg-kanban-column {
+	flex: 0 0 280px; /* Fixed width for columns, no shrinking/growing */
+	display: flex;
+	flex-direction: column;
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-m);
+	height: 100%; /* Fill container height */
+	max-height: 100%; /* Prevent exceeding container */
+	overflow: hidden; /* Hide overflow within the column */
+
+	border: 1px solid var(--background-modifier-border);
+}
+
+.tg-kanban-column-header {
+	padding: 8px 12px;
+	font-size: var(--font-ui-mediumn);
+	font-weight: 600;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0; /* Prevent header from shrinking */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+
+	text-transform: uppercase;
+
+	display: flex;
+	align-items: center;
+}
+
+.tg-kanban-column-content {
+	flex-grow: 1; /* Take remaining space in the column */
+	overflow-y: scroll; /* Allow vertical scrolling for cards */
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px; /* Space between cards */
+	padding-right: 0;
+}
+/* --- Card Styling --- */
+.tg-kanban-card {
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	padding: 10px 12px;
+	border: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+	cursor: grab;
+	transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+
+	/* Ensure card fits within column and handles content */
+	max-width: 100%; /* Prevent card from exceeding parent width */
+	box-sizing: border-box; /* Include padding/border in width */
+	white-space: nowrap; /* Allow text wrapping */
+	text-overflow: ellipsis;
+}
+
+.tg-kanban-card .tg-kanban-card-content {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+
+	max-width: 100%;
+}
+
+.tg-kanban-card:hover {
+	border-color: var(--background-modifier-border-hover);
+	box-shadow: var(--shadow-m);
+}
+
+.tg-kanban-card.task-completed {
+	background-color: var(--background-secondary);
+	opacity: 0.7;
+}
+
+.tg-kanban-card.task-completed .tg-kanban-card-content {
+	text-decoration: line-through;
+	color: var(--text-muted);
+}
+
+.tg-kanban-card-container {
+	display: flex;
+	align-items: flex-start;
+	margin-bottom: 6px;
+}
+
+.tg-kanban-card-content p:last-child {
+	margin-bottom: 0; /* Avoid extra space from paragraph */
+	margin-block-end: 0;
+	margin-block-start: 0;
+}
+
+.tg-kanban-card-metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px; /* Row and column gap */
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.tg-kanban-card-metadata .task-date,
+.tg-kanban-card-metadata .task-tags-container,
+.tg-kanban-card-metadata .task-priority {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 5px;
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+
+	margin-inline-start: 0;
+	margin-inline-end: 0;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+.tg-kanban-card-metadata .task-tag {
+	background-color: var(
+		--background-modifier-accent-hover
+	); /* Or use tag color */
+	color: var(--text-accent);
+	padding: 1px 4px;
+	border-radius: var(--radius-s);
+	font-size: calc(var(--font-ui-small) * 0.9);
+}
+
+.tg-kanban-card-metadata .task-due-date.task-overdue {
+	color: var(--text-error);
+	background-color: var(--background-error);
+}
+.tg-kanban-card-metadata .task-due-date.task-due-today {
+	color: var(--text-warning);
+	background-color: var(--background-warning);
+}
+
+/* Priority indicators (simple example) */
+.tg-kanban-card-metadata .task-priority.priority-1 {
+	color: var(--text-accent);
+}
+.tg-kanban-card-metadata .task-priority.priority-2 {
+	color: var(--text-warning);
+}
+.tg-kanban-card-metadata .task-priority.priority-3 {
+	color: var(--text-error);
+	font-weight: bold;
+}
+/* Add more priority styles if needed */
+
+/* --- Drag and Drop Styling --- */
+.tg-kanban-card-dragging {
+	/* Style for the clone being dragged */
+	/* opacity: 0.8; */ /* Removed opacity */
+	box-shadow: var(--shadow-l); /* More prominent shadow */
+}
+
+.tg-kanban-card-ghost {
+	/* Style for the original card when a clone is dragged */
+	background-color: var(--background-secondary-alt);
+	border: 1px dashed var(--background-modifier-border);
+	box-shadow: none;
+}
+
+.tg-kanban-column-content.tg-kanban-drop-target-active {
+	/* Style for potential drop zones when dragging starts */
+	/* background-color: var(--background-modifier-hover); */
+	outline: 2px dashed var(--background-modifier-accent-hover);
+	outline-offset: -2px;
+}
+
+.tg-kanban-column-content.tg-kanban-drop-target-hover {
+	/* Style for the specific drop zone being hovered over */
+	background-color: var(--background-modifier-accent-hover);
+}
+
+/* Styles for Kanban drop indicators */
+.tg-kanban-card--drop-indicator-before {
+	margin-top: 10px; /* Increased margin */
+	border-top: 2px dashed var(--interactive-accent); /* Indicator */
+	/* padding-top: 20px; */ /* Removed padding */
+	transition: margin-top 0.1s ease-out, border-top 0.1s ease-out; /* Updated transition */
+}
+
+.tg-kanban-card--drop-indicator-after {
+	margin-bottom: 10px; /* Increased margin */
+	border-bottom: 2px dashed var(--interactive-accent); /* Indicator */
+	/* padding-bottom: 20px; */ /* Removed padding */
+	transition: margin-bottom 0.1s ease-out, border-bottom 0.1s ease-out; /* Updated transition */
+}
+
+/* Optional: Style for dropping into an empty column */
+.tg-kanban-column-content--drop-indicator-empty {
+	border: 2px dashed var(--interactive-accent);
+	min-height: 50px; /* Ensure empty column has some height for the border */
+	box-sizing: border-box; /* Include border in height calculation */
+	margin-top: 5px; /* Add some space */
+	margin-bottom: 5px; /* Add some space */
+}
+
+/* Ensure transitions are smooth when classes are removed */
+.tg-kanban-card {
+	/* Ensure existing transitions don't conflict, or add base transition */
+	transition: margin 0.1s ease-out, padding 0.1s ease-out,
+		border 0.1s ease-out, transform 0.2s ease-out,
+		box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out; /* Merged transitions */
+}
+
+.drop-target-active {
+	background-color: rgba(0, 128, 0, 0.2); /* 半透明绿色背景 */
+	outline: 2px dashed green; /* 绿色虚线边框 */
+	/* 你可能还需要调整 padding 或 margin 来 '放大' 视觉区域 */
+	/* padding-top: 20px; */
+	/* padding-bottom: 20px; */
+}

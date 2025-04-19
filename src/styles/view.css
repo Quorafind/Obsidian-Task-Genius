@@ -1,5 +1,5 @@
 .task-sidebar.collapsed {
-	width: 52px;
+	width: 48px;
 	overflow: hidden;
 }
 
@@ -325,7 +325,7 @@
 }
 
 /* Content header */
-.content-header {
+.task-genius-view .content-header {
 	display: flex;
 	align-items: center;
 	padding: 10px 16px;
@@ -333,7 +333,7 @@
 	min-height: 50px;
 }
 
-.content-title {
+.task-genius-view .content-title {
 	font-size: 1.2em;
 	font-weight: 600;
 	margin-right: 12px;
@@ -341,26 +341,26 @@
 }
 
 @media screen and (max-width: 768px) {
-	.content-title {
+	.task-genius-view .content-title {
 		display: none;
 	}
 
-	.task-count {
+	.task-genius-view .task-count {
 		flex: 1;
 	}
 
-	.focus-filter {
+	.task-genius-view .focus-filter {
 		flex: 1;
 	}
 }
 
-.content-filter {
+.task-genius-view .content-filter {
 	display: flex;
 	align-items: center;
 	margin-right: 12px;
 }
 
-.filter-input {
+.task-genius-view .filter-input {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 4px;
 	padding: 4px 8px;
@@ -368,7 +368,7 @@
 	background-color: var(--background-primary);
 }
 
-.focus-button {
+.task-genius-view .focus-button {
 	background-color: var(--interactive-normal);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 4px;
@@ -377,11 +377,11 @@
 	cursor: pointer;
 }
 
-.focus-button:hover {
+.task-genius-view .focus-button:hover {
 	background-color: var(--interactive-hover);
 }
 
-.focus-button.focused {
+.task-genius-view .focus-button.focused {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
@@ -390,11 +390,21 @@
 	--icon-size: 16px;
 }
 
-.task-empty-state {
+.task-genius-view .task-empty-state {
 	width: 100%;
 	height: 100%;
 	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.task-genius-tab-header {
+	container-type: inline-size !important;
+}
+
+@container (max-width: 120px) {
+	.task-genius-action-btn {
+		display: none;
+	}
 }

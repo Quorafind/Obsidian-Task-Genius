@@ -135,6 +135,8 @@ export interface TaskParserConfig {
 	contextPrefix?: string;
 	/** Task priority markers */
 	priorityMarkers?: Record<string, number>;
+	/** Prefer metadata format */
+	preferMetadataFormat?: "dataview" | "tasks";
 }
 
 /** Task indexer interface */

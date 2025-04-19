@@ -1562,7 +1562,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 						.onClick(() => {
 							// Remove from cycle
 							cycle.splice(index, 1);
-							// Don't remove from marks to preserve settings
+							delete marks[state];
 							this.applySettingsUpdate();
 							refreshTaskStatesList();
 						});
@@ -2522,6 +2522,26 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 					this.applySettingsUpdate();
 					this.display(); // Refresh settings display
 				});
+			});
+
+		new Setting(containerEl)
+			.setName(t("Prefer metadata format of task"))
+			.setDesc(
+				t(
+					"You can choose dataview format or tasks format, that will influence both index and save format."
+				)
+			)
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption("dataview", "Dataview")
+					.addOption("tasks", "Tasks")
+					.setValue(this.plugin.settings.preferMetadataFormat)
+					.onChange(async (value) => {
+						this.plugin.settings.preferMetadataFormat = value as
+							| "dataview"
+							| "tasks";
+						this.applySettingsUpdate();
+					});
 			});
 
 		if (!this.plugin.settings.enableView) return;

@@ -1,0 +1,562 @@
+/* styles/calendar/calendar.css */
+
+.full-calendar-container {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	height: 100%; /* Or adjust as needed */
+	overflow: hidden;
+	flex-grow: 1;
+}
+
+.full-calendar-container .calendar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-2-3) var(--size-4-4); /* Use Obsidian variables */
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0; /* Prevent header from shrinking */
+	margin-bottom: 0;
+}
+
+.full-calendar-container .calendar-header button {
+	margin: 0 var(--size-4-1);
+}
+
+.full-calendar-container .calendar-nav,
+.full-calendar-container .calendar-view-switcher {
+	display: flex;
+	gap: var(--size-2-2);
+}
+
+.full-calendar-container .calendar-nav button {
+	border-radius: var(--radius-s);
+
+	text-transform: uppercase;
+}
+
+.full-calendar-container .calendar-view-switcher button {
+	border-radius: var(--radius-s);
+	text-transform: uppercase;
+}
+
+.full-calendar-container .calendar-view-switcher button:not(.is-active),
+.full-calendar-container .calendar-nav button:not(.is-active) {
+	box-shadow: var(--shadow-xs);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.full-calendar-container .calendar-current-date {
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-large);
+	text-align: center;
+	flex-grow: 1; /* Allow it to take space */
+
+	max-width: max(120px, 40%);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.full-calendar-container .calendar-view-switcher button.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent-hover);
+}
+
+.full-calendar-container .calendar-view-container {
+	flex-grow: 1; /* Allow view to take remaining space */
+	overflow-y: auto; /* Enable scrolling if content overflows */
+	padding: var(--size-4-2);
+	position: relative; /* Needed for absolute positioning of events */
+
+	display: flex;
+	flex-direction: column;
+}
+
+/* Basic View Styles (Placeholders) */
+/* --- Month View Specific Styles --- */
+.full-calendar-container .calendar-weekday-header {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	text-align: center;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	padding: var(--size-4-1) 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: -1px; /* Overlap with grid gap */
+	background-color: var(--background-secondary); /* Slight distinction */
+}
+
+.full-calendar-container .calendar-weekday {
+	padding: var(--size-4-1);
+}
+
+.full-calendar-container .calendar-view-container.view-month {
+	padding: 0; /* Remove padding if grid provides it via gap */
+	/* Styles moved to .calendar-month-grid */
+}
+
+/* Add the grid styles directly to the grid container element */
+.full-calendar-container .calendar-month-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	grid-auto-rows: minmax(100px, auto); /* Give rows a minimum height */
+	gap: 1px;
+	background-color: var(--background-modifier-border); /* Grid lines */
+
+	height: 100%;
+}
+
+.full-calendar-container .calendar-day-cell {
+	/* Example style for a day cell in month view */
+	background-color: var(--background-primary);
+	padding: var(--size-4-1);
+	/* min-height: 80px; - Let grid-auto-rows handle height */
+	position: relative;
+	display: flex; /* Use flexbox for layout inside the cell */
+	flex-direction: column; /* Stack day number and events */
+	min-width: 0; /* Prevent content from expanding the cell width in the grid */
+}
+
+.full-calendar-container .calendar-day-cell:hover {
+	background-color: hsl(
+		var(--color-accent-h),
+		var(--color-accent-s),
+		var(--color-accent-l),
+		0.8
+	) !important;
+}
+
+.full-calendar-container .calendar-day-cell.is-today {
+	background-color: var(--background-secondary-alt);
+}
+
+.full-calendar-container .calendar-day-cell:not(.is-today) {
+	opacity: 0.7;
+}
+
+.full-calendar-container .calendar-day-cell.is-other-month {
+	background-color: var(--background-secondary);
+	opacity: 0.7;
+}
+
+.full-calendar-container .calendar-day-cell.is-weekend {
+	background-color: var(
+		--background-secondary
+	); /* Slightly different background for weekends */
+}
+
+.full-calendar-container .calendar-day-number {
+	font-size: var(--font-ui-small);
+	text-align: center;
+	margin-bottom: var(--size-4-1);
+	flex-shrink: 0; /* Prevent number from shrinking */
+	align-self: flex-end; /* Position to the top right */
+}
+
+.full-calendar-container .calendar-events-container {
+	flex-grow: 1; /* Allow events container to fill space */
+	overflow: hidden; /* Hide events that overflow the cell height */
+	position: relative;
+}
+
+.full-calendar-container .calendar-event {
+	/* Example style for an event */
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: var(--radius-s);
+	padding: 2px 4px;
+	font-size: var(--font-ui-smaller);
+	margin-bottom: 2px;
+	margin-bottom: 3px; /* Increase spacing slightly */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+	display: block; /* Ensure it takes full width available */
+}
+
+.full-calendar-container .calendar-event:has(.task-list-item-checkbox) {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.full-calendar-container
+	.calendar-event:has(.task-list-item-checkbox).calendar-event-week-allday {
+	display: flex;
+}
+
+.full-calendar-container
+	.calendar-event:has(.task-list-item-checkbox).calendar-event-month {
+	display: flex;
+}
+
+.full-calendar-container .full-calendar-container .calendar-event:hover {
+	opacity: 0.8;
+}
+
+.full-calendar-container .calendar-event.is-completed {
+	background-color: var(
+		--background-modifier-success-hover
+	); /* Or use grey/strikethrough */
+	text-decoration: line-through;
+	opacity: 0.7;
+}
+
+.full-calendar-container .calendar-event.is-multi-day {
+	/* Basic style for multi-day, more advanced could remove rounded corners */
+}
+.full-calendar-container .calendar-event.is-multi-day.is-start {
+	/* Optional: style the start segment differently */
+	/* border-top-right-radius: 0; */
+	/* border-bottom-right-radius: 0; */
+}
+.full-calendar-container .calendar-event.is-multi-day.is-end {
+	/* Optional: style the end segment differently */
+	/* border-top-left-radius: 0; */
+	/* border-bottom-left-radius: 0; */
+}
+
+/* Add more specific styles for week, day, agenda views as they are implemented */
+
+/* Style for month view events to handle overflow */
+.full-calendar-container .calendar-event.calendar-event-month {
+	/* Inherits base .calendar-event styles */
+	/* Add overflow handling similar to week-allday */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: block; /* Ensure block display */
+	width: 100%; /* Explicitly set width */
+	box-sizing: border-box; /* Include padding/border in width */
+}
+
+/* --- Day View Specific Styles --- */
+.full-calendar-container .calendar-view-container.view-day {
+	display: flex;
+	flex-direction: column;
+	padding: 0; /* Remove padding, manage internally */
+}
+
+.full-calendar-container .calendar-timeline-section {
+	flex-grow: 1;
+	/* position: relative; /* No longer needed for absolute event positioning */
+	border-top: 1px solid var(--background-modifier-border); /* Add border that was on allday */
+	overflow-y: auto; /* Allow timeline to scroll */
+	padding: var(--size-4-4);
+}
+
+.full-calendar-container .calendar-timeline-events-container {
+	/* Remove absolute positioning */
+	/* position: absolute; */
+	/* top: 0; */
+	/* left: 0; */
+	/* right: 0; */
+	/* bottom: 0; */
+	/* z-index: 2; */
+	/* Remove calculated height */
+	/* height: calc(24 * 40px); */
+
+	/* Add flex layout for vertical stacking */
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2); /* Add spacing between events */
+}
+
+/* Style adjustments for events previously timed */
+.full-calendar-container .calendar-event-timed {
+	/* Remove absolute positioning */
+	/* position: absolute; */
+	border: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	/* Add margin for spacing in the new flow layout */
+	/* Using gap on parent container now */
+	/* margin-bottom: var(--size-4-2); */
+	width: 100%; /* Ensure it takes full width */
+}
+
+/* Keep internal styles */
+.full-calendar-container .calendar-event-time {
+	font-size: var(--font-ui-smaller);
+	font-weight: bold;
+	padding: 1px 3px;
+	background-color: rgba(0, 0, 0, 0.1); /* Slight background for time */
+}
+
+.full-calendar-container .calendar-event-title {
+	font-size: var(--font-ui-small);
+	padding: 2px 3px;
+	flex-grow: 1;
+	/* Allow text wrapping within the event box */
+	white-space: normal;
+	word-wrap: break-word;
+
+	font-size: var(--font-ui-small);
+	padding: 2px 3px;
+	flex-grow: 1;
+	white-space: normal;
+	word-wrap: break-word;
+	display: flex;
+	align-items: center;
+}
+
+/* --- Week View Specific Styles --- */
+.full-calendar-container .calendar-view-container.view-week {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+}
+
+.full-calendar-container .calendar-week-header {
+	display: grid;
+	/* grid-template-columns: 50px repeat(7, 1fr); */ /* Gutter + 7 days -> Remove gutter */
+	grid-template-columns: repeat(7, 1fr); /* Just 7 days */
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+	text-align: center;
+	background-color: var(--background-secondary);
+	font-size: var(--font-ui-medium);
+}
+
+.full-calendar-container .calendar-header-cell {
+	padding: var(--size-4-1) 0;
+	border-left: 1px solid var(--background-modifier-border-hover);
+}
+.full-calendar-container .calendar-header-cell:first-child {
+	border-left: none;
+}
+.full-calendar-container .calendar-header-cell.is-today .calendar-day-number {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 50%;
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
+	line-height: 1.5em;
+	margin: auto;
+
+	margin: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.full-calendar-container .calendar-weekday {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+.full-calendar-container .calendar-day-number {
+	font-size: var(--font-ui-medium);
+}
+
+/* Updated Week Grid Section (was -allday-section) */
+.full-calendar-container .calendar-week-grid-section {
+	/* Renamed class */
+	flex-grow: 1; /* Allow this section to fill available vertical space */
+	display: flex; /* Use flex to ensure grid fills height */
+	flex-direction: column;
+	overflow-y: auto; /* Add scroll if content overflows */
+	border-bottom: 1px solid var(--background-modifier-border); /* Match old style */
+}
+
+.full-calendar-container .calendar-week-grid {
+	/* Renamed class */
+	flex-grow: 1; /* Allow grid to expand */
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	grid-template-rows: 1fr; /* Make grid fill the section height */
+	gap: 1px; /* Add gap for borders */
+	background-color: var(--background-modifier-border); /* Grid lines */
+	border-top: 1px solid var(--background-modifier-border); /* Add top border */
+}
+
+.full-calendar-container .calendar-day-column {
+	/* Renamed class */
+	background-color: var(--background-primary);
+	padding: var(--size-4-1);
+	/* min-height: 5em; */ /* Remove fixed min-height, let content dictate */
+	border-left: none; /* Remove redundant left border, gap handles lines */
+	display: flex; /* Use flex for vertical layout */
+	flex-direction: column;
+	gap: var(--size-4-1); /* Space between events */
+	overflow: hidden; /* Prevent content from expanding the column */
+	min-width: 0; /* Help grid item shrink properly */
+}
+
+.full-calendar-container .calendar-day-column:first-child {
+	/* No specific first-child border needed now */
+}
+
+.full-calendar-container .calendar-day-column.is-weekend {
+	background-color: var(--background-secondary);
+}
+
+.full-calendar-container .calendar-day-events-container {
+	/* Renamed class */
+	/* This container might not be strictly necessary if .calendar-day-column uses flex */
+	/* Styles are applied directly to .calendar-day-column now */
+	flex-grow: 1; /* Allow container to grow */
+	display: flex;
+	flex-direction: column;
+	gap: 3px; /* Space between events */
+}
+
+/* Ensure events take full width and don't have horizontal display properties */
+.full-calendar-container .calendar-event.calendar-event-week-allday {
+	display: block; /* Ensure block display for vertical stacking */
+	width: 100%; /* Take full width of the column */
+	position: relative; /* Reset position if it was absolute */
+	left: auto;
+	top: auto;
+	height: auto; /* Let content determine height */
+	margin-bottom: 3px; /* Consistent spacing */
+	overflow: hidden; /* Prevent internal content from overflowing */
+	text-overflow: ellipsis; /* Add ellipsis for overflow */
+	white-space: nowrap; /* Ensure ellipsis works */
+}
+
+/* Remove styles for the old timeline section */
+/*
+.full-calendar-container .calendar-week-timeline-section {
+	display: flex;
+// ... existing code ...
+	box-shadow: var(--shadow-s);
+}
+*/
+
+/* --- Year View Specific Styles --- */
+.full-calendar-container .calendar-view-container.view-year {
+	padding: var(--size-4-4);
+}
+
+.full-calendar-container .calendar-year-grid {
+	display: grid;
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(200px, 1fr)
+	); /* Responsive columns */
+	gap: var(--size-4-4);
+}
+
+.full-calendar-container .calendar-mini-month {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+	overflow: hidden; /* Clip content */
+}
+
+.full-calendar-container .mini-month-header {
+	text-align: center;
+	font-weight: var(--font-semibold);
+	padding: var(--size-4-2);
+	background-color: var(--background-secondary-alt);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.full-calendar-container .mini-month-body {
+	padding: var(--size-4-2);
+}
+
+.full-calendar-container .mini-month-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 2px; /* Small gap between days */
+	text-align: center;
+}
+
+.full-calendar-container .mini-weekday-header {
+	display: contents; /* Let children participate in the grid */
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-weight: bold;
+}
+.full-calendar-container .mini-weekday {
+	padding-bottom: var(--size-4-1);
+}
+
+.full-calendar-container .mini-day-cell {
+	font-size: var(--font-ui-small);
+	padding: 1px;
+	border-radius: var(--radius-s);
+	line-height: 1.5em; /* Adjust for centering */
+}
+
+.full-calendar-container .mini-day-cell.is-other-month {
+	color: var(--text-faint);
+	opacity: 0.6;
+}
+
+.full-calendar-container .mini-day-cell.is-today {
+	font-weight: bold;
+	background-color: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
+}
+
+.full-calendar-container .mini-day-cell.has-events {
+	/* Indicate events - e.g., bold or background dot */
+	font-weight: bold;
+	/* Or add a background dot: */
+	/* position: relative; */
+}
+/* .mini-day-cell.has-events::after {
+	content: '';
+	position: absolute;
+	bottom: 2px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background-color: var(--text-accent);
+} */
+
+.agenda-day-section {
+	display: flex;
+	width: 100%;
+	border: 1px solid var(--background-modifier-border);
+	padding-top: var(--size-4-2);
+	padding-bottom: var(--size-4-2);
+	padding-left: var(--size-4-2);
+	padding-right: var(--size-4-2);
+}
+
+.agenda-day-date-column {
+	width: 20%;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+.agenda-day-events-column {
+	flex: 1;
+}
+
+.full-calendar-container input.task-list-item-checkbox {
+	scale: 0.9;
+}
+
+.full-calendar-container .calendar-view-switcher-selector {
+	display: none;
+}
+
+@container (max-width: 600px) {
+	.full-calendar-container .calendar-view-switcher button {
+		display: none;
+	}
+
+	.calendar-nav .prev-button {
+		display: none;
+	}
+
+	.calendar-nav .next-button {
+		display: none;
+	}
+
+	.full-calendar-container .calendar-view-switcher-selector {
+		display: block;
+	}
+}

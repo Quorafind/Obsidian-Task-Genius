@@ -58,7 +58,8 @@ export class TagsComponent extends Component {
 	public onTaskCompleted: (task: Task) => void;
 
 	// Context menu
-	public onTaskContextMenu: (event: MouseEvent, task: Task) => void;
+	public onTaskContextMenu: (event: MouseEvent, task: Task) => void =
+		() => {};
 
 	constructor(
 		private parentEl: HTMLElement,

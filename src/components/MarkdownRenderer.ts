@@ -9,53 +9,75 @@ import { DEFAULT_SYMBOLS, TAG_REGEX } from "../common/default-symbol";
 export function clearAllMarks(markdown: string): string {
 	if (!markdown) return markdown;
 
-	// Remove task metadata symbols and their associated dates/values
-	const symbolsToRemove = [
-		DEFAULT_SYMBOLS.startDateSymbol,
-		DEFAULT_SYMBOLS.createdDateSymbol,
-		DEFAULT_SYMBOLS.scheduledDateSymbol,
-		DEFAULT_SYMBOLS.dueDateSymbol,
-		DEFAULT_SYMBOLS.doneDateSymbol,
-		DEFAULT_SYMBOLS.cancelledDateSymbol,
-		DEFAULT_SYMBOLS.recurrenceSymbol,
-		DEFAULT_SYMBOLS.onCompletionSymbol,
-		DEFAULT_SYMBOLS.dependsOnSymbol,
-		DEFAULT_SYMBOLS.idSymbol,
-	];
-
 	let cleanedMarkdown = markdown;
+
+	// --- Remove Emoji/Symbol Style Metadata ---
+
+	const symbolsToRemove = [
+		DEFAULT_SYMBOLS.startDateSymbol, // 🛫
+		DEFAULT_SYMBOLS.createdDateSymbol, // ➕
+		DEFAULT_SYMBOLS.scheduledDateSymbol, // ⏳
+		DEFAULT_SYMBOLS.dueDateSymbol, // 📅
+		DEFAULT_SYMBOLS.doneDateSymbol, // ✅
+	].filter(Boolean); // Filter out any potentially undefined symbols
 
 	// Remove date fields (symbol followed by date)
 	symbolsToRemove.forEach((symbol) => {
+		if (!symbol) return; // Should be redundant due to filter, but safe
+		// Escape the symbol for use in regex
+		const escapedSymbol = symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 		const regex = new RegExp(
-			`${symbol}\\uFE0F? *\\d{4}-\\d{2}-\\d{2}`,
+			`${escapedSymbol}\\uFE0F? *\\d{4}-\\d{2}-\\d{2}`, // Use escaped symbol
 			"gu"
 		);
 		cleanedMarkdown = cleanedMarkdown.replace(regex, "");
 	});
 
-	// Remove priority markers
-	cleanedMarkdown = cleanedMarkdown.replace(/🔼|⏫|🔽|⏬|🔺|\[#[A-C]\]/g, "");
-
-	// Remove tags from content since they'll be shown as metadata
-	cleanedMarkdown = cleanedMarkdown.replace(TAG_REGEX, "");
-
-	// Remove recurrence information
-	const recurrenceRegex = new RegExp(
-		`${DEFAULT_SYMBOLS.recurrenceSymbol}\\uFE0F? *[a-zA-Z0-9, !]+`,
-		"gu"
-	);
-	cleanedMarkdown = cleanedMarkdown.replace(recurrenceRegex, "");
-
-	// Clean up any double spaces created by removing symbols
-	cleanedMarkdown = cleanedMarkdown.replace(/\s+/g, " ").trim();
-
-	cleanedMarkdown = cleanedMarkdown.replace(/^# /, "");
+	// Remove priority markers (Emoji and Taskpaper style)
 	cleanedMarkdown = cleanedMarkdown.replace(
-		/^(-|\d+\.|\*|\+)\s\[(.)\]\s*/,
+		/\s+(?:[🔺⏫🔼🔽⏬️⏬]|\[#[A-C]\])/gu,
 		""
 	);
-	return cleanedMarkdown.trim();
+
+	// Remove recurrence information (Symbol + value)
+	if (DEFAULT_SYMBOLS.recurrenceSymbol) {
+		const escapedRecurrenceSymbol =
+			DEFAULT_SYMBOLS.recurrenceSymbol.replace(
+				/[.*+?^${}()|[\]\\]/g,
+				"\\$&"
+			);
+		// Create a string of escaped date/completion symbols for the lookahead
+		const escapedOtherSymbols = symbolsToRemove
+			.map((s) => s!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+			.join("");
+
+		const recurrenceRegex = new RegExp(
+			`${escapedRecurrenceSymbol}\\uFE0F? *.*?` +
+				// Lookahead for: space followed by (any date/completion/recurrence symbol OR @ OR #) OR end of string
+				`(?=\s(?:[${escapedOtherSymbols}${escapedRecurrenceSymbol}]|@|#)|$)`,
+			"gu"
+		);
+		cleanedMarkdown = cleanedMarkdown.replace(recurrenceRegex, "");
+	}
+
+	// --- Remove Dataview Style Metadata ---
+	cleanedMarkdown = cleanedMarkdown.replace(
+		/\[(?:due|📅|completion|✅|created|➕|start|🛫|scheduled|⏳|priority|repeat|recurrence|🔁|project|context)::\s*[^\]]+\]/gi,
+		// Corrected the emoji in the previous attempt
+		""
+	);
+
+	// --- General Cleaning ---
+	cleanedMarkdown = cleanedMarkdown.replace(TAG_REGEX, "");
+	cleanedMarkdown = cleanedMarkdown.replace(/@[\w-]+/g, "");
+	cleanedMarkdown = cleanedMarkdown.replace(
+		/^([\s>]*)?(-|\d+\.|\*|\+)\s\[(.)\]\s*/,
+		""
+	);
+	cleanedMarkdown = cleanedMarkdown.replace(/^# /, "");
+	cleanedMarkdown = cleanedMarkdown.replace(/\s+/g, " ").trim();
+
+	return cleanedMarkdown;
 }
 
 /**
