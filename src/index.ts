@@ -325,7 +325,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				// Add a ribbon icon for opening the TaskView
 				this.addRibbonIcon(
 					"task-genius",
-					t("Open Task Genius view"),
+					t(this.settings.overlay.overlayText),
 					() => {
 						this.activateTaskView();
 					}

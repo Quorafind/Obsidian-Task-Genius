@@ -23,6 +23,7 @@ import {
 	ViewMode,
 	RewardItem,
 	OccurrenceLevel,
+	OverlayTextSettings
 } from "./common/setting-definition";
 import { formatProgressText } from "./editor-ext/progressBarWidget";
 import "./styles/setting.css";
@@ -2573,6 +2574,22 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				)
 			)
 			.setHeading();
+
+			new Setting(containerEl)
+			.setName(t("test"))
+			.setDesc(
+				t(
+					'Characters in square brackets that represent completed tasks. Example: "x|X"'
+				)
+			)
+			.addText((text) =>
+				text
+					.onChange(async (value) => {
+						this.plugin.settings.overlay.overlayText =
+							value;
+						this.applySettingsUpdate();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName(t("Enable task genius view"))
