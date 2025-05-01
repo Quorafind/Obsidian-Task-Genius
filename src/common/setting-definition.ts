@@ -218,8 +218,13 @@ export interface HabitSettings {
 	habits: BaseHabitData[]; // 存储基础习惯数据，不包含completions字段
 }
 
+export interface OverlayTextSettings {
+	overlayText: string; // Text to display on the overlay
+}
+
 /** Define the main settings structure */
 export interface TaskProgressBarSettings {
+	
 	// General Settings (Example)
 	progressBarDisplayMode: "none" | "graphical" | "text" | "both";
 	supportHoverToShowProgressInfo: boolean;
@@ -291,10 +296,16 @@ export interface TaskProgressBarSettings {
 
 	// Habit Settings
 	habit: HabitSettings;
+
+	// Overlay Text Settings
+	overlay: OverlayTextSettings;
 }
 
 /** Define the default settings */
 export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
+	overlay: {
+		overlayText: "Open task genius view 2",
+	},
 	// General Defaults
 	progressBarDisplayMode: "both",
 	supportHoverToShowProgressInfo: true,
