@@ -183,7 +183,7 @@ export class RewardManager extends Component {
 		// Check if showRewardType is set to notice
 		if (this.settings.showRewardType === "notice") {
 			// Show a notice that automatically accepts the reward
-			new Notice(`🎉 ${reward.name}!`, 0);
+			new Notice(`🎉 ${reward.name}!`, 5000);
 			// Automatically accept the reward (decrease inventory)
 			this.acceptReward(reward);
 			return;
