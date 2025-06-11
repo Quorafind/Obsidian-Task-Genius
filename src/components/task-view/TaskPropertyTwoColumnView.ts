@@ -5,6 +5,7 @@ import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import { TwoColumnSpecificConfig } from "../../common/setting-definition";
 import "../../styles/property-view.css";
+import { getEffectiveProject } from "../../utils/taskUtil";
 
 /**
  * A two-column view that displays task properties in the left column
@@ -105,24 +106,29 @@ export class TaskPropertyTwoColumnView extends TwoColumnViewBase<string> {
 	private getPropertyValues(task: Task): any[] {
 		switch (this.propertyKey) {
 			case "tags":
-				return task.tags || [];
+				return task.metadata.tags || [];
 			case "project":
-				return task.project ? [task.project] : [];
+				const effectiveProject = getEffectiveProject(task);
+				return effectiveProject ? [effectiveProject] : [];
 			case "priority":
-				return task.priority !== undefined
-					? [task.priority.toString()]
+				return task.metadata.priority !== undefined
+					? [task.metadata.priority.toString()]
 					: [];
 			case "context":
-				return task.context ? [task.context] : [];
+				return task.metadata.context ? [task.metadata.context] : [];
 			case "status":
 				return [task.status || ""];
 			case "dueDate":
-				return task.dueDate ? [this.formatDate(task.dueDate)] : [];
+				return task.metadata.dueDate
+					? [this.formatDate(task.metadata.dueDate)]
+					: [];
 			case "startDate":
-				return task.startDate ? [this.formatDate(task.startDate)] : [];
+				return task.metadata.startDate
+					? [this.formatDate(task.metadata.startDate)]
+					: [];
 			case "scheduledDate":
-				return task.scheduledDate
-					? [this.formatDate(task.scheduledDate)]
+				return task.metadata.scheduledDate
+					? [this.formatDate(task.metadata.scheduledDate)]
 					: [];
 			case "filePath":
 				// Extract just the filename without path and extension

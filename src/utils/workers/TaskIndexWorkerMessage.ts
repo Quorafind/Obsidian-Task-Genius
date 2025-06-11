@@ -148,4 +148,24 @@ export type TaskWorkerSettings = {
 	dailyNotePath: string;
 	ignoreHeading: string;
 	focusHeading: string;
+
+	// Enhanced project configuration
+	projectConfig?: {
+		enableEnhancedProject: boolean;
+		pathMappings: Array<{
+			pathPattern: string;
+			projectName: string;
+			enabled: boolean;
+		}>;
+		metadataConfig: {
+			metadataKey: string;
+			inheritFromFrontmatter: boolean;
+			enabled: boolean;
+		};
+		configFile: {
+			fileName: string;
+			searchRecursively: boolean;
+			enabled: boolean;
+		};
+	};
 };

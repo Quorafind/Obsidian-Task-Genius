@@ -409,8 +409,8 @@ export class ReviewComponent extends Component {
 		// Get all unique projects from tasks
 		const allProjects = new Set<string>();
 		this.allTasks.forEach((task) => {
-			if (task.project) {
-				allProjects.add(task.project);
+			if (task.metadata.project) {
+				allProjects.add(task.metadata.project);
 			}
 		});
 
@@ -438,7 +438,7 @@ export class ReviewComponent extends Component {
 		if (
 			this.selectedProject.project &&
 			!this.allTasks.some(
-				(t) => t.project === this.selectedProject.project
+				(t) => t.metadata.project === this.selectedProject.project
 			)
 		) {
 			this.clearSelection();
@@ -623,7 +623,7 @@ export class ReviewComponent extends Component {
 
 		// Filter tasks for the selected project
 		const allProjectTasks = this.allTasks.filter(
-			(task) => task.project === this.selectedProject.project
+			(task) => task.metadata.project === this.selectedProject.project
 		);
 
 		// Get review settings for the selected project
@@ -656,7 +656,10 @@ export class ReviewComponent extends Component {
 			// 3. Tasks that are in progress (might have been modified since last review)
 			filteredTasks = allProjectTasks.filter((task) => {
 				// Always include incomplete new tasks (created after last review)
-				if (task.createdDate && task.createdDate > lastReviewDate) {
+				if (
+					task.metadata.createdDate &&
+					task.metadata.createdDate > lastReviewDate
+				) {
 					return true;
 				}
 
@@ -740,7 +743,6 @@ export class ReviewComponent extends Component {
 
 		// Update the selected project's tasks
 		this.selectedProject.tasks = filteredTasks;
-
 		// Sort tasks (example: by due date, then priority)
 		this.selectedProject.tasks.sort((a, b) => {
 			// First by completion status (incomplete first)
@@ -748,18 +750,18 @@ export class ReviewComponent extends Component {
 				return a.completed ? 1 : -1;
 			}
 			// Then by due date (early to late, nulls last)
-			const dueDateA = a.dueDate
-				? new Date(a.dueDate).getTime()
+			const dueDateA = a.metadata.dueDate
+				? new Date(a.metadata.dueDate).getTime()
 				: Number.MAX_SAFE_INTEGER;
-			const dueDateB = b.dueDate
-				? new Date(b.dueDate).getTime()
+			const dueDateB = b.metadata.dueDate
+				? new Date(b.metadata.dueDate).getTime()
 				: Number.MAX_SAFE_INTEGER;
 			if (dueDateA !== dueDateB) {
 				return dueDateA - dueDateB;
 			}
 			// Then by priority (high to low, 0 is lowest)
-			const priorityA = a.priority || 0;
-			const priorityB = b.priority || 0;
+			const priorityA = a.metadata.priority || 0;
+			const priorityB = b.metadata.priority || 0;
 			return priorityB - priorityA;
 		});
 
@@ -990,7 +992,7 @@ export class ReviewComponent extends Component {
 
 		// Get all current tasks for this project
 		const projectTasks = this.allTasks.filter(
-			(task) => task.project === projectName
+			(task) => task.metadata.project === projectName
 		);
 		const taskIds = projectTasks.map((task) => task.id);
 
@@ -1101,7 +1103,7 @@ export class ReviewComponent extends Component {
 		console.log(
 			"ReviewComponent received task update:",
 			updatedTask.id,
-			updatedTask.project
+			updatedTask.metadata.project
 		);
 		let needsListRefresh = false;
 
@@ -1112,7 +1114,7 @@ export class ReviewComponent extends Component {
 		if (taskIndexAll !== -1) {
 			const oldTask = this.allTasks[taskIndexAll];
 			// If project changed, the whole view might need refresh
-			if (oldTask.project !== updatedTask.project) {
+			if (oldTask.metadata.project !== updatedTask.metadata.project) {
 				console.log("Task project changed, reloading review settings.");
 				this.loadReviewSettings(); // Reloads projects list and potentially task list
 				return; // Exit, loadReviewSettings handles UI update
@@ -1122,11 +1124,11 @@ export class ReviewComponent extends Component {
 			// New task
 			this.allTasks.push(updatedTask);
 			// Check if it affects the current view
-			if (updatedTask.project === this.selectedProject.project) {
+			if (updatedTask.metadata.project === this.selectedProject.project) {
 				needsListRefresh = true; // New task added to selected project
 			} else if (
-				updatedTask.project &&
-				!this.reviewableProjects.has(updatedTask.project)
+				updatedTask.metadata.project &&
+				!this.reviewableProjects.has(updatedTask.metadata.project)
 			) {
 				// New task belongs to a previously unknown project, refresh left list
 				this.loadReviewSettings();
@@ -1135,7 +1137,7 @@ export class ReviewComponent extends Component {
 		}
 
 		// If the updated task belongs to the currently selected project
-		if (this.selectedProject.project === updatedTask.project) {
+		if (this.selectedProject.project === updatedTask.metadata.project) {
 			const taskIndexSelected = this.selectedProject.tasks.findIndex(
 				(t) => t.id === updatedTask.id
 			);
@@ -1178,7 +1180,10 @@ export class ReviewComponent extends Component {
 		);
 
 		// Copied logic from updateSelectedProjectTasks filtering part
-		if (task.createdDate && task.createdDate > lastReviewDate) {
+		if (
+			task.metadata.createdDate &&
+			task.metadata.createdDate > lastReviewDate
+		) {
 			return true; // New since last review
 		}
 		if (reviewedTaskIds.has(task.id) && task.completed) {

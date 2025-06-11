@@ -354,3 +354,101 @@
 		border-left: none;
 	}
 }
+
+/* Project source indicator styles */
+.project-source-indicator {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 4px;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 0.85em;
+	line-height: 1.2;
+}
+
+.project-source-indicator .indicator-icon {
+	font-size: 0.9em;
+}
+
+.project-source-indicator .indicator-text {
+	color: var(--text-muted);
+}
+
+/* Readonly indicator */
+.project-source-indicator.readonly-indicator {
+	border: 1px solid var(--background-modifier-error);
+}
+
+.project-source-indicator.readonly-indicator .indicator-text {
+	color: var(--text-error);
+	font-weight: 500;
+}
+
+/* Override indicator */
+.project-source-indicator.override-indicator {
+	border: 1px solid var(--background-modifier-accent);
+}
+
+.project-source-indicator.override-indicator .indicator-text {
+	color: var(--text-accent);
+}
+
+/* Field descriptions */
+.field-description.readonly-description {
+	color: var(--text-error);
+	font-size: 0.8em;
+	margin-top: 4px;
+	font-style: italic;
+}
+
+.field-description.override-description {
+	color: var(--text-accent);
+	font-size: 0.8em;
+	margin-top: 4px;
+	font-style: italic;
+}
+
+/* Inline editor specific styles */
+.project-source-indicator.inline-indicator {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	margin-top: 2px;
+	padding: 2px 6px;
+	font-size: 0.75em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Table specific styles */
+.project-source-indicator.table-indicator {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	padding: 1px 3px;
+	font-size: 0.7em;
+	border-radius: 2px;
+	z-index: 5;
+}
+
+.project-source-indicator.table-indicator .indicator-icon {
+	font-size: 0.8em;
+}
+
+.task-table-cell.readonly-cell {
+	background-color: var(--background-modifier-error-hover);
+	opacity: 0.8;
+}
+
+/* Project container specific styles */
+.project-container.project-readonly {
+	position: relative;
+}
+
+.project-container.project-readonly .project-source-indicator {
+	margin-top: 8px;
+}

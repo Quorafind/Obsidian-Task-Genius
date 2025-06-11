@@ -190,7 +190,6 @@ export class ContentComponent extends Component {
 		const sortCriteria = this.plugin.settings.viewConfiguration.find(
 			(view) => view.id === this.currentViewId
 		)?.sortCriteria;
-
 		if (sortCriteria && sortCriteria.length > 0) {
 			this.filteredTasks = sortTasks(
 				this.filteredTasks,
@@ -198,16 +197,22 @@ export class ContentComponent extends Component {
 				this.plugin.settings
 			);
 		} else {
+			// Default sorting: completed tasks last, then by priority, due date, and content
 			this.filteredTasks.sort((a, b) => {
 				const completedA = a.completed;
 				const completedB = b.completed;
 				if (completedA !== completedB) return completedA ? 1 : -1;
-				const prioA = a.priority ?? 0;
-				const prioB = b.priority ?? 0;
+
+				// Access priority from metadata
+				const prioA = a.metadata.priority ?? 0;
+				const prioB = b.metadata.priority ?? 0;
 				if (prioA !== prioB) return prioB - prioA;
-				const dueA = a.dueDate ?? Infinity;
-				const dueB = b.dueDate ?? Infinity;
+
+				// Access due date from metadata
+				const dueA = a.metadata.dueDate ?? Infinity;
+				const dueB = b.metadata.dueDate ?? Infinity;
 				if (dueA !== dueB) return dueA - dueB;
+
 				return a.content.localeCompare(b.content);
 			});
 		}
@@ -325,7 +330,7 @@ export class ContentComponent extends Component {
 		for (let i = start; i < end; i++) {
 			const rootTask = this.rootTasks[i];
 			const childTasks = this.notFilteredTasks.filter(
-				(task) => task.parent === rootTask.id
+				(task) => task.metadata.parent === rootTask.id
 			);
 
 			const treeComponent = new TaskTreeItemComponent(

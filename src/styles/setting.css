@@ -1140,3 +1140,66 @@
 .tasks-warning-text a:hover {
 	color: var(--text-on-accent);
 }
+
+.task-genius-format-examples {
+	display: flex;
+	flex-direction: column;
+	padding: var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.task-genius-format-examples strong {
+	font-size: var(--font-ui-small);
+}
+
+/* Enhanced Project Configuration Styles */
+.project-path-mappings-container {
+	margin-top: 10px;
+}
+
+.project-path-mapping-row {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	margin-bottom: 10px;
+	padding: 10px;
+}
+
+.no-mappings-message {
+	color: var(--text-muted);
+	font-style: italic;
+	text-align: center;
+	padding: 20px;
+}
+
+/* Task Project Display Styles */
+.task-project-tg {
+	opacity: 0.8;
+	font-style: italic;
+	border-left: 2px solid var(--color-accent);
+	padding-left: 4px;
+}
+
+.task-project-tg::before {
+	content: "🔗";
+	margin-right: 2px;
+	font-size: 0.8em;
+}
+
+/* Metadata Editor Project Styles */
+.project-readonly {
+	opacity: 0.8;
+}
+
+.project-readonly input {
+	background-color: var(--background-modifier-border);
+	cursor: not-allowed;
+}
+
+.project-source-indicator {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-style: italic;
+	margin-top: 4px;
+}

@@ -164,23 +164,25 @@ export class FileTaskManagerImpl implements FileTaskManager {
 			filePath: entry.file.path,
 			completed,
 			status,
+			metadata: {
+				tags: tags || [],
+				children: [], // File tasks don't have children by default
+
+				// Optional properties
+				...(createdDate && { createdDate }),
+				...(startDate && { startDate }),
+				...(scheduledDate && { scheduledDate }),
+				...(dueDate && { dueDate }),
+				...(completedDate && { completedDate }),
+				...(recurrence && { recurrence }),
+				...(project && { project }),
+				...(context && { context }),
+				...(priority && { priority }),
+				...(estimatedTime && { estimatedTime }),
+				...(actualTime && { actualTime }),
+			},
 			sourceEntry: entry,
 			isFileTask: true,
-			tags,
-			children: [], // File tasks don't have children by default
-
-			// Optional properties
-			...(createdDate && { createdDate }),
-			...(startDate && { startDate }),
-			...(scheduledDate && { scheduledDate }),
-			...(dueDate && { dueDate }),
-			...(completedDate && { completedDate }),
-			...(recurrence && { recurrence }),
-			...(project && { project }),
-			...(context && { context }),
-			...(priority && { priority }),
-			...(estimatedTime && { estimatedTime }),
-			...(actualTime && { actualTime }),
 		};
 
 		return fileTask;
@@ -201,51 +203,73 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		updates[mapping.completedProperty] = task.completed;
 
 		// Optional properties
-		if (task.createdDate !== undefined && mapping.createdDateProperty) {
+		if (
+			task.metadata.createdDate !== undefined &&
+			mapping.createdDateProperty
+		) {
 			updates[mapping.createdDateProperty] = this.formatDateForProperty(
-				task.createdDate
+				task.metadata.createdDate
 			);
 		}
-		if (task.startDate !== undefined && mapping.startDateProperty) {
+		if (
+			task.metadata.startDate !== undefined &&
+			mapping.startDateProperty
+		) {
 			updates[mapping.startDateProperty] = this.formatDateForProperty(
-				task.startDate
+				task.metadata.startDate
 			);
 		}
-		if (task.scheduledDate !== undefined && mapping.scheduledDateProperty) {
+		if (
+			task.metadata.scheduledDate !== undefined &&
+			mapping.scheduledDateProperty
+		) {
 			updates[mapping.scheduledDateProperty] = this.formatDateForProperty(
-				task.scheduledDate
+				task.metadata.scheduledDate
 			);
 		}
-		if (task.dueDate !== undefined && mapping.dueDateProperty) {
+		if (task.metadata.dueDate !== undefined && mapping.dueDateProperty) {
 			updates[mapping.dueDateProperty] = this.formatDateForProperty(
-				task.dueDate
+				task.metadata.dueDate
 			);
 		}
-		if (task.completedDate !== undefined && mapping.completedDateProperty) {
+		if (
+			task.metadata.completedDate !== undefined &&
+			mapping.completedDateProperty
+		) {
 			updates[mapping.completedDateProperty] = this.formatDateForProperty(
-				task.completedDate
+				task.metadata.completedDate
 			);
 		}
-		if (task.recurrence !== undefined && mapping.recurrenceProperty) {
-			updates[mapping.recurrenceProperty] = task.recurrence;
+		if (
+			task.metadata.recurrence !== undefined &&
+			mapping.recurrenceProperty
+		) {
+			updates[mapping.recurrenceProperty] = task.metadata.recurrence;
 		}
-		if (task.tags.length > 0 && mapping.tagsProperty) {
-			updates[mapping.tagsProperty] = task.tags;
+		if (task.metadata.tags.length > 0 && mapping.tagsProperty) {
+			updates[mapping.tagsProperty] = task.metadata.tags;
 		}
-		if (task.project !== undefined && mapping.projectProperty) {
-			updates[mapping.projectProperty] = task.project;
+		if (task.metadata.project !== undefined && mapping.projectProperty) {
+			updates[mapping.projectProperty] = task.metadata.project;
 		}
-		if (task.context !== undefined && mapping.contextProperty) {
-			updates[mapping.contextProperty] = task.context;
+		if (task.metadata.context !== undefined && mapping.contextProperty) {
+			updates[mapping.contextProperty] = task.metadata.context;
 		}
-		if (task.priority !== undefined && mapping.priorityProperty) {
-			updates[mapping.priorityProperty] = task.priority;
+		if (task.metadata.priority !== undefined && mapping.priorityProperty) {
+			updates[mapping.priorityProperty] = task.metadata.priority;
 		}
-		if (task.estimatedTime !== undefined && mapping.estimatedTimeProperty) {
-			updates[mapping.estimatedTimeProperty] = task.estimatedTime;
+		if (
+			task.metadata.estimatedTime !== undefined &&
+			mapping.estimatedTimeProperty
+		) {
+			updates[mapping.estimatedTimeProperty] =
+				task.metadata.estimatedTime;
 		}
-		if (task.actualTime !== undefined && mapping.actualTimeProperty) {
-			updates[mapping.actualTimeProperty] = task.actualTime;
+		if (
+			task.metadata.actualTime !== undefined &&
+			mapping.actualTimeProperty
+		) {
+			updates[mapping.actualTimeProperty] = task.metadata.actualTime;
 		}
 
 		return updates;

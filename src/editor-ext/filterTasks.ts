@@ -323,9 +323,7 @@ export interface Task {
 
 // Helper function to map local Task to the format expected by evaluateFilterNode
 // Only includes fields actually used by evaluateFilterNode in filterUtils.ts
-function mapTaskForFiltering(
-	task: Task
-): Pick<TaskIndexTask, "content" | "tags" | "priority" | "dueDate"> {
+function mapTaskForFiltering(task: Task): TaskIndexTask {
 	let priorityValue: number | undefined = undefined;
 	if (task.priority) {
 		const parsedPriority = parsePriorityFilterValue(task.priority);
@@ -351,11 +349,20 @@ function mapTaskForFiltering(
 	}
 
 	return {
+		id: `${task.from}-${task.to}`,
 		content: task.text,
-		tags: task.tags,
-		priority: priorityValue,
-		dueDate: dueDateTimestamp,
-	};
+		filePath: "",
+		line: 0,
+		completed: task.status === "completed",
+		status: task.status,
+		originalMarkdown: task.text,
+		metadata: {
+			tags: task.tags,
+			priority: priorityValue,
+			dueDate: dueDateTimestamp,
+			children: [],
+		},
+	} as TaskIndexTask;
 }
 
 function checkFilterChanges(view: EditorView, plugin: TaskProgressBarPlugin) {
@@ -823,7 +830,7 @@ function applyTaskFilters(view: EditorView, plugin: TaskProgressBarPlugin) {
 				);
 				const result = evaluateFilterNode(
 					parseResult,
-					mapTaskForFiltering(task) as TaskIndexTask
+					mapTaskForFiltering(task) as unknown as TaskIndexTask
 				);
 				// Use the direct result, filter mode will be handled later
 				matchesQuery = result;
@@ -997,7 +1004,7 @@ function shouldHideTask(task: Task, filters: TaskFilterOptions): boolean {
 			);
 			const result = evaluateFilterNode(
 				parseResult,
-				mapTaskForFiltering(task) as TaskIndexTask
+				mapTaskForFiltering(task)
 			);
 			// Determine visibility based on filter mode
 			const shouldShow =
@@ -1056,7 +1063,7 @@ function shouldShowDueToRelationships(
 					);
 					const result = evaluateFilterNode(
 						parseResult,
-						mapTaskForFiltering(task.parentTask) as TaskIndexTask
+						mapTaskForFiltering(task.parentTask)
 					);
 					// Determine visibility based on filter mode
 					parentPassesQueryFilter =
@@ -1098,7 +1105,7 @@ function shouldShowDueToRelationships(
 						);
 						const result = evaluateFilterNode(
 							parseResult,
-							mapTaskForFiltering(sibling) as TaskIndexTask
+							mapTaskForFiltering(sibling)
 						);
 						// Determine visibility based on filter mode
 						siblingPassesQueryFilter =
@@ -1152,7 +1159,7 @@ function hasMatchingDescendant(
 					);
 					const result = evaluateFilterNode(
 						parseResult,
-						mapTaskForFiltering(child) as TaskIndexTask
+						mapTaskForFiltering(child)
 					);
 					// Determine visibility based on filter mode
 					childPassesQueryFilter =

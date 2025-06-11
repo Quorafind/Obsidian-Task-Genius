@@ -81,7 +81,7 @@ export class StatusComponent extends Component {
 
 					if (status.text === "x" && !this.task.completed) {
 						options.completed = true;
-						options.completedDate = new Date().getTime();
+						options.metadata.completedDate = new Date().getTime();
 					}
 
 					this.params.onTaskUpdate?.(this.task, options);

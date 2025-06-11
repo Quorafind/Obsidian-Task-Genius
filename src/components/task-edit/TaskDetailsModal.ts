@@ -57,25 +57,44 @@ export class TaskDetailsModal extends Modal {
 
 		// Listen for metadata change events
 		this.metadataEditor.onMetadataChange = async (event) => {
+			// Determine if the field is a top-level task property or metadata property
+			const topLevelFields = ["status", "completed", "content"];
+			const isTopLevelField = topLevelFields.includes(event.field);
+
 			// Create a base task object with the updated field
 			const updatedTask = {
 				...this.task,
-				[event.field]: event.value,
 				line: this.task.line - 1,
 				id: `${this.task.filePath}-L${this.task.line - 1}`,
 			};
 
-			// Only update completed status and completedDate if the status field is changing to a completed state
+			if (isTopLevelField) {
+				// Update top-level task property
+				(updatedTask as any)[event.field] = event.value;
+			} else {
+				// Update metadata property
+				updatedTask.metadata = {
+					...this.task.metadata,
+					[event.field]: event.value,
+				};
+			}
+
+			// Handle special status field logic
 			if (
 				event.field === "status" &&
 				(event.value === "x" || event.value === "X")
 			) {
 				updatedTask.completed = true;
-				updatedTask.completedDate = Date.now();
+				updatedTask.metadata = {
+					...updatedTask.metadata,
+					completedDate: Date.now(),
+				};
 			} else if (event.field === "status") {
 				// If status is changing to something else, mark as not completed
 				updatedTask.completed = false;
-				updatedTask.completedDate = undefined;
+				const { completedDate, ...metadataWithoutCompletedDate } =
+					updatedTask.metadata;
+				updatedTask.metadata = metadataWithoutCompletedDate;
 			}
 
 			this.task = updatedTask;

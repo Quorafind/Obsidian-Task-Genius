@@ -695,6 +695,26 @@ const translations = {
 	"Prefer metadata format of task": "首选任务的元数据格式",
 	"You can choose dataview format or tasks format, that will influence both index and save format.":
 		"您可以选择 dataview 格式或 tasks 格式，这将影响索引和保存格式。",
+	"Task Parser Configuration": "任务解析器配置",
+	"Configure how task metadata is parsed and recognized.":
+		"配置任务元数据的解析和识别方式。",
+	"Project tag prefix": "项目标签前缀",
+	"Customize the prefix used for project tags (e.g., 'project' for #project/myproject). Changes require reindexing.":
+		"自定义项目标签使用的前缀（例如，'project' 对应 #project/myproject）。更改需要重新索引。",
+	"Customize the prefix used for project tags in dataview format (e.g., 'project' for [project:: myproject]). Changes require reindexing.":
+		"自定义 dataview 格式中项目标签使用的前缀（例如，'project' 对应 [project:: myproject]）。更改需要重新索引。",
+	"Context tag prefix": "上下文标签前缀",
+	"Customize the prefix used for context tags in dataview format (e.g., 'context' for [context:: home]). Note: emoji format always uses @ prefix. Changes require reindexing.":
+		"自定义 dataview 格式中上下文标签使用的前缀（例如，'context' 对应 [context:: home]）。注意：emoji 格式始终使用 @ 前缀。更改需要重新索引。",
+	"Context tags in emoji format always use @ prefix (not configurable). This setting only affects dataview format. Changes require reindexing.":
+		"emoji 格式中的上下文标签始终使用 @ 前缀（不可配置）。此设置仅影响 dataview 格式。更改需要重新索引。",
+	"Area tag prefix": "区域标签前缀",
+	"Customize the prefix used for area tags (e.g., 'area' for #area/work). Changes require reindexing.":
+		"自定义区域标签使用的前缀（例如，'area' 对应 #area/work）。更改需要重新索引。",
+	"Customize the prefix used for area tags in dataview format (e.g., 'area' for [area:: work]). Changes require reindexing.":
+		"自定义 dataview 格式中区域标签使用的前缀（例如，'area' 对应 [area:: work]）。更改需要重新索引。",
+	"Format Examples:": "格式示例：",
+	"always uses @ prefix": "始终使用 @ 前缀",
 	"Open in new tab": "在新标签页中打开",
 	"Open settings": "打开设置",
 	"Hide in sidebar": "在侧边栏中隐藏",
@@ -1199,6 +1219,25 @@ const translations = {
 	"Advanced Filtering": "高级过滤器",
 	"Use advanced multi-group filtering with complex conditions":
 		"使用高级多组过滤器，支持复杂条件",
+
+	// Project auto-assignment translations
+	"Auto-assigned from path": "从路径自动分配",
+	"Auto-assigned from file metadata": "从文件元数据自动分配",
+	"Auto-assigned from config file": "从配置文件自动分配",
+	"Auto-assigned": "自动分配",
+	"Auto from path": "路径自动",
+	"Auto from metadata": "元数据自动",
+	"Auto from config": "配置自动",
+	"This project is automatically assigned and cannot be changed":
+		"此项目是自动分配的，无法更改",
+	"You can override the auto-assigned project by entering a different value":
+		"您可以通过输入不同的值来覆盖自动分配的项目",
+	"You can override the auto-assigned project": "您可以覆盖自动分配的项目",
+	"Add new task": "添加新任务",
+	"Add new sub-task": "添加新子任务",
+	"Start workflow": "开始工作流",
+	"Complete substage and move to": "完成子阶段并移动到",
+	Continue: "继续",
 };
 
 export default translations;

@@ -143,8 +143,8 @@ export class YearView extends CalendarViewComponent {
 				| undefined
 			)[] = [
 				event.start,
-				event.scheduledDate, // Assuming 'scheduled' exists on CalendarEvent
-				event.dueDate, // Assuming 'due' exists on CalendarEvent
+				event.metadata.scheduledDate, // Assuming 'scheduled' exists on CalendarEvent
+				event.metadata.dueDate, // Assuming 'due' exists on CalendarEvent
 			];
 
 			datesToCheck.forEach((dateInput) => {

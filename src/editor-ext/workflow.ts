@@ -117,7 +117,7 @@ export function extractWorkflowInfo(lineText: string): {
  * @param lineNum The current line number
  * @returns The workflow type or null if not found
  */
-function findParentWorkflow(doc: Text, lineNum: number): string | null {
+export function findParentWorkflow(doc: Text, lineNum: number): string | null {
 	// Ensure lineNum is in bounds (0-indexed for doc.line)
 	const safeLineNum = Math.min(lineNum, doc.lines);
 
@@ -142,11 +142,16 @@ function findParentWorkflow(doc: Text, lineNum: number): string | null {
 		const indentMatch = lineText.match(/^([\s|\t]*)/);
 		const indent = indentMatch ? indentMatch[1].length : 0;
 
-		// If this line has less indentation than our current line
-		// and contains a workflow tag, it's a potential parent
-		if (indent < currentIndent) {
-			const workflowMatch = lineText.match(/#workflow\/([^\/\s]+)/);
-			if (workflowMatch) {
+		// Check for workflow tag in this line
+		const workflowMatch = lineText.match(/#workflow\/([^\/\s]+)/);
+		if (workflowMatch) {
+			// If this line has less indentation than our current line, it's a parent
+			// OR if both lines have the same indentation level (including 0),
+			// and this line is above the current line, it could be a project definition
+			if (
+				indent < currentIndent ||
+				(indent === currentIndent && i < currentLineIndex)
+			) {
 				return workflowMatch[1];
 			}
 		}
@@ -641,6 +646,64 @@ export function updateWorkflowContextMenu(
 					});
 				});
 			});
+
+			// Add quick workflow actions
+			submenu.addSeparator();
+
+			// Convert task to workflow template
+			submenu.addItem((convertItem: any) => {
+				convertItem.setTitle(t("Convert to workflow template"));
+				convertItem.setIcon("convert");
+				convertItem.onClick(() => {
+					// Import the conversion function
+					import("../commands/workflowCommands").then(
+						({ convertTaskToWorkflowCommand }) => {
+							convertTaskToWorkflowCommand(
+								false,
+								editor,
+								null as any,
+								plugin
+							);
+						}
+					);
+				});
+			});
+
+			// Start workflow here
+			submenu.addItem((startItem: any) => {
+				startItem.setTitle(t("Start workflow here"));
+				startItem.setIcon("play");
+				startItem.onClick(() => {
+					import("../commands/workflowCommands").then(
+						({ startWorkflowHereCommand }) => {
+							startWorkflowHereCommand(
+								false,
+								editor,
+								null as any,
+								plugin
+							);
+						}
+					);
+				});
+			});
+
+			// Quick workflow creation
+			submenu.addItem((quickItem: any) => {
+				quickItem.setTitle(t("Create quick workflow"));
+				quickItem.setIcon("zap");
+				quickItem.onClick(() => {
+					import("../commands/workflowCommands").then(
+						({ createQuickWorkflowCommand }) => {
+							createQuickWorkflowCommand(
+								false,
+								editor,
+								null as any,
+								plugin
+							);
+						}
+					);
+				});
+			});
 		});
 		return;
 	}
@@ -1043,20 +1106,36 @@ export function determineNextStage(
 			// Move to the next substage within this cycle
 			nextStageId = currentStage.id;
 			nextSubStageId = currentSubStage.next;
-		} else if (
-			currentStage.canProceedTo &&
-			currentStage.canProceedTo.length > 0
-		) {
-			// If no next substage, try to move to the next main stage
-			nextStageId = currentStage.canProceedTo[0];
-			nextSubStageId = undefined;
 		} else {
-			// If no canProceedTo, cycle back to the first substage
-			nextStageId = currentStage.id;
-			nextSubStageId =
-				currentStage.subStages && currentStage.subStages.length > 0
-					? currentStage.subStages[0].id
-					: undefined;
+			// For cycle stages, if there's no explicit next substage, we need to determine behavior:
+			// 1. If there's only one substage, keep cycling the same substage
+			// 2. If there are multiple substages, cycle back to the first one
+			// 3. Only move to next main stage if explicitly configured via canProceedTo
+
+			const subStageCount = currentStage.subStages
+				? currentStage.subStages.length
+				: 0;
+
+			if (subStageCount === 1) {
+				// Only one substage - keep cycling the same substage
+				nextStageId = currentStage.id;
+				nextSubStageId = currentSubStage.id;
+			} else if (subStageCount > 1) {
+				// Multiple substages - cycle back to the first one
+				nextStageId = currentStage.id;
+				nextSubStageId = currentStage.subStages![0].id;
+			} else if (
+				currentStage.canProceedTo &&
+				currentStage.canProceedTo.length > 0
+			) {
+				// No substages but has canProceedTo - move to next main stage
+				nextStageId = currentStage.canProceedTo[0];
+				nextSubStageId = undefined;
+			} else {
+				// Fallback - stay in the same stage
+				nextStageId = currentStage.id;
+				nextSubStageId = undefined;
+			}
 		}
 	} else if (currentStage.type === "linear") {
 		// For linear stages, find the next stage
@@ -1104,7 +1183,7 @@ export function determineNextStage(
 }
 
 // Helper function to create workflow stage transition
-function createWorkflowStageTransition(
+export function createWorkflowStageTransition(
 	plugin: TaskProgressBarPlugin,
 	editor: Editor,
 	line: string,
@@ -1128,7 +1207,7 @@ function createWorkflowStageTransition(
 		? indentMatch[1] + (isRootTask ? defaultIndentation : "")
 		: "";
 
-	const timestamp = plugin.settings.workflow.autoAddTimestamp
+	plugin.settings.workflow.autoAddTimestamp
 		? ` 🛫 ${moment().format(
 				plugin.settings.workflow.timestampFormat ||
 					"YYYY-MM-DD HH:mm:ss"

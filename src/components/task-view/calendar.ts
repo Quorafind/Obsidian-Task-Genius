@@ -302,7 +302,7 @@ export class CalendarComponent extends Component {
 
 			// Add class based on task priority
 			const hasPriorityTasks = dayTasks.some(
-				(task) => task.priority && task.priority >= 2
+				(task) => task.metadata.priority && task.metadata.priority >= 2
 			);
 			if (hasPriorityTasks) {
 				countEl.addClass("has-priority");
@@ -392,8 +392,8 @@ export class CalendarComponent extends Component {
 		const endTimestamp = endOfDay.getTime();
 
 		return this.tasks.filter((task) => {
-			if (task.dueDate) {
-				const dueDate = new Date(task.dueDate);
+			if (task.metadata.dueDate) {
+				const dueDate = new Date(task.metadata.dueDate);
 				dueDate.setHours(0, 0, 0, 0);
 				return dueDate.getTime() === startTimestamp;
 			}

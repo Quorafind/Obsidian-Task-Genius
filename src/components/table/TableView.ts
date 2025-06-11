@@ -529,44 +529,44 @@ export class TableView extends Component {
 					displayValue = task.content;
 					break;
 				case "priority":
-					value = task.priority;
-					displayValue = this.formatPriority(task.priority);
+					value = task.metadata.priority;
+					displayValue = this.formatPriority(task.metadata.priority);
 					break;
 				case "dueDate":
-					value = task.dueDate;
-					displayValue = this.formatDate(task.dueDate);
+					value = task.metadata.dueDate;
+					displayValue = this.formatDate(task.metadata.dueDate);
 					break;
 				case "startDate":
-					value = task.startDate;
-					displayValue = this.formatDate(task.startDate);
+					value = task.metadata.startDate;
+					displayValue = this.formatDate(task.metadata.startDate);
 					break;
 				case "scheduledDate":
-					value = task.scheduledDate;
-					displayValue = this.formatDate(task.scheduledDate);
+					value = task.metadata.scheduledDate;
+					displayValue = this.formatDate(task.metadata.scheduledDate);
 					break;
 				case "createdDate":
-					value = task.createdDate;
-					displayValue = this.formatDate(task.createdDate);
+					value = task.metadata.createdDate;
+					displayValue = this.formatDate(task.metadata.createdDate);
 					break;
 				case "completedDate":
-					value = task.completedDate;
-					displayValue = this.formatDate(task.completedDate);
+					value = task.metadata.completedDate;
+					displayValue = this.formatDate(task.metadata.completedDate);
 					break;
 				case "tags":
-					value = task.tags;
-					displayValue = task.tags?.join(", ") || "";
+					value = task.metadata.tags;
+					displayValue = task.metadata.tags?.join(", ") || "";
 					break;
 				case "project":
-					value = task.project;
-					displayValue = task.project || "";
+					value = task.metadata.project;
+					displayValue = task.metadata.project || "";
 					break;
 				case "context":
-					value = task.context;
-					displayValue = task.context || "";
+					value = task.metadata.context;
+					displayValue = task.metadata.context || "";
 					break;
 				case "recurrence":
-					value = task.recurrence;
-					displayValue = task.recurrence || "";
+					value = task.metadata.recurrence;
+					displayValue = task.metadata.recurrence || "";
 					break;
 				case "filePath":
 					value = task.filePath;
@@ -751,18 +751,23 @@ export class TableView extends Component {
 		this.updateSortIndicators();
 
 		// Debug logging to help identify sorting issues
-		console.log(`Table sorted by ${this.currentSortField} (${this.currentSortOrder})`);
+		console.log(
+			`Table sorted by ${this.currentSortField} (${this.currentSortOrder})`
+		);
 		console.log(`Filtered tasks count: ${this.filteredTasks.length}`);
 		console.log(`Displayed rows count: ${this.displayedRows.length}`);
 
 		// Fallback: If the table doesn't seem to be updating properly, force a complete refresh
 		// This is a safety net for any edge cases in the rendering logic
 		setTimeout(() => {
-			const currentRowCount = this.bodyEl.querySelectorAll("tr[data-row-id]").length;
+			const currentRowCount =
+				this.bodyEl.querySelectorAll("tr[data-row-id]").length;
 			const expectedRowCount = this.displayedRows.length;
 
 			if (currentRowCount !== expectedRowCount && expectedRowCount > 0) {
-				console.warn(`Table row count mismatch detected. Expected: ${expectedRowCount}, Actual: ${currentRowCount}. Forcing refresh.`);
+				console.warn(
+					`Table row count mismatch detected. Expected: ${expectedRowCount}, Actual: ${currentRowCount}. Forcing refresh.`
+				);
 				this.forceRefresh();
 			}
 		}, 100); // Small delay to allow rendering to complete
@@ -940,52 +945,58 @@ export class TableView extends Component {
 				task.content = value;
 				break;
 			case "priority":
-				task.priority = value ? parseInt(String(value)) : undefined;
+				task.metadata.priority = value
+					? parseInt(String(value))
+					: undefined;
 				break;
 			case "dueDate":
-				task.dueDate = value ? new Date(value).getTime() : undefined;
+				task.metadata.dueDate = value
+					? new Date(value).getTime()
+					: undefined;
 				break;
 			case "startDate":
-				task.startDate = value ? new Date(value).getTime() : undefined;
+				task.metadata.startDate = value
+					? new Date(value).getTime()
+					: undefined;
 				break;
 			case "scheduledDate":
-				task.scheduledDate = value
+				task.metadata.scheduledDate = value
 					? new Date(value).getTime()
 					: undefined;
 				break;
 			case "createdDate":
-				task.createdDate = value
+				task.metadata.createdDate = value
 					? new Date(value).getTime()
 					: undefined;
 				break;
 			case "completedDate":
-				task.completedDate = value
+				task.metadata.completedDate = value
 					? new Date(value).getTime()
 					: undefined;
 				break;
 			case "tags":
 				// Handle both array and string inputs
 				if (Array.isArray(value)) {
-					task.tags = value;
+					task.metadata.tags = value;
 				} else if (typeof value === "string") {
-					task.tags = value
+					task.metadata.tags = value
 						? value
 								.split(",")
 								.map((t: string) => t.trim())
 								.filter((t) => t.length > 0)
 						: [];
 				} else {
-					task.tags = [];
+					task.metadata.tags = [];
 				}
 				break;
 			case "project":
-				task.project = value || undefined;
+				task.metadata.project = value || undefined;
 				break;
 			case "context":
-				task.context = value || undefined;
+				task.metadata.context = value || undefined;
 				break;
 			case "recurrence":
-				task.recurrence = value || undefined;
+				task.metadata.recurrence = value || undefined;
 				break;
 		}
 	}
@@ -1250,44 +1261,27 @@ export class TableView extends Component {
 		// Update task property based on column
 		const updatedTask = { ...task };
 
+		// Define valid date column IDs for type safety
+		const dateColumns = [
+			"dueDate",
+			"startDate",
+			"scheduledDate",
+			"createdDate",
+			"completedDate",
+		] as const;
+
+		// Check if the column is a valid date column
+		if (!dateColumns.includes(columnId as any)) {
+			return;
+		}
+
 		if (newDate) {
+			// Set the date value
 			const dateValue = new Date(newDate).getTime();
-			switch (columnId) {
-				case "dueDate":
-					updatedTask.dueDate = dateValue;
-					break;
-				case "startDate":
-					updatedTask.startDate = dateValue;
-					break;
-				case "scheduledDate":
-					updatedTask.scheduledDate = dateValue;
-					break;
-				case "createdDate":
-					updatedTask.createdDate = dateValue;
-					break;
-				case "completedDate":
-					updatedTask.completedDate = dateValue;
-					break;
-			}
+			(updatedTask.metadata as any)[columnId] = dateValue;
 		} else {
 			// Clear the date
-			switch (columnId) {
-				case "dueDate":
-					delete updatedTask.dueDate;
-					break;
-				case "startDate":
-					delete updatedTask.startDate;
-					break;
-				case "scheduledDate":
-					delete updatedTask.scheduledDate;
-					break;
-				case "createdDate":
-					delete updatedTask.createdDate;
-					break;
-				case "completedDate":
-					delete updatedTask.completedDate;
-					break;
-			}
+			delete (updatedTask.metadata as any)[columnId];
 		}
 
 		// Notify task update

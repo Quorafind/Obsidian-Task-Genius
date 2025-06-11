@@ -38,11 +38,11 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 
 		// 为每个任务的项目建立索引
 		this.allTasks.forEach((task) => {
-			if (task.project) {
-				if (!this.allProjectsMap.has(task.project)) {
-					this.allProjectsMap.set(task.project, new Set());
+			if (task.metadata.project) {
+				if (!this.allProjectsMap.has(task.metadata.project)) {
+					this.allProjectsMap.set(task.metadata.project, new Set());
 				}
-				this.allProjectsMap.get(task.project)?.add(task.id);
+				this.allProjectsMap.get(task.metadata.project)?.add(task.id);
 			}
 		});
 
@@ -147,15 +147,15 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 			}
 
 			// 然后按优先级（高到低）
-			const priorityA = a.priority || 0;
-			const priorityB = b.priority || 0;
+			const priorityA = a.metadata.priority || 0;
+			const priorityB = b.metadata.priority || 0;
 			if (priorityA !== priorityB) {
 				return priorityB - priorityA;
 			}
 
 			// 然后按截止日期（早到晚）
-			const dueDateA = a.dueDate || Number.MAX_SAFE_INTEGER;
-			const dueDateB = b.dueDate || Number.MAX_SAFE_INTEGER;
+			const dueDateA = a.metadata.dueDate || Number.MAX_SAFE_INTEGER;
+			const dueDateB = b.metadata.dueDate || Number.MAX_SAFE_INTEGER;
 			return dueDateA - dueDateB;
 		});
 
@@ -175,7 +175,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		if (taskIndex !== -1) {
 			const oldTask = this.allTasks[taskIndex];
 			// 检查项目分配是否更改，这会影响侧边栏/过滤
-			if (oldTask.project !== updatedTask.project) {
+			if (oldTask.metadata.project !== updatedTask.metadata.project) {
 				needsFullRefresh = true;
 			}
 			this.allTasks[taskIndex] = updatedTask;

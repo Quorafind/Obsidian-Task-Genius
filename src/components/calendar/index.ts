@@ -8,9 +8,11 @@ import {
 	setIcon,
 } from "obsidian";
 import { Task } from "../../types/task"; // Assuming Task type exists here
+import { IcsTask } from "../../types/ics";
 // Removed: import { renderCalendarEvent } from "./event";
 import "../../styles/calendar/view.css"; // Import the CSS file
 import "../../styles/calendar/event.css"; // Import the CSS file
+import "../../styles/calendar/badge.css"; // Import the badge CSS file
 import { t } from "../../translations/helper";
 
 // Import view rendering functions
@@ -56,6 +58,10 @@ export class CalendarComponent extends Component {
 
 	// Track the currently active view component
 	private activeViewComponent: CalendarView | null = null;
+
+	// Performance optimization: Cache badge events by date
+	private badgeEventsCache: Map<string, CalendarEvent[]> = new Map();
+	private badgeEventsCacheVersion: number = 0;
 
 	constructor(
 		app: App,
@@ -121,6 +127,8 @@ export class CalendarComponent extends Component {
 	 */
 	updateTasks(newTasks: Task[]) {
 		this.tasks = newTasks;
+		// Clear badge cache when tasks change
+		this.invalidateBadgeEventsCache();
 		this.processTasks();
 		// Only update the currently active view
 		if (this.activeViewComponent) {
@@ -187,6 +195,8 @@ export class CalendarComponent extends Component {
 	 */
 	public setTasks(tasks: Task[]) {
 		this.tasks = tasks;
+		// Clear badge cache when tasks change
+		this.invalidateBadgeEventsCache();
 		this.processTasks();
 		this.render(); // Re-render header and update the view
 	}
@@ -307,6 +317,8 @@ export class CalendarComponent extends Component {
 						onDayHover: this.onDayHover,
 						onEventContextMenu: this.onEventContextMenu,
 						onEventComplete: this.onEventComplete,
+						getBadgeEventsForDate:
+							this.getBadgeEventsForDate.bind(this),
 					}
 				);
 				break;
@@ -325,6 +337,8 @@ export class CalendarComponent extends Component {
 						onDayHover: this.onDayHover,
 						onEventContextMenu: this.onEventContextMenu,
 						onEventComplete: this.onEventComplete,
+						getBadgeEventsForDate:
+							this.getBadgeEventsForDate.bind(this),
 					}
 				);
 				break;
@@ -394,6 +408,8 @@ export class CalendarComponent extends Component {
 			if (nextViewComponent) {
 				this.activeViewComponent = nextViewComponent;
 				this.addChild(this.activeViewComponent); // Load and attach the new component
+				// Pre-compute badge events for better performance
+				this.precomputeBadgeEventsForCurrentView();
 				// Update the newly activated view with current data
 				this.activeViewComponent.updateEvents(this.events);
 			} else {
@@ -401,6 +417,8 @@ export class CalendarComponent extends Component {
 			}
 		} else if (this.activeViewComponent) {
 			// If the view is the same, just update it with potentially new date/events
+			// Pre-compute badge events for better performance
+			this.precomputeBadgeEventsForCurrentView();
 			this.activeViewComponent.updateEvents(this.events);
 		}
 
@@ -429,45 +447,73 @@ export class CalendarComponent extends Component {
 	/**
 	 * Processes the raw tasks into calendar events.
 	 */
-	private processTasks() {
+	private async processTasks() {
 		this.events = [];
+		// Clear badge cache when processing tasks
+		this.invalidateBadgeEventsCache();
 		const primaryDateField = "dueDate"; // TODO: Make this configurable via settings
 
+		// Process tasks
 		this.tasks.forEach((task) => {
+			// Check if this is an ICS task with badge showType
+			const isIcsTask = (task as any).source?.type === "ics";
+			const icsTask = isIcsTask ? (task as IcsTask) : null; // Type assertion for IcsTask
+			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
+
+			// Skip ICS tasks with badge showType - they will be handled separately
+			if (isIcsTask && showAsBadge) {
+				return;
+			}
+
 			// Determine the date to use based on priority (dueDate > scheduledDate > startDate)
 			// This logic might need refinement based on exact requirements in PRD 4.2
 			let eventDate: number | null = null;
 			let isAllDay = true; // Assume tasks are all-day unless time info exists
 
-			// Use the first available date field based on preference.
-			// The PRD mentions using dueDate primarily, with an option for scheduled/start.
-			// Let's stick to dueDate for now as primary.
-			if (task[primaryDateField]) {
-				eventDate = task[primaryDateField];
-			} else if (task.scheduledDate) {
-				eventDate = task.scheduledDate;
-			} else if (task.startDate) {
-				eventDate = task.startDate;
+			// For ICS tasks, use the ICS event dates directly
+			if (isIcsTask && icsTask?.icsEvent) {
+				eventDate = icsTask.icsEvent.dtstart.getTime();
+				isAllDay = icsTask.icsEvent.allDay;
+			} else {
+				// Use the first available date field based on preference.
+				// The PRD mentions using dueDate primarily, with an option for scheduled/start.
+				// Let's stick to dueDate for now as primary.
+				if (task.metadata[primaryDateField]) {
+					eventDate = task.metadata[primaryDateField];
+				} else if (task.metadata.scheduledDate) {
+					eventDate = task.metadata.scheduledDate;
+				} else if (task.metadata.startDate) {
+					eventDate = task.metadata.startDate;
+				}
 			}
 			// We could add completedDate here if we want to show completed tasks based on completion time
 
 			if (eventDate) {
 				const startMoment = moment(eventDate);
-				// Try to parse time if available in the task string or metadata (complex)
-				// For now, assume all tasks are all-day events on their primary date
-				const start = startMoment.startOf("day").toDate(); // Represent as start of the day
+				// For ICS events, preserve the original time if not all-day
+				const start = isAllDay
+					? startMoment.startOf("day").toDate()
+					: startMoment.toDate();
 
 				// Handle multi-day? PRD mentions if startDate and dueDate are available.
 				let end: Date | undefined = undefined;
 				let effectiveStart = start; // Use the primary date as start by default
-				if (
-					task.startDate &&
-					task.dueDate &&
-					task.startDate !== task.dueDate
+
+				if (isIcsTask && icsTask?.icsEvent?.dtend) {
+					// For ICS events, use the end date from the event
+					end = icsTask.icsEvent.dtend;
+				} else if (
+					task.metadata.startDate &&
+					task.metadata.dueDate &&
+					task.metadata.startDate !== task.metadata.dueDate
 				) {
 					// Ensure start is actually before due date
-					const sMoment = moment(task.startDate).startOf("day");
-					const dMoment = moment(task.dueDate).startOf("day");
+					const sMoment = moment(task.metadata.startDate).startOf(
+						"day"
+					);
+					const dMoment = moment(task.metadata.dueDate).startOf(
+						"day"
+					);
 					if (sMoment.isBefore(dMoment)) {
 						// FullCalendar and similar often expect the 'end' date to be exclusive
 						// for all-day events. So an event ending on the 15th would have end=16th.
@@ -477,14 +523,21 @@ export class CalendarComponent extends Component {
 					}
 				}
 
+				// Determine color for the event
+				let eventColor: string | undefined;
+				if (isIcsTask && icsTask?.icsEvent?.source?.color) {
+					eventColor = icsTask.icsEvent.source.color;
+				} else {
+					eventColor = task.completed ? "grey" : undefined;
+				}
+
 				this.events.push({
 					...task, // Spread all properties from the original task
 					title: task.content, // Use task content as title by default
 					start: effectiveStart,
 					end: end, // Add end date if calculated
 					allDay: isAllDay,
-					// TODO: Add color based on status, priority, or project?
-					color: task.completed ? "grey" : undefined, // Simple example
+					color: eventColor,
 				});
 			}
 			// Else: Task has no relevant date, ignore for now (PRD: maybe "unscheduled" panel)
@@ -494,8 +547,241 @@ export class CalendarComponent extends Component {
 		this.events.sort((a, b) => a.start.getTime() - b.start.getTime());
 
 		console.log(
-			`Processed ${this.events.length} events from ${this.tasks.length} tasks.`
+			`Processed ${this.events.length} events from ${this.tasks.length} tasks (including ICS events as tasks).`
 		);
+	}
+
+	/**
+	 * Invalidate the badge events cache
+	 */
+	private invalidateBadgeEventsCache(): void {
+		this.badgeEventsCache.clear();
+		this.badgeEventsCacheVersion++;
+	}
+
+	/**
+	 * Pre-compute badge events for a date range to optimize performance
+	 * This replaces the per-date filtering with a single pass through all tasks
+	 */
+	private precomputeBadgeEventsForRange(
+		startDate: Date,
+		endDate: Date
+	): void {
+		// Convert dates to YYYY-MM-DD format for consistent comparison
+		const formatDateKey = (date: Date): string => {
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
+			return `${year}-${month}-${day}`;
+		};
+
+		// Clear existing cache for the range
+		const startKey = formatDateKey(startDate);
+		const endKey = formatDateKey(endDate);
+
+		// Initialize cache entries for the date range
+		const currentDate = new Date(startDate);
+		while (currentDate <= endDate) {
+			const dateKey = formatDateKey(currentDate);
+			this.badgeEventsCache.set(dateKey, []);
+			currentDate.setDate(currentDate.getDate() + 1);
+		}
+
+		// Single pass through all tasks to populate cache
+		this.tasks.forEach((task) => {
+			const isIcsTask = (task as any).source?.type === "ics";
+			const icsTask = isIcsTask ? (task as IcsTask) : null;
+			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
+
+			if (isIcsTask && showAsBadge && icsTask?.icsEvent) {
+				// Use native Date operations instead of moment for better performance
+				const eventDate = new Date(icsTask.icsEvent.dtstart);
+				// Normalize to start of day for comparison
+				const eventDateNormalized = new Date(
+					eventDate.getFullYear(),
+					eventDate.getMonth(),
+					eventDate.getDate()
+				);
+				const eventDateKey = formatDateKey(eventDateNormalized);
+
+				// Check if the event is within our cached range
+				if (this.badgeEventsCache.has(eventDateKey)) {
+					// Convert the task to a CalendarEvent format for consistency
+					const calendarEvent: CalendarEvent = {
+						...task,
+						title: task.content,
+						start: icsTask.icsEvent.dtstart,
+						end: icsTask.icsEvent.dtend,
+						allDay: icsTask.icsEvent.allDay,
+						color: icsTask.icsEvent.source.color,
+					};
+
+					const existingEvents =
+						this.badgeEventsCache.get(eventDateKey) || [];
+					existingEvents.push(calendarEvent);
+					this.badgeEventsCache.set(eventDateKey, existingEvents);
+				}
+			}
+		});
+
+		console.log(
+			`Pre-computed badge events for range ${startKey} to ${endKey}. Cache size: ${this.badgeEventsCache.size}`
+		);
+	}
+
+	/**
+	 * Get badge events for a specific date (optimized version)
+	 * These are ICS events that should be displayed as badges (count) rather than full events
+	 */
+	public getBadgeEventsForDate(date: Date): CalendarEvent[] {
+		// Use native Date operations for better performance
+		const year = date.getFullYear();
+		const month = date.getMonth();
+		const day = date.getDate();
+		const normalizedDate = new Date(year, month, day);
+		const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+			day
+		).padStart(2, "0")}`;
+
+		// Check if we have cached data for this date
+		if (this.badgeEventsCache.has(dateKey)) {
+			const cachedEvents = this.badgeEventsCache.get(dateKey) || [];
+			console.log(
+				`Badge events for date ${dateKey} (cached):`,
+				cachedEvents.length
+			);
+			return cachedEvents;
+		}
+
+		// If not cached, fall back to the original logic but optimized
+		console.log(
+			`Badge events for date ${dateKey} (not cached, computing):`,
+			"from tasks:",
+			this.tasks.length
+		);
+
+		const badgeEventsForDate: CalendarEvent[] = [];
+
+		this.tasks.forEach((task) => {
+			const isIcsTask = (task as any).source?.type === "ics";
+			const icsTask = isIcsTask ? (task as IcsTask) : null;
+			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
+
+			if (isIcsTask && showAsBadge && icsTask?.icsEvent) {
+				// Use native Date operations instead of moment for better performance
+				const eventDate = new Date(icsTask.icsEvent.dtstart);
+				const eventYear = eventDate.getFullYear();
+				const eventMonth = eventDate.getMonth();
+				const eventDay = eventDate.getDate();
+
+				// Check if the event is on the target date using native comparison
+				if (
+					eventYear === year &&
+					eventMonth === month &&
+					eventDay === day
+				) {
+					// Convert the task to a CalendarEvent format for consistency
+					const calendarEvent: CalendarEvent = {
+						...task,
+						title: task.content,
+						start: icsTask.icsEvent.dtstart,
+						end: icsTask.icsEvent.dtend,
+						allDay: icsTask.icsEvent.allDay,
+						color: icsTask.icsEvent.source.color,
+					};
+					badgeEventsForDate.push(calendarEvent);
+				}
+			}
+		});
+
+		// Cache the result for future use
+		this.badgeEventsCache.set(dateKey, badgeEventsForDate);
+
+		console.log("Badge events for date:", badgeEventsForDate.length);
+
+		return badgeEventsForDate;
+	}
+
+	/**
+	 * Pre-compute badge events for the current view's date range
+	 * This should be called when the view changes or data updates
+	 */
+	public precomputeBadgeEventsForCurrentView(): void {
+		if (!this.activeViewComponent) return;
+
+		let startDate: Date;
+		let endDate: Date;
+
+		switch (this.currentViewMode) {
+			case "month":
+				// For month view, compute for the entire grid (including previous/next month days)
+				const startOfMonth = this.currentDate.clone().startOf("month");
+				const endOfMonth = this.currentDate.clone().endOf("month");
+
+				// Get first day of week setting
+				const viewConfig = this.plugin.settings.viewConfiguration.find(
+					(v) => v.id === this.viewId
+				)?.specificConfig as any; // Use any for now to avoid import complexity
+				const firstDayOfWeek = viewConfig?.firstDayOfWeek ?? 0;
+
+				const gridStart = startOfMonth
+					.clone()
+					.weekday(firstDayOfWeek - 7);
+				let gridEnd = endOfMonth.clone().weekday(firstDayOfWeek + 6);
+
+				// Ensure at least 42 days (6 weeks)
+				if (gridEnd.diff(gridStart, "days") + 1 < 42) {
+					const daysToAdd =
+						42 - (gridEnd.diff(gridStart, "days") + 1);
+					gridEnd.add(daysToAdd, "days");
+				}
+
+				startDate = gridStart.toDate();
+				endDate = gridEnd.toDate();
+				break;
+
+			case "week":
+				const startOfWeek = this.currentDate.clone().startOf("week");
+				const endOfWeek = this.currentDate.clone().endOf("week");
+				startDate = startOfWeek.toDate();
+				endDate = endOfWeek.toDate();
+				break;
+
+			case "day":
+				startDate = this.currentDate.clone().startOf("day").toDate();
+				endDate = this.currentDate.clone().endOf("day").toDate();
+				break;
+
+			case "year":
+				const startOfYear = this.currentDate.clone().startOf("year");
+				const endOfYear = this.currentDate.clone().endOf("year");
+				startDate = startOfYear.toDate();
+				endDate = endOfYear.toDate();
+				break;
+
+			default:
+				// For agenda and other views, use a reasonable default range
+				startDate = this.currentDate.clone().startOf("day").toDate();
+				endDate = this.currentDate.clone().add(30, "days").toDate();
+		}
+
+		this.precomputeBadgeEventsForRange(startDate, endDate);
+	}
+
+	/**
+	 * Map ICS priority to task priority
+	 */
+	private mapIcsPriorityToTaskPriority(
+		icsPriority?: number
+	): number | undefined {
+		if (icsPriority === undefined) return undefined;
+
+		// ICS priority: 0 (undefined), 1-4 (high), 5 (normal), 6-9 (low)
+		// Task priority: 1 (highest), 2 (high), 3 (medium), 4 (low), 5 (lowest)
+		if (icsPriority >= 1 && icsPriority <= 4) return 1; // High
+		if (icsPriority === 5) return 3; // Medium
+		if (icsPriority >= 6 && icsPriority <= 9) return 5; // Low
+		return undefined;
 	}
 
 	// --- Utility Methods ---

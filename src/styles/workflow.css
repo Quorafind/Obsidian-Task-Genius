@@ -1,0 +1,49 @@
+/* Workflow Decorator Styles */
+.cm-workflow-stage-indicator {
+	display: inline-block;
+	margin-left: 4px;
+	font-size: 12px;
+	cursor: pointer;
+	opacity: 0.7;
+	transition: opacity 0.2s ease;
+	user-select: none;
+
+	align-items: center;
+	vertical-align: middle;
+}
+
+.cm-workflow-stage-indicator span {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.cm-workflow-stage-indicator:hover {
+	opacity: 1;
+}
+
+/* Different colors for different stage types */
+.cm-workflow-stage-indicator[data-stage-type="linear"] {
+	color: var(--text-accent);
+}
+
+.cm-workflow-stage-indicator[data-stage-type="cycle"] {
+	color: var(--task-in-progress-color);
+}
+
+.cm-workflow-stage-indicator[data-stage-type="terminal"] {
+	color: var(--task-completed-color);
+}
+
+/* Dark theme adjustments */
+.theme-dark .cm-workflow-stage-indicator[data-stage-type="linear"] {
+	color: var(--text-accent);
+}
+
+.theme-dark .cm-workflow-stage-indicator[data-stage-type="cycle"] {
+	color: var(--task-in-progress-color);
+}
+
+.theme-dark .cm-workflow-stage-indicator[data-stage-type="terminal"] {
+	color: var(--task-completed-color);
+}

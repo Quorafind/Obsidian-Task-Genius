@@ -906,4 +906,473 @@ describe("handleCycleCompleteStatusTransaction (Integration)", () => {
 		expect(result.annotations).not.toBe("taskStatusChange");
 		expect(result).toBe(tr);
 	});
+
+	it("should cycle task status when user selects and replaces the 'x' mark with any character", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test replacing 'x' with 'a' (any character)
+		const tr1 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [a] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "a" },
+			],
+		});
+		const result1 = handleCycleCompleteStatusTransaction(
+			tr1,
+			mockApp,
+			mockPlugin
+		);
+		expect(result1).not.toBe(tr1);
+		const changes1 = Array.isArray(result1.changes)
+			? result1.changes
+			: result1.changes
+			? [result1.changes]
+			: [];
+		expect(changes1).toHaveLength(1);
+		expect(changes1[0].from).toBe(3);
+		expect(changes1[0].to).toBe(4);
+		expect(changes1[0].insert).toBe(" "); // Should cycle from 'x' to ' ' (next in cycle)
+		expect(result1.annotations).toBe("taskStatusChange");
+
+		// Test replacing 'x' with '1' (number)
+		const tr2 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [1] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "1" },
+			],
+		});
+		const result2 = handleCycleCompleteStatusTransaction(
+			tr2,
+			mockApp,
+			mockPlugin
+		);
+		expect(result2).not.toBe(tr2);
+		const changes2 = Array.isArray(result2.changes)
+			? result2.changes
+			: result2.changes
+			? [result2.changes]
+			: [];
+		expect(changes2).toHaveLength(1);
+		expect(changes2[0].from).toBe(3);
+		expect(changes2[0].to).toBe(4);
+		expect(changes2[0].insert).toBe(" "); // Should cycle from 'x' to ' ' (next in cycle)
+		expect(result2.annotations).toBe("taskStatusChange");
+
+		// Test replacing 'x' with '!' (special character)
+		const tr3 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [!] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "!" },
+			],
+		});
+		const result3 = handleCycleCompleteStatusTransaction(
+			tr3,
+			mockApp,
+			mockPlugin
+		);
+		expect(result3).not.toBe(tr3);
+		const changes3 = Array.isArray(result3.changes)
+			? result3.changes
+			: result3.changes
+			? [result3.changes]
+			: [];
+		expect(changes3).toHaveLength(1);
+		expect(changes3[0].from).toBe(3);
+		expect(changes3[0].to).toBe(4);
+		expect(changes3[0].insert).toBe(" "); // Should cycle from 'x' to ' ' (next in cycle)
+		expect(result3.annotations).toBe("taskStatusChange");
+	});
+
+	it("should cycle task status when user selects and replaces any mark with any character", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test replacing ' ' (space) with 'z'
+		const tr1 = createMockTransaction({
+			startStateDocContent: "- [ ] Task",
+			newDocContent: "- [z] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "z" },
+			],
+		});
+		const result1 = handleCycleCompleteStatusTransaction(
+			tr1,
+			mockApp,
+			mockPlugin
+		);
+		expect(result1).not.toBe(tr1);
+		const changes1 = Array.isArray(result1.changes)
+			? result1.changes
+			: result1.changes
+			? [result1.changes]
+			: [];
+		expect(changes1).toHaveLength(1);
+		expect(changes1[0].from).toBe(3);
+		expect(changes1[0].to).toBe(4);
+		expect(changes1[0].insert).toBe("/"); // Should cycle from ' ' to '/' (next in cycle)
+		expect(result1.annotations).toBe("taskStatusChange");
+
+		// Test replacing '/' with 'q'
+		const tr2 = createMockTransaction({
+			startStateDocContent: "- [/] Task",
+			newDocContent: "- [q] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "q" },
+			],
+		});
+		const result2 = handleCycleCompleteStatusTransaction(
+			tr2,
+			mockApp,
+			mockPlugin
+		);
+		expect(result2).not.toBe(tr2);
+		const changes2 = Array.isArray(result2.changes)
+			? result2.changes
+			: result2.changes
+			? [result2.changes]
+			: [];
+		expect(changes2).toHaveLength(1);
+		expect(changes2[0].from).toBe(3);
+		expect(changes2[0].to).toBe(4);
+		expect(changes2[0].insert).toBe("x"); // Should cycle from '/' to 'x' (next in cycle)
+		expect(result2.annotations).toBe("taskStatusChange");
+	});
+
+	it("should correctly detect the original mark in replacement operations", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test the specific case where user selects 'x' and replaces it with 'a'
+		// This is a replacement operation: fromA=3, toA=4 (deleting 'x'), fromB=3, toB=4 (inserting 'a')
+		const tr = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [a] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "a" },
+			],
+		});
+
+		// First, let's test what findTaskStatusChanges returns
+		const taskChanges = findTaskStatusChanges(tr, false);
+		expect(taskChanges).toHaveLength(1);
+
+		// The currentMark should be 'x' (the original mark that was replaced)
+		// NOT 'a' (the new mark that was typed)
+		expect(taskChanges[0].currentMark).toBe("x");
+		expect(taskChanges[0].position).toBe(3);
+
+		// Now test the full cycle behavior
+		const result = handleCycleCompleteStatusTransaction(
+			tr,
+			mockApp,
+			mockPlugin
+		);
+		expect(result).not.toBe(tr);
+		const changes = Array.isArray(result.changes)
+			? result.changes
+			: result.changes
+			? [result.changes]
+			: [];
+		expect(changes).toHaveLength(1);
+		expect(changes[0].from).toBe(3);
+		expect(changes[0].to).toBe(4);
+		expect(changes[0].insert).toBe(" "); // Should cycle from 'x' to ' ' (next in cycle)
+		expect(result.annotations).toBe("taskStatusChange");
+	});
+
+	it("should handle replacement operations where fromA != toA", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test replacement operation: user selects 'x' and types 'z'
+		// This should be detected as a replacement, not just an insertion
+		const tr = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [z] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "z" },
+			],
+		});
+
+		// Verify that this is detected as a task status change
+		const taskChanges = findTaskStatusChanges(tr, false);
+		expect(taskChanges).toHaveLength(1);
+		expect(taskChanges[0].currentMark).toBe("x"); // Original mark before replacement
+		expect(taskChanges[0].wasCompleteTask).toBe(true);
+
+		// Verify the cycling behavior
+		const result = handleCycleCompleteStatusTransaction(
+			tr,
+			mockApp,
+			mockPlugin
+		);
+		expect(result).not.toBe(tr);
+		const changes = Array.isArray(result.changes)
+			? result.changes
+			: result.changes
+			? [result.changes]
+			: [];
+		expect(changes).toHaveLength(1);
+		expect(changes[0].insert).toBe(" "); // Should cycle from 'x' to ' '
+	});
+
+	it("should debug replacement with space character specifically", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test the specific case: user selects 'x' and types space ' '
+		// This might be the problematic case you mentioned
+		const tr = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [ ] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: " " },
+			],
+		});
+
+		// Debug: Check what findTaskStatusChanges detects
+		const taskChanges = findTaskStatusChanges(tr, false);
+		console.log("Debug - taskChanges for space replacement:", taskChanges);
+
+		if (taskChanges.length > 0) {
+			console.log("Debug - currentMark:", taskChanges[0].currentMark);
+			console.log("Debug - position:", taskChanges[0].position);
+			console.log(
+				"Debug - wasCompleteTask:",
+				taskChanges[0].wasCompleteTask
+			);
+		}
+
+		// Test the full cycle behavior
+		const result = handleCycleCompleteStatusTransaction(
+			tr,
+			mockApp,
+			mockPlugin
+		);
+
+		console.log("Debug - result === tr:", result === tr);
+		console.log("Debug - result.changes:", result.changes);
+
+		// If this is the problematic case, the result might be different
+		if (result !== tr) {
+			const changes = Array.isArray(result.changes)
+				? result.changes
+				: result.changes
+				? [result.changes]
+				: [];
+			console.log("Debug - changes length:", changes.length);
+			if (changes.length > 0) {
+				console.log("Debug - first change:", changes[0]);
+			}
+		}
+
+		// For now, let's just verify it's detected as a change
+		expect(taskChanges).toHaveLength(1);
+		expect(taskChanges[0].currentMark).toBe("x"); // Should detect original 'x'
+	});
+
+	it("should test different replacement scenarios to identify the trigger", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test 1: Replace 'x' with 'a' (non-space character)
+		const tr1 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [a] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "a" },
+			],
+		});
+
+		const taskChanges1 = findTaskStatusChanges(tr1, false);
+		const result1 = handleCycleCompleteStatusTransaction(
+			tr1,
+			mockApp,
+			mockPlugin
+		);
+
+		console.log("Test 1 (x->a): taskChanges length:", taskChanges1.length);
+		console.log("Test 1 (x->a): result changed:", result1 !== tr1);
+
+		// Test 2: Replace 'x' with ' ' (space character)
+		const tr2 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [ ] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: " " },
+			],
+		});
+
+		const taskChanges2 = findTaskStatusChanges(tr2, false);
+		const result2 = handleCycleCompleteStatusTransaction(
+			tr2,
+			mockApp,
+			mockPlugin
+		);
+
+		console.log("Test 2 (x-> ): taskChanges length:", taskChanges2.length);
+		console.log("Test 2 (x-> ): result changed:", result2 !== tr2);
+
+		// Test 3: Replace '/' with ' ' (space character)
+		const tr3 = createMockTransaction({
+			startStateDocContent: "- [/] Task",
+			newDocContent: "- [ ] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: " " },
+			],
+		});
+
+		const taskChanges3 = findTaskStatusChanges(tr3, false);
+		const result3 = handleCycleCompleteStatusTransaction(
+			tr3,
+			mockApp,
+			mockPlugin
+		);
+
+		console.log("Test 3 (/-> ): taskChanges length:", taskChanges3.length);
+		console.log("Test 3 (/-> ): result changed:", result3 !== tr3);
+
+		// Test 4: Replace ' ' with 'x' (completing a task)
+		const tr4 = createMockTransaction({
+			startStateDocContent: "- [ ] Task",
+			newDocContent: "- [x] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "x" },
+			],
+		});
+
+		const taskChanges4 = findTaskStatusChanges(tr4, false);
+		const result4 = handleCycleCompleteStatusTransaction(
+			tr4,
+			mockApp,
+			mockPlugin
+		);
+
+		console.log("Test 4 ( ->x): taskChanges length:", taskChanges4.length);
+		console.log("Test 4 ( ->x): result changed:", result4 !== tr4);
+
+		// All should be detected as task changes
+		expect(taskChanges1).toHaveLength(1);
+		expect(taskChanges2).toHaveLength(1);
+		expect(taskChanges3).toHaveLength(1);
+		expect(taskChanges4).toHaveLength(1);
+	});
+
+	it("should identify the exact problem: when user input matches next cycle state", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+		// Cycle: ' ' -> '/' -> 'x' -> ' '
+
+		// Problem case: User replaces 'x' with ' ' (which is the correct next state)
+		// But the system detects currentMark='x', calculates nextMark=' ',
+		// and since user already typed ' ', it should NOT cycle again
+		const tr = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [ ] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: " " },
+			],
+		});
+
+		const taskChanges = findTaskStatusChanges(tr, false);
+		console.log("Problem case - taskChanges:", taskChanges);
+
+		// The issue: currentMark should be 'x' (original), but
+		// user typed ' ' (space) which happens to be the next mark in cycle
+		// System calculates nextMark=' ' and user input=' ', so they match
+		// Should NOT trigger another cycle
+
+		const result = handleCycleCompleteStatusTransaction(
+			tr,
+			mockApp,
+			mockPlugin
+		);
+
+		// Debug output
+		if (taskChanges.length > 0) {
+			const taskChange = taskChanges[0];
+			console.log("Current mark (original):", taskChange.currentMark);
+
+			// Get user's typed character
+			let userTyped = "";
+			tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+				if (fromB === taskChange.position) {
+					userTyped = inserted.toString();
+				}
+			});
+			console.log("User typed:", userTyped);
+
+			// Calculate what the next mark should be
+			const marks = mockPlugin.settings.taskStatusMarks;
+			const cycle = mockPlugin.settings.taskStatusCycle;
+			let currentIndex = -1;
+			for (let i = 0; i < cycle.length; i++) {
+				if (marks[cycle[i]] === taskChange.currentMark) {
+					currentIndex = i;
+					break;
+				}
+			}
+			const nextIndex = (currentIndex + 1) % cycle.length;
+			const nextMark = marks[cycle[nextIndex]];
+			console.log("Next mark (calculated):", nextMark);
+			console.log(
+				"User input matches next mark:",
+				userTyped === nextMark
+			);
+			console.log("System wants to change to:", nextMark);
+		}
+
+		// The result should be the original transaction (no cycling)
+		// Because user already typed the correct next character
+		expect(result).toBe(tr);
+	});
+
+	it("should NOT cycle when user manually replaces task marker with any character", () => {
+		const mockPlugin = createMockPlugin(); // Defaults: ' ', '/', 'x'
+
+		// Test 1: User selects 'x' and types 'a' (replacement operation)
+		const tr1 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [a] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "a" },
+			],
+		});
+
+		const result1 = handleCycleCompleteStatusTransaction(
+			tr1,
+			mockApp,
+			mockPlugin
+		);
+		expect(result1).toBe(tr1); // Should not cycle, keep user input 'a'
+
+		// Test 2: User selects 'x' and types ' ' (replacement operation)
+		const tr2 = createMockTransaction({
+			startStateDocContent: "- [x] Task",
+			newDocContent: "- [ ] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: " " },
+			],
+		});
+
+		const result2 = handleCycleCompleteStatusTransaction(
+			tr2,
+			mockApp,
+			mockPlugin
+		);
+		expect(result2).toBe(tr2); // Should not cycle, keep user input ' '
+
+		// Test 3: User selects ' ' and types 'z' (replacement operation)
+		const tr3 = createMockTransaction({
+			startStateDocContent: "- [ ] Task",
+			newDocContent: "- [z] Task",
+			changes: [
+				{ fromA: 3, toA: 4, fromB: 3, toB: 4, insertedText: "z" },
+			],
+		});
+
+		const result3 = handleCycleCompleteStatusTransaction(
+			tr3,
+			mockApp,
+			mockPlugin
+		);
+		expect(result3).toBe(tr3); // Should not cycle, keep user input 'z'
+	});
 });

@@ -4,6 +4,7 @@ import { MarkdownRendererComponent } from "../MarkdownRenderer"; // Adjust path
 import TaskProgressBarPlugin from "../../index"; // Adjust path
 import { KanbanSpecificConfig } from "../../common/setting-definition";
 import { createTaskCheckbox } from "../task-view/details";
+import { getEffectiveProject } from "../../utils/taskUtil";
 
 export class KanbanCardComponent extends Component {
 	public element: HTMLElement;
@@ -46,8 +47,10 @@ export class KanbanCardComponent extends Component {
 		if (this.task.completed) {
 			this.element.classList.add("task-completed");
 		}
-		if (this.task.priority) {
-			this.element.classList.add(`priority-${this.task.priority}`);
+		if (this.task.metadata.priority) {
+			this.element.classList.add(
+				`priority-${this.task.metadata.priority}`
+			);
 		}
 
 		// --- Card Content ---
@@ -134,28 +137,29 @@ export class KanbanCardComponent extends Component {
 
 		// Display dates (similar to TaskListItemComponent)
 		if (!this.task.completed) {
-			if (this.task.dueDate) this.renderDueDate();
+			if (this.task.metadata.dueDate) this.renderDueDate();
 			// Add scheduled, start dates if needed
 		} else {
-			if (this.task.completedDate) this.renderCompletionDate();
+			if (this.task.metadata.completedDate) this.renderCompletionDate();
 			// Add created date if needed
 		}
 
 		// Project (if not grouped by project already) - Kanban might inherently group by status
-		if (this.task.project) this.renderProject();
+		if (getEffectiveProject(this.task)) this.renderProject();
 
 		// Tags
-		if (this.task.tags && this.task.tags.length > 0) this.renderTags();
+		if (this.task.metadata.tags && this.task.metadata.tags.length > 0)
+			this.renderTags();
 
 		// Priority
-		if (this.task.priority) this.renderPriority();
+		if (this.task.metadata.priority) this.renderPriority();
 	}
 
 	private renderDueDate() {
 		const dueEl = this.metadataEl.createEl("div", {
 			cls: ["task-date", "task-due-date"],
 		});
-		const dueDate = new Date(this.task.dueDate || "");
+		const dueDate = new Date(this.task.metadata.dueDate || "");
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		const tomorrow = new Date(today);
@@ -187,7 +191,7 @@ export class KanbanCardComponent extends Component {
 		const completedEl = this.metadataEl.createEl("div", {
 			cls: ["task-date", "task-done-date"],
 		});
-		const completedDate = new Date(this.task.completedDate || "");
+		const completedDate = new Date(this.task.metadata.completedDate || "");
 		completedEl.textContent = `Done: ${completedDate.toLocaleDateString(
 			undefined,
 			{ month: "short", day: "numeric" }
@@ -199,17 +203,29 @@ export class KanbanCardComponent extends Component {
 	}
 
 	private renderProject() {
+		const effectiveProject = getEffectiveProject(this.task);
+		if (!effectiveProject) return;
+
 		const projectEl = this.metadataEl.createEl("div", {
 			cls: ["task-project", "clickable-metadata"],
 		});
-		projectEl.textContent = this.task.project || "";
-		projectEl.setAttribute("aria-label", `Project: ${this.task.project}`);
+
+		// Add visual indicator for tgProject
+		if (!this.task.metadata.project && this.task.metadata.tgProject) {
+			projectEl.addClass("task-project-tg");
+			projectEl.title = `Project from ${
+				this.task.metadata.tgProject.type
+			}: ${this.task.metadata.tgProject.source || ""}`;
+		}
+
+		projectEl.textContent = effectiveProject;
+		projectEl.setAttribute("aria-label", `Project: ${effectiveProject}`);
 
 		// Make project clickable for filtering
 		this.registerDomEvent(projectEl, "click", (ev) => {
 			ev.stopPropagation();
-			if (this.params.onFilterApply && this.task.project) {
-				this.params.onFilterApply("project", this.task.project);
+			if (this.params.onFilterApply && effectiveProject) {
+				this.params.onFilterApply("project", effectiveProject);
 			}
 		});
 	}
@@ -218,7 +234,7 @@ export class KanbanCardComponent extends Component {
 		const tagsContainer = this.metadataEl.createEl("div", {
 			cls: "task-tags-container",
 		});
-		this.task.tags.forEach((tag) => {
+		this.task.metadata.tags.forEach((tag) => {
 			// Skip non-string tags
 			if (typeof tag !== "string") {
 				return;
@@ -250,19 +266,26 @@ export class KanbanCardComponent extends Component {
 		const priorityEl = this.metadataEl.createDiv({
 			cls: [
 				"task-priority",
-				`priority-${this.task.priority}`,
+				`priority-${this.task.metadata.priority}`,
 				"clickable-metadata",
 			],
 		});
-		priorityEl.textContent = `${"!".repeat(this.task.priority || 0)}`;
-		priorityEl.setAttribute("aria-label", `Priority ${this.task.priority}`);
+		priorityEl.textContent = `${"!".repeat(
+			this.task.metadata.priority || 0
+		)}`;
+		priorityEl.setAttribute(
+			"aria-label",
+			`Priority ${this.task.metadata.priority}`
+		);
 
 		// Make priority clickable for filtering
 		this.registerDomEvent(priorityEl, "click", (ev) => {
 			ev.stopPropagation();
-			if (this.params.onFilterApply && this.task.priority) {
+			if (this.params.onFilterApply && this.task.metadata.priority) {
 				// Convert numeric priority to icon representation for filter compatibility
-				const priorityIcon = this.getPriorityIcon(this.task.priority);
+				const priorityIcon = this.getPriorityIcon(
+					this.task.metadata.priority
+				);
 				this.params.onFilterApply("priority", priorityIcon);
 			}
 		});
@@ -317,11 +340,15 @@ export class KanbanCardComponent extends Component {
 		if (oldTask.completed !== newTask.completed) {
 			this.element.classList.toggle("task-completed", newTask.completed);
 		}
-		if (oldTask.priority !== newTask.priority) {
-			if (oldTask.priority)
-				this.element.classList.remove(`priority-${oldTask.priority}`);
-			if (newTask.priority)
-				this.element.classList.add(`priority-${newTask.priority}`);
+		if (oldTask.metadata.priority !== newTask.metadata.priority) {
+			if (oldTask.metadata.priority)
+				this.element.classList.remove(
+					`priority-${oldTask.metadata.priority}`
+				);
+			if (newTask.metadata.priority)
+				this.element.classList.add(
+					`priority-${newTask.metadata.priority}`
+				);
 		}
 
 		// Re-render content and metadata if needed
@@ -334,11 +361,12 @@ export class KanbanCardComponent extends Component {
 		}
 		// Check if metadata-relevant fields changed
 		if (
-			oldTask.dueDate !== newTask.dueDate ||
-			oldTask.completedDate !== newTask.completedDate ||
-			oldTask.tags?.join(",") !== newTask.tags?.join(",") || // Simple comparison
-			oldTask.priority !== newTask.priority ||
-			oldTask.project !== newTask.project
+			oldTask.metadata.dueDate !== newTask.metadata.dueDate ||
+			oldTask.metadata.completedDate !== newTask.metadata.completedDate ||
+			oldTask.metadata.tags?.join(",") !==
+				newTask.metadata.tags?.join(",") || // Simple comparison
+			oldTask.metadata.priority !== newTask.metadata.priority ||
+			oldTask.metadata.project !== newTask.metadata.project
 		) {
 			this.renderMetadata();
 		}

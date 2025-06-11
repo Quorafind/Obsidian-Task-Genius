@@ -8,6 +8,8 @@ import {
 	EmbeddableMarkdownEditor,
 } from "../../editor-ext/markdownEditor";
 import "../../styles/inline-editor.css";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { t } from "../../translations/helper";
 
 export interface InlineEditorOptions {
 	onTaskUpdate: (task: Task, updatedTask: Task) => Promise<void>;
@@ -89,8 +91,6 @@ export class InlineEditor extends Component {
 		this.initializeEditingState();
 		this.isEditing = true;
 
-		// Store original content before clearing
-		const originalContent = targetEl.innerHTML;
 		targetEl.empty();
 
 		// Extract the text content from the original markdown
@@ -301,12 +301,66 @@ export class InlineEditor extends Component {
 		container: HTMLElement,
 		currentValue?: string
 	): void {
+		// Get effective project and readonly status
+		const effectiveProject = getEffectiveProject(this.task);
+		const isReadonly = isProjectReadonly(this.task);
+
 		const input = container.createEl("input", {
 			type: "text",
 			cls: "inline-project-input",
-			value: currentValue || "",
+			value: effectiveProject || "",
 			placeholder: "Enter project name",
 		});
+
+		// Add visual indicator for tgProject
+		if (this.task.metadata.tgProject) {
+			const tgProject = this.task.metadata.tgProject;
+			const indicator = container.createDiv({
+				cls: "project-source-indicator inline-indicator",
+			});
+
+			// Create indicator text based on tgProject type
+			let indicatorText = "";
+			let indicatorIcon = "";
+
+			switch (tgProject.type) {
+				case "path":
+					indicatorText = t("Auto from path");
+					indicatorIcon = "📁";
+					break;
+				case "metadata":
+					indicatorText = t("Auto from metadata");
+					indicatorIcon = "📄";
+					break;
+				case "config":
+					indicatorText = t("Auto from config");
+					indicatorIcon = "⚙️";
+					break;
+				default:
+					indicatorText = t("Auto-assigned");
+					indicatorIcon = "🔗";
+			}
+
+			indicator.createEl("span", {
+				cls: "indicator-icon",
+				text: indicatorIcon,
+			});
+			indicator.createEl("span", {
+				cls: "indicator-text",
+				text: indicatorText,
+			});
+
+			if (isReadonly) {
+				indicator.addClass("readonly-indicator");
+				input.disabled = true;
+				input.title = t(
+					"This project is automatically assigned and cannot be changed"
+				);
+			} else {
+				indicator.addClass("override-indicator");
+				input.title = t("You can override the auto-assigned project");
+			}
+		}
 
 		this.activeInput = input;
 
@@ -323,13 +377,19 @@ export class InlineEditor extends Component {
 		);
 
 		const updateProject = (value: string) => {
-			this.task.project = value || undefined;
+			this.task.metadata.project = value || undefined;
 		};
 
 		this.setupInputEvents(input, updateProject, "project");
 
-		// Add autocomplete
-		this.activeSuggest = new ProjectSuggest(this.app, input, this.plugin);
+		// Add autocomplete only if not readonly
+		if (!isReadonly) {
+			this.activeSuggest = new ProjectSuggest(
+				this.app,
+				input,
+				this.plugin
+			);
+		}
 
 		// Focus and select
 		input.focus();
@@ -362,7 +422,7 @@ export class InlineEditor extends Component {
 		);
 
 		const updateTags = (value: string) => {
-			this.task.tags = value
+			this.task.metadata.tags = value
 				? value
 						.split(",")
 						.map((tag) => tag.trim())
@@ -406,7 +466,7 @@ export class InlineEditor extends Component {
 		);
 
 		const updateContext = (value: string) => {
-			this.task.context = value || undefined;
+			this.task.metadata.context = value || undefined;
 		};
 
 		this.setupInputEvents(input, updateContext, "context");
@@ -447,9 +507,13 @@ export class InlineEditor extends Component {
 		const updateDate = (value: string) => {
 			if (value) {
 				const [year, month, day] = value.split("-").map(Number);
-				this.task[fieldType] = new Date(year, month - 1, day).getTime();
+				this.task.metadata[fieldType] = new Date(
+					year,
+					month - 1,
+					day
+				).getTime();
 			} else {
-				this.task[fieldType] = undefined;
+				this.task.metadata[fieldType] = undefined;
 			}
 		};
 
@@ -500,7 +564,7 @@ export class InlineEditor extends Component {
 		this.activeInput = select;
 
 		const updatePriority = (value: string) => {
-			this.task.priority = value ? parseInt(value) : undefined;
+			this.task.metadata.priority = value ? parseInt(value) : undefined;
 		};
 
 		this.setupInputEvents(select, updatePriority, "priority");
@@ -535,7 +599,7 @@ export class InlineEditor extends Component {
 		);
 
 		const updateRecurrence = (value: string) => {
-			this.task.recurrence = value || undefined;
+			this.task.metadata.recurrence = value || undefined;
 		};
 
 		this.setupInputEvents(input, updateRecurrence, "recurrence");
@@ -693,21 +757,24 @@ export class InlineEditor extends Component {
 		const fieldsToShow = availableFields.filter((field) => {
 			switch (field.key) {
 				case "project":
-					return !this.task.project;
+					return !this.task.metadata.project;
 				case "tags":
-					return !this.task.tags || this.task.tags.length === 0;
+					return (
+						!this.task.metadata.tags ||
+						this.task.metadata.tags.length === 0
+					);
 				case "context":
-					return !this.task.context;
+					return !this.task.metadata.context;
 				case "dueDate":
-					return !this.task.dueDate;
+					return !this.task.metadata.dueDate;
 				case "startDate":
-					return !this.task.startDate;
+					return !this.task.metadata.startDate;
 				case "scheduledDate":
-					return !this.task.scheduledDate;
+					return !this.task.metadata.scheduledDate;
 				case "priority":
-					return !this.task.priority;
+					return !this.task.metadata.priority;
 				case "recurrence":
-					return !this.task.recurrence;
+					return !this.task.metadata.recurrence;
 				default:
 					return true;
 			}
@@ -834,7 +901,7 @@ export class InlineEditor extends Component {
 		// Save the task and wait for completion
 		const saveSuccess = await this.saveTask();
 
-		console.log("save success", saveSuccess)
+		console.log("save success", saveSuccess);
 
 		if (!saveSuccess) {
 			console.error("Failed to save task, not finishing edit");
@@ -962,16 +1029,20 @@ export class InlineEditor extends Component {
 		// Restore the appropriate metadata display based on field type
 		switch (fieldType) {
 			case "project":
-				if (this.task.project) {
+				if (this.task.metadata.project) {
 					targetEl.textContent =
-						this.task.project.split("/").pop() || this.task.project;
+						this.task.metadata.project.split("/").pop() ||
+						this.task.metadata.project;
 					targetEl.className = "task-project";
 				}
 				break;
 			case "tags":
-				if (this.task.tags && this.task.tags.length > 0) {
+				if (
+					this.task.metadata.tags &&
+					this.task.metadata.tags.length > 0
+				) {
 					targetEl.className = "task-tags-container";
-					this.task.tags
+					this.task.metadata.tags
 						.filter((tag) => !tag.startsWith("#project"))
 						.forEach((tag) => {
 							const tagEl = targetEl.createEl("span", {
@@ -982,8 +1053,8 @@ export class InlineEditor extends Component {
 				}
 				break;
 			case "context":
-				if (this.task.context) {
-					targetEl.textContent = this.task.context;
+				if (this.task.metadata.context) {
+					targetEl.textContent = this.task.metadata.context;
 					targetEl.className = "task-context";
 				}
 				break;
@@ -1002,15 +1073,17 @@ export class InlineEditor extends Component {
 				}
 				break;
 			case "recurrence":
-				if (this.task.recurrence) {
-					targetEl.textContent = this.task.recurrence;
+				if (this.task.metadata.recurrence) {
+					targetEl.textContent = this.task.metadata.recurrence;
 					targetEl.className = "task-date task-recurrence";
 				}
 				break;
 			case "priority":
-				if (this.task.priority) {
-					targetEl.textContent = "!".repeat(this.task.priority);
-					targetEl.className = `task-priority priority-${this.task.priority}`;
+				if (this.task.metadata.priority) {
+					targetEl.textContent = "!".repeat(
+						this.task.metadata.priority
+					);
+					targetEl.className = `task-priority priority-${this.task.metadata.priority}`;
 				}
 				break;
 		}

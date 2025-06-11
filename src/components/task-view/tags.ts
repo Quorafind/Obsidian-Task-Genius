@@ -228,8 +228,8 @@ export class TagsComponent extends Component {
 
 		// Build a map of tags to task IDs
 		this.allTasks.forEach((task) => {
-			if (task.tags && task.tags.length > 0) {
-				task.tags.forEach((tag) => {
+			if (task.metadata.tags && task.metadata.tags.length > 0) {
+				task.metadata.tags.forEach((tag) => {
 					// Skip non-string tags
 					if (typeof tag !== "string") {
 						return;
@@ -512,15 +512,17 @@ export class TagsComponent extends Component {
 					}
 
 					// Then by priority (high to low)
-					const priorityA = a.priority || 0;
-					const priorityB = b.priority || 0;
+					const priorityA = a.metadata.priority || 0;
+					const priorityB = b.metadata.priority || 0;
 					if (priorityA !== priorityB) {
 						return priorityB - priorityA;
 					}
 
 					// Then by due date (early to late)
-					const dueDateA = a.dueDate || Number.MAX_SAFE_INTEGER;
-					const dueDateB = b.dueDate || Number.MAX_SAFE_INTEGER;
+					const dueDateA =
+						a.metadata.dueDate || Number.MAX_SAFE_INTEGER;
+					const dueDateB =
+						b.metadata.dueDate || Number.MAX_SAFE_INTEGER;
 					return dueDateA - dueDateB;
 				});
 			}
@@ -545,8 +547,8 @@ export class TagsComponent extends Component {
 		const tagTaskMap = new Map<string, Task[]>();
 		this.selectedTags.tags.forEach((tag) => {
 			const tasksForThisTagBranch = this.filteredTasks.filter((task) => {
-				if (!task.tags) return false;
-				return task.tags.some(
+				if (!task.metadata.tags) return false;
+				return task.metadata.tags.some(
 					(taskTag) =>
 						// Skip non-string tags
 						typeof taskTag === "string" &&
@@ -773,9 +775,10 @@ export class TagsComponent extends Component {
 			const oldTask = this.allTasks[taskIndex];
 			// Check if tags changed, necessitating a rebuild/re-render
 			const tagsChanged =
-				!oldTask.tags ||
-				!updatedTask.tags ||
-				oldTask.tags.join(",") !== updatedTask.tags.join(",");
+				!oldTask.metadata.tags ||
+				!updatedTask.metadata.tags ||
+				oldTask.metadata.tags.join(",") !==
+					updatedTask.metadata.tags.join(",");
 
 			if (tagsChanged) {
 				needsFullRefresh = true;
@@ -806,8 +809,8 @@ export class TagsComponent extends Component {
 					this.tagSections.forEach((section) => {
 						// Check if the task belongs to this section's tag branch
 						if (
-							updatedTask.tags?.some(
-								(taskTag) =>
+							updatedTask.metadata.tags?.some(
+								(taskTag: string) =>
 									// Skip non-string tags
 									typeof taskTag === "string" &&
 									(taskTag === section.tag ||

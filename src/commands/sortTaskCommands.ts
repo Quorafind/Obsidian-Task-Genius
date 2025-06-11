@@ -103,8 +103,8 @@ function parseTasksForSorting(
 			if (
 				!parsedTask.completed &&
 				parsedTask.status !== SortableTaskStatus.Cancelled && // Compare against enum
-				parsedTask.dueDate &&
-				parsedTask.dueDate < todayTimestamp
+				parsedTask.metadata.dueDate &&
+				parsedTask.metadata.dueDate < todayTimestamp
 			) {
 				calculatedStatus = SortableTaskStatus.Overdue; // Use enum
 			} else {
@@ -124,16 +124,17 @@ function parseTasksForSorting(
 				status: parsedTask.status,
 				completed: parsedTask.completed,
 				content: parsedTask.content,
-				priority: parsedTask.priority,
-				dueDate: parsedTask.dueDate,
-				startDate: parsedTask.startDate,
-				scheduledDate: parsedTask.scheduledDate,
-				tags: parsedTask.tags || [], // Map tags, default to empty array
+				priority: parsedTask.metadata.priority,
+				dueDate: parsedTask.metadata.dueDate,
+				startDate: parsedTask.metadata.startDate,
+				scheduledDate: parsedTask.metadata.scheduledDate,
+				tags: parsedTask.metadata.tags || [], // Map tags, default to empty array
 				// Fields specific to SortableTask / required for sorting logic
 				lineNumber: lineNumber, // Keep 0-based line number for sorting stability
 				indentation: indentation,
 				children: [],
 				calculatedStatus: calculatedStatus,
+				metadata: parsedTask.metadata,
 				// parent will be set below
 			};
 
@@ -396,12 +397,14 @@ function compareTasks<
 
 		tags: (a: T, b: T, order: "asc" | "desc") => {
 			// Sort by tags - convert array to string for comparison
-			const tagsA = Array.isArray((a as any).tags) && (a as any).tags.length > 0
-				? (a as any).tags.join(", ")
-				: null;
-			const tagsB = Array.isArray((b as any).tags) && (b as any).tags.length > 0
-				? (b as any).tags.join(", ")
-				: null;
+			const tagsA =
+				Array.isArray((a as any).tags) && (a as any).tags.length > 0
+					? (a as any).tags.join(", ")
+					: null;
+			const tagsB =
+				Array.isArray((b as any).tags) && (b as any).tags.length > 0
+					? (b as any).tags.join(", ")
+					: null;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!tagsA && !tagsB) return 0;

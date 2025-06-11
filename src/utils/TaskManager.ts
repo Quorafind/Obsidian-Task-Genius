@@ -12,6 +12,10 @@ import { TaskWorkerManager } from "./workers/TaskWorkerManager";
 import { LocalStorageCache } from "./persister";
 import TaskProgressBarPlugin from "../index";
 import { RRule, RRuleSet, rrulestr } from "rrule";
+import { MarkdownTaskParser } from "./workers/ConfigurableTaskParser";
+import { getConfig } from "../common/task-parser-config";
+import { getEffectiveProject } from "./taskUtil";
+import { HolidayDetector } from "./ics/HolidayDetector";
 
 /**
  * TaskManager options
@@ -52,6 +56,8 @@ export class TaskManager extends Component {
 	private updateEventPending: boolean = false;
 	/** Local-storage backed cache of metadata objects. */
 	persister: LocalStorageCache;
+	/** Configurable task parser for main thread fallback */
+	private taskParser: MarkdownTaskParser;
 
 	/**
 	 * Create a new task manager
@@ -73,6 +79,17 @@ export class TaskManager extends Component {
 			this.metadataCache
 		);
 		this.persister = new LocalStorageCache(this.app.appId);
+
+		// Initialize configurable task parser for main thread fallback
+		this.taskParser = new MarkdownTaskParser(
+			getConfig(this.plugin.settings.preferMetadataFormat, this.plugin)
+		);
+
+		// Set up the indexer's parse callback to use our parser
+		this.indexer.setParseFileCallback(async (file: TFile) => {
+			const content = await this.vault.cachedRead(file);
+			return this.parseFileWithConfigurableParser(file.path, content);
+		});
 
 		// Preload tasks from persister to improve initialization speed
 		this.preloadTasksFromCache();
@@ -102,6 +119,67 @@ export class TaskManager extends Component {
 		this.addChild(this.indexer);
 		if (this.workerManager) {
 			this.addChild(this.workerManager);
+		}
+	}
+
+	/**
+	 * Parse a file using the configurable parser
+	 */
+	private parseFileWithConfigurableParser(
+		filePath: string,
+		content: string
+	): Task[] {
+		try {
+			// Use configurable parser for enhanced parsing
+			const tasks = this.taskParser.parseLegacy(content, filePath);
+
+			// Apply heading filters if specified in settings
+			return tasks.filter((task) => {
+				// Filter by ignore heading
+				if (
+					this.plugin.settings.ignoreHeading &&
+					task.metadata.heading
+				) {
+					const headings = Array.isArray(task.metadata.heading)
+						? task.metadata.heading
+						: [task.metadata.heading];
+
+					if (
+						headings.some((h) =>
+							h.includes(this.plugin.settings.ignoreHeading)
+						)
+					) {
+						return false;
+					}
+				}
+
+				// Filter by focus heading
+				if (
+					this.plugin.settings.focusHeading &&
+					task.metadata.heading
+				) {
+					const headings = Array.isArray(task.metadata.heading)
+						? task.metadata.heading
+						: [task.metadata.heading];
+
+					if (
+						!headings.some((h) =>
+							h.includes(this.plugin.settings.focusHeading)
+						)
+					) {
+						return false;
+					}
+				}
+
+				return true;
+			});
+		} catch (error) {
+			console.error(
+				`Error parsing file ${filePath} with configurable parser:`,
+				error
+			);
+			// Return empty array as fallback
+			return [];
 		}
 	}
 
@@ -573,10 +651,17 @@ export class TaskManager extends Component {
 						);
 						cachedCount++;
 					} else {
-						// Cache doesn't exist or is outdated, use main thread processing
-						await this.indexer.indexFile(file);
-						// Get processed tasks and store to cache
-						const tasks = this.getTasksForFile(file.path);
+						// Cache doesn't exist or is outdated, use main thread processing with configurable parser
+						const content = await this.vault.cachedRead(file);
+						const tasks = this.parseFileWithConfigurableParser(
+							file.path,
+							content
+						);
+
+						// Update index with parsed tasks
+						this.indexer.updateIndexWithTasks(file.path, tasks);
+
+						// Store to cache
 						if (tasks.length > 0) {
 							await this.persister.storeFile(file.path, tasks);
 							this.log(
@@ -592,8 +677,24 @@ export class TaskManager extends Component {
 					}
 				} catch (error) {
 					console.error(`Error processing file ${file.path}:`, error);
-					// Fall back to main thread processing in case of error
-					await this.indexer.indexFile(file);
+					// Fall back to main thread processing with configurable parser
+					try {
+						const content = await this.vault.cachedRead(file);
+						const tasks = this.parseFileWithConfigurableParser(
+							file.path,
+							content
+						);
+						this.indexer.updateIndexWithTasks(file.path, tasks);
+
+						if (tasks.length > 0) {
+							await this.persister.storeFile(file.path, tasks);
+						}
+					} catch (fallbackError) {
+						console.error(
+							`Fallback parsing also failed for ${file.path}:`,
+							fallbackError
+						);
+					}
 					importedCount++;
 				}
 			}
@@ -670,10 +771,17 @@ export class TaskManager extends Component {
 				await this.processFileWithWorker(file);
 			}
 		} else {
-			// Use main thread indexing
-			await this.indexer.indexFile(file);
+			// Use main thread indexing with configurable parser
+			const content = await this.vault.cachedRead(file);
+			const tasks = this.parseFileWithConfigurableParser(
+				file.path,
+				content
+			);
+
+			// Update index with parsed tasks
+			this.indexer.updateIndexWithTasks(file.path, tasks);
+
 			// Cache the results
-			const tasks = this.getTasksForFile(file.path);
 			if (tasks.length > 0) {
 				await this.persister.storeFile(file.path, tasks);
 				this.log(
@@ -807,7 +915,97 @@ export class TaskManager extends Component {
 	 * Get all tasks in the vault
 	 */
 	public getAllTasks(): Task[] {
-		return this.queryTasks();
+		const markdownTasks = this.queryTasks();
+
+		// Get ICS tasks if ICS manager is available
+		try {
+			const icsManager = this.plugin.getIcsManager();
+			if (icsManager) {
+				// Use holiday detection for better task filtering
+				const icsEventsWithHoliday =
+					icsManager.getAllEventsWithHolidayDetection();
+				const icsTasks =
+					icsManager.convertEventsWithHolidayToTasks(
+						icsEventsWithHoliday
+					);
+
+				// Merge ICS tasks with markdown tasks
+				return [...markdownTasks, ...icsTasks];
+			}
+		} catch (error) {
+			console.error("Error getting all tasks:", error);
+			// Fallback to original method
+			try {
+				const icsManager = this.plugin.getIcsManager();
+				if (icsManager) {
+					const icsEvents = icsManager.getAllEvents();
+					const icsTasks = icsManager.convertEventsToTasks(icsEvents);
+					return [...markdownTasks, ...icsTasks];
+				}
+			} catch (fallbackError) {
+				console.error(
+					"Error in fallback task retrieval:",
+					fallbackError
+				);
+			}
+		}
+
+		return markdownTasks;
+	}
+
+	/**
+	 * Get all tasks with ICS sync - use this for initial load
+	 */
+	public async getAllTasksWithSync(): Promise<Task[]> {
+		const markdownTasks = this.queryTasks();
+
+		// Get ICS tasks if ICS manager is available
+		const icsManager = this.plugin.getIcsManager();
+		if (icsManager) {
+			try {
+				const icsEvents = await icsManager.getAllEventsWithSync();
+				// Apply holiday detection to synced events
+				const icsEventsWithHoliday = icsEvents.map((event) => {
+					const source = icsManager
+						.getConfig()
+						.sources.find((s: any) => s.id === event.source.id);
+					if (source?.holidayConfig?.enabled) {
+						return {
+							...event,
+							isHoliday: HolidayDetector.isHoliday(
+								event,
+								source.holidayConfig
+							),
+							showInForecast: true,
+						};
+					}
+					return {
+						...event,
+						isHoliday: false,
+						showInForecast: true,
+					};
+				});
+
+				const icsTasks =
+					icsManager.convertEventsWithHolidayToTasks(
+						icsEventsWithHoliday
+					);
+
+				// Merge ICS tasks with markdown tasks
+				return [...markdownTasks, ...icsTasks];
+			} catch (error) {
+				console.error(
+					"Error getting tasks with holiday detection:",
+					error
+				);
+				// Fallback to original method
+				const icsEvents = await icsManager.getAllEventsWithSync();
+				const icsTasks = icsManager.convertEventsToTasks(icsEvents);
+				return [...markdownTasks, ...icsTasks];
+			}
+		}
+
+		return markdownTasks;
 	}
 
 	/**
@@ -823,8 +1021,9 @@ export class TaskManager extends Component {
 		const projectSet = new Set<string>();
 
 		for (const task of allTasks) {
-			if (task.context) contextSet.add(task.context);
-			if (task.project) projectSet.add(task.project);
+			if (task.metadata.context) contextSet.add(task.metadata.context);
+			const effectiveProject = getEffectiveProject(task);
+			if (effectiveProject) projectSet.add(effectiveProject);
 		}
 
 		return {
@@ -922,15 +1121,15 @@ export class TaskManager extends Component {
 		console.log(
 			"originalTask",
 			originalTask,
-			updatedTask.dueDate,
-			originalTask.dueDate
+			updatedTask.metadata.dueDate,
+			originalTask.metadata.dueDate
 		);
 
 		// Check if this is a completion of a recurring task
 		const isCompletingRecurringTask =
 			!originalTask.completed &&
 			updatedTask.completed &&
-			updatedTask.recurrence;
+			updatedTask.metadata.recurrence;
 
 		// Determine the metadata format from plugin settings
 		const useDataviewFormat =
@@ -1038,9 +1237,23 @@ export class TaskManager extends Component {
 				""
 			); // Allow 'repeat' or 'recurrence'
 
-			// Dataview Project and Context
-			updatedLine = updatedLine.replace(/\[project::\s*[^\]]+\]/gi, "");
-			updatedLine = updatedLine.replace(/\[context::\s*[^\]]+\]/gi, "");
+			// Dataview Project and Context (using configurable prefixes)
+			const projectPrefix =
+				this.plugin.settings.projectTagPrefix[
+					this.plugin.settings.preferMetadataFormat
+				] || "project";
+			const contextPrefix =
+				this.plugin.settings.contextTagPrefix[
+					this.plugin.settings.preferMetadataFormat
+				] || "@";
+			updatedLine = updatedLine.replace(
+				new RegExp(`\\[${projectPrefix}::\\s*[^\\]]+\\]`, "gi"),
+				""
+			);
+			updatedLine = updatedLine.replace(
+				new RegExp(`\\[${contextPrefix}::\\s*[^\\]]+\\]`, "gi"),
+				""
+			);
 
 			// Remove ALL existing tags to prevent duplication
 			// This includes general hashtags, project tags, and context tags
@@ -1055,27 +1268,36 @@ export class TaskManager extends Component {
 
 			// --- Add updated metadata ---
 			const metadata = [];
-			const formattedDueDate = formatDate(updatedTask.dueDate);
-			const formattedStartDate = formatDate(updatedTask.startDate);
+			const formattedDueDate = formatDate(updatedTask.metadata.dueDate);
+			const formattedStartDate = formatDate(
+				updatedTask.metadata.startDate
+			);
 			const formattedScheduledDate = formatDate(
-				updatedTask.scheduledDate
+				updatedTask.metadata.scheduledDate
 			);
 			const formattedCompletedDate = formatDate(
-				updatedTask.completedDate
+				updatedTask.metadata.completedDate
 			);
 
 			// --- Add non-project/context tags first (1. Tags) ---
-			if (updatedTask.tags && updatedTask.tags.length > 0) {
+			if (
+				updatedTask.metadata.tags &&
+				updatedTask.metadata.tags.length > 0
+			) {
 				// Filter out project and context tags, and ensure uniqueness
-				const generalTags = updatedTask.tags.filter((tag) => {
+				const projectPrefix =
+					this.plugin.settings.projectTagPrefix[
+						this.plugin.settings.preferMetadataFormat
+					] || "project";
+				const generalTags = updatedTask.metadata.tags.filter((tag) => {
 					if (typeof tag !== "string") return false;
 					// Skip project tags - they'll be handled separately
-					if (tag.startsWith("#project/")) return false;
+					if (tag.startsWith(`#${projectPrefix}/`)) return false;
 					// Skip context tags if they match the current context
 					if (
 						tag.startsWith("@") &&
-						updatedTask.context &&
-						tag === `@${updatedTask.context}`
+						updatedTask.metadata.context &&
+						tag === `@${updatedTask.metadata.context}`
 					)
 						return false;
 					return true;
@@ -1095,14 +1317,22 @@ export class TaskManager extends Component {
 			}
 
 			// 2. Project
-			if (updatedTask.project) {
+			if (updatedTask.metadata.project) {
 				if (useDataviewFormat) {
-					const projectField = `[project:: ${updatedTask.project}]`;
+					const projectPrefix =
+						this.plugin.settings.projectTagPrefix[
+							this.plugin.settings.preferMetadataFormat
+						] || "project";
+					const projectField = `[${projectPrefix}:: ${updatedTask.metadata.project}]`;
 					if (!metadata.includes(projectField)) {
 						metadata.push(projectField);
 					}
 				} else {
-					const projectTag = `#project/${updatedTask.project}`;
+					const projectPrefix =
+						this.plugin.settings.projectTagPrefix[
+							this.plugin.settings.preferMetadataFormat
+						] || "project";
+					const projectTag = `#${projectPrefix}/${updatedTask.metadata.project}`;
 					if (!metadata.includes(projectTag)) {
 						metadata.push(projectTag);
 					}
@@ -1110,14 +1340,19 @@ export class TaskManager extends Component {
 			}
 
 			// 3. Context
-			if (updatedTask.context) {
+			if (updatedTask.metadata.context) {
 				if (useDataviewFormat) {
-					const contextField = `[context:: ${updatedTask.context}]`;
+					const contextPrefix =
+						this.plugin.settings.contextTagPrefix[
+							this.plugin.settings.preferMetadataFormat
+						] || "context";
+					const contextField = `[${contextPrefix}:: ${updatedTask.metadata.context}]`;
 					if (!metadata.includes(contextField)) {
 						metadata.push(contextField);
 					}
 				} else {
-					const contextTag = `@${updatedTask.context}`;
+					// For emoji format, always use @ prefix (not configurable)
+					const contextTag = `@${updatedTask.metadata.context}`;
 					if (!metadata.includes(contextTag)) {
 						metadata.push(contextTag);
 					}
@@ -1125,10 +1360,10 @@ export class TaskManager extends Component {
 			}
 
 			// 4. Priority
-			if (updatedTask.priority) {
+			if (updatedTask.metadata.priority) {
 				if (useDataviewFormat) {
 					let priorityValue: string | number;
-					switch (updatedTask.priority) {
+					switch (updatedTask.metadata.priority) {
 						case 5:
 							priorityValue = "highest";
 							break;
@@ -1145,13 +1380,13 @@ export class TaskManager extends Component {
 							priorityValue = "lowest";
 							break;
 						default:
-							priorityValue = updatedTask.priority;
+							priorityValue = updatedTask.metadata.priority;
 					}
 					metadata.push(`[priority:: ${priorityValue}]`);
 				} else {
 					// Emoji format
 					let priorityMarker = "";
-					switch (updatedTask.priority) {
+					switch (updatedTask.metadata.priority) {
 						case 5:
 							priorityMarker = "🔺";
 							break;
@@ -1173,11 +1408,11 @@ export class TaskManager extends Component {
 			}
 
 			// 5. Recurrence
-			if (updatedTask.recurrence) {
+			if (updatedTask.metadata.recurrence) {
 				metadata.push(
 					useDataviewFormat
-						? `[repeat:: ${updatedTask.recurrence}]`
-						: `🔁 ${updatedTask.recurrence}`
+						? `[repeat:: ${updatedTask.metadata.recurrence}]`
+						: `🔁 ${updatedTask.metadata.recurrence}`
 				);
 			}
 
@@ -1186,8 +1421,8 @@ export class TaskManager extends Component {
 				// Check if this date should be skipped based on useAsDateType
 				if (
 					!(
-						updatedTask.useAsDateType === "start" &&
-						formatDate(originalTask.startDate) ===
+						updatedTask.metadata.useAsDateType === "start" &&
+						formatDate(originalTask.metadata.startDate) ===
 							formattedStartDate
 					)
 				) {
@@ -1204,8 +1439,8 @@ export class TaskManager extends Component {
 				// Check if this date should be skipped based on useAsDateType
 				if (
 					!(
-						updatedTask.useAsDateType === "scheduled" &&
-						formatDate(originalTask.scheduledDate) ===
+						updatedTask.metadata.useAsDateType === "scheduled" &&
+						formatDate(originalTask.metadata.scheduledDate) ===
 							formattedScheduledDate
 					)
 				) {
@@ -1222,8 +1457,9 @@ export class TaskManager extends Component {
 				// Check if this date should be skipped based on useAsDateType
 				if (
 					!(
-						updatedTask.useAsDateType === "due" &&
-						formatDate(originalTask.dueDate) === formattedDueDate
+						updatedTask.metadata.useAsDateType === "due" &&
+						formatDate(originalTask.metadata.dueDate) ===
+							formattedDueDate
 					)
 				) {
 					metadata.push(
@@ -1323,35 +1559,35 @@ export class TaskManager extends Component {
 
 		// Reset completion status and date
 		newTask.completed = false;
-		newTask.completedDate = undefined;
+		newTask.metadata.completedDate = undefined;
 
 		// Determine where to apply the next date based on what the original task had
-		if (completedTask.dueDate) {
+		if (completedTask.metadata.dueDate) {
 			// If original task had due date, update due date
-			newTask.dueDate = nextDate;
-		} else if (completedTask.scheduledDate) {
+			newTask.metadata.dueDate = nextDate;
+		} else if (completedTask.metadata.scheduledDate) {
 			// If original task only had scheduled date, update scheduled date
-			newTask.scheduledDate = nextDate;
-			newTask.dueDate = undefined; // Make sure due date is not set
+			newTask.metadata.scheduledDate = nextDate;
+			newTask.metadata.dueDate = undefined; // Make sure due date is not set
 		} else {
-			newTask.dueDate = nextDate;
+			newTask.metadata.dueDate = nextDate;
 		}
 
 		console.log(newTask);
 
 		// Format dates for task markdown
-		const formattedDueDate = newTask.dueDate
-			? this.formatDateForDisplay(newTask.dueDate)
+		const formattedDueDate = newTask.metadata.dueDate
+			? this.formatDateForDisplay(newTask.metadata.dueDate)
 			: undefined;
 
 		// For scheduled date, use the new calculated date if that's what was updated
-		const formattedScheduledDate = newTask.scheduledDate
-			? this.formatDateForDisplay(newTask.scheduledDate)
+		const formattedScheduledDate = newTask.metadata.scheduledDate
+			? this.formatDateForDisplay(newTask.metadata.scheduledDate)
 			: undefined;
 
 		// For other dates, copy the original ones if they exist
-		const formattedStartDate = completedTask.startDate
-			? this.formatDateForDisplay(completedTask.startDate)
+		const formattedStartDate = completedTask.metadata.startDate
+			? this.formatDateForDisplay(completedTask.metadata.startDate)
 			: undefined;
 
 		// Extract the original list marker (-, *, 1., etc.) from the original markdown
@@ -1381,16 +1617,22 @@ export class TaskManager extends Component {
 		let cleanContent = completedTask.content;
 
 		// Remove all tags from the content to avoid duplication
-		if (completedTask.tags && completedTask.tags.length > 0) {
+		if (
+			completedTask.metadata.tags &&
+			completedTask.metadata.tags.length > 0
+		) {
 			// Get a unique list of tags to avoid processing duplicates
-			const uniqueTags = [...new Set(completedTask.tags)];
+			const uniqueTags = [...new Set(completedTask.metadata.tags)];
 
 			// Remove each tag from the content
 			for (const tag of uniqueTags) {
 				// Create a regex that looks for the tag preceded by whitespace or at start, and followed by whitespace or end
 				// Don't use \b as it doesn't work with Unicode characters like Chinese
 				const tagRegex = new RegExp(
-					`(^|\\s)${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`,
+					`(^|\\s)${tag.replace(
+						/[.*+?^${}()|[\]\\]/g,
+						"\\$&"
+					)}(?=\\s|$)`,
 					"g"
 				);
 				cleanContent = cleanContent.replace(tagRegex, " ").trim();
@@ -1398,8 +1640,12 @@ export class TaskManager extends Component {
 		}
 
 		// Remove project tags that might not be in the tags array
-		if (completedTask.project) {
-			const projectTag = `#project/${completedTask.project}`;
+		if (completedTask.metadata.project) {
+			const projectPrefix =
+				this.plugin.settings.projectTagPrefix[
+					this.plugin.settings.preferMetadataFormat
+				] || "project";
+			const projectTag = `#${projectPrefix}/${completedTask.metadata.project}`;
 			const projectTagRegex = new RegExp(
 				`(^|\\s)${projectTag.replace(
 					/[.*+?^${}()|[\]\\]/g,
@@ -1411,8 +1657,8 @@ export class TaskManager extends Component {
 		}
 
 		// Remove context tags that might not be in the tags array
-		if (completedTask.context) {
-			const contextTag = `@${completedTask.context}`;
+		if (completedTask.metadata.context) {
+			const contextTag = `@${completedTask.metadata.context}`;
 			const contextTagRegex = new RegExp(
 				`(^|\\s)${contextTag.replace(
 					/[.*+?^${}()|[\]\\]/g,
@@ -1433,17 +1679,28 @@ export class TaskManager extends Component {
 		const metadata = [];
 
 		// 1. Tags (excluding project/context tags that are handled separately)
-		if (completedTask.tags && completedTask.tags.length > 0) {
-			const tagsToAdd = completedTask.tags.filter((tag) => {
+		if (
+			completedTask.metadata.tags &&
+			completedTask.metadata.tags.length > 0
+		) {
+			const projectPrefix =
+				this.plugin.settings.projectTagPrefix[
+					this.plugin.settings.preferMetadataFormat
+				] || "project";
+			const contextPrefix =
+				this.plugin.settings.contextTagPrefix[
+					this.plugin.settings.preferMetadataFormat
+				] || "@";
+			const tagsToAdd = completedTask.metadata.tags.filter((tag) => {
 				// Skip non-string tags
 				if (typeof tag !== "string") return false;
 				// Skip project tags (handled separately)
-				if (tag.startsWith("#project/")) return false;
+				if (tag.startsWith(`#${projectPrefix}/`)) return false;
 				// Skip context tags (handled separately)
 				if (
-					tag.startsWith("@") &&
-					completedTask.context &&
-					tag === `@${completedTask.context}`
+					tag.startsWith(contextPrefix) &&
+					completedTask.metadata.context &&
+					tag === `${contextPrefix}${completedTask.metadata.context}`
 				)
 					return false;
 				return true;
@@ -1459,11 +1716,21 @@ export class TaskManager extends Component {
 		}
 
 		// 2. Project
-		if (completedTask.project) {
+		if (completedTask.metadata.project) {
 			if (useDataviewFormat) {
-				metadata.push(`[project:: ${completedTask.project}]`);
+				const projectPrefix =
+					this.plugin.settings.projectTagPrefix[
+						this.plugin.settings.preferMetadataFormat
+					] || "project";
+				metadata.push(
+					`[${projectPrefix}:: ${completedTask.metadata.project}]`
+				);
 			} else {
-				const projectTag = `#project/${completedTask.project}`;
+				const projectPrefix =
+					this.plugin.settings.projectTagPrefix[
+						this.plugin.settings.preferMetadataFormat
+					] || "project";
+				const projectTag = `#${projectPrefix}/${completedTask.metadata.project}`;
 				// Only add project tag if it's not already added in the tags section
 				if (!metadata.includes(projectTag)) {
 					metadata.push(projectTag);
@@ -1472,11 +1739,22 @@ export class TaskManager extends Component {
 		}
 
 		// 3. Context
-		if (completedTask.context) {
+		if (completedTask.metadata.context) {
 			if (useDataviewFormat) {
-				metadata.push(`[context:: ${completedTask.context}]`);
+				const contextPrefix =
+					this.plugin.settings.contextTagPrefix[
+						this.plugin.settings.preferMetadataFormat
+					] || "context";
+				metadata.push(
+					`[${contextPrefix}:: ${completedTask.metadata.context}]`
+				);
 			} else {
-				const contextTag = `@${completedTask.context}`;
+				const contextPrefix =
+					this.plugin.settings.contextTagPrefix[
+						this.plugin.settings.preferMetadataFormat
+					] || "@";
+				// For emoji format, always use @ prefix (not configurable)
+				const contextTag = `${contextPrefix}${completedTask.metadata.context}`;
 				// Only add context tag if it's not already in the metadata
 				if (!metadata.includes(contextTag)) {
 					metadata.push(contextTag);
@@ -1485,10 +1763,10 @@ export class TaskManager extends Component {
 		}
 
 		// 4. Priority
-		if (completedTask.priority) {
+		if (completedTask.metadata.priority) {
 			if (useDataviewFormat) {
 				let priorityValue: string | number;
-				switch (completedTask.priority) {
+				switch (completedTask.metadata.priority) {
 					case 5:
 						priorityValue = "highest";
 						break;
@@ -1505,12 +1783,12 @@ export class TaskManager extends Component {
 						priorityValue = "lowest";
 						break;
 					default:
-						priorityValue = completedTask.priority;
+						priorityValue = completedTask.metadata.priority;
 				}
 				metadata.push(`[priority:: ${priorityValue}]`);
 			} else {
 				let priorityMarker = "";
-				switch (completedTask.priority) {
+				switch (completedTask.metadata.priority) {
 					case 5:
 						priorityMarker = "🔺";
 						break;
@@ -1532,11 +1810,11 @@ export class TaskManager extends Component {
 		}
 
 		// 5. Recurrence
-		if (completedTask.recurrence) {
+		if (completedTask.metadata.recurrence) {
 			metadata.push(
 				useDataviewFormat
-					? `[repeat:: ${completedTask.recurrence}]`
-					: `🔁 ${completedTask.recurrence}`
+					? `[repeat:: ${completedTask.metadata.recurrence}]`
+					: `🔁 ${completedTask.metadata.recurrence}`
 			);
 		}
 
@@ -1581,7 +1859,7 @@ export class TaskManager extends Component {
 	 * Calculates the next due date based on recurrence pattern
 	 */
 	private calculateNextDueDate(task: Task): number | undefined {
-		if (!task.recurrence) return undefined;
+		if (!task.metadata.recurrence) return undefined;
 
 		console.log(task);
 
@@ -1593,12 +1871,15 @@ export class TaskManager extends Component {
 		if (recurrenceDateBase === "current") {
 			// Always use current date
 			baseDate = new Date();
-		} else if (recurrenceDateBase === "scheduled" && task.scheduledDate) {
+		} else if (
+			recurrenceDateBase === "scheduled" &&
+			task.metadata.scheduledDate
+		) {
 			// Use scheduled date if available
-			baseDate = new Date(task.scheduledDate);
-		} else if (recurrenceDateBase === "due" && task.dueDate) {
+			baseDate = new Date(task.metadata.scheduledDate);
+		} else if (recurrenceDateBase === "due" && task.metadata.dueDate) {
 			// Use due date if available (default behavior)
-			baseDate = new Date(task.dueDate);
+			baseDate = new Date(task.metadata.dueDate);
 		} else {
 			// Fallback to current date if the specified date type is not available
 			baseDate = new Date();
@@ -1612,7 +1893,9 @@ export class TaskManager extends Component {
 			try {
 				// Use the task's recurrence string directly if it's a valid RRULE string
 				// Provide dtstart to rrulestr for context, especially for rules that might depend on the start date.
-				const rule = rrulestr(task.recurrence, { dtstart: baseDate });
+				const rule = rrulestr(task.metadata.recurrence, {
+					dtstart: baseDate,
+				});
 
 				// We want the first occurrence strictly *after* the baseDate.
 				// Adding a small time offset ensures we get the next instance even if baseDate itself is an occurrence.
@@ -1624,14 +1907,14 @@ export class TaskManager extends Component {
 					nextOccurrence.setHours(0, 0, 0, 0);
 					this.log(
 						`Calculated next date using rrule for '${
-							task.recurrence
+							task.metadata.recurrence
 						}': ${nextOccurrence.toISOString()}`
 					);
 					return nextOccurrence.getTime();
 				} else {
 					// No next occurrence found by rrule (e.g., rule has COUNT and finished)
 					this.log(
-						`[TaskManager] rrule couldn't find next occurrence for rule: ${task.recurrence}. Falling back.`
+						`[TaskManager] rrule couldn't find next occurrence for rule: ${task.metadata.recurrence}. Falling back.`
 					);
 					// Fall through to simple logic below
 				}
@@ -1639,20 +1922,20 @@ export class TaskManager extends Component {
 				// rrulestr failed, likely not a standard RRULE format. Fall back to simple parsing.
 				if (e instanceof Error) {
 					this.log(
-						`[TaskManager] Failed to parse recurrence '${task.recurrence}' with rrule. Falling back to simple logic. Error: ${e.message}`
+						`[TaskManager] Failed to parse recurrence '${task.metadata.recurrence}' with rrule. Falling back to simple logic. Error: ${e.message}`
 					);
 				} else {
 					this.log(
-						`[TaskManager] Failed to parse recurrence '${task.recurrence}' with rrule. Falling back to simple logic. Unknown error.`
+						`[TaskManager] Failed to parse recurrence '${task.metadata.recurrence}' with rrule. Falling back to simple logic. Unknown error.`
 					);
 				}
 			}
 
 			// --- Fallback Simple Parsing Logic ---
 			this.log(
-				`[TaskManager] Using fallback logic for recurrence: ${task.recurrence}`
+				`[TaskManager] Using fallback logic for recurrence: ${task.metadata.recurrence}`
 			);
-			const recurrence = task.recurrence.trim().toLowerCase();
+			const recurrence = task.metadata.recurrence.trim().toLowerCase();
 			let nextDate = new Date(baseDate); // Start calculation from the base date
 
 			// Calculate the next date based on the recurrence pattern
@@ -1810,7 +2093,7 @@ export class TaskManager extends Component {
 			nextDate.setHours(0, 0, 0, 0);
 			this.log(
 				`Calculated next date using simple logic for '${
-					task.recurrence
+					task.metadata.recurrence
 				}': ${nextDate.toISOString()}`
 			);
 			return nextDate.getTime();
@@ -1820,10 +2103,10 @@ export class TaskManager extends Component {
 			const fallbackDate = new Date(baseDate);
 			fallbackDate.setDate(fallbackDate.getDate() + 1);
 			fallbackDate.setHours(0, 0, 0, 0);
-			if (task.recurrence) {
+			if (task.metadata.recurrence) {
 				this.log(
 					`Error calculating next date for '${
-						task.recurrence
+						task.metadata.recurrence
 					}'. Defaulting to ${fallbackDate.toISOString()}`
 				);
 			} else {

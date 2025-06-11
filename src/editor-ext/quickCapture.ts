@@ -17,7 +17,7 @@ import {
 	EmbeddableMarkdownEditor,
 } from "./markdownEditor";
 import TaskProgressBarPlugin from "../index";
-import { saveCapture } from "../utils/fileUtils";
+import { saveCapture, processDateTemplates } from "../utils/fileUtils";
 import { t } from "../translations/helper";
 import "../styles/quick-capture.css";
 // Effect to toggle the quick capture panel
@@ -157,10 +157,13 @@ const handleSubmit = async (
 	}
 
 	try {
-		// Use the selected target path
+		// Process date templates in the target file path
+		const processedFilePath = processDateTemplates(selectedTargetPath);
+
+		// Use the processed target path
 		const modifiedOptions = {
 			...options,
-			targetFile: selectedTargetPath,
+			targetFile: processedFilePath,
 		};
 
 		await saveCapture(app, content, modifiedOptions);
@@ -172,7 +175,7 @@ const handleSubmit = async (
 			effects: toggleQuickCapture.of(false),
 		});
 
-		new Notice(`${t("Captured successfully to")} ${selectedTargetPath}`);
+		new Notice(`${t("Captured successfully to")} ${processedFilePath}`);
 	} catch (error) {
 		new Notice(`${t("Failed to save:")} ${error}`);
 	}

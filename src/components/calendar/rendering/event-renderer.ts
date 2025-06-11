@@ -62,12 +62,13 @@ export class CalendarEventComponent extends Component {
 			cls: ["calendar-event", `calendar-event-${this.viewType}`],
 		});
 
-		if (this.event.project) {
-			this.eventEl.dataset.projectId = this.event.project;
+		if (this.event.metadata.project) {
+			this.eventEl.dataset.projectId = this.event.metadata.project;
 		}
 
-		if (this.event.priority) {
-			this.eventEl.dataset.priority = this.event.priority.toString();
+		if (this.event.metadata.priority) {
+			this.eventEl.dataset.priority =
+				this.event.metadata.priority.toString();
 		}
 
 		if (this.event.status) {
@@ -123,14 +124,14 @@ export class CalendarEventComponent extends Component {
 			`${clearAllMarks(this.event.title) || "(No title)"}\nStatus: ${
 				this.event.status
 			}${
-				this.event.dueDate
-					? `\nDue: ${moment(this.event.dueDate).format(
+				this.event.metadata.dueDate
+					? `\nDue: ${moment(this.event.metadata.dueDate).format(
 							"YYYY-MM-DD"
 					  )}`
 					: ""
 			}${
-				this.event.startDate
-					? `\nStart: ${moment(this.event.startDate).format(
+				this.event.metadata.startDate
+					? `\nStart: ${moment(this.event.metadata.startDate).format(
 							"YYYY-MM-DD"
 					  )}`
 					: ""

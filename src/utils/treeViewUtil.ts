@@ -19,11 +19,11 @@ export function tasksToTree(tasks: Task[]): Task[] {
 	tasks.forEach((task) => {
 		const taskWithChildren = taskMap.get(task.id)!;
 
-		if (task.parent && taskMap.has(task.parent)) {
+		if (task.metadata.parent && taskMap.has(task.metadata.parent)) {
 			// This task has a parent, add it to parent's children
-			const parent = taskMap.get(task.parent)!;
-			if (!parent.children.includes(task.id)) {
-				parent.children.push(task.id);
+			const parent = taskMap.get(task.metadata.parent)!;
+			if (!parent.metadata.children.includes(task.id)) {
+				parent.metadata.children.push(task.id);
 			}
 		} else {
 			// No parent or parent not in current set, treat as root
@@ -50,7 +50,7 @@ export function flattenTaskTree(
 		result.push(task);
 
 		// Add all children recursively
-		task.children.forEach((childId) => {
+		task.metadata.children.forEach((childId) => {
 			const childTask = taskMap.get(childId);
 			if (childTask) {
 				addTaskAndChildren(childTask);

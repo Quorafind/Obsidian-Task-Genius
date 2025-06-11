@@ -1,0 +1,26 @@
+/* Calendar Badge Styles */
+.calendar-badges-container {
+	display: flex;
+	flex-direction: row;
+	gap: 4px;
+	pointer-events: none;
+	z-index: 10;
+}
+
+.calendar-badge {
+	color: var(--text-muted);
+	display: flex;
+	font-size: 10px;
+	padding: var(--size-2-1);
+	border-radius: var(--radius-s);
+
+	max-width: 80px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Ensure badges are positioned relative to the day cell */
+.calendar-day-cell {
+	position: relative;
+}

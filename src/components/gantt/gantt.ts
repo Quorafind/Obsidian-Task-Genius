@@ -358,16 +358,21 @@ export class GanttComponent extends Component {
 
 		this.tasks.forEach((task) => {
 			const taskStart =
-				task.startDate || task.scheduledDate || task.createdDate;
-			const taskEnd = task.dueDate || task.completedDate;
+				task.metadata.startDate ||
+				task.metadata.scheduledDate ||
+				task.metadata.createdDate;
+			const taskEnd =
+				task.metadata.dueDate || task.metadata.completedDate;
 
 			if (taskStart) {
 				const startTs = new Date(taskStart).getTime();
 				if (!isNaN(startTs)) {
 					minTimestamp = Math.min(minTimestamp, startTs);
 				}
-			} else if (task.createdDate) {
-				const creationTs = new Date(task.createdDate).getTime();
+			} else if (task.metadata.createdDate) {
+				const creationTs = new Date(
+					task.metadata.createdDate
+				).getTime();
 				if (!isNaN(creationTs)) {
 					minTimestamp = Math.min(minTimestamp, creationTs);
 				}
@@ -376,7 +381,8 @@ export class GanttComponent extends Component {
 			if (taskEnd) {
 				const endTs = new Date(taskEnd).getTime();
 				if (!isNaN(endTs)) {
-					const isMilestone = !task.startDate && task.dueDate;
+					const isMilestone =
+						!task.metadata.startDate && task.metadata.dueDate;
 					maxTimestamp = Math.max(
 						maxTimestamp,
 						isMilestone
@@ -470,8 +476,9 @@ export class GanttComponent extends Component {
 			let endX: number | undefined;
 			let isMilestone = false;
 
-			const taskStart = task.startDate || task.scheduledDate;
-			let taskDue = task.dueDate;
+			const taskStart =
+				task.metadata.startDate || task.metadata.scheduledDate;
+			let taskDue = task.metadata.dueDate;
 
 			if (taskStart) {
 				const startDate = new Date(taskStart);
@@ -493,7 +500,7 @@ export class GanttComponent extends Component {
 						this.dayWidth
 					);
 				}
-			} else if (task.completedDate && taskStart) {
+			} else if (task.metadata.completedDate && taskStart) {
 				// Optional: end bar at completion date if no due date
 			}
 
@@ -577,10 +584,10 @@ export class GanttComponent extends Component {
 	private sortTasks(tasks: Task[]): Task[] {
 		// Keep existing sort logic, using dateHelper
 		return tasks.sort((a, b) => {
-			const startA = a.startDate || a.scheduledDate;
-			const startB = b.startDate || b.scheduledDate;
-			const dueA = a.dueDate;
-			const dueB = b.dueDate;
+			const startA = a.metadata.startDate || a.metadata.scheduledDate;
+			const startB = b.metadata.startDate || b.metadata.scheduledDate;
+			const dueA = a.metadata.dueDate;
+			const dueB = b.metadata.dueDate;
 
 			if (startA && startB) {
 				const dateA = new Date(startA).getTime();
@@ -728,9 +735,9 @@ export class GanttComponent extends Component {
 				if (task) {
 					this.scrollToDate(
 						new Date(
-							task.dueDate ||
-								task.startDate ||
-								task.scheduledDate!
+							task.metadata.dueDate ||
+								task.metadata.startDate ||
+								task.metadata.scheduledDate!
 						)
 					);
 				}
@@ -745,9 +752,9 @@ export class GanttComponent extends Component {
 				if (task) {
 					this.scrollToDate(
 						new Date(
-							task.startDate ||
-								task.dueDate ||
-								task.scheduledDate!
+							task.metadata.startDate ||
+								task.metadata.dueDate ||
+								task.metadata.scheduledDate!
 						)
 					);
 				}
@@ -1079,21 +1086,24 @@ export class GanttComponent extends Component {
 						case "status":
 							return task.status === filter.value;
 						case "tag":
-							return task.tags.some(
+							return task.metadata.tags.some(
 								(tag) =>
 									typeof tag === "string" &&
 									tag === filter.value
 							);
 						case "project":
-							return task.project === filter.value;
+							return task.metadata.project === filter.value;
 						case "context":
-							return task.context === filter.value;
+							return task.metadata.context === filter.value;
 						case "priority":
 							// Convert the selected filter value (icon/text) back to its numerical representation
 							const expectedPriorityNumber =
 								PRIORITY_MAP[filter.value];
 							// Compare the task's numerical priority
-							return task.priority === expectedPriorityNumber;
+							return (
+								task.metadata.priority ===
+								expectedPriorityNumber
+							);
 						case "completed":
 							return (
 								(filter.value === "Yes" && task.completed) ||

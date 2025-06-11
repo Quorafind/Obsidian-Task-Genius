@@ -217,7 +217,10 @@ export class TaskTreeItemComponent extends Component {
 		}
 
 		// Expand/collapse toggle for tasks with children
-		if (this.task.children && this.task.children.length > 0) {
+		if (
+			this.task.metadata.children &&
+			this.task.metadata.children.length > 0
+		) {
 			this.toggleEl = this.parentContainer.createDiv({
 				cls: "task-expand-toggle",
 			});
@@ -282,14 +285,17 @@ export class TaskTreeItemComponent extends Component {
 		this.renderMetadata(metadataEl);
 
 		// Priority indicator if available
-		if (this.task.priority) {
+		if (this.task.metadata.priority) {
 			const priorityEl = createDiv({
-				cls: ["task-priority", `priority-${this.task.priority}`],
+				cls: [
+					"task-priority",
+					`priority-${this.task.metadata.priority}`,
+				],
 			});
 
 			// Priority icon based on level
 			let icon = "•";
-			icon = "!".repeat(this.task.priority);
+			icon = "!".repeat(this.task.metadata.priority);
 
 			priorityEl.textContent = icon;
 			this.parentContainer.appendChild(priorityEl);
@@ -302,59 +308,66 @@ export class TaskTreeItemComponent extends Component {
 		// Display dates based on task completion status
 		if (!this.task.completed) {
 			// Due date if available
-			if (this.task.dueDate) {
-				this.renderDateMetadata(metadataEl, "due", this.task.dueDate);
+			if (this.task.metadata.dueDate) {
+				this.renderDateMetadata(
+					metadataEl,
+					"due",
+					this.task.metadata.dueDate
+				);
 			}
 
 			// Scheduled date if available
-			if (this.task.scheduledDate) {
+			if (this.task.metadata.scheduledDate) {
 				this.renderDateMetadata(
 					metadataEl,
 					"scheduled",
-					this.task.scheduledDate
+					this.task.metadata.scheduledDate
 				);
 			}
 
 			// Start date if available
-			if (this.task.startDate) {
+			if (this.task.metadata.startDate) {
 				this.renderDateMetadata(
 					metadataEl,
 					"start",
-					this.task.startDate
+					this.task.metadata.startDate
 				);
 			}
 
 			// Recurrence if available
-			if (this.task.recurrence) {
+			if (this.task.metadata.recurrence) {
 				this.renderRecurrenceMetadata(metadataEl);
 			}
 		} else {
 			// For completed tasks, show completion date
-			if (this.task.completedDate) {
+			if (this.task.metadata.completedDate) {
 				this.renderDateMetadata(
 					metadataEl,
 					"completed",
-					this.task.completedDate
+					this.task.metadata.completedDate
 				);
 			}
 
 			// Created date if available
-			if (this.task.createdDate) {
+			if (this.task.metadata.createdDate) {
 				this.renderDateMetadata(
 					metadataEl,
 					"created",
-					this.task.createdDate
+					this.task.metadata.createdDate
 				);
 			}
 		}
 
 		// Project badge if available and not in project view
-		if (this.task.project && this.viewMode !== "projects") {
+		if (
+			(this.task.metadata.project || this.task.metadata.tgProject) &&
+			this.viewMode !== "projects"
+		) {
 			this.renderProjectMetadata(metadataEl);
 		}
 
 		// Tags if available
-		if (this.task.tags && this.task.tags.length > 0) {
+		if (this.task.metadata.tags && this.task.metadata.tags.length > 0) {
 			this.renderTagsMetadata(metadataEl);
 		}
 
@@ -453,14 +466,37 @@ export class TaskTreeItemComponent extends Component {
 	}
 
 	private renderProjectMetadata(metadataEl: HTMLElement) {
+		// Determine which project to display: original project or tgProject
+		let projectName: string | undefined;
+		let isReadonly = false;
+
+		if (this.task.metadata.project) {
+			// Use original project if available
+			projectName = this.task.metadata.project;
+		} else if (this.task.metadata.tgProject) {
+			// Use tgProject as fallback
+			projectName = this.task.metadata.tgProject.name;
+			isReadonly = this.task.metadata.tgProject.readonly || false;
+		}
+
+		if (!projectName) return;
+
 		const projectEl = metadataEl.createEl("div", {
 			cls: "task-project",
 		});
-		projectEl.textContent =
-			this.task.project?.split("/").pop() || this.task.project || "";
 
-		// Make project clickable for editing only if inline editor is enabled
-		if (this.plugin.settings.enableInlineEditor) {
+		// Add a visual indicator for tgProject
+		if (!this.task.metadata.project && this.task.metadata.tgProject) {
+			projectEl.addClass("task-project-tg");
+			projectEl.title = `Project from ${
+				this.task.metadata.tgProject.type
+			}: ${this.task.metadata.tgProject.source || ""}`;
+		}
+
+		projectEl.textContent = projectName.split("/").pop() || projectName;
+
+		// Make project clickable for editing only if inline editor is enabled and not readonly
+		if (this.plugin.settings.enableInlineEditor && !isReadonly) {
 			this.registerDomEvent(projectEl, "click", (e) => {
 				e.stopPropagation();
 				if (!this.isCurrentlyEditing()) {
@@ -468,7 +504,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						projectEl,
 						"project",
-						this.task.project || ""
+						this.task.metadata.project || ""
 					);
 				}
 			});
@@ -480,8 +516,12 @@ export class TaskTreeItemComponent extends Component {
 			cls: "task-tags-container",
 		});
 
-		this.task.tags
-			.filter((tag) => !tag.startsWith("#project"))
+		const projectPrefix =
+			this.plugin.settings.projectTagPrefix[
+				this.plugin.settings.preferMetadataFormat
+			] || "project";
+		this.task.metadata.tags
+			.filter((tag) => !tag.startsWith(`#${projectPrefix}`))
 			.forEach((tag) => {
 				const tagEl = tagsContainer.createEl("span", {
 					cls: "task-tag",
@@ -494,7 +534,8 @@ export class TaskTreeItemComponent extends Component {
 						e.stopPropagation();
 						if (!this.isCurrentlyEditing()) {
 							const editor = this.getInlineEditor();
-							const tagsString = this.task.tags?.join(", ") || "";
+							const tagsString =
+								this.task.metadata.tags?.join(", ") || "";
 							editor.showMetadataEditor(
 								tagsContainer,
 								"tags",
@@ -510,7 +551,7 @@ export class TaskTreeItemComponent extends Component {
 		const recurrenceEl = metadataEl.createEl("div", {
 			cls: "task-date task-recurrence",
 		});
-		recurrenceEl.textContent = this.task.recurrence || "";
+		recurrenceEl.textContent = this.task.metadata.recurrence || "";
 
 		// Make recurrence clickable for editing only if inline editor is enabled
 		if (this.plugin.settings.enableInlineEditor) {
@@ -521,7 +562,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						recurrenceEl,
 						"recurrence",
-						this.task.recurrence || ""
+						this.task.metadata.recurrence || ""
 					);
 				}
 			});
@@ -573,21 +614,24 @@ export class TaskTreeItemComponent extends Component {
 		const fieldsToShow = availableFields.filter((field) => {
 			switch (field.key) {
 				case "project":
-					return !this.task.project;
+					return !this.task.metadata.project;
 				case "tags":
-					return !this.task.tags || this.task.tags.length === 0;
+					return (
+						!this.task.metadata.tags ||
+						this.task.metadata.tags.length === 0
+					);
 				case "context":
-					return !this.task.context;
+					return !this.task.metadata.context;
 				case "dueDate":
-					return !this.task.dueDate;
+					return !this.task.metadata.dueDate;
 				case "startDate":
-					return !this.task.startDate;
+					return !this.task.metadata.startDate;
 				case "scheduledDate":
-					return !this.task.scheduledDate;
+					return !this.task.metadata.scheduledDate;
 				case "priority":
-					return !this.task.priority;
+					return !this.task.metadata.priority;
 				case "recurrence":
-					return !this.task.recurrence;
+					return !this.task.metadata.recurrence;
 				default:
 					return true;
 			}
@@ -724,7 +768,7 @@ export class TaskTreeItemComponent extends Component {
 			// Find *grandchildren* by looking up children of the current childTask in the *full* taskMap
 			const grandchildren: Task[] = [];
 			this.taskMap.forEach((potentialGrandchild) => {
-				if (potentialGrandchild.parent === childTask.id) {
+				if (potentialGrandchild.metadata.parent === childTask.id) {
 					grandchildren.push(potentialGrandchild);
 				}
 			});
@@ -788,12 +832,25 @@ export class TaskTreeItemComponent extends Component {
 	}
 
 	private toggleTaskCompletion() {
-		// Create a copy of the task with toggled completion
+		// 创建任务的副本并切换完成状态
 		const updatedTask: Task = {
 			...this.task,
 			completed: !this.task.completed,
-			completedDate: !this.task.completed ? Date.now() : undefined,
 		};
+
+		// 如果任务被标记为完成，设置完成日期
+		if (!this.task.completed) {
+			updatedTask.metadata = {
+				...this.task.metadata,
+				completedDate: Date.now(),
+			};
+		} else {
+			// 如果任务被标记为未完成，移除完成日期
+			updatedTask.metadata = {
+				...this.task.metadata,
+				completedDate: undefined,
+			};
+		}
 
 		if (this.onTaskCompleted) {
 			this.onTaskCompleted(updatedTask);

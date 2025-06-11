@@ -48,8 +48,8 @@ export class TagViewComponent extends TwoColumnViewBase<string> {
 
 		// 为每个任务的标签建立索引
 		this.allTasks.forEach((task) => {
-			if (task.tags && task.tags.length > 0) {
-				task.tags.forEach((tag) => {
+			if (task.metadata.tags && task.metadata.tags.length > 0) {
+				task.metadata.tags.forEach((tag) => {
 					// 跳过非字符串类型的标签
 					if (typeof tag !== "string") {
 						return;
@@ -248,15 +248,15 @@ export class TagViewComponent extends TwoColumnViewBase<string> {
 				}
 
 				// 然后按优先级（高到低）
-				const priorityA = a.priority || 0;
-				const priorityB = b.priority || 0;
+				const priorityA = a.metadata.priority || 0;
+				const priorityB = b.metadata.priority || 0;
 				if (priorityA !== priorityB) {
 					return priorityB - priorityA;
 				}
 
 				// 然后按截止日期（早到晚）
-				const dueDateA = a.dueDate || Number.MAX_SAFE_INTEGER;
-				const dueDateB = b.dueDate || Number.MAX_SAFE_INTEGER;
+				const dueDateA = a.metadata.dueDate || Number.MAX_SAFE_INTEGER;
+				const dueDateB = b.metadata.dueDate || Number.MAX_SAFE_INTEGER;
 				return dueDateA - dueDateB;
 			});
 		}
@@ -283,8 +283,8 @@ export class TagViewComponent extends TwoColumnViewBase<string> {
 		const tagTaskMap = new Map<string, Task[]>();
 		this.selectedItems.items.forEach((tag) => {
 			const tasksForThisTagBranch = this.filteredTasks.filter((task) => {
-				if (!task.tags) return false;
-				return task.tags.some(
+				if (!task.metadata.tags) return false;
+				return task.metadata.tags.some(
 					(taskTag) =>
 						// 跳过非字符串类型的标签
 						typeof taskTag === "string" &&
@@ -430,9 +430,10 @@ export class TagViewComponent extends TwoColumnViewBase<string> {
 			const oldTask = this.allTasks[taskIndex];
 			// 检查标签是否变化，需要重新构建/渲染
 			const tagsChanged =
-				!oldTask.tags ||
-				!updatedTask.tags ||
-				oldTask.tags.join(",") !== updatedTask.tags.join(",");
+				!oldTask.metadata.tags ||
+				!updatedTask.metadata.tags ||
+				oldTask.metadata.tags.join(",") !==
+					updatedTask.metadata.tags.join(",");
 
 			if (tagsChanged) {
 				needsFullRefresh = true;
@@ -464,8 +465,8 @@ export class TagViewComponent extends TwoColumnViewBase<string> {
 					this.tagSections.forEach((section) => {
 						// 检查任务是否属于此分区的标签分支
 						if (
-							updatedTask.tags?.some(
-								(taskTag) =>
+							updatedTask.metadata.tags?.some(
+								(taskTag: string) =>
 									// 跳过非字符串类型的标签
 									typeof taskTag === "string" &&
 									(taskTag === section.tag ||

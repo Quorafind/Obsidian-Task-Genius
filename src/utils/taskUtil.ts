@@ -1,3 +1,10 @@
+/**
+ * Task Utility Functions
+ *
+ * This module provides utility functions for task operations.
+ * Parsing logic has been moved to ConfigurableTaskParser.
+ */
+
 import { PRIORITY_MAP } from "../common/default-symbol";
 import { parseLocalDate } from "./dateUtil";
 import { Task } from "../types/task";
@@ -24,8 +31,76 @@ import {
 	EMOJI_TAG_REGEX,
 	TASK_REGEX,
 } from "../common/regex-define";
+import { MarkdownTaskParser } from "./workers/ConfigurableTaskParser";
+import { getConfig } from "../common/task-parser-config";
 
-export type MetadataFormat = "tasks" | "dataview"; // Define the type for clarity
+/**
+ * Metadata format type for backward compatibility
+ */
+export type MetadataFormat = "tasks" | "dataview";
+
+/**
+ * Cached parser instance for performance
+ */
+let cachedParser: MarkdownTaskParser | null = null;
+
+/**
+ * Get or create a parser instance with the given format
+ */
+function getParser(format: MetadataFormat): MarkdownTaskParser {
+	if (!cachedParser) {
+		cachedParser = new MarkdownTaskParser(getConfig(format));
+	}
+	return cachedParser;
+}
+
+/**
+ * Reset the cached parser (call when settings change)
+ */
+export function resetTaskUtilParser(): void {
+	cachedParser = null;
+}
+
+/**
+ * Parse a single task line using the configurable parser
+ *
+ * @deprecated Use MarkdownTaskParser directly for better performance and features
+ */
+export function parseTaskLine(
+	filePath: string,
+	line: string,
+	lineNumber: number,
+	format: MetadataFormat
+): Task | null {
+	const parser = getParser(format);
+
+	// Parse the single line as content
+	const tasks = parser.parseLegacy(line, filePath);
+
+	// Return the first task if any are found
+	if (tasks.length > 0) {
+		const task = tasks[0];
+		// Override line number to match the expected behavior
+		task.line = lineNumber;
+		return task;
+	}
+
+	return null;
+}
+
+/**
+ * Parse tasks from content using the configurable parser
+ *
+ * @deprecated Use MarkdownTaskParser.parseLegacy directly for better performance and features
+ */
+export function parseTasksFromContent(
+	path: string,
+	content: string,
+	format: MetadataFormat
+): Task[] {
+	const parser = getParser(format);
+	return parser.parseLegacy(content, path);
+}
 
 export function extractDates(
 	task: Task,
@@ -44,13 +119,13 @@ export function extractDates(
 			| "completedDate"
 			| "createdDate"
 	): boolean => {
-		if (task[fieldName] !== undefined) return false; // Already assigned
+		if (task.metadata[fieldName] !== undefined) return false; // Already assigned
 
 		const match = remainingContent.match(regex);
 		if (match && match[1]) {
 			const dateVal = parseLocalDate(match[1]);
 			if (dateVal !== undefined) {
-				task[fieldName] = dateVal; // Direct assignment is type-safe
+				task.metadata[fieldName] = dateVal; // Direct assignment is type-safe
 				remainingContent = remainingContent.replace(match[0], "");
 				return true;
 			}
@@ -118,7 +193,7 @@ export function extractRecurrence(
 	if (useDataview) {
 		match = remainingContent.match(DV_RECURRENCE_REGEX);
 		if (match && match[1]) {
-			task.recurrence = match[1].trim();
+			task.metadata.recurrence = match[1].trim();
 			remainingContent = remainingContent.replace(match[0], "");
 			return remainingContent; // Found preferred format
 		}
@@ -127,7 +202,7 @@ export function extractRecurrence(
 	// Try emoji format (primary or fallback)
 	match = remainingContent.match(EMOJI_RECURRENCE_REGEX);
 	if (match && match[1]) {
-		task.recurrence = match[1].trim();
+		task.metadata.recurrence = match[1].trim();
 		remainingContent = remainingContent.replace(match[0], "");
 	}
 
@@ -149,13 +224,13 @@ export function extractPriority(
 			const priorityValue = match[1].trim().toLowerCase();
 			const mappedPriority = PRIORITY_MAP[priorityValue];
 			if (mappedPriority !== undefined) {
-				task.priority = mappedPriority;
+				task.metadata.priority = mappedPriority;
 				remainingContent = remainingContent.replace(match[0], "");
 				return remainingContent;
 			} else {
 				const numericPriority = parseInt(priorityValue, 10);
 				if (!isNaN(numericPriority)) {
-					task.priority = numericPriority;
+					task.metadata.priority = numericPriority;
 					remainingContent = remainingContent.replace(match[0], "");
 					return remainingContent;
 				}
@@ -166,8 +241,8 @@ export function extractPriority(
 	// Try emoji format (primary or fallback)
 	match = remainingContent.match(EMOJI_PRIORITY_REGEX);
 	if (match && match[1]) {
-		task.priority = PRIORITY_MAP[match[1]] ?? undefined;
-		if (task.priority !== undefined) {
+		task.metadata.priority = PRIORITY_MAP[match[1]] ?? undefined;
+		if (task.metadata.priority !== undefined) {
 			remainingContent = remainingContent.replace(match[0], "");
 		}
 	}
@@ -187,7 +262,7 @@ export function extractProject(
 	if (useDataview) {
 		match = remainingContent.match(DV_PROJECT_REGEX);
 		if (match && match[1]) {
-			task.project = match[1].trim();
+			task.metadata.project = match[1].trim();
 			remainingContent = remainingContent.replace(match[0], "");
 			return remainingContent; // Found preferred format
 		}
@@ -197,7 +272,7 @@ export function extractProject(
 	const projectTagRegex = new RegExp(EMOJI_PROJECT_PREFIX + "([\\w/-]+)");
 	match = remainingContent.match(projectTagRegex);
 	if (match && match[1]) {
-		task.project = match[1].trim();
+		task.metadata.project = match[1].trim();
 		// Do not remove here; let tag extraction handle it
 	}
 
@@ -216,7 +291,7 @@ export function extractContext(
 	if (useDataview) {
 		match = remainingContent.match(DV_CONTEXT_REGEX);
 		if (match && match[1]) {
-			task.context = match[1].trim();
+			task.metadata.context = match[1].trim();
 			remainingContent = remainingContent.replace(match[0], "");
 			return remainingContent; // Found preferred format
 		}
@@ -248,7 +323,7 @@ export function extractContext(
 
 		// Only process if not inside a wiki link
 		if (!isInsideWikiLink) {
-			task.context = contextMatch[1].trim();
+			task.metadata.context = contextMatch[1].trim();
 			// Remove the first matched context tag here to avoid it being parsed as a general tag
 			remainingContent = remainingContent.replace(contextMatch[0], "");
 		}
@@ -368,31 +443,33 @@ export function extractTags(
 
 	// Find all #tags in the content with links and inline code replaced by placeholders
 	const tagMatches = processedContent.match(EMOJI_TAG_REGEX) || [];
-	task.tags = tagMatches.map((tag) => tag.trim());
+	task.metadata.tags = tagMatches.map((tag) => tag.trim());
 
 	// If using 'tasks' (emoji) format, derive project from tags if not set
 	// Also make sure project wasn't already set by DV format before falling back
-	if (!useDataview && !task.project) {
-		const projectTag = task.tags.find(
-			(tag) =>
+	if (!useDataview && !task.metadata.project) {
+		const projectTag = task.metadata.tags.find(
+			(tag: string) =>
 				typeof tag === "string" && tag.startsWith(EMOJI_PROJECT_PREFIX)
 		);
 		if (projectTag) {
-			task.project = projectTag.substring(EMOJI_PROJECT_PREFIX.length);
+			task.metadata.project = projectTag.substring(
+				EMOJI_PROJECT_PREFIX.length
+			);
 		}
 	}
 
 	// If using Dataview format, filter out any remaining #project/ tags from the tag list
 	if (useDataview) {
-		task.tags = task.tags.filter(
-			(tag) =>
+		task.metadata.tags = task.metadata.tags.filter(
+			(tag: string) =>
 				typeof tag === "string" && !tag.startsWith(EMOJI_PROJECT_PREFIX)
 		);
 	}
 
 	// Remove found tags (including potentially #project/ tags if format is 'tasks') from the original remaining content
 	let contentWithoutTagsOrContext = remainingContent;
-	for (const tag of task.tags) {
+	for (const tag of task.metadata.tags) {
 		// Ensure the tag is not empty or just '#' before creating regex
 		if (tag && tag !== "#") {
 			const escapedTag = tag.replace(/[.*+?^${}()|[\\\]]/g, "\\$&");
@@ -443,73 +520,82 @@ export function extractTags(
 }
 
 /**
- * Parse a single task line using regex and metadata format preference
+ * Get the effective project name from a task, prioritizing original project over tgProject
  */
-export function parseTaskLine(
-	filePath: string,
-	line: string,
-	lineNumber: number,
-	format: MetadataFormat
-): Task | null {
-	const taskMatch = line.match(TASK_REGEX);
+export function getEffectiveProject(task: Task): string | undefined {
+	// Handle undefined or null metadata
+	if (!task.metadata) {
+		return undefined;
+	}
 
-	if (!taskMatch) return null;
+	// Check original project - must be non-empty and not just whitespace
+	if (task.metadata.project && task.metadata.project.trim()) {
+		return task.metadata.project;
+	}
 
-	const [fullMatch, , , , status, contentWithMetadata] = taskMatch;
-	if (status === undefined || contentWithMetadata === undefined) return null;
+	// Check tgProject - must exist, be an object, and have a non-empty name
+	if (
+		task.metadata.tgProject &&
+		typeof task.metadata.tgProject === "object" &&
+		task.metadata.tgProject.name &&
+		task.metadata.tgProject.name.trim()
+	) {
+		return task.metadata.tgProject.name;
+	}
 
-	const completed = status.toLowerCase() === "x";
-	const id = `${filePath}-L${lineNumber}`;
-
-	const task: Task = {
-		id,
-		content: contentWithMetadata.trim(), // Will be set after extraction
-		filePath,
-		line: lineNumber,
-		completed,
-		status: status,
-		originalMarkdown: line,
-		tags: [],
-		children: [],
-		priority: undefined,
-		startDate: undefined,
-		dueDate: undefined,
-		scheduledDate: undefined,
-		completedDate: undefined,
-		createdDate: undefined,
-		recurrence: undefined,
-		project: undefined,
-		context: undefined,
-		heading: [],
-	};
-
-	// Extract metadata in order
-	let remainingContent = contentWithMetadata;
-	remainingContent = extractDates(task, remainingContent, format);
-	remainingContent = extractRecurrence(task, remainingContent, format);
-	remainingContent = extractPriority(task, remainingContent, format);
-	remainingContent = extractProject(task, remainingContent, format); // Extract project before context/tags
-	remainingContent = extractContext(task, remainingContent, format);
-	remainingContent = extractTags(task, remainingContent, format); // Tags last
-
-	task.content = remainingContent.replace(/\s{2,}/g, " ").trim();
-
-	return task;
+	return undefined;
 }
 
-export function parseTasksFromContent(
-	path: string,
-	content: string,
-	format: MetadataFormat
-): Task[] {
-	const tasks: Task[] = [];
-	const lines = content.split("\n");
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const task = parseTaskLine(path, line, i + 1, format);
-		if (task) {
-			tasks.push(task);
-		}
+/**
+ * Check if the project is read-only (from tgProject)
+ */
+export function isProjectReadonly(task: Task): boolean {
+	// Handle undefined or null metadata
+	if (!task.metadata) {
+		return false;
 	}
-	return tasks;
+
+	// If there's an original project that's not empty/whitespace, it's always editable
+	if (task.metadata.project && task.metadata.project.trim()) {
+		return false;
+	}
+
+	// If only tgProject exists and is valid, check its readonly flag
+	if (
+		task.metadata.tgProject &&
+		typeof task.metadata.tgProject === "object" &&
+		task.metadata.tgProject.name &&
+		task.metadata.tgProject.name.trim()
+	) {
+		return task.metadata.tgProject.readonly || false;
+	}
+
+	return false;
+}
+
+/**
+ * Check if a task has any project (original or tgProject)
+ */
+export function hasProject(task: Task): boolean {
+	// Handle undefined or null metadata
+	if (!task.metadata) {
+		return false;
+	}
+
+	// Check if original project exists and is not empty/whitespace
+	if (task.metadata.project && task.metadata.project.trim()) {
+		return true;
+	}
+
+	// Check if tgProject exists, is valid object, and has non-empty name
+	if (
+		task.metadata.tgProject &&
+		typeof task.metadata.tgProject === "object" &&
+		task.metadata.tgProject.name &&
+		task.metadata.tgProject.name.trim()
+	) {
+		return true;
+	}
+
+	return false;
 }

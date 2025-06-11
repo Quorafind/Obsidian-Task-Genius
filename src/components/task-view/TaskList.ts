@@ -156,14 +156,14 @@ export class TaskListRendererComponent extends Component {
 			// Traverse upwards to find the highest ancestor that is NOT in this section,
 			// or stop at the task itself if it has no parent or its parent IS in the section.
 			while (
-				currentTask.parent &&
-				!sectionTaskIds.has(currentTask.parent)
+				currentTask.metadata.parent &&
+				!sectionTaskIds.has(currentTask.metadata.parent)
 			) {
-				const parentTask = allTasksMap.get(currentTask.parent);
+				const parentTask = allTasksMap.get(currentTask.metadata.parent);
 				if (!parentTask) {
 					// Parent ID exists but task not found in map - data inconsistency? Stop ascending.
 					console.warn(
-						`Parent task ${currentTask.parent} not found in allTasksMap.`
+						`Parent task ${currentTask.metadata.parent} not found in allTasksMap.`
 					);
 					break;
 				}
@@ -186,8 +186,8 @@ export class TaskListRendererComponent extends Component {
 		rootTasksToRender.forEach((rootTask) => {
 			// Find direct children of this root task using the *full* map
 			const directChildren: Task[] = [];
-			if (rootTask.children) {
-				rootTask.children.forEach((childId) => {
+			if (rootTask.metadata.children) {
+				rootTask.metadata.children.forEach((childId: string) => {
 					const childTask = allTasksMap.get(childId);
 					if (childTask) {
 						directChildren.push(childTask);

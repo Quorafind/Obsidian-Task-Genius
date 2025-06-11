@@ -5,7 +5,7 @@
 
 import { Component, App, Modal, Setting, Menu, TFile } from "obsidian";
 import { ViewMode } from "../common/setting-definition";
-import { Task } from "../types/task";
+import { Task, StandardTaskMetadata } from "../types/task";
 
 // Forward declarations to avoid import issues
 interface BasesViewSettings {
@@ -663,10 +663,21 @@ export class FileTaskView extends Component implements BasesView {
 	 */
 	private hasTaskChanged(existingTask: FileTask, newTask: FileTask): boolean {
 		// Compare key properties that would affect the UI
-		const keyProperties: (keyof FileTask)[] = [
+		const baseProperties: (keyof FileTask)[] = [
 			"content",
 			"completed",
 			"status",
+		];
+
+		// Check base properties
+		for (const prop of baseProperties) {
+			if (this.compareProperty(existingTask[prop], newTask[prop]) !== 0) {
+				return true;
+			}
+		}
+
+		// Compare metadata properties
+		const metadataProperties: (keyof StandardTaskMetadata)[] = [
 			"dueDate",
 			"startDate",
 			"scheduledDate",
@@ -676,8 +687,13 @@ export class FileTaskView extends Component implements BasesView {
 			"context",
 		];
 
-		for (const prop of keyProperties) {
-			if (this.compareProperty(existingTask[prop], newTask[prop]) !== 0) {
+		for (const prop of metadataProperties) {
+			if (
+				this.compareProperty(
+					existingTask.metadata[prop],
+					newTask.metadata[prop]
+				) !== 0
+			) {
 				return true;
 			}
 		}
@@ -916,13 +932,14 @@ export class FileTaskView extends Component implements BasesView {
 			cachedTask.content !== fileTask.content ||
 			cachedTask.completed !== fileTask.completed ||
 			cachedTask.status !== fileTask.status ||
-			cachedTask.dueDate !== fileTask.dueDate ||
-			cachedTask.startDate !== fileTask.startDate ||
-			cachedTask.scheduledDate !== fileTask.scheduledDate ||
-			cachedTask.priority !== fileTask.priority ||
-			JSON.stringify(cachedTask.tags) !== JSON.stringify(fileTask.tags) ||
-			cachedTask.project !== fileTask.project ||
-			cachedTask.context !== fileTask.context
+			cachedTask.dueDate !== fileTask.metadata.dueDate ||
+			cachedTask.startDate !== fileTask.metadata.startDate ||
+			cachedTask.scheduledDate !== fileTask.metadata.scheduledDate ||
+			cachedTask.priority !== fileTask.metadata.priority ||
+			JSON.stringify(cachedTask.tags) !==
+				JSON.stringify(fileTask.metadata.tags) ||
+			cachedTask.project !== fileTask.metadata.project ||
+			cachedTask.context !== fileTask.metadata.context
 		);
 	}
 
@@ -960,10 +977,17 @@ export class FileTaskView extends Component implements BasesView {
 		const fileTask = this.fileTasks.find((ft) => ft.id === task.id);
 		if (fileTask) {
 			try {
-				await this.fileTaskManager.updateFileTask(fileTask, {
+				const updates: Partial<FileTask> = {
 					completed: !fileTask.completed,
-					completedDate: !fileTask.completed ? Date.now() : undefined,
-				});
+					metadata: {
+						...fileTask.metadata,
+						completedDate: !fileTask.completed
+							? Date.now()
+							: undefined,
+					},
+				};
+
+				await this.fileTaskManager.updateFileTask(fileTask, updates);
 
 				// Refresh the view only if there are changes
 				const hasChanges = this.convertEntriesToFileTasks();
@@ -991,13 +1015,16 @@ export class FileTaskView extends Component implements BasesView {
 					content: updatedTask.content,
 					status: updatedTask.status,
 					completed: updatedTask.completed,
-					dueDate: updatedTask.dueDate,
-					startDate: updatedTask.startDate,
-					scheduledDate: updatedTask.scheduledDate,
-					priority: updatedTask.priority,
-					tags: updatedTask.tags,
-					project: updatedTask.project,
-					context: updatedTask.context,
+					metadata: {
+						...fileTask.metadata,
+						dueDate: updatedTask.metadata.dueDate,
+						startDate: updatedTask.metadata.startDate,
+						scheduledDate: updatedTask.metadata.scheduledDate,
+						priority: updatedTask.metadata.priority,
+						tags: updatedTask.metadata.tags,
+						project: updatedTask.metadata.project,
+						context: updatedTask.metadata.context,
+					},
 				};
 
 				await this.fileTaskManager.updateFileTask(fileTask, updates);
@@ -1064,9 +1091,9 @@ export class FileTaskView extends Component implements BasesView {
 						item.onClick(() => {
 							console.log("status", status, mark);
 							if (!task.completed && mark.toLowerCase() === "x") {
-								task.completedDate = Date.now();
+								task.metadata.completedDate = Date.now();
 							} else {
-								task.completedDate = undefined;
+								task.metadata.completedDate = undefined;
 							}
 							this.handleTaskUpdate(task, {
 								...task,

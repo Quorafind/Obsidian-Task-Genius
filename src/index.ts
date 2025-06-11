@@ -28,6 +28,8 @@ import {
 	workflowExtension,
 	updateWorkflowContextMenu,
 } from "./editor-ext/workflow";
+import { workflowDecoratorExtension } from "./editor-ext/workflowDecorator";
+import { workflowRootEnterHandlerExtension } from "./editor-ext/workflowRootEnterHandler";
 import {
 	priorityPickerExtension,
 	TASK_PRIORITIES,
@@ -43,6 +45,14 @@ import {
 	moveCompletedTasksCommand,
 	moveIncompletedTasksCommand,
 } from "./commands/completedTaskMover";
+import {
+	createQuickWorkflowCommand,
+	convertTaskToWorkflowCommand,
+	startWorkflowHereCommand,
+	convertToWorkflowRootCommand,
+	duplicateWorkflowCommand,
+	showWorkflowQuickActionsCommand,
+} from "./commands/workflowCommands";
 import { datePickerExtension } from "./editor-ext/datePicker";
 import {
 	quickCaptureExtension,
@@ -77,6 +87,7 @@ import { sortTasksInDocument } from "./commands/sortTaskCommands";
 import { taskGutterExtension } from "./editor-ext/TaskGutterHandler";
 import { autoDateManagerExtension } from "./editor-ext/autoDateManager";
 import { ViewManager } from "./pages/ViewManager";
+import { IcsManager } from "./utils/ics/IcsManager";
 
 class TaskProgressBarPopover extends HoverPopover {
 	plugin: TaskProgressBarPlugin;
@@ -162,6 +173,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 	rewardManager: RewardManager;
 
 	habitManager: HabitManager;
+
+	// ICS manager instance
+	icsManager: IcsManager;
 
 	// Preloaded tasks:
 	preloadedTasks: Task[] = [];
@@ -359,6 +373,20 @@ export default class TaskProgressBarPlugin extends Plugin {
 			if (this.settings.habit.enableHabits) {
 				this.habitManager = new HabitManager(this);
 				this.addChild(this.habitManager);
+			}
+
+			// Initialize ICS manager if sources are configured
+			if (this.settings.icsIntegration.sources.length > 0) {
+				this.icsManager = new IcsManager(
+					this.settings.icsIntegration,
+					this.settings
+				);
+				this.addChild(this.icsManager);
+
+				// Initialize ICS manager
+				this.icsManager.initialize().catch((error) => {
+					console.error("Failed to initialize ICS manager:", error);
+				});
 			}
 		});
 
@@ -717,6 +745,87 @@ export default class TaskProgressBarPlugin extends Plugin {
 				}
 			},
 		});
+
+		// Workflow commands
+		if (this.settings.workflow.enableWorkflow) {
+			this.addCommand({
+				id: "create-quick-workflow",
+				name: t("Create quick workflow"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return createQuickWorkflowCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+
+			this.addCommand({
+				id: "convert-task-to-workflow",
+				name: t("Convert task to workflow template"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return convertTaskToWorkflowCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+
+			this.addCommand({
+				id: "start-workflow-here",
+				name: t("Start workflow here"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return startWorkflowHereCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+
+			this.addCommand({
+				id: "convert-to-workflow-root",
+				name: t("Convert current task to workflow root"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return convertToWorkflowRootCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+
+			this.addCommand({
+				id: "duplicate-workflow",
+				name: t("Duplicate workflow"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return duplicateWorkflowCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+
+			this.addCommand({
+				id: "workflow-quick-actions",
+				name: t("Workflow quick actions"),
+				editorCheckCallback: (checking, editor, ctx) => {
+					return showWorkflowQuickActionsCommand(
+						checking,
+						editor,
+						ctx,
+						this
+					);
+				},
+			});
+		}
 	}
 
 	registerEditorExt() {
@@ -746,6 +855,12 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Add workflow extension
 		if (this.settings.workflow.enableWorkflow) {
 			this.registerEditorExtension([workflowExtension(this.app, this)]);
+			this.registerEditorExtension([
+				workflowDecoratorExtension(this.app, this),
+			]);
+			this.registerEditorExtension([
+				workflowRootEnterHandlerExtension(this.app, this),
+			]);
 		}
 
 		// Add quick capture extension
@@ -838,6 +953,13 @@ export default class TaskProgressBarPlugin extends Plugin {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Get the ICS manager instance
+	 */
+	getIcsManager(): IcsManager | undefined {
+		return this.icsManager;
 	}
 }
 

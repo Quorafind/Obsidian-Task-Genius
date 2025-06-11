@@ -161,8 +161,8 @@ const translations = {
 	"Toggle this to enable Org-mode style quick capture panel. Press Alt+C to open the capture panel.":
 		"Toggle this to enable Org-mode style quick capture panel. Press Alt+C to open the capture panel.",
 	"Target file": "Target file",
-	"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'":
-		"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'",
+	"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'. Supports date templates like {{DATE:YYYY-MM-DD}} or {{date:YYYY-MM-DD HH:mm}}":
+		"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'. Supports date templates like {{DATE:YYYY-MM-DD}} or {{date:YYYY-MM-DD HH:mm}}",
 	"Placeholder text": "Placeholder text",
 	"Placeholder text to display in the capture panel":
 		"Placeholder text to display in the capture panel",
@@ -427,6 +427,11 @@ const translations = {
 		"No additional destination stages defined.",
 	Remove: "Remove",
 	Add: "Add",
+	"Workflow not found": "Workflow not found",
+	"Stage not found": "Stage not found",
+	"Current stage": "Current stage",
+	Type: "Type",
+	Next: "Next",
 	"Name and ID are required.": "Name and ID are required.",
 	"End of file": "End of file",
 	"Include in cycle": "Include in cycle",
@@ -498,6 +503,89 @@ const translations = {
 		"Examples of advanced formats using expressions",
 	"Text Progress Bar": "Text Progress Bar",
 	"Emoji Progress Bar": "Emoji Progress Bar",
+
+	// ICS Integration
+	"ICS Integration": "ICS Integration",
+	"ICS Calendar Integration": "ICS Calendar Integration",
+	"Configure external calendar sources to display events in your task views.":
+		"Configure external calendar sources to display events in your task views.",
+	"Global Settings": "Global Settings",
+	"Enable Background Refresh": "Enable Background Refresh",
+	"Automatically refresh calendar sources in the background":
+		"Automatically refresh calendar sources in the background",
+	"Global Refresh Interval": "Global Refresh Interval",
+	"Default refresh interval for all sources (minutes)":
+		"Default refresh interval for all sources (minutes)",
+	"Maximum Cache Age": "Maximum Cache Age",
+	"How long to keep cached data (hours)":
+		"How long to keep cached data (hours)",
+	"Network Timeout": "Network Timeout",
+	"Request timeout in seconds": "Request timeout in seconds",
+	"Max Events Per Source": "Max Events Per Source",
+	"Maximum number of events to load from each source":
+		"Maximum number of events to load from each source",
+	"Show in Calendar Views": "Show in Calendar Views",
+	"Display ICS events in calendar views":
+		"Display ICS events in calendar views",
+	"Show in Task Lists": "Show in Task Lists",
+	"Display ICS events as read-only tasks in task lists":
+		"Display ICS events as read-only tasks in task lists",
+	"Default Event Color": "Default Event Color",
+	"Default color for events without a specific color":
+		"Default color for events without a specific color",
+	"Calendar Sources": "Calendar Sources",
+	"No calendar sources configured. Add a source to get started.":
+		"No calendar sources configured. Add a source to get started.",
+	"Add ICS Source": "Add ICS Source",
+	"Add a new calendar source": "Add a new calendar source",
+	"Add Source": "Add Source",
+	"ICS Enabled": "Enabled",
+	"ICS Disabled": "Disabled",
+	"ICS Enable": "Enable",
+	"ICS Disable": "Disable",
+	"Sync Now": "Sync Now",
+	"Syncing...": "Syncing...",
+	"Sync completed successfully": "Sync completed successfully",
+	"Sync failed: ": "Sync failed: ",
+	"Edit ICS Source": "Edit ICS Source",
+	"ICS Source Name": "Name",
+	"Display name for this calendar source":
+		"Display name for this calendar source",
+	"My Calendar": "My Calendar",
+	"ICS URL": "ICS URL",
+	"URL to the ICS/iCal file": "URL to the ICS/iCal file",
+	"Whether this source is active": "Whether this source is active",
+	"Refresh Interval": "Refresh Interval",
+	"How often to refresh this source (minutes)":
+		"How often to refresh this source (minutes)",
+	Color: "Color",
+	"Color for events from this source (optional)":
+		"Color for events from this source (optional)",
+	"Show Type": "Show Type",
+	"How to display events from this source in calendar views":
+		"How to display events from this source in calendar views",
+	Event: "Event",
+	Badge: "Badge",
+	"Show All-Day Events": "Show All-Day Events",
+	"Include all-day events from this source":
+		"Include all-day events from this source",
+	"Show Timed Events": "Show Timed Events",
+	"Include timed events from this source":
+		"Include timed events from this source",
+	"Authentication (Optional)": "Authentication (Optional)",
+	"Authentication Type": "Authentication Type",
+	"Type of authentication required": "Type of authentication required",
+	"ICS Auth None": "None",
+	"Basic Auth": "Basic Auth",
+	"Bearer Token": "Bearer Token",
+	"Custom Headers": "Custom Headers",
+	"ICS Username": "Username",
+	"ICS Password": "Password",
+	"ICS Bearer Token": "Bearer Token",
+	"JSON object with custom headers": "JSON object with custom headers",
+	"Please enter a name for the source": "Please enter a name for the source",
+	"Please enter a URL for the source": "Please enter a URL for the source",
+	"Please enter a valid URL": "Please enter a valid URL",
 	"Color-coded Status": "Color-coded Status",
 	"Status with Icons": "Status with Icons",
 	Preview: "Preview",
@@ -752,6 +840,26 @@ const translations = {
 	"Prefer metadata format of task": "Prefer metadata format of task",
 	"You can choose dataview format or tasks format, that will influence both index and save format.":
 		"You can choose dataview format or tasks format, that will influence both index and save format.",
+	"Task Parser Configuration": "Task Parser Configuration",
+	"Configure how task metadata is parsed and recognized.":
+		"Configure how task metadata is parsed and recognized.",
+	"Project tag prefix": "Project tag prefix",
+	"Customize the prefix used for project tags (e.g., 'project' for #project/myproject). Changes require reindexing.":
+		"Customize the prefix used for project tags (e.g., 'project' for #project/myproject). Changes require reindexing.",
+	"Customize the prefix used for project tags in dataview format (e.g., 'project' for [project:: myproject]). Changes require reindexing.":
+		"Customize the prefix used for project tags in dataview format (e.g., 'project' for [project:: myproject]). Changes require reindexing.",
+	"Context tag prefix": "Context tag prefix",
+	"Customize the prefix used for context tags in dataview format (e.g., 'context' for [context:: home]). Note: emoji format always uses @ prefix. Changes require reindexing.":
+		"Customize the prefix used for context tags in dataview format (e.g., 'context' for [context:: home]). Note: emoji format always uses @ prefix. Changes require reindexing.",
+	"Context tags in emoji format always use @ prefix (not configurable). This setting only affects dataview format. Changes require reindexing.":
+		"Context tags in emoji format always use @ prefix (not configurable). This setting only affects dataview format. Changes require reindexing.",
+	"Area tag prefix": "Area tag prefix",
+	"Customize the prefix used for area tags (e.g., 'area' for #area/work). Changes require reindexing.":
+		"Customize the prefix used for area tags (e.g., 'area' for #area/work). Changes require reindexing.",
+	"Customize the prefix used for area tags in dataview format (e.g., 'area' for [area:: work]). Changes require reindexing.":
+		"Customize the prefix used for area tags in dataview format (e.g., 'area' for [area:: work]). Changes require reindexing.",
+	"Format Examples:": "Format Examples:",
+	"always uses @ prefix": "always uses @ prefix",
 	"Open in new tab": "Open in new tab",
 	"Open settings": "Open settings",
 	"Hide in sidebar": "Hide in sidebar",
@@ -813,6 +921,98 @@ const translations = {
 	Reindex: "Reindex",
 	"From now": "From now",
 	"Complete workflow": "Complete workflow",
+
+	// Workflow Optimization Features
+	"Quick Workflow Creation": "Quick Workflow Creation",
+	"Create quick workflow": "Create quick workflow",
+	"Workflow Template": "Workflow Template",
+	"Choose a template to start with or create a custom workflow":
+		"Choose a template to start with or create a custom workflow",
+	"Simple Linear Workflow": "Simple Linear Workflow",
+	"A basic linear workflow with sequential stages":
+		"A basic linear workflow with sequential stages",
+	"Project Management": "Project Management",
+	"Standard project management workflow":
+		"Standard project management workflow",
+	"Research Process": "Research Process",
+	"Academic or professional research workflow":
+		"Academic or professional research workflow",
+	"Custom Workflow": "Custom Workflow",
+	"Create a custom workflow from scratch":
+		"Create a custom workflow from scratch",
+	"Workflow Name": "Workflow Name",
+	"A descriptive name for your workflow":
+		"A descriptive name for your workflow",
+	"Enter workflow name": "Enter workflow name",
+	"Unique identifier (auto-generated from name)":
+		"Unique identifier (auto-generated from name)",
+	"Optional description of the workflow purpose":
+		"Optional description of the workflow purpose",
+	"Describe your workflow...": "Describe your workflow...",
+	"Workflow Stages": "Workflow Stages",
+	"Preview of workflow stages (edit after creation for advanced options)":
+		"Preview of workflow stages (edit after creation for advanced options)",
+	"Add Stage": "Add Stage",
+	"No stages defined. Choose a template or add stages manually.":
+		"No stages defined. Choose a template or add stages manually.",
+	"Create Workflow": "Create Workflow",
+	"Please provide a workflow name and ID":
+		"Please provide a workflow name and ID",
+	"Please add at least one stage to the workflow":
+		"Please add at least one stage to the workflow",
+	"Workflow created successfully": "Workflow created successfully",
+
+	// Task Conversion Features
+	"Convert task to workflow template": "Convert task to workflow template",
+	"Convert to workflow template": "Convert to workflow template",
+	"Convert Task to Workflow": "Convert Task to Workflow",
+	"Use similar existing workflow": "Use similar existing workflow",
+	"Create new workflow": "Create new workflow",
+	"No task structure found at cursor position":
+		"No task structure found at cursor position",
+	"Workflow generated from task structure":
+		"Workflow generated from task structure",
+	"Workflow based on existing pattern": "Workflow based on existing pattern",
+	"Workflow created from task structure":
+		"Workflow created from task structure",
+
+	// Workflow Starting Features
+	"Start workflow here": "Start workflow here",
+	"Start Workflow Here": "Start Workflow Here",
+	"Add new task": "Add new task",
+	"Add new sub-task": "Add new sub-task",
+	"Start workflow": "Start workflow",
+	"No workflows defined. Create a workflow first.":
+		"No workflows defined. Create a workflow first.",
+	"Workflow task created": "Workflow task created",
+
+	// Workflow Root Conversion
+	"Convert to workflow root": "Convert to workflow root",
+	"Convert Current Task to Workflow Root":
+		"Convert Current Task to Workflow Root",
+	"Convert to Workflow Root": "Convert to Workflow Root",
+	"Task converted to workflow root": "Task converted to workflow root",
+	"Failed to convert task": "Failed to convert task",
+
+	// Workflow Duplication
+	"Duplicate workflow": "Duplicate workflow",
+	"Duplicate Workflow": "Duplicate Workflow",
+	Duplicate: "Duplicate",
+	"No workflows to duplicate": "No workflows to duplicate",
+	"Workflow duplicated and saved": "Workflow duplicated and saved",
+
+	// Quick Actions
+	"Workflow quick actions": "Workflow quick actions",
+	"Create Quick Workflow": "Create Quick Workflow",
+	"Convert to Workflow Root": "Convert to Workflow Root",
+
+	// Progress Indicator
+	"Current: ": "Current: ",
+	completed: "completed",
+	Completed: "Completed",
+	Repeatable: "Repeatable",
+	Final: "Final",
+	Sequential: "Sequential",
 	"Move to": "Move to",
 	Settings: "Settings",
 	"Just started": "Just started",
@@ -929,6 +1129,78 @@ const translations = {
 	"Use daily note path as date": "Use daily note path as date",
 	"If enabled, the daily note path will be used as the date for tasks.":
 		"If enabled, the daily note path will be used as the date for tasks.",
+
+	// Holiday Configuration
+	"Holiday Configuration": "Holiday Configuration",
+	"Configure how holiday events are detected and displayed":
+		"Configure how holiday events are detected and displayed",
+	"Enable Holiday Detection": "Enable Holiday Detection",
+	"Automatically detect and group holiday events":
+		"Automatically detect and group holiday events",
+	"Grouping Strategy": "Grouping Strategy",
+	"How to handle consecutive holiday events":
+		"How to handle consecutive holiday events",
+	"Show All Events": "Show All Events",
+	"Show First Day Only": "Show First Day Only",
+	"Show Summary": "Show Summary",
+	"Show First and Last": "Show First and Last",
+	"Maximum Gap Days": "Maximum Gap Days",
+	"Maximum days between events to consider them consecutive":
+		"Maximum days between events to consider them consecutive",
+	"Show in Forecast": "Show in Forecast",
+	"Whether to show holiday events in forecast view":
+		"Whether to show holiday events in forecast view",
+	"Show in Calendar": "Show in Calendar",
+	"Whether to show holiday events in calendar view":
+		"Whether to show holiday events in calendar view",
+	"Detection Patterns": "Detection Patterns",
+	"Summary Patterns": "Summary Patterns",
+	"Regex patterns to match in event titles (one per line)":
+		"Regex patterns to match in event titles (one per line)",
+	Keywords: "Keywords",
+	"Keywords to detect in event text (one per line)":
+		"Keywords to detect in event text (one per line)",
+	Categories: "Categories",
+	"Event categories that indicate holidays (one per line)":
+		"Event categories that indicate holidays (one per line)",
+	"Group Display Format": "Group Display Format",
+	"Format for grouped holiday display. Use {title}, {count}, {startDate}, {endDate}":
+		"Format for grouped holiday display. Use {title}, {count}, {startDate}, {endDate}",
+
+	// Status Mapping Configuration
+	"Status Mapping": "Status Mapping",
+	"Configure how ICS events are mapped to task statuses":
+		"Configure how ICS events are mapped to task statuses",
+	"Enable Status Mapping": "Enable Status Mapping",
+	"Automatically map ICS events to specific task statuses":
+		"Automatically map ICS events to specific task statuses",
+	"Override ICS Status": "Override ICS Status",
+	"Override original ICS event status with mapped status":
+		"Override original ICS event status with mapped status",
+	"Timing Rules": "Timing Rules",
+	"Past Events Status": "Past Events Status",
+	"Status for events that have already ended":
+		"Status for events that have already ended",
+	"Current Events Status": "Current Events Status",
+	"Status for events happening today": "Status for events happening today",
+	"Future Events Status": "Future Events Status",
+	"Status for events in the future": "Status for events in the future",
+	"Property Rules": "Property Rules",
+	"Optional rules based on event properties (higher priority than timing rules)":
+		"Optional rules based on event properties (higher priority than timing rules)",
+	"Holiday Status": "Holiday Status",
+	"Status for events detected as holidays":
+		"Status for events detected as holidays",
+	"Use timing rules": "Use timing rules",
+	"Category Mapping": "Category Mapping",
+	"Map specific categories to statuses (format: category:status, one per line)":
+		"Map specific categories to statuses (format: category:status, one per line)",
+	"Status Incomplete": "Incomplete",
+	"Status Complete": "Complete",
+	"Status Cancelled": "Cancelled",
+	"Status In Progress": "In Progress",
+	"Status Question": "Question",
+
 	"Task Genius will use moment.js and also this format to parse the daily note path.":
 		"Task Genius will use moment.js and also this format to parse the daily note path.",
 	"You need to set `yyyy` instead of `YYYY` in the format string. And `dd` instead of `DD`.":
@@ -1252,6 +1524,22 @@ const translations = {
 	"Advanced Filtering": "Advanced Filtering",
 	"Use advanced multi-group filtering with complex conditions":
 		"Use advanced multi-group filtering with complex conditions",
+
+	// Project auto-assignment translations
+	"Auto-assigned from path": "Auto-assigned from path",
+	"Auto-assigned from file metadata": "Auto-assigned from file metadata",
+	"Auto-assigned from config file": "Auto-assigned from config file",
+	"Auto-assigned": "Auto-assigned",
+	"Auto from path": "Auto from path",
+	"Auto from metadata": "Auto from metadata",
+	"Auto from config": "Auto from config",
+	"This project is automatically assigned and cannot be changed":
+		"This project is automatically assigned and cannot be changed",
+	"You can override the auto-assigned project by entering a different value":
+		"You can override the auto-assigned project by entering a different value",
+	"You can override the auto-assigned project":
+		"You can override the auto-assigned project",
+	"Complete substage and move to": "Complete substage and move to",
 };
 
 export default translations;

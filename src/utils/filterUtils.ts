@@ -271,7 +271,7 @@ export function evaluateFilterNode(node: FilterNode, task: Task): boolean {
 				.includes(node.value.toLowerCase());
 
 		case "TAG":
-			return task.tags.some(
+			return task.metadata.tags.some(
 				(tag) =>
 					// Skip non-string tags
 					typeof tag === "string" &&
@@ -280,7 +280,7 @@ export function evaluateFilterNode(node: FilterNode, task: Task): boolean {
 
 		case "PRIORITY":
 			// Task priority is already a number (1-3, or potentially others if customized)
-			const taskPriority = task.priority;
+			const taskPriority = task.metadata.priority;
 
 			// If task has no priority, it cannot match a priority filter
 			if (taskPriority === undefined) return false;
@@ -311,7 +311,7 @@ export function evaluateFilterNode(node: FilterNode, task: Task): boolean {
 
 		case "DATE":
 			// Use dueDate (assuming it's the target, and a number/timestamp in ms)
-			const taskDueDateTimestamp = task.dueDate;
+			const taskDueDateTimestamp = task.metadata.dueDate;
 			if (taskDueDateTimestamp === undefined) return false;
 
 			try {

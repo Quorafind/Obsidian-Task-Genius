@@ -223,8 +223,8 @@ export class TaskSpecificView extends ItemView {
 		// 4. 先使用预加载的数据快速显示
 		this.switchView(this.currentViewId, this.currentProject);
 
-		// 5. 异步加载最新数据（不阻塞初始显示）
-		this.loadTasks().catch(console.error);
+		// 5. 异步加载最新数据（包含 ICS 同步）
+		await this.loadTasks(true, true); // 跳过视图更新，避免双重渲染
 
 		this.toggleDetailsVisibility(false);
 
@@ -864,9 +864,9 @@ export class TaskSpecificView extends ItemView {
 						item.onClick(() => {
 							console.log("status", status, mark);
 							if (!task.completed && mark.toLowerCase() === "x") {
-								task.completedDate = Date.now();
+								task.metadata.completedDate = Date.now();
 							} else {
-								task.completedDate = undefined;
+								task.metadata.completedDate = undefined;
 							}
 							this.updateTask(task, {
 								...task,
@@ -925,11 +925,21 @@ export class TaskSpecificView extends ItemView {
 		}
 	}
 
-	private async loadTasks() {
+	private async loadTasks(
+		forceSync: boolean = false,
+		skipViewUpdate: boolean = false
+	) {
 		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
-		const newTasks = taskManager.getAllTasks();
+		let newTasks: Task[];
+		if (forceSync) {
+			// Use sync method for initial load to ensure ICS data is available
+			newTasks = await taskManager.getAllTasksWithSync();
+		} else {
+			// Use regular method for subsequent updates
+			newTasks = taskManager.getAllTasks();
+		}
 		console.log(`TaskSpecificView loaded ${newTasks.length} tasks`);
 
 		// 检查任务数量是否有变化（简单的优化，可以根据需要改进比较逻辑）
@@ -938,7 +948,7 @@ export class TaskSpecificView extends ItemView {
 		this.tasks = newTasks;
 
 		// 只有在数据有变化时才更新视图
-		if (hasChanged) {
+		if (!skipViewUpdate && hasChanged) {
 			// 直接切换到当前视图
 			if (this.currentViewId) {
 				this.switchView(this.currentViewId, this.currentProject);
@@ -998,7 +1008,10 @@ export class TaskSpecificView extends ItemView {
 		const updatedTask = { ...task, completed: !task.completed };
 
 		if (updatedTask.completed) {
-			updatedTask.completedDate = Date.now();
+			// 设置完成时间到任务元数据中
+			if (updatedTask.metadata) {
+				updatedTask.metadata.completedDate = Date.now();
+			}
 			const completedMark = (
 				this.plugin.settings.taskStatuses.completed || "x"
 			).split("|")[0];
@@ -1006,7 +1019,10 @@ export class TaskSpecificView extends ItemView {
 				updatedTask.status = completedMark;
 			}
 		} else {
-			updatedTask.completedDate = undefined;
+			// 清除完成时间
+			if (updatedTask.metadata) {
+				updatedTask.metadata.completedDate = undefined;
+			}
 			const notStartedMark =
 				this.plugin.settings.taskStatuses.notStarted || " ";
 			if (updatedTask.status.toLowerCase() === "x") {
@@ -1138,13 +1154,20 @@ export class TaskSpecificView extends ItemView {
 				taskToUpdate.completed !== isCompleted
 			) {
 				try {
-					// Use updateTask to ensure consistency and UI updates
-					await this.updateTask(taskToUpdate, {
+					// 创建更新的任务对象，将 completedDate 设置到 metadata 中
+					const updatedTaskData = {
 						...taskToUpdate,
 						status: newStatusMark,
 						completed: isCompleted,
-						completedDate: completedDate,
-					});
+					};
+
+					// 确保 metadata 存在并设置 completedDate
+					if (updatedTaskData.metadata) {
+						updatedTaskData.metadata.completedDate = completedDate;
+					}
+
+					// Use updateTask to ensure consistency and UI updates
+					await this.updateTask(taskToUpdate, updatedTaskData);
 					console.log(
 						`Task ${taskId} status update processed by TaskSpecificView.`
 					);

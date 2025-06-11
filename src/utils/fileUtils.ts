@@ -1,5 +1,33 @@
 import { App, getFrontMatterInfo, TFile } from "obsidian";
 import { QuickCaptureOptions } from "../editor-ext/quickCapture";
+import { moment } from "obsidian";
+
+/**
+ * Process file path with date templates
+ * Replaces {{DATE:format}} patterns with current date formatted using moment.js
+ * @param filePath - The file path that may contain date templates
+ * @returns The processed file path with date templates replaced
+ */
+export function processDateTemplates(filePath: string): string {
+	// Match patterns like {{DATE:YYYY-MM-DD}} or {{date:YYYY-MM-DD HH:mm}}
+	const dateTemplateRegex = /\{\{DATE?:([^}]+)\}\}/gi;
+
+	return filePath.replace(dateTemplateRegex, (match, format) => {
+		try {
+			// Check if format is empty or only whitespace
+			if (!format || format.trim() === "") {
+				return match; // Return original match for empty formats
+			}
+
+			// Use moment to format the current date with the specified format
+			return moment().format(format);
+		} catch (error) {
+			console.warn(`Invalid date format in template: ${format}`, error);
+			// Return the original match if formatting fails
+			return match;
+		}
+	});
+}
 
 // Save the captured content to the target file
 export async function saveCapture(
@@ -10,7 +38,10 @@ export async function saveCapture(
 	const { targetFile, appendToFile } = options;
 
 	// Check if target file exists, create if not
-	const filePath = targetFile || "Quick Capture.md";
+	const rawFilePath = targetFile || "Quick Capture.md";
+	// Process date templates in the file path
+	const filePath = processDateTemplates(rawFilePath);
+
 	let file = app.vault.getFileByPath(filePath);
 
 	if (!file) {

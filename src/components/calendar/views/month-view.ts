@@ -10,6 +10,18 @@ import { CalendarViewComponent, CalendarViewOptions } from "./base-view"; // Imp
 import Sortable from "sortablejs";
 
 /**
+ * Utility function to parse date string (YYYY-MM-DD) to Date object
+ * Optimized for performance to replace moment.js usage
+ */
+function parseDateString(dateStr: string): Date {
+	const dateParts = dateStr.split("-");
+	const year = parseInt(dateParts[0], 10);
+	const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed in Date
+	const day = parseInt(dateParts[2], 10);
+	return new Date(year, month, day);
+}
+
+/**
  * Renders the month view grid as a component.
  */
 export class MonthView extends CalendarViewComponent {
@@ -89,8 +101,9 @@ export class MonthView extends CalendarViewComponent {
 			const dateStr = currentDayIter.format("YYYY-MM-DD");
 			dayCells[dateStr] = cell;
 
+			const headerEl = cell.createDiv("calendar-day-header");
 			// Add day number
-			const dayNumberEl = cell.createDiv("calendar-day-number");
+			const dayNumberEl = headerEl.createDiv("calendar-day-number");
 			dayNumberEl.textContent = currentDayIter.format("D");
 
 			// Add styling classes
@@ -158,6 +171,42 @@ export class MonthView extends CalendarViewComponent {
 			// --- End of simplified logic ---
 		});
 
+		// 5. Render badges for ICS events with badge showType
+		Object.keys(dayCells).forEach((dateStr) => {
+			const cell = dayCells[dateStr];
+			// Use optimized date parsing for better performance
+			const date = parseDateString(dateStr);
+
+			const badgeEvents =
+				this.options.getBadgeEventsForDate?.(date) || [];
+
+			console.log("Badge events for date:", badgeEvents);
+
+			if (badgeEvents.length > 0) {
+				const headerEl = cell.querySelector(
+					".calendar-day-header"
+				) as HTMLElement;
+				const badgesContainer = headerEl.createDiv(
+					"calendar-badges-container"
+				);
+				if (badgesContainer) {
+					badgeEvents.forEach((badgeEvent) => {
+						const badgeEl = badgesContainer.createEl("div", {
+							cls: "calendar-badge",
+						});
+
+						// Add color styling if available
+						if (badgeEvent.color) {
+							badgeEl.style.backgroundColor = badgeEvent.color;
+						}
+
+						// Add count text
+						badgeEl.textContent = badgeEvent.content;
+					});
+				}
+			}
+		});
+
 		console.log(
 			`Rendered Month View component from ${gridStart.format(
 				"YYYY-MM-DD"
@@ -172,9 +221,11 @@ export class MonthView extends CalendarViewComponent {
 				const dateStr = target
 					.closest(".calendar-day-cell")
 					?.getAttribute("data-date");
-				if (this.options.onDayClick) {
+				if (this.options.onDayClick && dateStr) {
 					console.log("Day number clicked:", dateStr);
-					this.options.onDayClick(ev, moment(dateStr).valueOf(), {
+					// Use optimized date parsing for better performance
+					const date = parseDateString(dateStr);
+					this.options.onDayClick(ev, date.getTime(), {
 						behavior: "open-task-view",
 					});
 				}
@@ -185,8 +236,10 @@ export class MonthView extends CalendarViewComponent {
 				const dateStr = target
 					.closest(".calendar-day-cell")
 					?.getAttribute("data-date");
-				if (this.options.onDayClick) {
-					this.options.onDayClick(ev, moment(dateStr).valueOf(), {
+				if (this.options.onDayClick && dateStr) {
+					// Use optimized date parsing for better performance
+					const date = parseDateString(dateStr);
+					this.options.onDayClick(ev, date.getTime(), {
 						behavior: "open-quick-capture",
 					});
 				}
@@ -218,8 +271,10 @@ export class MonthView extends CalendarViewComponent {
 			const dateStr = target
 				.closest(".calendar-day-cell")
 				?.getAttribute("data-date");
-			if (this.options.onDayHover) {
-				this.options.onDayHover(ev, moment(dateStr).valueOf());
+			if (this.options.onDayHover && dateStr) {
+				// Use optimized date parsing for better performance
+				const date = parseDateString(dateStr);
+				this.options.onDayHover(ev, date.getTime());
 			}
 		}
 	}, 200);
@@ -227,23 +282,27 @@ export class MonthView extends CalendarViewComponent {
 	/**
 	 * Initialize drag and drop functionality for calendar events
 	 */
-	private initializeDragAndDrop(dayCells: { [key: string]: HTMLElement }): void {
+	private initializeDragAndDrop(dayCells: {
+		[key: string]: HTMLElement;
+	}): void {
 		// Clean up existing sortable instances
-		this.sortableInstances.forEach(instance => instance.destroy());
+		this.sortableInstances.forEach((instance) => instance.destroy());
 		this.sortableInstances = [];
 
 		// Initialize sortable for each day's events container
 		Object.entries(dayCells).forEach(([dateStr, dayCell]) => {
-			const eventsContainer = dayCell.querySelector('.calendar-events-container') as HTMLElement;
+			const eventsContainer = dayCell.querySelector(
+				".calendar-events-container"
+			) as HTMLElement;
 			if (eventsContainer) {
 				const sortableInstance = Sortable.create(eventsContainer, {
-					group: 'calendar-events',
+					group: "calendar-events",
 					animation: 150,
-					ghostClass: 'calendar-event-ghost',
-					dragClass: 'calendar-event-dragging',
+					ghostClass: "calendar-event-ghost",
+					dragClass: "calendar-event-dragging",
 					onEnd: (event) => {
 						this.handleDragEnd(event, dateStr);
-					}
+					},
 				});
 				this.sortableInstances.push(sortableInstance);
 			}
@@ -253,25 +312,30 @@ export class MonthView extends CalendarViewComponent {
 	/**
 	 * Handle drag end event to update task dates
 	 */
-	private async handleDragEnd(event: Sortable.SortableEvent, originalDateStr: string): Promise<void> {
+	private async handleDragEnd(
+		event: Sortable.SortableEvent,
+		originalDateStr: string
+	): Promise<void> {
 		const eventEl = event.item;
 		const eventId = eventEl.dataset.eventId;
 		const targetContainer = event.to;
-		const targetDateCell = targetContainer.closest('.calendar-day-cell');
+		const targetDateCell = targetContainer.closest(".calendar-day-cell");
 
 		if (!eventId || !targetDateCell) {
-			console.warn('Could not determine event ID or target date for drag operation');
+			console.warn(
+				"Could not determine event ID or target date for drag operation"
+			);
 			return;
 		}
 
-		const targetDateStr = targetDateCell.getAttribute('data-date');
+		const targetDateStr = targetDateCell.getAttribute("data-date");
 		if (!targetDateStr || targetDateStr === originalDateStr) {
 			// No date change, nothing to do
 			return;
 		}
 
 		// Find the calendar event
-		const calendarEvent = this.events.find(e => e.id === eventId);
+		const calendarEvent = this.events.find((e) => e.id === eventId);
 		if (!calendarEvent) {
 			console.warn(`Calendar event with ID ${eventId} not found`);
 			return;
@@ -279,9 +343,11 @@ export class MonthView extends CalendarViewComponent {
 
 		try {
 			await this.updateTaskDate(calendarEvent, targetDateStr);
-			console.log(`Task ${eventId} moved from ${originalDateStr} to ${targetDateStr}`);
+			console.log(
+				`Task ${eventId} moved from ${originalDateStr} to ${targetDateStr}`
+			);
 		} catch (error) {
-			console.error('Failed to update task date:', error);
+			console.error("Failed to update task date:", error);
 			// Revert the visual change by re-rendering
 			this.render();
 		}
@@ -290,27 +356,32 @@ export class MonthView extends CalendarViewComponent {
 	/**
 	 * Update task date based on the target date
 	 */
-	private async updateTaskDate(calendarEvent: CalendarEvent, targetDateStr: string): Promise<void> {
-		const targetDate = moment(targetDateStr).valueOf();
+	private async updateTaskDate(
+		calendarEvent: CalendarEvent,
+		targetDateStr: string
+	): Promise<void> {
+		// Use optimized date parsing for better performance
+		const targetDate = parseDateString(targetDateStr).getTime();
+
 		const taskManager = this.plugin.taskManager;
 
 		if (!taskManager) {
-			throw new Error('Task manager not available');
+			throw new Error("Task manager not available");
 		}
 
 		// Create updated task with new date
 		const updatedTask = { ...calendarEvent };
 
 		// Determine which date field to update based on what the task currently has
-		if (calendarEvent.dueDate) {
-			updatedTask.dueDate = targetDate;
-		} else if (calendarEvent.scheduledDate) {
-			updatedTask.scheduledDate = targetDate;
-		} else if (calendarEvent.startDate) {
-			updatedTask.startDate = targetDate;
+		if (calendarEvent.metadata.dueDate) {
+			updatedTask.metadata.dueDate = targetDate;
+		} else if (calendarEvent.metadata.scheduledDate) {
+			updatedTask.metadata.scheduledDate = targetDate;
+		} else if (calendarEvent.metadata.startDate) {
+			updatedTask.metadata.startDate = targetDate;
 		} else {
 			// Default to due date if no date is set
-			updatedTask.dueDate = targetDate;
+			updatedTask.metadata.dueDate = targetDate;
 		}
 
 		// Update the task
@@ -321,7 +392,7 @@ export class MonthView extends CalendarViewComponent {
 	 * Clean up sortable instances when component is destroyed
 	 */
 	onunload(): void {
-		this.sortableInstances.forEach(instance => instance.destroy());
+		this.sortableInstances.forEach((instance) => instance.destroy());
 		this.sortableInstances = [];
 		super.onunload();
 	}

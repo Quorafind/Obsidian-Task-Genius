@@ -28,6 +28,13 @@ function createMockTask(
 		completed,
 		content: `Task at line ${lineNumber}`,
 		tags: [],
+		metadata: {
+			tags: [],
+			children: [],
+			project: "",
+			context: "",
+			priority: 0,
+		},
 	} as SortableTask;
 }
 

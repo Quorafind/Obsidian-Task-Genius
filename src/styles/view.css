@@ -432,3 +432,253 @@
 		display: none;
 	}
 }
+
+/* Workflow Quick Modal Styles */
+.quick-workflow-modal {
+	max-width: 600px;
+	min-height: 400px;
+}
+
+.workflow-template-section {
+	margin-bottom: 20px;
+	padding: 15px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+}
+
+.template-description {
+	margin-top: 10px;
+}
+
+.template-desc-text {
+	font-style: italic;
+	color: var(--text-muted);
+	margin: 0;
+}
+
+.workflow-form-section {
+	margin-bottom: 20px;
+}
+
+.workflow-stages-preview {
+	margin-top: 15px;
+}
+
+.stages-preview-list {
+	margin-top: 10px;
+}
+
+.stage-preview-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	margin: 4px 0;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.stage-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.stage-name {
+	font-weight: 500;
+}
+
+.stage-type {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.stage-actions {
+	display: flex;
+	gap: 4px;
+}
+
+.no-stages-message {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 20px;
+	border: 2px dashed var(--background-modifier-border);
+	border-radius: 8px;
+	margin-top: 10px;
+}
+
+.workflow-modal-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 20px;
+	padding-top: 15px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Workflow Progress Indicator Styles */
+.workflow-progress-indicator {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 15px;
+	margin: 10px 0;
+}
+
+.workflow-progress-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 15px;
+}
+
+.workflow-name {
+	font-weight: 600;
+	font-size: 1.1em;
+}
+
+.workflow-progress-text {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.workflow-progress-bar-container {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 15px;
+}
+
+.workflow-progress-bar {
+	flex: 1;
+	height: 8px;
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.workflow-progress-fill {
+	height: 100%;
+	background: var(--interactive-accent);
+	transition: width 0.3s ease;
+}
+
+.workflow-progress-percentage {
+	font-size: 0.9em;
+	font-weight: 500;
+	min-width: 35px;
+	text-align: right;
+}
+
+.workflow-stage-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.workflow-stage-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 10px;
+	border-radius: 6px;
+	transition: background-color 0.2s ease;
+}
+
+.workflow-stage-item.completed {
+	background: var(--background-modifier-success);
+}
+
+.workflow-stage-item.current {
+	background: var(--background-modifier-accent);
+	border: 1px solid var(--interactive-accent);
+}
+
+.workflow-stage-item.pending {
+	background: var(--background-primary);
+	opacity: 0.7;
+}
+
+.workflow-stage-icon {
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 2px;
+}
+
+.workflow-stage-icon.completed-icon {
+	color: var(--text-success);
+}
+
+.workflow-stage-icon.current-icon {
+	color: var(--interactive-accent);
+}
+
+.workflow-stage-icon.pending-icon {
+	color: var(--text-muted);
+}
+
+.workflow-stage-content {
+	flex: 1;
+}
+
+.workflow-stage-name {
+	font-weight: 500;
+	margin-bottom: 2px;
+}
+
+.workflow-stage-type {
+	font-size: 0.8em;
+	color: var(--text-muted);
+}
+
+.workflow-stage-number {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.8em;
+	font-weight: 600;
+	margin-top: 2px;
+}
+
+.workflow-stage-item.completed .workflow-stage-number {
+	background: var(--text-success);
+	color: var(--background-primary);
+}
+
+.workflow-stage-item.current .workflow-stage-number {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.workflow-substage-container {
+	margin-top: 8px;
+	padding-left: 16px;
+	border-left: 2px solid var(--background-modifier-border);
+}
+
+.workflow-substage-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 0;
+}
+
+.workflow-substage-icon {
+	width: 12px;
+	height: 12px;
+	color: var(--text-muted);
+}
+
+.workflow-substage-name {
+	font-size: 0.9em;
+	color: var(--text-muted);
+}

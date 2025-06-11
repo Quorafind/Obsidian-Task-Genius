@@ -92,9 +92,12 @@ export class TreeManager extends Component {
 			const node = this.treeNodes.get(task.id);
 			if (!node) return;
 
-			if (task.parent && this.treeNodes.has(task.parent)) {
+			if (
+				task.metadata.parent &&
+				this.treeNodes.has(task.metadata.parent)
+			) {
 				// This task has a parent
-				const parentNode = this.treeNodes.get(task.parent);
+				const parentNode = this.treeNodes.get(task.metadata.parent);
 				if (parentNode) {
 					parentNode.children.push(node);
 					node.parent = parentNode;
@@ -185,17 +188,24 @@ export class TreeManager extends Component {
 	 */
 	private fallbackSort(tasks: Task[]): Task[] {
 		return [...tasks].sort((a, b) => {
-			// Priority comparison (higher priority first)
-			const aPriority = a.priority || 0;
-			const bPriority = b.priority || 0;
-			if (aPriority !== bPriority) {
-				return bPriority - aPriority; // Higher priority first
+			// 优先级比较（高优先级在前）
+			const priorityDiff =
+				(b.metadata.priority ?? 0) - (a.metadata.priority ?? 0);
+			if (priorityDiff !== 0) {
+				return priorityDiff;
 			}
 
-			// Creation date comparison (newer first)
-			const aCreated = a.createdDate || 0;
-			const bCreated = b.createdDate || 0;
-			return bCreated - aCreated;
+			// 创建日期比较（新任务在前）
+			const createdDiff =
+				(b.metadata.createdDate ?? 0) - (a.metadata.createdDate ?? 0);
+			if (createdDiff !== 0) {
+				return createdDiff;
+			}
+
+			// 如果优先级和创建日期都相同，按内容字母顺序排序
+			const contentA = a.content?.trim() || "";
+			const contentB = b.content?.trim() || "";
+			return contentA.localeCompare(contentB);
 		});
 	}
 
@@ -251,52 +261,53 @@ export class TreeManager extends Component {
 					displayValue = task.content;
 					break;
 				case "priority":
-					value = task.priority;
-					displayValue = this.formatPriority(task.priority);
+					value = task.metadata.priority;
+					displayValue = this.formatPriority(task.metadata.priority);
 					break;
 				case "dueDate":
-					value = task.dueDate;
-					displayValue = this.formatDate(task.dueDate);
+					value = task.metadata.dueDate;
+					displayValue = this.formatDate(task.metadata.dueDate);
 					break;
 				case "startDate":
-					value = task.startDate;
-					displayValue = this.formatDate(task.startDate);
+					value = task.metadata.startDate;
+					displayValue = this.formatDate(task.metadata.startDate);
 					break;
 				case "scheduledDate":
-					value = task.scheduledDate;
-					displayValue = this.formatDate(task.scheduledDate);
+					value = task.metadata.scheduledDate;
+					displayValue = this.formatDate(task.metadata.scheduledDate);
 					break;
 				case "createdDate":
-					value = task.createdDate;
-					displayValue = this.formatDate(task.createdDate);
+					value = task.metadata.createdDate;
+					displayValue = this.formatDate(task.metadata.createdDate);
 					break;
 				case "completedDate":
-					value = task.completedDate;
-					displayValue = this.formatDate(task.completedDate);
+					value = task.metadata.completedDate;
+					displayValue = this.formatDate(task.metadata.completedDate);
 					break;
 				case "tags":
-					value = task.tags;
-					displayValue = task.tags?.join(", ") || "";
+					value = task.metadata.tags;
+					displayValue = task.metadata.tags?.join(", ") || "";
 					break;
 				case "project":
-					value = task.project;
-					displayValue = task.project || "";
+					value = task.metadata.project;
+					displayValue = task.metadata.project || "";
 					break;
 				case "context":
-					value = task.context;
-					displayValue = task.context || "";
+					value = task.metadata.context;
+					displayValue = task.metadata.context || "";
 					break;
 				case "recurrence":
-					value = task.recurrence;
-					displayValue = task.recurrence || "";
+					value = task.metadata.recurrence;
+					displayValue = task.metadata.recurrence || "";
 					break;
 				case "estimatedTime":
-					value = task.estimatedTime;
-					displayValue = task.estimatedTime?.toString() || "";
+					value = task.metadata.estimatedTime;
+					displayValue =
+						task.metadata.estimatedTime?.toString() || "";
 					break;
 				case "actualTime":
-					value = task.actualTime;
-					displayValue = task.actualTime?.toString() || "";
+					value = task.metadata.actualTime;
+					displayValue = task.metadata.actualTime?.toString() || "";
 					break;
 				case "filePath":
 					value = task.filePath;
@@ -457,7 +468,7 @@ export class TreeManager extends Component {
 		}
 
 		// Update task's parent property
-		node.task.parent = newParentId || undefined;
+		node.task.metadata.parent = newParentId || undefined;
 
 		return true;
 	}

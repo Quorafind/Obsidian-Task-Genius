@@ -6,6 +6,7 @@ import { DatePickerPopover } from "../date-picker/DatePickerPopover";
 import type TaskProgressBarPlugin from "../../index";
 import { ContextSuggest, ProjectSuggest, TagSuggest } from "../AutoComplete";
 import { clearAllMarks } from "../MarkdownRenderer";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
 
 // Cache for autocomplete data to avoid repeated expensive operations
 interface AutoCompleteCache {
@@ -517,7 +518,7 @@ export class TableRenderer extends Component {
 			if (column.id === "rowNumber") {
 				this.renderTreeStructure(td, row, cell, column);
 			} else {
-				this.renderCellContent(td, cell, column);
+				this.renderCellContent(td, cell, column, row);
 			}
 
 			if (cell.className) {
@@ -688,7 +689,7 @@ export class TableRenderer extends Component {
 		);
 
 		// Render the actual cell content
-		this.renderCellContent(contentWrapper, cell, column);
+		this.renderCellContent(contentWrapper, cell, column, row);
 	}
 
 	/**
@@ -697,7 +698,8 @@ export class TableRenderer extends Component {
 	private renderCellContent(
 		cellEl: HTMLElement,
 		cell: TableCell,
-		column: TableColumn
+		column: TableColumn,
+		row?: TableRow
 	) {
 		cellEl.empty();
 
@@ -718,7 +720,7 @@ export class TableRenderer extends Component {
 				this.renderNumberCell(cellEl, cell);
 				break;
 			default:
-				this.renderTextCell(cellEl, cell);
+				this.renderTextCell(cellEl, cell, row);
 		}
 	}
 
@@ -1165,16 +1167,37 @@ export class TableRenderer extends Component {
 	/**
 	 * Render text cell with inline editing and auto-suggest
 	 */
-	private renderTextCell(cellEl: HTMLElement, cell: TableCell) {
+	private renderTextCell(
+		cellEl: HTMLElement,
+		cell: TableCell,
+		row?: TableRow
+	) {
 		cellEl.addClass("task-table-text");
 
 		// For content column (rowNumber), use cleaned content without tags and other marks
 		const isContentColumn = cell.columnId === "content";
-		const displayText = isContentColumn
-			? clearAllMarks((cell.value as string) || cell.displayValue)
-			: cell.displayValue;
+		const isProjectColumn = cell.columnId === "project";
 
-		if (cell.editable) {
+		// Get effective project value for project column
+		let displayText: string;
+		let effectiveValue: string;
+		let isReadonly = false;
+
+		if (isProjectColumn && row?.task?.metadata?.tgProject) {
+			effectiveValue = getEffectiveProject(row.task) || "";
+			displayText = effectiveValue;
+			isReadonly = isProjectReadonly(row.task);
+		} else if (isContentColumn) {
+			displayText = clearAllMarks(
+				(cell.value as string) || cell.displayValue
+			);
+			effectiveValue = displayText;
+		} else {
+			displayText = cell.displayValue;
+			effectiveValue = (cell.value as string) || "";
+		}
+
+		if (cell.editable && !isReadonly) {
 			// Create editable input
 			const input = cellEl.createEl("input", "task-table-text-input");
 			input.type = "text";
@@ -1186,7 +1209,7 @@ export class TableRenderer extends Component {
 			// For content column, use the cleaned text; for others, use the raw value
 			const originalValue = isContentColumn
 				? displayText // This is the cleaned text that user sees and edits
-				: (cell.value as string) || "";
+				: effectiveValue;
 
 			// Setup autocomplete only when user starts typing or focuses
 			let autoCompleteSetup = false;
@@ -1246,6 +1269,52 @@ export class TableRenderer extends Component {
 					}
 				});
 				cellEl.title = t("Click to open file");
+			}
+		}
+
+		// Add tgProject indicator for project column
+		if (isProjectColumn && row?.task?.metadata?.tgProject) {
+			const tgProject = row.task.metadata.tgProject;
+			const indicator = cellEl.createDiv({
+				cls: "project-source-indicator table-indicator",
+			});
+
+			// Create indicator icon based on tgProject type
+			let indicatorIcon = "";
+			let indicatorTitle = "";
+
+			switch (tgProject.type) {
+				case "path":
+					indicatorIcon = "📁";
+					indicatorTitle =
+						t("Auto-assigned from path") + `: ${tgProject.source}`;
+					break;
+				case "metadata":
+					indicatorIcon = "📄";
+					indicatorTitle =
+						t("Auto-assigned from file metadata") +
+						`: ${tgProject.source}`;
+					break;
+				case "config":
+					indicatorIcon = "⚙️";
+					indicatorTitle =
+						t("Auto-assigned from config file") +
+						`: ${tgProject.source}`;
+					break;
+				default:
+					indicatorIcon = "🔗";
+					indicatorTitle =
+						t("Auto-assigned") + `: ${tgProject.source}`;
+			}
+
+			indicator.innerHTML = `<span class="indicator-icon">${indicatorIcon}</span>`;
+			indicator.title = indicatorTitle;
+
+			if (isReadonly) {
+				indicator.addClass("readonly-indicator");
+				cellEl.addClass("readonly-cell");
+			} else {
+				indicator.addClass("override-indicator");
 			}
 		}
 
@@ -1452,7 +1521,7 @@ export class TableRenderer extends Component {
 	/**
 	 * Get all available values for auto-completion from existing tasks
 	 */
-	private getAllValues(columnType: string): string[] {
+	private async getAllValues(columnType: string): Promise<string[]> {
 		if (!this.plugin) return [];
 
 		// Get all tasks from the plugin
@@ -1462,7 +1531,7 @@ export class TableRenderer extends Component {
 		allTasks.forEach((task) => {
 			switch (columnType) {
 				case "tags":
-					task.tags?.forEach((tag) => {
+					task.metadata.tags?.forEach((tag) => {
 						if (tag && tag.trim()) {
 							// Remove # prefix if present
 							const cleanTag = tag.startsWith("#")
@@ -1473,13 +1542,13 @@ export class TableRenderer extends Component {
 					});
 					break;
 				case "project":
-					if (task.project && task.project.trim()) {
-						values.add(task.project);
+					if (task.metadata.project && task.metadata.project.trim()) {
+						values.add(task.metadata.project);
 					}
 					break;
 				case "context":
-					if (task.context && task.context.trim()) {
-						values.add(task.context);
+					if (task.metadata.context && task.metadata.context.trim()) {
+						values.add(task.metadata.context);
 					}
 					break;
 			}

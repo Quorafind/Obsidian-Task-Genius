@@ -142,9 +142,12 @@ export class TaskRendererComponent extends Component {
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
-			if (task.priority && String(task.priority).trim()) {
+			if (
+				task.metadata.priority &&
+				String(task.metadata.priority).trim()
+			) {
 				taskElement.classList.add(
-					`priority-${String(task.priority).trim()}`
+					`priority-${String(task.metadata.priority).trim()}`
 				);
 			}
 
@@ -200,8 +203,8 @@ export class TaskRendererComponent extends Component {
 			group.setAttribute(
 				"title",
 				`${task.content}\nDue: ${
-					task.dueDate
-						? new Date(task.dueDate).toLocaleDateString()
+					task.metadata.dueDate
+						? new Date(task.metadata.dueDate).toLocaleDateString()
 						: "N/A"
 				}`
 			);
@@ -222,9 +225,12 @@ export class TaskRendererComponent extends Component {
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
-			if (task.priority && String(task.priority).trim()) {
+			if (
+				task.metadata.priority &&
+				String(task.metadata.priority).trim()
+			) {
 				taskElement.classList.add(
-					`priority-${String(task.priority).trim()}`
+					`priority-${String(task.metadata.priority).trim()}`
 				);
 			}
 
@@ -232,12 +238,12 @@ export class TaskRendererComponent extends Component {
 			group.setAttribute(
 				"title",
 				`${task.content}\nStart: ${
-					task.startDate
-						? new Date(task.startDate).toLocaleDateString()
+					task.metadata.startDate
+						? new Date(task.metadata.startDate).toLocaleDateString()
 						: "N/A"
 				}\nDue: ${
-					task.dueDate
-						? new Date(task.dueDate).toLocaleDateString()
+					task.metadata.dueDate
+						? new Date(task.metadata.dueDate).toLocaleDateString()
 						: "N/A"
 				}`
 			);

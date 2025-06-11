@@ -12,7 +12,69 @@ const EMOJI_PRIORITY_REGEX = /(([🔺⏫🔼🔽⏬️⏬])|(\[#[A-E]\]))/u; // 
 const EMOJI_CONTEXT_REGEX = /@([\w-]+)/g;
 const EMOJI_TAG_REGEX =
 	/#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]+/g; // Includes #project/ tags
-const EMOJI_PROJECT_PREFIX = "#project/";
+const EMOJI_PROJECT_PREFIX = "#project/"; // Keep for backward compatibility
+
+// Format types for prefix generation
+export type MetadataFormat = "emoji" | "dataview";
+
+// Function to get configurable project prefix based on format
+export const getProjectPrefix = (
+	prefix?: string,
+	format: MetadataFormat = "emoji"
+): string => {
+	const projectPrefix = prefix || "project";
+	if (format === "dataview") {
+		return `[${projectPrefix}::`;
+	} else {
+		return `#${projectPrefix}/`;
+	}
+};
+
+// Function to get configurable context prefix based on format
+// Special handling: emoji format always uses @, dataview format uses configurable prefix
+export const getContextPrefix = (
+	prefix?: string,
+	format: MetadataFormat = "emoji"
+): string => {
+	if (format === "dataview") {
+		const contextPrefix = prefix || "context";
+		return `[${contextPrefix}::`;
+	} else {
+		// For emoji format, always use @ (not configurable)
+		return "@";
+	}
+};
+
+// Function to get configurable area prefix based on format
+export const getAreaPrefix = (
+	prefix?: string,
+	format: MetadataFormat = "emoji"
+): string => {
+	const areaPrefix = prefix || "area";
+	if (format === "dataview") {
+		return `[${areaPrefix}::`;
+	} else {
+		return `#${areaPrefix}/`;
+	}
+};
+
+// Function to create dynamic regex for project tags
+export const createProjectRegex = (prefix?: string): RegExp => {
+	const projectPrefix = prefix || "project";
+	return new RegExp(`#${projectPrefix}/([\\w-]+)`, "g");
+};
+
+// Function to create dynamic regex for dataview project fields
+export const createDataviewProjectRegex = (prefix?: string): RegExp => {
+	const projectPrefix = prefix || "project";
+	return new RegExp(`\\[${projectPrefix}::\\s*([^\\]]+)\\]`, "i");
+};
+
+// Function to create dynamic regex for dataview context fields
+export const createDataviewContextRegex = (prefix?: string): RegExp => {
+	const contextPrefix = prefix || "context";
+	return new RegExp(`\\[${contextPrefix}::\\s*([^\\]]+)\\]`, "i");
+};
 
 // --- Dataview Style Regexes ---
 const DV_START_DATE_REGEX = /\[(?:start|🛫)::\s*(\d{4}-\d{2}-\d{2})\]/i;
@@ -23,8 +85,8 @@ const DV_SCHEDULED_DATE_REGEX = /\[(?:scheduled|⏳)::\s*(\d{4}-\d{2}-\d{2})\]/i
 const DV_CREATED_DATE_REGEX = /\[(?:created|➕)::\s*(\d{4}-\d{2}-\d{2})\]/i;
 const DV_RECURRENCE_REGEX = /\[(?:repeat|recurrence|🔁)::\s*([^\]]+)\]/i;
 const DV_PRIORITY_REGEX = /\[priority::\s*([^\]]+)\]/i;
-const DV_PROJECT_REGEX = /\[project::\s*([^\]]+)\]/i;
-const DV_CONTEXT_REGEX = /\[context::\s*([^\]]+)\]/i;
+const DV_PROJECT_REGEX = /\[project::\s*([^\]]+)\]/i; // Default project regex
+const DV_CONTEXT_REGEX = /\[context::\s*([^\]]+)\]/i; // Default context regex
 // Dataview Tag Regex is the same, applied after DV field removal
 const ANY_DATAVIEW_FIELD_REGEX = /\[\w+(?:|🗓️|✅|➕|🛫|⏳|🔁)::\s*[^\]]+\]/gi;
 

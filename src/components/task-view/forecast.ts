@@ -398,8 +398,8 @@ export class ForecastComponent extends Component {
 		// Count actions (tasks) and unique projects
 		const projectSet = new Set<string>();
 		this.allTasks.forEach((task) => {
-			if (task.project) {
-				projectSet.add(task.project);
+			if (task.metadata.project) {
+				projectSet.add(task.metadata.project);
 			}
 		});
 
@@ -483,8 +483,8 @@ export class ForecastComponent extends Component {
 	private sortTasksByPriorityAndRelevantDate(tasks: Task[]): Task[] {
 		return tasks.sort((a, b) => {
 			// First by priority (high to low)
-			const priorityA = a.priority || 0;
-			const priorityB = b.priority || 0;
+			const priorityA = a.metadata.priority || 0;
+			const priorityB = b.metadata.priority || 0;
 			if (priorityA !== priorityB) {
 				return priorityB - priorityA;
 			}
@@ -1156,7 +1156,7 @@ export class ForecastComponent extends Component {
 
 	private getRelevantDate(task: Task): number | undefined {
 		// Prioritize scheduledDate, fallback to dueDate
-		const dateToUse = task.scheduledDate || task.dueDate;
+		const dateToUse = task.metadata.scheduledDate || task.metadata.dueDate;
 		if (!dateToUse) return undefined;
 
 		// Return timestamp (or Date object if needed elsewhere, but timestamp is good for comparisons)

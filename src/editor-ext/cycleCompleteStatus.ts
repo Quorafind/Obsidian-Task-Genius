@@ -257,6 +257,17 @@ export function findTaskStatusChanges(
 						pos === newLine.from + markIndex &&
 						insertedText !== "["
 					) {
+						// NEW: Check if this is a replacement operation (user selected and replaced text)
+						// If fromA != toA, it means user deleted existing text and replaced it
+						// This indicates user has explicit intent for the specific character
+						// In this case, we should NOT trigger automatic cycling
+						if (fromA !== toA) {
+							console.log(
+								`Detected replacement operation (fromA=${fromA}, toA=${toA}). User manually input '${insertedText}', skipping automatic cycling.`
+							);
+							return; // Skip this change, don't add to taskChanges
+						}
+
 						changedPosition = pos;
 
 						currentMark = match[2];
@@ -588,6 +599,25 @@ export function handleCycleCompleteStatusTransaction(
 		if (currentMark === nextMark) {
 			console.log(
 				`Current mark '${currentMark}' is already the next mark in the cycle. Skipping processing.`
+			);
+			continue;
+		}
+
+		// NEW: Check if user's input already matches the next mark in the cycle
+		// Get the user's input from the transaction
+		let userInputMark: string | null = null;
+		tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+			const insertedText = inserted.toString();
+			// Check if this change is at the task marker position
+			if (fromB === position && insertedText.length === 1) {
+				userInputMark = insertedText;
+			}
+		});
+
+		// If user's input already matches the next mark, don't cycle
+		if (userInputMark === nextMark) {
+			console.log(
+				`User input '${userInputMark}' already matches the next mark '${nextMark}' in the cycle. Skipping processing.`
 			);
 			continue;
 		}

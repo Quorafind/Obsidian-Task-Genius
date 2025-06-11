@@ -26,7 +26,7 @@ export function buildFilterOptionsFromTasks(tasks: Task[]): FilterCategory[] {
 		if (task.status) statuses.add(task.status);
 
 		// Tags
-		task.tags.forEach((tag) => {
+		task.metadata.tags.forEach((tag) => {
 			// Skip non-string tags
 			if (typeof tag === "string") {
 				tags.add(tag);
@@ -34,13 +34,14 @@ export function buildFilterOptionsFromTasks(tasks: Task[]): FilterCategory[] {
 		});
 
 		// Project
-		if (task.project) projects.add(task.project);
+		if (task.metadata.project) projects.add(task.metadata.project);
 
 		// Context
-		if (task.context) contexts.add(task.context);
+		if (task.metadata.context) contexts.add(task.metadata.context);
 
 		// Priority
-		if (task.priority !== undefined) priorities.add(task.priority);
+		if (task.metadata.priority !== undefined)
+			priorities.add(task.metadata.priority);
 
 		// File Path
 		if (task.filePath) filePaths.add(task.filePath);
@@ -319,7 +320,6 @@ export class FilterComponent extends Component {
 		// Clear active filters array
 		this.activeFilters = [];
 
-		// Clear the DOM container (safer than innerHTML='')
 		this.filtersContainer.empty();
 
 		this.updateClearAllButton();

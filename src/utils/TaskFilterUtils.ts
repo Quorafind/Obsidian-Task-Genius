@@ -201,15 +201,23 @@ function applyFilter(task: Task, filter: Filter): boolean {
 		case "status":
 			return applyStatusFilter(task.status, condition, value);
 		case "priority":
-			return applyPriorityFilter(task.priority, condition, value);
+			return applyPriorityFilter(
+				task.metadata.priority,
+				condition,
+				value
+			);
 		case "dueDate":
-			return applyDateFilter(task.dueDate, condition, value);
+			return applyDateFilter(task.metadata.dueDate, condition, value);
 		case "startDate":
-			return applyDateFilter(task.startDate, condition, value);
+			return applyDateFilter(task.metadata.startDate, condition, value);
 		case "scheduledDate":
-			return applyDateFilter(task.scheduledDate, condition, value);
+			return applyDateFilter(
+				task.metadata.scheduledDate,
+				condition,
+				value
+			);
 		case "tags":
-			return applyTagsFilter(task.tags, condition, value);
+			return applyTagsFilter(task.metadata.tags, condition, value);
 		case "filePath":
 			return applyFilePathFilter(task.filePath, condition, value);
 		case "completed":
@@ -461,6 +469,30 @@ export function filterTasks(
 	const viewConfig = getViewSettingOrDefault(plugin, viewId);
 	const filterRules = viewConfig.filterRules || {};
 
+	// --- 过滤 badge 类型的 ICS 任务（仅在非日历视图中） ---
+	// Badge 任务只应该在日历视图中显示，其他视图应该过滤掉
+	// 检查是否为日历相关的视图ID
+	const isCalendarView =
+		viewId === "calendar" ||
+		(typeof viewId === "string" && viewId.startsWith("calendar"));
+
+	if (!isCalendarView) {
+		filtered = filtered.filter((task) => {
+			// 检查是否为 ICS 任务
+			const isIcsTask = (task as any).source?.type === "ics";
+			if (!isIcsTask) {
+				return true; // 非 ICS 任务保留
+			}
+
+			// 检查是否为 badge 类型
+			const icsTask = task as any; // 类型断言为包含 icsEvent 的任务
+			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
+
+			// 如果是 badge 类型的 ICS 任务，则过滤掉（返回 false）
+			return !showAsBadge;
+		});
+	}
+
 	// --- 基本筛选：隐藏已完成和空白任务 ---
 	// 注意：这些是基础过滤条件，始终应用
 	if (viewConfig.hideCompletedAndAbandonedTasks) {
@@ -510,9 +542,9 @@ export function filterTasks(
 			filtered = filtered.filter(
 				(task) =>
 					task.content.toLowerCase().includes(textFilter) ||
-					task.project?.toLowerCase().includes(textFilter) ||
-					task.context?.toLowerCase().includes(textFilter) ||
-					task.tags?.some((tag) =>
+					task.metadata.project?.toLowerCase().includes(textFilter) ||
+					task.metadata.context?.toLowerCase().includes(textFilter) ||
+					task.metadata.tags?.some((tag) =>
 						tag.toLowerCase().includes(textFilter)
 					)
 			);
@@ -534,7 +566,7 @@ export function filterTasks(
 	if (filterRules.tagsInclude && filterRules.tagsInclude.length > 0) {
 		filtered = filtered.filter((task) =>
 			filterRules.tagsInclude?.some((tag) =>
-				task.tags.some(
+				task.metadata.tags.some(
 					(taskTag) => typeof taskTag === "string" && taskTag === tag
 				)
 			)
@@ -542,12 +574,14 @@ export function filterTasks(
 	}
 	if (filterRules.tagsExclude && filterRules.tagsExclude.length > 0) {
 		filtered = filtered.filter((task) => {
-			if (!task.tags || task.tags.length === 0) {
+			if (!task.metadata.tags || task.metadata.tags.length === 0) {
 				return true; // Keep tasks with no tags
 			}
 
 			// Convert task tags to lowercase for case-insensitive comparison
-			const taskTagsLower = task.tags.map((tag) => tag.toLowerCase());
+			const taskTagsLower = task.metadata.tags.map((tag) =>
+				tag.toLowerCase()
+			);
 
 			// Check if any excluded tag is in the task's tags
 			return !filterRules.tagsExclude!.some((excludeTag) => {
@@ -561,19 +595,23 @@ export function filterTasks(
 	}
 	if (filterRules.project) {
 		filtered = filtered.filter(
-			(task) => task.project?.trim() === filterRules.project?.trim()
+			(task) =>
+				task.metadata.project?.trim() === filterRules.project?.trim()
 		);
 	}
 	if (filterRules.priority !== undefined) {
 		filtered = filtered.filter((task) => {
 			if (filterRules.priority === "none") {
-				return task.priority === undefined;
+				return task.metadata.priority === undefined;
 			} else if (filterRules.priority?.includes(",")) {
 				return filterRules.priority
 					.split(",")
-					.includes(String(task.priority ?? 0));
+					.includes(String(task.metadata.priority ?? 0));
 			} else {
-				return task.priority === parseInt(filterRules.priority ?? "0");
+				return (
+					task.metadata.priority ===
+					parseInt(filterRules.priority ?? "0")
+				);
 			}
 		});
 	}
@@ -614,8 +652,8 @@ export function filterTasks(
 		const targetDueDate = parseDateFilterString(filterRules.dueDate);
 		if (targetDueDate) {
 			filtered = filtered.filter((task) =>
-				task.dueDate
-					? moment(task.dueDate).isSame(targetDueDate, "day")
+				task.metadata.dueDate
+					? moment(task.metadata.dueDate).isSame(targetDueDate, "day")
 					: false
 			);
 		}
@@ -624,8 +662,11 @@ export function filterTasks(
 		const targetStartDate = parseDateFilterString(filterRules.startDate);
 		if (targetStartDate) {
 			filtered = filtered.filter((task) =>
-				task.startDate
-					? moment(task.startDate).isSame(targetStartDate, "day")
+				task.metadata.startDate
+					? moment(task.metadata.startDate).isSame(
+							targetStartDate,
+							"day"
+					  )
 					: false
 			);
 		}
@@ -636,8 +677,8 @@ export function filterTasks(
 		);
 		if (targetScheduledDate) {
 			filtered = filtered.filter((task) =>
-				task.scheduledDate
-					? moment(task.scheduledDate).isSame(
+				task.metadata.scheduledDate
+					? moment(task.metadata.scheduledDate).isSame(
 							targetScheduledDate,
 							"day"
 					  )
@@ -654,13 +695,13 @@ export function filterTasks(
 		// Only apply default logic if no rules were defined for this view
 		switch (viewId) {
 			case "inbox":
-				filtered = filtered.filter((task) => !task.project);
+				filtered = filtered.filter((task) => !task.metadata.project);
 				break;
 			case "flagged":
 				filtered = filtered.filter(
 					(task) =>
-						(task.priority ?? 0) >= 3 ||
-						task.tags?.includes("flagged")
+						(task.metadata.priority ?? 0) >= 3 ||
+						task.metadata.tags?.includes("flagged")
 				);
 				break;
 			// Projects, Tags, Review logic are handled by their specific components / options
@@ -681,9 +722,11 @@ export function filterTasks(
 		filtered = filtered.filter(
 			(task) =>
 				task.content.toLowerCase().includes(textFilter) ||
-				task.project?.toLowerCase().includes(textFilter) ||
-				task.context?.toLowerCase().includes(textFilter) ||
-				task.tags?.some((tag) => tag.toLowerCase().includes(textFilter))
+				task.metadata.project?.toLowerCase().includes(textFilter) ||
+				task.metadata.context?.toLowerCase().includes(textFilter) ||
+				task.metadata.tags?.some((tag) =>
+					tag.toLowerCase().includes(textFilter)
+				)
 		);
 	}
 
@@ -692,9 +735,9 @@ export function filterTasks(
 		if (filterRules.hasDueDate === "any") {
 			// Do nothing
 		} else if (filterRules.hasDueDate === "hasDate") {
-			filtered = filtered.filter((task) => task.dueDate);
+			filtered = filtered.filter((task) => task.metadata.dueDate);
 		} else if (filterRules.hasDueDate === "noDate") {
-			filtered = filtered.filter((task) => !task.dueDate);
+			filtered = filtered.filter((task) => !task.metadata.dueDate);
 		}
 	}
 
@@ -703,9 +746,9 @@ export function filterTasks(
 		if (filterRules.hasStartDate === "any") {
 			// Do nothing
 		} else if (filterRules.hasStartDate === "hasDate") {
-			filtered = filtered.filter((task) => task.startDate);
+			filtered = filtered.filter((task) => task.metadata.startDate);
 		} else if (filterRules.hasStartDate === "noDate") {
-			filtered = filtered.filter((task) => !task.startDate);
+			filtered = filtered.filter((task) => !task.metadata.startDate);
 		}
 	}
 
@@ -714,9 +757,9 @@ export function filterTasks(
 		if (filterRules.hasScheduledDate === "any") {
 			// Do nothing
 		} else if (filterRules.hasScheduledDate === "hasDate") {
-			filtered = filtered.filter((task) => task.scheduledDate);
+			filtered = filtered.filter((task) => task.metadata.scheduledDate);
 		} else if (filterRules.hasScheduledDate === "noDate") {
-			filtered = filtered.filter((task) => !task.scheduledDate);
+			filtered = filtered.filter((task) => !task.metadata.scheduledDate);
 		}
 	}
 
@@ -725,9 +768,9 @@ export function filterTasks(
 		if (filterRules.hasCompletedDate === "any") {
 			// Do nothing
 		} else if (filterRules.hasCompletedDate === "hasDate") {
-			filtered = filtered.filter((task) => task.completedDate);
+			filtered = filtered.filter((task) => task.metadata.completedDate);
 		} else if (filterRules.hasCompletedDate === "noDate") {
-			filtered = filtered.filter((task) => !task.completedDate);
+			filtered = filtered.filter((task) => !task.metadata.completedDate);
 		}
 	}
 
@@ -736,9 +779,9 @@ export function filterTasks(
 		if (filterRules.hasRecurrence === "any") {
 			// Do nothing
 		} else if (filterRules.hasRecurrence === "hasProperty") {
-			filtered = filtered.filter((task) => task.recurrence);
+			filtered = filtered.filter((task) => task.metadata.recurrence);
 		} else if (filterRules.hasRecurrence === "noProperty") {
-			filtered = filtered.filter((task) => !task.recurrence);
+			filtered = filtered.filter((task) => !task.metadata.recurrence);
 		}
 	}
 
@@ -747,9 +790,9 @@ export function filterTasks(
 		if (filterRules.hasCreatedDate === "any") {
 			// Do nothing
 		} else if (filterRules.hasCreatedDate === "hasDate") {
-			filtered = filtered.filter((task) => task.createdDate);
+			filtered = filtered.filter((task) => task.metadata.createdDate);
 		} else if (filterRules.hasCreatedDate === "noDate") {
-			filtered = filtered.filter((task) => !task.createdDate);
+			filtered = filtered.filter((task) => !task.metadata.createdDate);
 		}
 	}
 
