@@ -616,4 +616,34 @@ export class ProjectConfigManager {
 		// Clear cache when options change
 		this.clearCache();
 	}
+
+	/**
+	 * Get worker configuration for project data computation
+	 */
+	getWorkerConfig(): {
+		pathMappings: Array<{
+			pathPattern: string;
+			projectName: string;
+			enabled: boolean;
+		}>;
+		metadataMappings: MetadataMapping[];
+		defaultProjectNaming: ProjectNamingStrategy;
+		metadataKey: string;
+	} {
+		return {
+			pathMappings: this.pathMappings,
+			metadataMappings: this.metadataMappings,
+			defaultProjectNaming: this.defaultProjectNaming,
+			metadataKey: this.metadataKey,
+		};
+	}
+
+	/**
+	 * Get project config data for a file (alias for getProjectConfig for compatibility)
+	 */
+	async getProjectConfigData(
+		filePath: string
+	): Promise<ProjectConfigData | null> {
+		return await this.getProjectConfig(filePath);
+	}
 }

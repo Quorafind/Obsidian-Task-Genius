@@ -10,6 +10,7 @@ module.exports = {
 			"<rootDir>/src/__mocks__/codemirror-language.ts",
 		"^@codemirror/search$": "<rootDir>/src/__mocks__/codemirror-search.ts",
 		"\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
+		".*\\.worker$": "<rootDir>/src/__mocks__/ProjectData.worker.ts",
 	},
 	transform: {
 		"^.+\\.tsx?$": [

@@ -1,13 +1,16 @@
 /**
  * Enhanced Project Data Cache Manager
- * 
+ *
  * Provides high-performance caching for project data with directory-level optimizations
  * and batch processing capabilities to reduce main thread blocking.
  */
 
 import { TFile, Vault, MetadataCache } from "obsidian";
 import { TgProject } from "../types/task";
-import { ProjectConfigData, ProjectConfigManager } from "./ProjectConfigManager";
+import {
+	ProjectConfigData,
+	ProjectConfigManager,
+} from "./ProjectConfigManager";
 
 export interface CachedProjectData {
 	tgProject?: TgProject;
@@ -35,25 +38,25 @@ export class ProjectDataCache {
 	private vault: Vault;
 	private metadataCache: MetadataCache;
 	private projectConfigManager: ProjectConfigManager;
-	
+
 	// File-level cache for computed project data
 	private fileCache = new Map<string, CachedProjectData>();
-	
+
 	// Directory-level cache for project config files
 	private directoryCache = new Map<string, DirectoryCache>();
-	
+
 	// Batch processing optimization
 	private pendingUpdates = new Set<string>();
 	private batchUpdateTimer?: NodeJS.Timeout;
 	private readonly BATCH_DELAY = 100; // ms
-	
+
 	// Performance tracking
 	private stats: ProjectCacheStats = {
 		totalFiles: 0,
 		cachedFiles: 0,
 		directoryCacheHits: 0,
 		configCacheHits: 0,
-		lastUpdateTime: 0
+		lastUpdateTime: 0,
 	};
 
 	constructor(
@@ -85,9 +88,11 @@ export class ProjectDataCache {
 	/**
 	 * Batch get project data for multiple files with optimizations
 	 */
-	async getBatchProjectData(filePaths: string[]): Promise<Map<string, CachedProjectData>> {
+	async getBatchProjectData(
+		filePaths: string[]
+	): Promise<Map<string, CachedProjectData>> {
 		const result = new Map<string, CachedProjectData>();
-		
+
 		if (!this.projectConfigManager.isEnhancedProjectEnabled()) {
 			return result;
 		}
@@ -111,15 +116,18 @@ export class ProjectDataCache {
 		// Process uncached files in batches by directory for efficiency
 		if (uncachedPaths.length > 0) {
 			const batchedByDirectory = this.groupByDirectory(uncachedPaths);
-			
+
 			for (const [directory, paths] of batchedByDirectory) {
-				const directoryData = await this.getOrCreateDirectoryCache(directory);
-				
+				const directoryData = await this.getOrCreateDirectoryCache(
+					directory
+				);
+
 				for (const filePath of paths) {
-					const projectData = await this.computeProjectDataWithDirectoryCache(
-						filePath,
-						directoryData
-					);
+					const projectData =
+						await this.computeProjectDataWithDirectoryCache(
+							filePath,
+							directoryData
+						);
 					if (projectData) {
 						result.set(filePath, projectData);
 					}
@@ -142,37 +150,45 @@ export class ProjectDataCache {
 		directoryCache: DirectoryCache
 	): Promise<CachedProjectData | null> {
 		try {
-			const tgProject = await this.projectConfigManager.determineTgProject(filePath);
-			
+			const tgProject =
+				await this.projectConfigManager.determineTgProject(filePath);
+
 			// Get enhanced metadata efficiently using cached config data
 			let enhancedMetadata: Record<string, any> = {};
-			
+
 			// Get file metadata
-			const fileMetadata = this.projectConfigManager.getFileMetadata(filePath) || {};
-			
+			const fileMetadata =
+				this.projectConfigManager.getFileMetadata(filePath) || {};
+
 			// Use cached config data if available
 			const configData = directoryCache.configData || {};
-			
+
 			// Merge and apply mappings
 			const mergedMetadata = { ...configData, ...fileMetadata };
-			enhancedMetadata = this.projectConfigManager.applyMappingsToMetadata(mergedMetadata);
+			enhancedMetadata =
+				this.projectConfigManager.applyMappingsToMetadata(
+					mergedMetadata
+				);
 
 			const projectData: CachedProjectData = {
 				tgProject,
 				enhancedMetadata,
 				timestamp: Date.now(),
-				configSource: directoryCache.configFile?.path
+				configSource: directoryCache.configFile?.path,
 			};
 
 			// Cache the result
 			this.fileCache.set(filePath, projectData);
-			
+
 			// Update directory cache file tracking
 			directoryCache.paths.add(filePath);
 
 			return projectData;
 		} catch (error) {
-			console.warn(`Failed to compute project data for ${filePath}:`, error);
+			console.warn(
+				`Failed to compute project data for ${filePath}:`,
+				error
+			);
 			return null;
 		}
 	}
@@ -180,9 +196,11 @@ export class ProjectDataCache {
 	/**
 	 * Get or create directory cache for project config files
 	 */
-	private async getOrCreateDirectoryCache(directory: string): Promise<DirectoryCache> {
+	private async getOrCreateDirectoryCache(
+		directory: string
+	): Promise<DirectoryCache> {
 		let cached = this.directoryCache.get(directory);
-		
+
 		if (cached) {
 			// Check if cache is still valid
 			if (cached.configFile) {
@@ -200,7 +218,7 @@ export class ProjectDataCache {
 		// Create new directory cache
 		cached = {
 			configTimestamp: 0,
-			paths: new Set()
+			paths: new Set(),
 		};
 
 		// Look for config file in this directory
@@ -208,24 +226,27 @@ export class ProjectDataCache {
 		if (configFile) {
 			cached.configFile = configFile;
 			cached.configTimestamp = configFile.stat.mtime;
-			
+
 			// Read and cache config data
 			try {
 				const content = await this.vault.read(configFile);
 				const metadata = this.metadataCache.getFileCache(configFile);
-				
+
 				let configData: ProjectConfigData = {};
 				if (metadata?.frontmatter) {
 					configData = { ...metadata.frontmatter };
 				}
-				
+
 				// Parse additional config content
 				const contentConfig = this.parseConfigContent(content);
 				configData = { ...configData, ...contentConfig };
-				
+
 				cached.configData = configData;
 			} catch (error) {
-				console.warn(`Failed to read config file ${configFile.path}:`, error);
+				console.warn(
+					`Failed to read config file ${configFile.path}:`,
+					error
+				);
 			}
 		}
 
@@ -236,15 +257,18 @@ export class ProjectDataCache {
 	/**
 	 * Find project config file in a specific directory (non-recursive)
 	 */
-	private async findConfigFileInDirectory(directory: string): Promise<TFile | null> {
+	private async findConfigFileInDirectory(
+		directory: string
+	): Promise<TFile | null> {
 		const abstractFile = this.vault.getAbstractFileByPath(directory);
 		if (!abstractFile || !("children" in abstractFile)) {
 			return null;
 		}
 
 		const configFileName = "task-genius.config.md"; // TODO: Make configurable
-		const configFile = abstractFile.children.find(
-			(child: any) => child && child.name === configFileName && "stat" in child
+		const configFile = (abstractFile as any).children.find(
+			(child: any) =>
+				child && child.name === configFileName && "stat" in child
 		) as TFile | undefined;
 
 		return configFile || null;
@@ -255,14 +279,14 @@ export class ProjectDataCache {
 	 */
 	private groupByDirectory(filePaths: string[]): Map<string, string[]> {
 		const groups = new Map<string, string[]>();
-		
+
 		for (const filePath of filePaths) {
 			const directory = this.getDirectoryPath(filePath);
 			const existing = groups.get(directory) || [];
 			existing.push(filePath);
 			groups.set(directory, existing);
 		}
-		
+
 		return groups;
 	}
 
@@ -291,7 +315,9 @@ export class ProjectDataCache {
 
 		// Check if config file has been modified
 		if (cached.configSource) {
-			const configFile = this.vault.getAbstractFileByPath(cached.configSource);
+			const configFile = this.vault.getAbstractFileByPath(
+				cached.configSource
+			);
 			if (configFile && "stat" in configFile) {
 				const configTimestamp = (configFile as TFile).stat.mtime;
 				const directory = this.getDirectoryPath(filePath);
@@ -308,10 +334,15 @@ export class ProjectDataCache {
 	/**
 	 * Compute and cache project data for a single file
 	 */
-	private async computeAndCacheProjectData(filePath: string): Promise<CachedProjectData | null> {
+	private async computeAndCacheProjectData(
+		filePath: string
+	): Promise<CachedProjectData | null> {
 		const directory = this.getDirectoryPath(filePath);
 		const directoryCache = await this.getOrCreateDirectoryCache(directory);
-		return await this.computeProjectDataWithDirectoryCache(filePath, directoryCache);
+		return await this.computeProjectDataWithDirectoryCache(
+			filePath,
+			directoryCache
+		);
 	}
 
 	/**
@@ -323,7 +354,11 @@ export class ProjectDataCache {
 
 		for (const line of lines) {
 			const trimmed = line.trim();
-			if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) {
+			if (
+				!trimmed ||
+				trimmed.startsWith("#") ||
+				trimmed.startsWith("//")
+			) {
 				continue;
 			}
 
@@ -348,7 +383,7 @@ export class ProjectDataCache {
 	clearCache(filePath?: string): void {
 		if (filePath) {
 			this.fileCache.delete(filePath);
-			
+
 			// Clear from directory cache tracking
 			const directory = this.getDirectoryPath(filePath);
 			const dirCache = this.directoryCache.get(directory);
@@ -434,9 +469,12 @@ export class ProjectDataCache {
 	async onFileModified(filePath: string): Promise<void> {
 		// Clear cache for the modified file
 		this.clearCache(filePath);
-		
+
 		// Check if it's a project config file
-		if (filePath.endsWith('.config.md') || filePath.includes('task-genius')) {
+		if (
+			filePath.endsWith(".config.md") ||
+			filePath.includes("task-genius")
+		) {
 			// Clear directory cache since config may have changed
 			const directory = this.getDirectoryPath(filePath);
 			this.clearDirectoryCache(directory);
@@ -451,9 +489,12 @@ export class ProjectDataCache {
 	 */
 	onFileDeleted(filePath: string): void {
 		this.clearCache(filePath);
-		
+
 		// Update directory cache if it was a config file
-		if (filePath.endsWith('.config.md') || filePath.includes('task-genius')) {
+		if (
+			filePath.endsWith(".config.md") ||
+			filePath.includes("task-genius")
+		) {
 			const directory = this.getDirectoryPath(filePath);
 			this.clearDirectoryCache(directory);
 		}
@@ -464,7 +505,10 @@ export class ProjectDataCache {
 	 */
 	async onFileCreated(filePath: string): Promise<void> {
 		// If it's a config file, clear directory cache to pick up new config
-		if (filePath.endsWith('.config.md') || filePath.includes('task-genius')) {
+		if (
+			filePath.endsWith(".config.md") ||
+			filePath.includes("task-genius")
+		) {
 			const directory = this.getDirectoryPath(filePath);
 			this.clearDirectoryCache(directory);
 		}
@@ -479,16 +523,16 @@ export class ProjectDataCache {
 	async onFileRenamed(oldPath: string, newPath: string): Promise<void> {
 		// Clear cache for old path
 		this.clearCache(oldPath);
-		
+
 		// Update relevant directory caches
 		const oldDirectory = this.getDirectoryPath(oldPath);
 		const newDirectory = this.getDirectoryPath(newPath);
-		
-		if (oldPath.endsWith('.config.md') || oldPath.includes('task-genius')) {
+
+		if (oldPath.endsWith(".config.md") || oldPath.includes("task-genius")) {
 			this.clearDirectoryCache(oldDirectory);
 		}
-		
-		if (newPath.endsWith('.config.md') || newPath.includes('task-genius')) {
+
+		if (newPath.endsWith(".config.md") || newPath.includes("task-genius")) {
 			this.clearDirectoryCache(newDirectory);
 		}
 
@@ -501,7 +545,7 @@ export class ProjectDataCache {
 	 */
 	async refreshStaleEntries(): Promise<void> {
 		const staleFiles: string[] = [];
-		
+
 		for (const [filePath, cachedData] of this.fileCache.entries()) {
 			if (!this.isCacheValid(filePath, cachedData)) {
 				staleFiles.push(filePath);
@@ -509,7 +553,9 @@ export class ProjectDataCache {
 		}
 
 		if (staleFiles.length > 0) {
-			console.log(`Refreshing ${staleFiles.length} stale project data cache entries`);
+			console.log(
+				`Refreshing ${staleFiles.length} stale project data cache entries`
+			);
 			await this.getBatchProjectData(staleFiles);
 		}
 	}
@@ -518,11 +564,32 @@ export class ProjectDataCache {
 	 * Preload project data for recently accessed files
 	 */
 	async preloadRecentFiles(filePaths: string[]): Promise<void> {
-		const uncachedFiles = filePaths.filter(path => !this.fileCache.has(path));
-		
+		const uncachedFiles = filePaths.filter(
+			(path) => !this.fileCache.has(path)
+		);
+
 		if (uncachedFiles.length > 0) {
-			console.log(`Preloading project data for ${uncachedFiles.length} recent files`);
+			console.log(
+				`Preloading project data for ${uncachedFiles.length} recent files`
+			);
 			await this.getBatchProjectData(uncachedFiles);
+		}
+	}
+
+	/**
+	 * Set project data in cache (for external updates)
+	 */
+	async setProjectData(
+		filePath: string,
+		projectData: CachedProjectData
+	): Promise<void> {
+		this.fileCache.set(filePath, projectData);
+
+		// Update directory cache tracking
+		const directory = this.getDirectoryPath(filePath);
+		const dirCache = this.directoryCache.get(directory);
+		if (dirCache) {
+			dirCache.paths.add(filePath);
 		}
 	}
 }

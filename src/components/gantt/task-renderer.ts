@@ -9,10 +9,10 @@ import { Task } from "../../types/task";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
 
 // Constants from GanttComponent (consider moving to a shared config/constants file)
-const ROW_HEIGHT = 24;
-const TASK_BAR_HEIGHT_RATIO = 0.6;
-const MILESTONE_SIZE = 10;
-const TASK_LABEL_PADDING = 5;
+const ROW_HEIGHT = 40;
+const TASK_BAR_HEIGHT_RATIO = 0.7;
+const MILESTONE_SIZE = 12;
+const TASK_LABEL_PADDING = 8;
 
 // Interface for parameters needed by the task renderer
 interface TaskRendererParams {
@@ -67,32 +67,52 @@ export class TaskRendererComponent extends Component {
 			return;
 		}
 
+		// 性能优化：检查是否有任务需要渲染
+		if (
+			!this.params.preparedTasks ||
+			this.params.preparedTasks.length === 0
+		) {
+			this.taskGroupEl.empty();
+			return;
+		}
+
 		console.log(
-			"TaskRenderer received tasks:",
-			JSON.stringify(
-				this.params.preparedTasks.map((t) => ({
-					id: t.task.id,
-					sx: t.startX,
-					w: t.width,
-				})),
-				null,
-				2
-			)
+			"TaskRenderer rendering tasks:",
+			this.params.preparedTasks.length,
+			"tasks"
 		);
 
 		this.taskGroupEl.empty(); // Clear previous tasks
 
 		const { preparedTasks, parentComponent } = this.params;
 
-		// TODO: Implement virtualization - only render tasks currently in viewport
-		preparedTasks.forEach((pt) =>
-			this.renderSingleTask(pt, parentComponent)
+		// 性能优化：使用文档片段批量添加元素
+		const fragment = document.createDocumentFragment();
+		const tempSvg = document.createElementNS(
+			"http://www.w3.org/2000/svg",
+			"g"
 		);
+		fragment.appendChild(tempSvg);
+
+		// 批量渲染任务
+		preparedTasks.forEach((pt, index) => {
+			try {
+				this.renderSingleTask(pt, parentComponent, tempSvg);
+			} catch (error) {
+				console.error(`Error rendering task ${index}:`, error, pt);
+			}
+		});
+
+		// 一次性添加所有任务到DOM
+		while (tempSvg.firstChild) {
+			this.taskGroupEl.appendChild(tempSvg.firstChild);
+		}
 	}
 
 	private renderSingleTask(
 		preparedTask: PlacedGanttTaskItem,
-		parentComponent: Component
+		parentComponent: Component,
+		containerEl?: SVGGElement
 	) {
 		if (!this.params) return;
 
@@ -108,15 +128,33 @@ export class TaskRendererComponent extends Component {
 		} = this.params;
 
 		const task = preparedTask.task;
-		const group = this.taskGroupEl.createSvg("g", {
+		const targetContainer = containerEl || this.taskGroupEl;
+
+		// 验证任务位置数据
+		if (preparedTask.startX === undefined || isNaN(preparedTask.startX)) {
+			console.warn("Task has invalid startX:", preparedTask);
+			return;
+		}
+
+		if (preparedTask.y === undefined || isNaN(preparedTask.y)) {
+			console.warn("Task has invalid y position:", preparedTask);
+			return;
+		}
+
+		const group = targetContainer.createSvg("g", {
 			cls: "gantt-task-item",
 		});
 		group.setAttribute("data-task-id", task.id);
-		// Add listener for clicking task
-		group.addEventListener("click", () => handleTaskClick(task));
-		group.addEventListener("contextmenu", (event) =>
-			handleTaskContextMenu(event, task)
-		);
+
+		// 添加任务点击监听器
+		group.addEventListener("click", (e) => {
+			e.stopPropagation();
+			handleTaskClick(task);
+		});
+		group.addEventListener("contextmenu", (event) => {
+			event.stopPropagation();
+			handleTaskContextMenu(event, task);
+		});
 
 		const barHeight = rowHeight * taskBarHeightRatio;
 		const barY = preparedTask.y - barHeight / 2;
@@ -124,21 +162,26 @@ export class TaskRendererComponent extends Component {
 		let taskElement: SVGElement | null = null;
 
 		if (preparedTask.isMilestone) {
-			// Render milestone (circle and text)
+			// 渲染里程碑（菱形）
 			const x = preparedTask.startX;
 			const y = preparedTask.y;
-			const radius = milestoneSize / 2;
+			const size = milestoneSize;
 
-			// Draw circle
-			taskElement = group.createSvg("circle", {
+			// 绘制菱形（旋转的正方形）
+			taskElement = group.createSvg("rect", {
 				attr: {
-					cx: x,
-					cy: y,
-					r: radius,
-					class: "gantt-task-milestone", // Base class
+					x: x - size / 2,
+					y: y - size / 2,
+					width: size,
+					height: size,
+					rx: 2,
+					ry: 2,
+					class: "gantt-task-milestone", // 基础类
+					transform: `rotate(45 ${x} ${y})`, // 旋转创建菱形
 				},
 			});
-			// Add status and priority classes safely
+
+			// 安全地添加状态和优先级类
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
@@ -151,55 +194,19 @@ export class TaskRendererComponent extends Component {
 				);
 			}
 
-			// Add text label to the right
+			// 在右侧添加文本标签
 			if (showTaskLabels && task.content) {
-				// Check if we should use markdown renderer
-				if (useMarkdownRenderer) {
-					// Create a foreign object to hold the markdown content
-					const foreignObject = group.createSvg("foreignObject", {
-						attr: {
-							x: x + radius + TASK_LABEL_PADDING,
-							y: y - 8, // Adjust y position to center the content
-							width: 300, // Set a reasonable width
-							height: 16, // Set a reasonable height
-							class: "gantt-milestone-label-container",
-						},
-					});
-
-					// Create a div inside the foreignObject for markdown rendering
-					const labelContainer = document.createElementNS(
-						"http://www.w3.org/1999/xhtml",
-						"div"
-					);
-					labelContainer.style.pointerEvents = "none"; // Prevent capturing events
-					foreignObject.appendChild(labelContainer);
-
-					// Use markdown renderer to render the task content
-					const markdownRenderer = new MarkdownRendererComponent(
-						this.app,
-						labelContainer,
-						task.filePath
-					);
-					this.addChild(markdownRenderer);
-					markdownRenderer.render(task.content);
-				} else {
-					// Use regular SVG text if markdown rendering is disabled
-					const textLabel = group.createSvg("text", {
-						attr: {
-							x: x + radius + TASK_LABEL_PADDING,
-							y: y,
-							class: "gantt-milestone-label",
-							// Vertically align middle of text with circle center
-							"dominant-baseline": "middle",
-						},
-					});
-					textLabel.textContent = task.content;
-					// Prevent text from capturing pointer events meant for the group/circle
-					textLabel.style.pointerEvents = "none";
-				}
+				this.renderMilestoneLabel(
+					group,
+					x,
+					y,
+					size,
+					task,
+					useMarkdownRenderer
+				);
 			}
 
-			// Add tooltip for milestone
+			// 为里程碑添加工具提示
 			group.setAttribute(
 				"title",
 				`${task.content}\nDue: ${
@@ -209,19 +216,20 @@ export class TaskRendererComponent extends Component {
 				}`
 			);
 		} else if (preparedTask.width !== undefined && preparedTask.width > 0) {
-			// Render task bar
+			// 渲染任务条
 			taskElement = group.createSvg("rect", {
 				attr: {
 					x: preparedTask.startX,
 					y: barY,
 					width: preparedTask.width,
 					height: barHeight,
-					rx: 3, // Rounded corners
+					rx: 3, // 圆角
 					ry: 3,
-					class: "gantt-task-bar", // Base class
+					class: "gantt-task-bar", // 基础类
 				},
 			});
-			// Add status and priority classes safely
+
+			// 安全地添加状态和优先级类
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
@@ -234,7 +242,7 @@ export class TaskRendererComponent extends Component {
 				);
 			}
 
-			// Add tooltip for bar
+			// 为任务条添加工具提示
 			group.setAttribute(
 				"title",
 				`${task.content}\nStart: ${
@@ -248,81 +256,151 @@ export class TaskRendererComponent extends Component {
 				}`
 			);
 
-			// --- Render Task Label ---
+			// 渲染任务标签
 			if (showTaskLabels && task.content) {
-				const MIN_BAR_WIDTH_FOR_INTERNAL_LABEL = 30; // px, padding*2 + ~20px text
-
-				if (preparedTask.width >= MIN_BAR_WIDTH_FOR_INTERNAL_LABEL) {
-					// --- Render Label Internally (using foreignObject for Markdown) ---
-					const foreignObject = group.createSvg("foreignObject", {
-						attr: {
-							x: preparedTask.startX + TASK_LABEL_PADDING,
-							// Position Y carefully relative to the bar center
-							y: preparedTask.y - barHeight / 2 - 2, // Adjust fine-tuning needed
-							width: preparedTask.width - TASK_LABEL_PADDING * 2, // Width is sufficient
-							height: barHeight + 4, // Allow slightly more height
-							class: "gantt-task-label-fo",
-						},
-					});
-
-					// Prevent foreignObject from capturing pointer events meant for the bar/group
-					foreignObject.style.pointerEvents = "none";
-
-					// Create the div container *inside* the foreignObject
-					const labelDiv = foreignObject.createDiv({
-						cls: "gantt-task-label-markdown",
-					});
-
-					if (useMarkdownRenderer) {
-						const sourcePath = task.filePath || "";
-						labelDiv.empty();
-
-						console.log("sourcePath", sourcePath);
-
-						const markdownRenderer = this.addChild(
-							new MarkdownRendererComponent(
-								this.app,
-								labelDiv as HTMLElement,
-								sourcePath,
-								true
-							)
-						);
-						markdownRenderer.update(task.content);
-					} else {
-						// Fallback to simple text
-						labelDiv.textContent = task.content;
-						labelDiv.style.lineHeight = `${barHeight}px`;
-						labelDiv.style.whiteSpace = "nowrap";
-						labelDiv.style.overflow = "hidden";
-						labelDiv.style.textOverflow = "ellipsis";
-					}
-				} else {
-					// --- Render Label Externally (using simple SVG text) ---
-					const textLabel = group.createSvg("text", {
-						attr: {
-							// Position text to the right of the narrow bar
-							x:
-								preparedTask.startX +
-								preparedTask.width +
-								TASK_LABEL_PADDING,
-							y: preparedTask.y, // Vertically centered with the bar's logical center
-							class: "gantt-task-label-external",
-							// Vertically align middle of text with bar center
-							"dominant-baseline": "middle",
-							"text-anchor": "start",
-						},
-					});
-					textLabel.textContent = task.content;
-					// Prevent text from capturing pointer events meant for the group/bar
-					textLabel.style.pointerEvents = "none";
-				}
+				this.renderTaskLabel(
+					group,
+					preparedTask,
+					barHeight,
+					task,
+					useMarkdownRenderer
+				);
 			}
 		}
+	}
 
-		// Apply status class to the group for potential styling overrides
-		if (taskElement) {
-			// group.classList.add(`status-${task.status}`); // Removed this redundant/potentially problematic class add
-			// Status is already applied to the taskElement (bar or milestone) directly
+	/**
+	 * 渲染里程碑标签
+	 */
+	private renderMilestoneLabel(
+		group: SVGGElement,
+		x: number,
+		y: number,
+		size: number,
+		task: Task,
+		useMarkdownRenderer: boolean
+	) {
+		if (useMarkdownRenderer) {
+			// 创建外部对象来容纳markdown内容
+			const foreignObject = group.createSvg("foreignObject", {
+				attr: {
+					x: x + size / 2 + TASK_LABEL_PADDING,
+					y: y - 8, // 调整y位置使内容居中
+					width: 300, // 设置合理的宽度
+					height: 16, // 设置合理的高度
+					class: "gantt-milestone-label-container",
+				},
+			});
+
+			// 在外部对象内创建div用于markdown渲染
+			const labelContainer = document.createElementNS(
+				"http://www.w3.org/1999/xhtml",
+				"div"
+			);
+			labelContainer.style.pointerEvents = "none"; // 防止捕获事件
+			foreignObject.appendChild(labelContainer);
+
+			// 使用markdown渲染器渲染任务内容
+			const markdownRenderer = new MarkdownRendererComponent(
+				this.app,
+				labelContainer,
+				task.filePath
+			);
+			this.addChild(markdownRenderer);
+			markdownRenderer.render(task.content);
+		} else {
+			// 如果禁用markdown渲染，使用常规SVG文本
+			const textLabel = group.createSvg("text", {
+				attr: {
+					x: x + size / 2 + TASK_LABEL_PADDING,
+					y: y,
+					class: "gantt-milestone-label",
+					// 垂直对齐文本中心与菱形中心
+					"dominant-baseline": "middle",
+				},
+			});
+			textLabel.textContent = task.content;
+			// 防止文本捕获指向组/圆圈的指针事件
+			textLabel.style.pointerEvents = "none";
+		}
+	}
+
+	/**
+	 * 渲染任务标签
+	 */
+	private renderTaskLabel(
+		group: SVGGElement,
+		preparedTask: PlacedGanttTaskItem,
+		barHeight: number,
+		task: Task,
+		useMarkdownRenderer: boolean
+	) {
+		const MIN_BAR_WIDTH_FOR_INTERNAL_LABEL = 30; // px, padding*2 + ~20px text
+
+		if (
+			preparedTask.width &&
+			preparedTask.width >= MIN_BAR_WIDTH_FOR_INTERNAL_LABEL
+		) {
+			// 在内部渲染标签（使用foreignObject支持Markdown）
+			const foreignObject = group.createSvg("foreignObject", {
+				attr: {
+					x: preparedTask.startX + TASK_LABEL_PADDING,
+					// 相对于条的中心仔细定位Y
+					y: preparedTask.y - barHeight / 2 - 2, // 可能需要微调
+					width: preparedTask.width - TASK_LABEL_PADDING * 2, // 宽度足够
+					height: barHeight + 4, // 允许稍微更多的高度
+					class: "gantt-task-label-fo",
+				},
+			});
+
+			// 防止foreignObject捕获指向条/组的指针事件
+			foreignObject.style.pointerEvents = "none";
+
+			// 在foreignObject内创建div容器
+			const labelDiv = foreignObject.createDiv({
+				cls: "gantt-task-label-markdown",
+			});
+
+			if (useMarkdownRenderer) {
+				const sourcePath = task.filePath || "";
+				labelDiv.empty();
+
+				const markdownRenderer = this.addChild(
+					new MarkdownRendererComponent(
+						this.app,
+						labelDiv as HTMLElement,
+						sourcePath,
+						true
+					)
+				);
+				markdownRenderer.update(task.content);
+			} else {
+				// 回退到简单文本
+				labelDiv.textContent = task.content;
+				labelDiv.style.lineHeight = `${barHeight}px`;
+				labelDiv.style.whiteSpace = "nowrap";
+				labelDiv.style.overflow = "hidden";
+				labelDiv.style.textOverflow = "ellipsis";
+			}
+		} else {
+			// 在外部渲染标签（使用简单的SVG文本）
+			const textLabel = group.createSvg("text", {
+				attr: {
+					// 将文本定位在窄条的右侧
+					x:
+						preparedTask.startX +
+						(preparedTask.width || 0) +
+						TASK_LABEL_PADDING,
+					y: preparedTask.y, // 与条的逻辑中心垂直居中
+					class: "gantt-task-label-external",
+					// 垂直对齐文本中心与条中心
+					"dominant-baseline": "middle",
+					"text-anchor": "start",
+				},
+			});
+			textLabel.textContent = task.content;
+			// 防止文本捕获指向组/条的指针事件
+			textLabel.style.pointerEvents = "none";
 		}
 	}
 }
