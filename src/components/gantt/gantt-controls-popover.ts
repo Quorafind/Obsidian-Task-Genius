@@ -1,12 +1,6 @@
 import { Component, App, setIcon } from "obsidian";
 import { createPopper, Instance as PopperInstance } from "@popperjs/core";
 import { GanttGroupingControls } from "./grouping-controls";
-import {
-	FilterComponent,
-	buildFilterOptionsFromTasks,
-} from "../inview-filter/filter";
-import { ActiveFilter } from "../inview-filter/filter-type";
-import { ScrollToDateButton } from "../inview-filter/custom/scroll-to-date-button";
 import { GroupingConfig } from "../../types/gantt-grouping";
 import { Task } from "../../types/task";
 import TaskProgressBarPlugin from "../../index";
@@ -15,7 +9,6 @@ import { t } from "../../translations/helper";
 interface ControlsPopoverConfig {
 	triggerElement: HTMLElement;
 	onGroupingChange: (config: GroupingConfig) => void;
-	onFiltersChange: (filters: ActiveFilter[]) => void;
 	onGroupToggle: (groupId: string) => void;
 	onExpandCollapseAll: (expand: boolean) => void;
 	onScrollToDate: (date: Date) => void;
@@ -31,8 +24,7 @@ export class GanttControlsPopover extends Component {
 	private isVisible: boolean = false;
 
 	private groupingControls: GanttGroupingControls | null = null;
-	private filterComponent: FilterComponent | null = null;
-	private activeTab: "grouping" | "filters" | "config" = "grouping";
+	private activeTab: "grouping" | "config" = "grouping";
 
 	constructor(private config: ControlsPopoverConfig) {
 		super();
@@ -167,14 +159,6 @@ export class GanttControlsPopover extends Component {
 		setIcon(groupingIcon, "layers");
 		groupingTab.createSpan("gantt-tab-text").textContent = t("Grouping");
 
-		const filtersTab = tabsContainer.createDiv("gantt-popover-tab");
-		if (this.activeTab === "filters") {
-			filtersTab.addClass("gantt-popover-tab--active");
-		}
-		const filtersIcon = filtersTab.createDiv("gantt-tab-icon");
-		setIcon(filtersIcon, "filter");
-		filtersTab.createSpan("gantt-tab-text").textContent = t("Filters");
-
 		const configTab = tabsContainer.createDiv("gantt-popover-tab");
 		if (this.activeTab === "config") {
 			configTab.addClass("gantt-popover-tab--active");
@@ -186,9 +170,6 @@ export class GanttControlsPopover extends Component {
 		// 标签点击事件
 		this.registerDomEvent(groupingTab, "click", () =>
 			this.switchTab("grouping")
-		);
-		this.registerDomEvent(filtersTab, "click", () =>
-			this.switchTab("filters")
 		);
 		this.registerDomEvent(configTab, "click", () =>
 			this.switchTab("config")
@@ -218,32 +199,6 @@ export class GanttControlsPopover extends Component {
 				onToggleGroup: this.config.onGroupToggle,
 				onExpandCollapseAll: this.config.onExpandCollapseAll,
 			})
-		);
-
-		// 过滤器标签内容
-		const filtersPanel = tabContent.createDiv("gantt-popover-panel");
-		filtersPanel.setAttribute("data-tab", "filters");
-		if (this.activeTab === "filters") {
-			filtersPanel.addClass("gantt-popover-panel--active");
-		}
-
-		this.filterComponent = this.addChild(
-			new FilterComponent(
-				{
-					container: filtersPanel,
-					options: buildFilterOptionsFromTasks(
-						this.config.initialTasks
-					),
-					onChange: this.config.onFiltersChange,
-					components: [
-						new ScrollToDateButton(
-							filtersPanel,
-							this.config.onScrollToDate
-						),
-					],
-				},
-				this.config.plugin
-			)
 		);
 
 		// 配置标签内容
@@ -369,7 +324,7 @@ export class GanttControlsPopover extends Component {
 		});
 	}
 
-	private switchTab(tab: "grouping" | "filters" | "config"): void {
+	private switchTab(tab: "grouping" | "config"): void {
 		if (tab === this.activeTab || !this.popoverElement) return;
 
 		this.activeTab = tab;
@@ -381,8 +336,7 @@ export class GanttControlsPopover extends Component {
 				tabEl.removeClass("gantt-popover-tab--active");
 				if (
 					(index === 0 && tab === "grouping") ||
-					(index === 1 && tab === "filters") ||
-					(index === 2 && tab === "config")
+					(index === 1 && tab === "config")
 				) {
 					tabEl.addClass("gantt-popover-tab--active");
 				}
@@ -451,16 +405,6 @@ export class GanttControlsPopover extends Component {
 	}
 
 	// 公共方法
-	public updateFilterOptions(tasks: Task[]): void {
-		if (this.filterComponent) {
-			this.filterComponent.updateFilterOptions(tasks);
-		}
-	}
-
-	public getActiveFilters(): ActiveFilter[] {
-		return this.filterComponent?.getActiveFilters() || [];
-	}
-
 	public updateGroupingConfig(config: GroupingConfig): void {
 		if (this.groupingControls) {
 			this.groupingControls.updateConfig(config);

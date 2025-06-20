@@ -190,9 +190,9 @@ export class GroupSidebar extends Component {
 			});
 		} else {
 			// Add spacer for alignment
-			// groupContent.createDiv({
-			// 	cls: "tg-gantt-sidebar-spacer",
-			// });
+			groupContent.createDiv({
+				cls: "tg-gantt-sidebar-spacer",
+			});
 		}
 
 		// Group label container

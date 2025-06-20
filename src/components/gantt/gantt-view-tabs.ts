@@ -101,7 +101,7 @@ export class GanttViewTabs extends Component {
 		this.addTabButton = controlsContainer.createDiv("gantt-tab-add-button");
 		setIcon(this.addTabButton, "plus");
 		this.addTabButton.setAttribute("title", "Add new view");
-		this.addTabButton.addEventListener("click", () => this.createNewTab());
+		this.registerDomEvent(this.addTabButton, "click", () => this.createNewTab());
 
 		// 设置按钮（打开 modal）
 		this.settingsButton = controlsContainer.createDiv(
@@ -109,7 +109,7 @@ export class GanttViewTabs extends Component {
 		);
 		setIcon(this.settingsButton, "settings");
 		this.settingsButton.setAttribute("title", "View settings");
-		this.settingsButton.addEventListener("click", (e) =>
+		this.registerDomEvent(this.settingsButton, "click", (e) =>
 			this.openSettingsModal(e)
 		);
 	}
@@ -146,23 +146,23 @@ export class GanttViewTabs extends Component {
 				);
 				setIcon(deleteButton, "x");
 				deleteButton.setAttribute("title", "Delete view");
-				deleteButton.addEventListener("click", (e) => {
+				this.registerDomEvent(deleteButton, "click", (e) => {
 					e.stopPropagation();
 					this.deleteTab(tab.id);
 				});
 			}
 
 			// 事件监听器
-			tabElement.addEventListener("click", () =>
+			this.registerDomEvent(tabElement, "click", () =>
 				this.activateTab(tab.id)
 			);
-			renameButton.addEventListener("click", (e) => {
+			this.registerDomEvent(renameButton, "click", (e) => {
 				e.stopPropagation();
 				this.renameTab(tab.id);
 			});
 
 			// 右键菜单
-			tabElement.addEventListener("contextmenu", (e) => {
+			this.registerDomEvent(tabElement, "contextmenu", (e) => {
 				e.preventDefault();
 				this.showTabContextMenu(e, tab);
 			});
@@ -254,7 +254,7 @@ export class GanttViewTabs extends Component {
 		// 重命名选项
 		const renameOption = menu.createDiv("gantt-context-menu-item");
 		renameOption.textContent = "Rename";
-		renameOption.addEventListener("click", () => {
+		this.registerDomEvent(renameOption, "click", () => {
 			this.renameTab(tab.id);
 			menu.remove();
 		});
@@ -262,7 +262,7 @@ export class GanttViewTabs extends Component {
 		// 复制选项
 		const duplicateOption = menu.createDiv("gantt-context-menu-item");
 		duplicateOption.textContent = "Duplicate";
-		duplicateOption.addEventListener("click", () => {
+		this.registerDomEvent(duplicateOption, "click", () => {
 			this.duplicateTab(tab.id);
 			menu.remove();
 		});
@@ -273,7 +273,7 @@ export class GanttViewTabs extends Component {
 				"gantt-context-menu-item gantt-context-menu-item--danger"
 			);
 			deleteOption.textContent = "Delete";
-			deleteOption.addEventListener("click", () => {
+			this.registerDomEvent(deleteOption, "click", () => {
 				this.deleteTab(tab.id);
 				menu.remove();
 			});

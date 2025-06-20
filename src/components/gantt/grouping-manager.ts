@@ -27,7 +27,7 @@ export class GanttGroupingManager {
 			collapsibleGroups: true,
 			defaultExpanded: true,
 			groupOrder: [],
-			groupHeaderHeight: 60,
+			groupHeaderHeight: 40,
 			showEmptyGroups: false,
 			...config,
 		};
@@ -52,7 +52,7 @@ export class GanttGroupingManager {
 	/**
 	 * Group tasks based on current configuration
 	 */
-	groupTasks(tasks: Task[]): TaskGroup[] {
+	groupTasks(tasks: Task[], rowHeight: number = 24): TaskGroup[] {
 		if (this.groupingConfig.primaryGroupBy === "none") {
 			// Return a single default group containing all tasks
 			return [
@@ -66,7 +66,7 @@ export class GanttGroupingManager {
 					level: 0,
 					y: 0,
 					height: 0,
-					headerHeight: this.groupingConfig.groupHeaderHeight || 60,
+					headerHeight: this.groupingConfig.groupHeaderHeight || 40,
 				},
 			];
 		}
@@ -95,7 +95,7 @@ export class GanttGroupingManager {
 		this.applyGroupOrdering(primaryGroups);
 
 		// Calculate positions and heights
-		this.calculateGroupPositions(primaryGroups);
+		this.calculateGroupPositions(primaryGroups, 0, rowHeight);
 
 		return primaryGroups;
 	}
@@ -131,7 +131,7 @@ export class GanttGroupingManager {
 					parentGroup: parentGroup,
 					y: 0,
 					height: 0,
-					headerHeight: this.groupingConfig.groupHeaderHeight || 60,
+					headerHeight: this.groupingConfig.groupHeaderHeight || 40,
 				});
 			}
 
@@ -319,11 +319,12 @@ export class GanttGroupingManager {
 	}
 
 	/**
-	 * Calculate Y positions and heights for all groups
+	 * Calculate Y positions and heights for all groups with optimized spacing
 	 */
 	private calculateGroupPositions(
 		groups: TaskGroup[],
-		startY: number = 0
+		startY: number = 0,
+		rowHeight: number = 24
 	): number {
 		let currentY = startY;
 
@@ -340,12 +341,27 @@ export class GanttGroupingManager {
 				if (group.subGroups && group.subGroups.length > 0) {
 					currentY = this.calculateGroupPositions(
 						group.subGroups,
-						currentY
+						currentY,
+						rowHeight
 					);
 				} else {
-					// Add height for tasks (assuming ROW_HEIGHT per task)
-					const ROW_HEIGHT = 24; // This should be imported or passed as parameter
-					currentY += group.tasks.length * ROW_HEIGHT;
+					// Optimized height calculation for tasks
+					// Use passed rowHeight parameter for consistency
+					const taskCount = group.tasks.length;
+
+					if (taskCount === 0) {
+						// Empty group - minimal height
+						currentY += rowHeight * 0.5;
+					} else if (taskCount === 1) {
+						// Single task - reduced spacing to minimize whitespace
+						currentY += rowHeight * 0.8;
+					} else if (taskCount <= 3) {
+						// Small groups - slightly reduced spacing
+						currentY += taskCount * rowHeight * 0.9;
+					} else {
+						// Larger groups - standard spacing
+						currentY += taskCount * rowHeight;
+					}
 				}
 			}
 

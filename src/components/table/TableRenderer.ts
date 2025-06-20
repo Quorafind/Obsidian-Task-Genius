@@ -86,12 +86,24 @@ export class TableRenderer extends Component {
 		});
 		this.activeSuggests.clear();
 
-		// Clear row pools
+		// Clean up row pools and active rows
+		this.rowPool.forEach((row) => {
+			this.cleanupRowEvents(row);
+			row.remove();
+		});
 		this.rowPool = [];
+
+		this.activeRows.forEach((row) => {
+			this.cleanupRowEvents(row);
+		});
 		this.activeRows.clear();
+
+		// Clear autocomplete cache
+		this.autoCompleteCache = null;
 
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
+			this.resizeObserver = null;
 		}
 	}
 

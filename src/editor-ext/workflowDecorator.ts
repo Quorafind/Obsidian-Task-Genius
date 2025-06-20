@@ -350,6 +350,7 @@ export function workflowDecoratorExtension(
 				this.decorationCache.clear();
 				if (this.updateTimeout) {
 					clearTimeout(this.updateTimeout);
+					this.updateTimeout = null;
 				}
 			}
 

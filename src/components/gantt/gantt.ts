@@ -276,7 +276,7 @@ export class GanttComponent extends Component {
 			viewportHeight: 600, // Will be updated dynamically
 			viewportWidth: 1200, // Will be updated dynamically
 			rowHeight: ROW_HEIGHT,
-			groupHeaderHeight: 60,
+			groupHeaderHeight: 40,
 			overscanCount: 5,
 			bufferSize: this.config.renderBufferSize, // 使用配置的缓冲区大小
 			lazyLoadThreshold: this.config.lazyLoadThreshold, // 使用配置的懒加载阈值
@@ -362,13 +362,6 @@ export class GanttComponent extends Component {
 						groupingConfig: config,
 					});
 				},
-				onFiltersChange: (activeFilters: ActiveFilter[]) => {
-					this.applyFiltersAndRender(activeFilters);
-					// Update active tab config
-					this.viewTabs?.updateActiveTabConfig({
-						filters: activeFilters,
-					});
-				},
 				onGroupToggle: (groupId: string) => {
 					this.groupingManager.toggleGroupExpanded(groupId);
 					// Save group state
@@ -430,26 +423,66 @@ export class GanttComponent extends Component {
 
 	onunload() {
 		console.log("GanttComponent unloaded.");
-		(this.debouncedRender as any).cancel();
-		(this.debouncedHeaderUpdate as any).cancel();
+
+		// Cancel debounced functions to prevent memory leaks
+		if (
+			this.debouncedRender &&
+			typeof (this.debouncedRender as any).cancel === "function"
+		) {
+			(this.debouncedRender as any).cancel();
+		}
+		if (
+			this.debouncedHeaderUpdate &&
+			typeof (this.debouncedHeaderUpdate as any).cancel === "function"
+		) {
+			(this.debouncedHeaderUpdate as any).cancel();
+		}
+
+		// Clean up virtualization manager
+		if (this.virtualizationManager) {
+			this.removeChild(this.virtualizationManager);
+		}
 
 		// Child components are unloaded automatically when the parent is unloaded
 		// Remove specific elements if needed
 		if (this.svgEl) {
 			this.svgEl.detach();
 		}
-		this.groupingContainerEl.detach();
-		this.filterContainerEl.detach();
-		this.headerContainerEl.detach();
-		this.scrollContainerEl.detach(); // This removes contentWrapperEl and svgEl too
-		this.leftIndicatorEl.detach(); // Remove indicator containers
-		this.rightIndicatorEl.detach(); // Remove indicator containers
+
+		// Detach DOM elements to break references
+		if (this.groupingContainerEl) {
+			this.groupingContainerEl.detach();
+		}
+		if (this.filterContainerEl) {
+			this.filterContainerEl.detach();
+		}
+		if (this.headerContainerEl) {
+			this.headerContainerEl.detach();
+		}
+		if (this.scrollContainerEl) {
+			this.scrollContainerEl.detach(); // This removes contentWrapperEl and svgEl too
+		}
+		if (this.leftIndicatorEl) {
+			this.leftIndicatorEl.detach(); // Remove indicator containers
+		}
+		if (this.rightIndicatorEl) {
+			this.rightIndicatorEl.detach(); // Remove indicator containers
+		}
 
 		this.containerEl.removeClass("gantt-chart-container");
+
+		// Clear arrays and object references to help GC
 		this.tasks = [];
 		this.allTasks = [];
 		this.taskGroups = [];
 		this.preparedTasks = [];
+
+		// Clear component references (they're already unloaded by parent)
+		this.groupSidebar = null;
+		this.viewTabs = null;
+		this.taskRendererComponent = null;
+		this.timelineHeaderComponent = null;
+		this.filterComponent = null;
 	}
 
 	setTasks(newTasks: Task[]) {
@@ -459,7 +492,10 @@ export class GanttComponent extends Component {
 		this.allTasks = [...this.tasks]; // Store the original, sorted list
 
 		// Group tasks based on current configuration
-		this.taskGroups = this.groupingManager.groupTasks(this.tasks);
+		this.taskGroups = this.groupingManager.groupTasks(
+			this.tasks,
+			ROW_HEIGHT
+		);
 
 		// Ensure date range is calculated before preparing tasks
 		this.calculateDateRange(true); // Force recalculation with new tasks
@@ -468,15 +504,8 @@ export class GanttComponent extends Component {
 		this.prepareTasksForRender(); // Calculate preparedTasks based on the initial full list
 
 		// Update filter options based on the initially prepared task list
-		if (this.controlsPopover) {
-			// Extract the original Task objects from preparedTasks
-			const tasksForFiltering = this.preparedTasks.map((pt) => pt.task);
-			this.controlsPopover.updateFilterOptions(tasksForFiltering); // Use prepared tasks for initial options
-		}
-
-		// Apply any existing filters from the component (will re-prepare and re-update filters)
-		const currentFilters = this.controlsPopover?.getActiveFilters() || [];
-		this.applyFiltersAndRender(currentFilters); // This will call prepareTasksForRender again and update filters
+		// Note: Filter functionality has been moved to global filter system
+		// No need to update filter options in controls popover anymore
 
 		// Scroll to today after the initial render is scheduled
 		requestAnimationFrame(() => {
@@ -504,7 +533,10 @@ export class GanttComponent extends Component {
 	 * Regroup tasks and trigger a full render
 	 */
 	private regroupAndRender(): void {
-		this.taskGroups = this.groupingManager.groupTasks(this.tasks);
+		this.taskGroups = this.groupingManager.groupTasks(
+			this.tasks,
+			ROW_HEIGHT
+		);
 
 		// Ensure date range is calculated before preparing tasks
 		if (!this.startDate || !this.endDate) {
@@ -870,7 +902,7 @@ export class GanttComponent extends Component {
 	}
 
 	/**
-	 * Process a single group and its tasks/subgroups
+	 * Process a single group and its tasks/subgroups with optimized spacing
 	 */
 	private processGroup(
 		group: TaskGroup,
@@ -893,7 +925,7 @@ export class GanttComponent extends Component {
 		// 为组头部预留空间
 		const groupingConfig = this.groupingManager.getConfig();
 		if (groupingConfig.showGroupHeaders) {
-			currentY += group.headerHeight || 60; // 默认组头部高度
+			currentY += group.headerHeight || 40; // 默认组头部高度
 		}
 
 		// 更新组的Y位置
@@ -910,16 +942,27 @@ export class GanttComponent extends Component {
 					);
 				}
 			} else {
-				// 处理该组中的任务
-				for (const task of group.tasks) {
+				// 处理该组中的任务 - 优化间距
+				const taskCount = group.tasks.length;
+				let taskSpacing = ROW_HEIGHT;
+
+				// Adjust spacing based on task count to reduce whitespace
+				if (taskCount === 1) {
+					taskSpacing = ROW_HEIGHT * 0.8; // Reduced spacing for single tasks
+				} else if (taskCount <= 3) {
+					taskSpacing = ROW_HEIGHT * 0.9; // Slightly reduced for small groups
+				}
+
+				for (let i = 0; i < group.tasks.length; i++) {
+					const task = group.tasks[i];
 					const taskItem = this.createTaskItem(
 						task,
-						currentY + ROW_HEIGHT / 2
+						currentY + taskSpacing / 2
 					); // 将任务放在行的中心
 					if (taskItem) {
 						mappedTasks.push(taskItem);
 					}
-					currentY += ROW_HEIGHT;
+					currentY += taskSpacing;
 				}
 			}
 		}
@@ -1702,17 +1745,17 @@ export class GanttComponent extends Component {
 		console.log("Filtered tasks count:", this.tasks.length);
 
 		// Re-group the filtered tasks to ensure groups reflect the current filter state
-		this.taskGroups = this.groupingManager.groupTasks(this.tasks);
+		this.taskGroups = this.groupingManager.groupTasks(
+			this.tasks,
+			ROW_HEIGHT
+		);
 
 		// Recalculate date range based on filtered tasks and prepare for render
 		this.calculateDateRange(true); // Force recalculate based on filtered tasks
 		this.prepareTasksForRender(); // Uses the filtered this.tasks
 
-		// Update filter options based on the current set of prepared tasks after filtering
-		if (this.controlsPopover) {
-			const tasksForFiltering = this.preparedTasks.map((pt) => pt.task);
-			this.controlsPopover.updateFilterOptions(tasksForFiltering);
-		}
+		// Note: Filter functionality has been moved to global filter system
+		// No need to update filter options in controls popover anymore
 
 		this.debouncedRender();
 	}

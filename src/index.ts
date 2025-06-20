@@ -93,6 +93,8 @@ import { ViewManager } from "./pages/ViewManager";
 import { IcsManager } from "./utils/ics/IcsManager";
 import { VersionManager } from "./utils/VersionManager";
 import { RebuildProgressManager } from "./utils/RebuildProgressManager";
+import { MemoryProfiler } from "./utils/MemoryProfiler";
+import { MemoryLeakDetector } from "./utils/MemoryLeakDetector";
 
 class TaskProgressBarPopover extends HoverPopover {
 	plugin: TaskProgressBarPlugin;
@@ -188,6 +190,12 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// Rebuild progress manager instance
 	rebuildProgressManager: RebuildProgressManager;
 
+	// Memory profiler instance (for debugging)
+	memoryProfiler: MemoryProfiler;
+
+	// Memory leak detector instance (for debugging)
+	memoryLeakDetector: MemoryLeakDetector;
+
 	// Preloaded tasks:
 	preloadedTasks: Task[] = [];
 
@@ -208,6 +216,14 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Initialize version manager first
 		this.versionManager = new VersionManager(this.app, this);
 		this.addChild(this.versionManager);
+
+		// Initialize memory profiler (for debugging)
+		this.memoryProfiler = new MemoryProfiler(this);
+		this.addChild(this.memoryProfiler);
+
+		// Initialize memory leak detector (for debugging)
+		this.memoryLeakDetector = new MemoryLeakDetector(this);
+		this.addChild(this.memoryLeakDetector);
 
 		// Initialize rebuild progress manager
 		this.rebuildProgressManager = new RebuildProgressManager();
@@ -1014,6 +1030,119 @@ export default class TaskProgressBarPlugin extends Plugin {
 				autoDateManagerExtension(this.app, this),
 			]);
 		}
+
+		// Add memory debugging commands (only in development or when explicitly enabled)
+		this.addMemoryDebuggingCommands();
+	}
+
+	/**
+	 * Add memory debugging commands for leak detection
+	 */
+	private addMemoryDebuggingCommands(): void {
+		// Enable memory profiling
+		this.addCommand({
+			id: "enable-memory-profiling",
+			name: "🔍 Enable Memory Profiling",
+			callback: () => {
+				this.memoryProfiler.enable();
+				new Notice(
+					"Memory profiling enabled. Check console for reports."
+				);
+			},
+		});
+
+		// Disable memory profiling
+		this.addCommand({
+			id: "disable-memory-profiling",
+			name: "🔍 Disable Memory Profiling",
+			callback: () => {
+				this.memoryProfiler.disable();
+				new Notice("Memory profiling disabled.");
+			},
+		});
+
+		// Get memory report
+		this.addCommand({
+			id: "get-memory-report",
+			name: "🔍 Get Memory Report",
+			callback: () => {
+				const report = this.memoryProfiler.getMemoryReport();
+				console.log(report);
+				new Notice(
+					"Memory report generated. Check console for details."
+				);
+			},
+		});
+
+		// Force garbage collection
+		this.addCommand({
+			id: "force-garbage-collection",
+			name: "🔍 Force Garbage Collection",
+			callback: () => {
+				this.memoryProfiler.forceGC();
+			},
+		});
+
+		// Take memory snapshot
+		this.addCommand({
+			id: "take-memory-snapshot",
+			name: "🔍 Take Memory Snapshot",
+			callback: () => {
+				const snapshot = this.memoryProfiler.takeSnapshot();
+				console.log("Memory snapshot:", snapshot);
+				new Notice(
+					`Memory snapshot: ${this.formatBytes(
+						snapshot.heapUsed
+					)} heap used`
+				);
+			},
+		});
+
+		// Enable memory leak detection
+		this.addCommand({
+			id: "enable-memory-leak-detection",
+			name: "🔍 Enable Memory Leak Detection",
+			callback: () => {
+				this.memoryLeakDetector.enable();
+				new Notice(
+					"Memory leak detection enabled. Check console for reports."
+				);
+			},
+		});
+
+		// Disable memory leak detection
+		this.addCommand({
+			id: "disable-memory-leak-detection",
+			name: "🔍 Disable Memory Leak Detection",
+			callback: () => {
+				this.memoryLeakDetector.disable();
+				new Notice("Memory leak detection disabled.");
+			},
+		});
+
+		// Get memory leak report
+		this.addCommand({
+			id: "get-memory-leak-report",
+			name: "🔍 Get Memory Leak Report",
+			callback: () => {
+				const report = this.memoryLeakDetector.generateDetailedReport();
+				console.log(report);
+				new Notice(
+					"Memory leak report generated. Check console for details."
+				);
+			},
+		});
+	}
+
+	/**
+	 * Format bytes to human readable format
+	 */
+	private formatBytes(bytes: number): string {
+		if (bytes === 0) return "0 B";
+		const k = 1024;
+		const sizes = ["B", "KB", "MB", "GB"];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 	}
 
 	onunload() {

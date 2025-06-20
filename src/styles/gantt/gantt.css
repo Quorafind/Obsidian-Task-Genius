@@ -8,11 +8,11 @@
 .gantt-rename-modal,
 .gantt-controls-popover {
 	/* Modern Design System Variables */
-	--gantt-header-height: 40px;
-	--gantt-row-height: 40px;
-	--gantt-bar-height: 28px;
-	--gantt-bar-radius: 8px;
-	--gantt-group-header-height: 36px;
+	--gantt-header-height: var(--size-4-10);
+	--gantt-row-height: var(--size-4-10);
+	--gantt-bar-height: var(--size-4-7);
+	--gantt-bar-radius: var(--radius-s);
+	--gantt-group-header-height: var(--size-4-9);
 	--gantt-sidebar-width: 280px;
 
 	/* Color System - Notion-inspired */
@@ -29,7 +29,7 @@
 	--gantt-border-color-strong: var(--background-modifier-border-focus);
 
 	/* Task Bar Colors - More vibrant and modern */
-	--gantt-bar-default: #2563eb;
+	--gantt-bar-default: var(--color-accent);
 	--gantt-bar-hover: #1d4ed8;
 	--gantt-bar-completed: #10b981;
 	--gantt-bar-cancelled: #ef4444;
@@ -56,9 +56,9 @@
 	--gantt-holiday-color: #fef3c7;
 
 	/* Typography - Obsidian-aligned */
-	--gantt-font-size-xs: 11px;
-	--gantt-font-size-sm: 12px;
-	--gantt-font-size-base: 13px;
+	--gantt-font-size-xs: var(--font-ui-smaller);
+	--gantt-font-size-sm: var(--font-ui-small);
+	--gantt-font-size-base: var(--font-ui-normal);
 	--gantt-font-size-lg: 14px;
 	--gantt-font-size-xl: 16px;
 	--gantt-font-weight-normal: 400;
@@ -67,24 +67,20 @@
 	--gantt-font-weight-bold: 700;
 
 	/* Spacing System */
-	--gantt-space-1: 4px;
-	--gantt-space-2: 8px;
-	--gantt-space-3: 12px;
-	--gantt-space-4: 16px;
-	--gantt-space-5: 20px;
-	--gantt-space-6: 24px;
-	--gantt-space-8: 32px;
+	--gantt-space-1: var(--size-2-2);
+	--gantt-space-2: var(--size-4-2);
+	--gantt-space-3: var(--size-4-3);
+	--gantt-space-4: var(--size-4-4);
+	--gantt-space-5: var(--size-4-5);
+	--gantt-space-6: var(--size-4-6);
+	--gantt-space-8: var(--size-4-8);
 
 	/* Shadow System - Notion-inspired */
-	--gantt-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-	--gantt-shadow-base: 0 1px 3px rgba(0, 0, 0, 0.1),
-		0 1px 2px rgba(0, 0, 0, 0.06);
-	--gantt-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07),
-		0 2px 4px rgba(0, 0, 0, 0.06);
-	--gantt-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1),
-		0 4px 6px rgba(0, 0, 0, 0.05);
-	--gantt-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1),
-		0 10px 10px rgba(0, 0, 0, 0.04);
+	--gantt-shadow-sm: var(--shadow-s);
+	--gantt-shadow-base: var(--shadow-m);
+	--gantt-shadow-md: var(--shadow-l);
+	--gantt-shadow-lg: var(--shadow-xl);
+	--gantt-shadow-xl: var(--shadow-2xl);
 
 	/* Animation System */
 	--gantt-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -108,7 +104,7 @@
 .theme-dark .gantt-settings-modal,
 .theme-dark .gantt-rename-modal,
 .theme-dark .gantt-controls-popover {
-	--gantt-bar-default: #3b82f6;
+	--gantt-bar-default: var(--color-accent);
 	--gantt-bar-hover: #2563eb;
 	--gantt-bar-completed: #22c55e;
 	--gantt-bar-cancelled: #f87171;
@@ -143,7 +139,7 @@
 
 .gantt-main-content {
 	display: flex;
-	height: calc(100% - 120px); /* 调整高度，适应tab控制区域 */
+	height: 100%; /* 调整高度，适应tab控制区域 */
 	background: var(--gantt-bg-primary);
 	border-radius: var(--radius-s);
 	overflow: hidden;
@@ -447,8 +443,6 @@
 }
 
 .tg-gantt-section-icon {
-	width: 14px;
-	height: 14px;
 	color: var(--text-accent);
 	flex-shrink: 0;
 }
@@ -487,32 +481,9 @@
 
 .tg-gantt-dropdown {
 	width: 100%;
-	padding: 4px var(--gantt-space-2);
-	background: var(--gantt-bg-primary);
-	border: 1px solid var(--gantt-border-color);
-	border-radius: var(--radius-s);
-	font-size: var(--gantt-font-size-xs);
 	color: var(--text-normal);
 	cursor: pointer;
-	transition: all var(--gantt-transition-fast);
-	appearance: none;
-	background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-	background-position: right 4px center;
-	background-repeat: no-repeat;
-	background-size: 12px;
-	padding-right: 20px;
 	height: 28px;
-}
-
-.tg-gantt-dropdown:hover {
-	border-color: var(--gantt-border-color-strong);
-	background-color: var(--gantt-bg-hover);
-}
-
-.tg-gantt-dropdown:focus {
-	outline: none;
-	border-color: var(--color-accent);
-	box-shadow: 0 0 0 2px var(--color-accent-2);
 }
 
 .tg-gantt-secondary-grouping {
@@ -591,8 +562,6 @@
 }
 
 .tg-gantt-button-icon {
-	width: 12px;
-	height: 12px;
 	color: var(--text-muted);
 	transition: color var(--gantt-transition-fast);
 }
@@ -626,8 +595,6 @@
 }
 
 .tg-gantt-toggle-checkbox {
-	width: 14px;
-	height: 14px;
 	cursor: pointer;
 	accent-color: var(--color-accent);
 }
@@ -776,8 +743,7 @@
 	width: var(--gantt-sidebar-width);
 	background: var(--gantt-bg-primary);
 	border-right: 1px solid var(--gantt-border-color);
-	overflow-y: auto;
-	overflow-x: hidden;
+	overflow: hidden; /* Prevent independent scrolling - sync with main chart */
 	display: flex;
 	flex-direction: column;
 	box-shadow: inset -1px 0 0 var(--gantt-border-color);
@@ -839,7 +805,7 @@
 .tg-gantt-sidebar-content {
 	flex: 1;
 	padding: var(--gantt-space-2);
-	overflow-y: auto;
+	overflow: hidden; /* Prevent independent scrolling - controlled by transform */
 	position: relative; /* Enable absolute positioning for children */
 }
 
@@ -892,11 +858,28 @@
 	min-width: 0;
 	height: 100%; /* Take full height of parent */
 	overflow: hidden; /* Prevent content overflow */
+	position: relative;
+}
+
+/* Improved dual grouping visual hierarchy */
+.tg-gantt-sidebar-group-content::before {
+	content: "";
+	position: absolute;
+	left: -4px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 2px;
+	height: 70%;
+	background: var(--gantt-border-color);
+	opacity: 0.2;
+	transition: opacity var(--gantt-transition-fast);
+}
+
+.tg-gantt-sidebar-group-item:hover .tg-gantt-sidebar-group-content::before {
+	opacity: 0.5;
 }
 
 .tg-gantt-sidebar-expand-icon {
-	width: 14px;
-	height: 14px;
 	color: var(--text-muted);
 	transition: all var(--gantt-transition-fast);
 	cursor: pointer;
@@ -923,11 +906,12 @@
 
 .tg-gantt-sidebar-label-container {
 	display: flex;
-	flex-direction: column;
+	flex-direction: row;
+	align-items: center;
 	flex: 1;
 	min-width: 0;
-	gap: 1px; /* Reduced gap for tighter layout */
-	justify-content: center; /* Center content vertically */
+	gap: var(--size-2-2);
+	justify-content: flex-start; /* Center content vertically */
 	height: 100%; /* Take full height */
 	overflow: hidden; /* Prevent overflow */
 }
@@ -959,7 +943,7 @@
 	padding: 0 6px;
 	background: var(--gantt-bg-tertiary);
 	border: 1px solid var(--gantt-border-color);
-	border-radius: 10px;
+	border-radius: var(--radius-s);
 	font-size: 10px;
 	font-weight: var(--gantt-font-weight-semibold);
 	color: var(--text-muted);
@@ -1358,6 +1342,20 @@
 	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
+/*
+ * Task Labels with Sticky Positioning
+ *
+ * Task labels use sticky positioning to remain visible during horizontal scrolling,
+ * similar to group headers. This ensures users can always see task names regardless
+ * of scroll position.
+ *
+ * Key features:
+ * - External labels stick to the left edge for narrow tasks
+ * - Internal labels remain within their task bars but are visible during scroll
+ * - Proper z-index layering prevents overlap issues
+ * - Responsive behavior for different task widths
+ */
+
 .gantt-task-label {
 	fill: var(--text-normal);
 	font-size: var(--gantt-font-size-sm);
@@ -1366,10 +1364,42 @@
 	user-select: none;
 }
 
+/* External task labels (for narrow tasks) with sticky positioning */
+.gantt-task-label-external {
+	fill: var(--text-normal);
+	font-size: var(--gantt-font-size-sm);
+	font-weight: var(--gantt-font-weight-medium);
+	pointer-events: none;
+	user-select: none;
+	/* Sticky positioning for horizontal scrolling */
+	position: sticky;
+	left: var(--gantt-space-2);
+	z-index: 12;
+	/* Add subtle background for better visibility */
+	paint-order: stroke fill;
+	stroke: var(--gantt-bg-primary);
+	stroke-width: 3;
+	stroke-linejoin: round;
+}
+
 /* Task label container for markdown content */
 .gantt-task-label-fo {
 	pointer-events: none;
-	overflow: hidden;
+	overflow: visible; /* Changed from hidden to allow sticky positioning */
+	/* Sticky positioning for horizontal scrolling */
+	position: sticky;
+	left: var(--gantt-space-2);
+	z-index: 12;
+}
+
+/* Milestone label container with sticky positioning */
+.gantt-milestone-label-container {
+	pointer-events: none;
+	overflow: visible;
+	/* Sticky positioning for horizontal scrolling */
+	position: sticky;
+	left: var(--gantt-space-2);
+	z-index: 12;
 }
 
 /* Markdown tag styles */
@@ -1378,12 +1408,17 @@
 	color: var(--text-normal);
 	line-height: 1.2;
 	padding: 2px 4px;
-	background: rgba(0, 0, 0, 0.05);
+	background: var(
+		--gantt-bg-primary
+	); /* Solid background for better visibility */
 	border-radius: 3px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	display: flex;
+	/* Add subtle shadow for better visibility during scroll */
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	backdrop-filter: blur(2px); /* Add blur effect for better readability */
 	align-items: center;
 	height: 100%;
 }
@@ -1464,6 +1499,21 @@
 
 /* ===== GROUP HEADERS ===== */
 
+/*
+ * Sticky Group Header Elements
+ *
+ * The group header label and progress containers use sticky positioning
+ * to remain visible during horizontal scrolling. This ensures users can
+ * always see important header information regardless of scroll position.
+ *
+ * Key features:
+ * - Label container sticks to the left edge
+ * - Progress container sticks to the right edge
+ * - Subtle shadows indicate sticky state
+ * - Proper z-index layering prevents overlap issues
+ * - Responsive behavior for mobile devices
+ */
+
 .gantt-group-header-svg {
 	cursor: pointer;
 	transition: all var(--gantt-transition-fast);
@@ -1530,13 +1580,243 @@
 	transform: scale(0.98);
 }
 
+/* Collapsed group header styling */
+.gantt-group-header-svg[data-collapsed="true"] .gantt-group-header-bg {
+	fill: var(--gantt-bg-secondary);
+	stroke: var(--color-accent);
+	stroke-width: 1.5;
+	opacity: 0.9;
+}
+
+.gantt-group-header-svg[data-collapsed="true"] .gantt-group-header-label {
+	fill: var(--text-normal);
+	font-weight: var(--gantt-font-weight-semibold);
+}
+
+/* Ensure collapsed group headers are always visible */
+.gantt-group-header-svg[data-collapsed="true"] {
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
 .gantt-group-separator {
 	stroke: var(--gantt-border-color);
 	stroke-width: 1;
 	opacity: 0.5;
 }
 
-/* Group header count badge */
+/* HTML Group Header Styles */
+.gantt-group-header-html {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	height: 100%;
+	padding: 0 var(--gantt-space-3);
+	background: var(--gantt-bg-secondary);
+	border-top: 1px solid var(--gantt-border-color);
+	border-bottom: 1px solid var(--gantt-border-color);
+	font-family: var(--font-interface);
+	transition: all var(--gantt-transition-fast);
+	box-sizing: border-box;
+	/* Ensure proper overflow handling for sticky children */
+	overflow: visible;
+	position: relative;
+}
+
+.gantt-group-header-html:hover {
+	background: var(--gantt-bg-hover);
+}
+
+.gantt-group-header-html[data-collapsed="true"] {
+	background: var(--gantt-bg-secondary);
+	border-color: var(--color-accent);
+	border-width: 1.5px;
+	opacity: 0.9;
+}
+
+/* Level-based styling */
+.gantt-group-header-html[data-level="0"] {
+	background: var(--gantt-bg-secondary);
+	padding-left: var(--gantt-space-3);
+}
+
+.gantt-group-header-html[data-level="1"] {
+	background: var(--gantt-bg-tertiary);
+	padding-left: calc(var(--gantt-space-3) + 20px);
+}
+
+.gantt-group-header-html[data-level="2"] {
+	background: var(--gantt-bg-primary);
+	padding-left: calc(var(--gantt-space-3) + 40px);
+}
+
+/* Left section with icon and label */
+.gantt-group-header-left {
+	display: flex;
+	align-items: center;
+	gap: var(--gantt-space-2);
+	flex: 0 0 auto;
+	/* Ensure proper stacking context for sticky children */
+	position: relative;
+	z-index: 10;
+}
+
+.gantt-group-header-icon-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	transition: all var(--gantt-transition-fast);
+}
+
+.gantt-group-header-icon-container:hover {
+	background: var(--gantt-bg-hover);
+	transform: scale(1.1);
+}
+
+.gantt-group-header-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+	transition: all var(--gantt-transition-fast);
+}
+
+.gantt-group-header-icon.expanded {
+	color: var(--text-normal);
+}
+
+.gantt-group-header-label-container {
+	display: flex;
+	align-items: center;
+	/* Sticky positioning for horizontal scrolling */
+	position: sticky;
+	left: 0;
+	z-index: 15;
+	background: inherit;
+	/* Ensure minimum width to prevent content squashing */
+	min-width: fit-content;
+	/* Add padding to prevent content from touching edges */
+	padding-right: var(--gantt-space-2);
+}
+
+.gantt-group-header-label {
+	font-size: var(--gantt-font-size-base);
+	font-weight: var(--gantt-font-weight-semibold);
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.gantt-group-header-html:hover .gantt-group-header-label {
+	color: var(--text-accent);
+}
+
+/* Center section with badges */
+.gantt-group-header-center {
+	display: flex;
+	align-items: center;
+	gap: var(--gantt-space-2);
+	flex: 1 1 auto;
+	margin-left: var(--gantt-space-3);
+}
+
+.gantt-group-header-count-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 6px;
+	background: var(--gantt-bg-tertiary);
+	border: 0.5px solid var(--gantt-border-color);
+	border-radius: 8px;
+	font-size: var(--gantt-font-size-xs);
+	font-weight: var(--gantt-font-weight-medium);
+	color: var(--text-normal);
+	min-width: 20px;
+	height: 16px;
+	transition: all var(--gantt-transition-fast);
+	box-sizing: border-box;
+}
+
+.gantt-group-header-html:hover .gantt-group-header-count-badge {
+	background: var(--gantt-bg-hover);
+	border-color: var(--gantt-border-color-strong);
+}
+
+.gantt-group-header-collapsed-indicator {
+	font-size: var(--gantt-font-size-xs);
+	color: var(--text-muted);
+	font-style: italic;
+	white-space: nowrap;
+}
+
+/* Right section with progress */
+.gantt-group-header-right {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	/* Ensure proper stacking context for sticky children */
+	position: relative;
+	z-index: 10;
+}
+
+.gantt-group-header-progress-container {
+	display: flex;
+	align-items: center;
+	gap: var(--gantt-space-1);
+	/* Sticky positioning for horizontal scrolling */
+	position: sticky;
+	right: 0;
+	z-index: 15;
+	background: inherit;
+	/* Add subtle shadow to indicate stickiness */
+	box-shadow: var(--shadow-s);
+	/* Ensure minimum width to prevent content squashing */
+	min-width: fit-content;
+	/* Add padding to prevent content from touching edges */
+	padding-left: var(--gantt-space-2);
+}
+
+.gantt-group-header-progress-bar {
+	width: 60px;
+	height: 4px;
+	background: var(--gantt-bg-tertiary);
+	border: 0.5px solid var(--gantt-border-color);
+	border-radius: 2px;
+	overflow: hidden;
+	position: relative;
+}
+
+.gantt-group-header-progress-fill {
+	height: 100%;
+	background: var(--gantt-bar-completed);
+	border-radius: 2px;
+	transition: width var(--gantt-transition-base);
+}
+
+.gantt-group-header-progress-text {
+	font-size: var(--gantt-font-size-xs);
+	color: var(--text-muted);
+	font-weight: var(--gantt-font-weight-medium);
+	min-width: 30px;
+	text-align: center;
+}
+
+/* Drop target styling for HTML headers */
+.gantt-group-header-html.gantt-drop-target {
+	background: var(--color-accent);
+	opacity: 0.3;
+	border-color: var(--color-accent);
+	border-width: 2px;
+	border-style: dashed;
+	animation: pulse 1s infinite;
+}
+
+/* Legacy Group header count badge (for backward compatibility) */
 .gantt-group-header-count-bg {
 	fill: var(--gantt-bg-tertiary);
 	stroke: var(--gantt-border-color);
@@ -1911,6 +2191,17 @@
 	.tg-gantt-sidebar-item-active {
 		border-left-width: 4px;
 	}
+
+	/* Enhanced shadows for sticky elements in high contrast mode */
+	.gantt-group-header-label-container {
+		box-shadow: 3px 0 6px rgba(0, 0, 0, 0.3);
+		border-right: 1px solid var(--gantt-border-color-strong);
+	}
+
+	.gantt-group-header-progress-container {
+		box-shadow: -3px 0 6px rgba(0, 0, 0, 0.3);
+		border-left: 1px solid var(--gantt-border-color-strong);
+	}
 }
 
 /* ===== VIEW TABS STYLES ===== */
@@ -2100,7 +2391,7 @@
 	background: var(--gantt-bg-primary);
 	border: 1px solid var(--gantt-border-color);
 	border-radius: var(--radius-m);
-	box-shadow: var(--gantt-shadow-xl);
+	box-shadow: var(--gantt-shadow-lg);
 	min-width: 320px;
 	max-width: 480px;
 	max-height: 600px;
@@ -2182,12 +2473,6 @@
 .gantt-popover-tab--active {
 	background: var(--color-accent);
 	color: var(--text-on-accent);
-}
-
-.gantt-tab-icon {
-	width: 14px;
-	height: 14px;
-	color: inherit;
 }
 
 .gantt-tab-text {

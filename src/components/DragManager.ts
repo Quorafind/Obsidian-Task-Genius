@@ -144,9 +144,13 @@ export class DragManager extends Component {
 		this.originalElement = targetElement; // Store the element that received the pointerdown
 
 		// Add global listeners immediately to capture move/up/escape
-		document.addEventListener("pointermove", this.boundHandlePointerMove);
-		document.addEventListener("pointerup", this.boundHandlePointerUp);
-		document.addEventListener("keydown", this.boundHandleKeyDown); // Add keydown listener
+		this.registerDomEvent(
+			document,
+			"pointermove",
+			this.boundHandlePointerMove
+		);
+		this.registerDomEvent(document, "pointerup", this.boundHandlePointerUp);
+		this.registerDomEvent(document, "keydown", this.boundHandleKeyDown); // Add keydown listener
 
 		// Prevent default only if needed (e.g., text selection), maybe delay this
 		// event.preventDefault(); // Let's avoid calling this here to allow clicks
@@ -380,13 +384,8 @@ export class DragManager extends Component {
 	}
 
 	private resetDragState(): void {
-		// Clean up global listeners first
-		document.removeEventListener(
-			"pointermove",
-			this.boundHandlePointerMove
-		);
-		document.removeEventListener("pointerup", this.boundHandlePointerUp);
-		document.removeEventListener("keydown", this.boundHandleKeyDown); // Remove keydown listener
+		// Note: No need to manually remove event listeners since we're using registerDomEvent
+		// Obsidian will automatically clean them up when the component is unloaded
 
 		// Clean up dragged element styles/DOM
 		if (this.draggedElement) {

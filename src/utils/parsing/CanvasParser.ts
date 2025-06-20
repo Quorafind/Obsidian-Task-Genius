@@ -4,11 +4,11 @@
 
 import { Task, CanvasTaskMetadata } from "../../types/task";
 import {
-    CanvasData,
-    CanvasTextData,
-    ParsedCanvasContent,
-    CanvasParsingOptions,
-    AllCanvasNodeData
+	CanvasData,
+	CanvasTextData,
+	ParsedCanvasContent,
+	CanvasParsingOptions,
+	AllCanvasNodeData,
 } from "../../types/canvas";
 import { MarkdownTaskParser } from "../workers/ConfigurableTaskParser";
 import { TaskParserConfig } from "../../types/TaskParserConfig";
@@ -17,219 +17,235 @@ import { TaskParserConfig } from "../../types/TaskParserConfig";
  * Default options for canvas parsing
  */
 export const DEFAULT_CANVAS_PARSING_OPTIONS: CanvasParsingOptions = {
-    includeNodeIds: false,
-    includePositions: false,
-    nodeSeparator: '\n\n',
-    preserveLineBreaks: true,
+	includeNodeIds: false,
+	includePositions: false,
+	nodeSeparator: "\n\n",
+	preserveLineBreaks: true,
 };
 
 /**
  * Canvas file parser that extracts tasks from text nodes
  */
 export class CanvasParser {
-    private markdownParser: MarkdownTaskParser;
-    private options: CanvasParsingOptions;
+	private markdownParser: MarkdownTaskParser;
+	private options: CanvasParsingOptions;
 
-    constructor(
-        parserConfig: TaskParserConfig,
-        options: Partial<CanvasParsingOptions> = {}
-    ) {
-        this.markdownParser = new MarkdownTaskParser(parserConfig);
-        this.options = { ...DEFAULT_CANVAS_PARSING_OPTIONS, ...options };
-    }
+	constructor(
+		parserConfig: TaskParserConfig,
+		options: Partial<CanvasParsingOptions> = {}
+	) {
+		this.markdownParser = new MarkdownTaskParser(parserConfig);
+		this.options = { ...DEFAULT_CANVAS_PARSING_OPTIONS, ...options };
+	}
 
-    /**
-     * Parse a canvas file and extract tasks from text nodes
-     */
-    public parseCanvasFile(
-        canvasContent: string,
-        filePath: string
-    ): Task[] {
-        try {
-            // Parse the JSON content
-            const canvasData: CanvasData = JSON.parse(canvasContent);
-            
-            // Extract and parse content
-            const parsedContent = this.extractCanvasContent(canvasData, filePath);
-            
-            // Parse tasks from the extracted text content
-            const tasks = this.parseTasksFromCanvasContent(parsedContent);
-            
-            return tasks;
-        } catch (error) {
-            console.error(`Error parsing canvas file ${filePath}:`, error);
-            return [];
-        }
-    }
+	/**
+	 * Parse a canvas file and extract tasks from text nodes
+	 */
+	public parseCanvasFile(canvasContent: string, filePath: string): Task[] {
+		let canvasData: CanvasData | null = null;
+		let parsedContent: ParsedCanvasContent | null = null;
 
-    /**
-     * Extract text content from canvas data
-     */
-    private extractCanvasContent(
-        canvasData: CanvasData,
-        filePath: string
-    ): ParsedCanvasContent {
-        // Filter text nodes
-        const textNodes = canvasData.nodes.filter(
-            (node): node is CanvasTextData => node.type === 'text'
-        );
+		try {
+			// Parse the JSON content
+			canvasData = JSON.parse(canvasContent);
 
-        // Extract text content from all text nodes
-        const textContents: string[] = [];
+			if (!canvasData) {
+				return [];
+			}
 
-        for (const textNode of textNodes) {
-            let nodeContent = textNode.text;
+			// Extract and parse content
+			parsedContent = this.extractCanvasContent(canvasData, filePath);
 
-            // Add node metadata if requested
-            if (this.options.includeNodeIds) {
-                nodeContent = `<!-- Node ID: ${textNode.id} -->\n${nodeContent}`;
-            }
+			if (!parsedContent) {
+				return [];
+			}
 
-            if (this.options.includePositions) {
-                nodeContent = `<!-- Position: x=${textNode.x}, y=${textNode.y} -->\n${nodeContent}`;
-            }
+			// Parse tasks from the extracted text content
+			const tasks = this.parseTasksFromCanvasContent(parsedContent);
 
-            // Handle line breaks
-            if (!this.options.preserveLineBreaks) {
-                nodeContent = nodeContent.replace(/\n/g, ' ');
-            }
+			return tasks;
+		} catch (error) {
+			console.error(`Error parsing canvas file ${filePath}:`, error);
+			return [];
+		} finally {
+			// Clear references to help garbage collection
+			canvasData = null;
+			parsedContent = null;
+		}
+	}
 
-            textContents.push(nodeContent);
-        }
+	/**
+	 * Extract text content from canvas data
+	 */
+	private extractCanvasContent(
+		canvasData: CanvasData,
+		filePath: string
+	): ParsedCanvasContent {
+		// Filter text nodes
+		const textNodes = canvasData.nodes.filter(
+			(node): node is CanvasTextData => node.type === "text"
+		);
 
-        // Combine all text content
-        const combinedText = textContents.join(this.options.nodeSeparator || '\n\n');
+		// Extract text content from all text nodes
+		const textContents: string[] = [];
 
-        return {
-            canvasData,
-            textContent: combinedText,
-            textNodes,
-            filePath
-        };
-    }
+		for (const textNode of textNodes) {
+			let nodeContent = textNode.text;
 
-    /**
-     * Parse tasks from extracted canvas content
-     */
-    private parseTasksFromCanvasContent(
-        parsedContent: ParsedCanvasContent
-    ): Task[] {
-        const { textContent, filePath, textNodes } = parsedContent;
+			// Add node metadata if requested
+			if (this.options.includeNodeIds) {
+				nodeContent = `<!-- Node ID: ${textNode.id} -->\n${nodeContent}`;
+			}
 
-        // Use the markdown parser to extract tasks from the combined text
-        const tasks = this.markdownParser.parseLegacy(textContent, filePath);
+			if (this.options.includePositions) {
+				nodeContent = `<!-- Position: x=${textNode.x}, y=${textNode.y} -->\n${nodeContent}`;
+			}
 
-        // Enhance tasks with canvas-specific metadata
-        return tasks.map(task => this.enhanceTaskWithCanvasMetadata(task, parsedContent));
-    }
+			// Handle line breaks
+			if (!this.options.preserveLineBreaks) {
+				nodeContent = nodeContent.replace(/\n/g, " ");
+			}
 
-    /**
-     * Enhance a task with canvas-specific metadata
-     */
-    private enhanceTaskWithCanvasMetadata(
-        task: Task,
-        parsedContent: ParsedCanvasContent
-    ): Task<CanvasTaskMetadata> {
-        // Try to find which text node this task came from
-        const sourceNode = this.findSourceNode(task, parsedContent);
+			textContents.push(nodeContent);
+		}
 
-        if (sourceNode) {
-            // Add canvas-specific metadata
-            const canvasMetadata: CanvasTaskMetadata = {
-                ...task.metadata,
-                canvasNodeId: sourceNode.id,
-                canvasPosition: {
-                    x: sourceNode.x,
-                    y: sourceNode.y,
-                    width: sourceNode.width,
-                    height: sourceNode.height
-                },
-                canvasColor: sourceNode.color,
-                sourceType: 'canvas'
-            };
+		// Combine all text content
+		const combinedText = textContents.join(
+			this.options.nodeSeparator || "\n\n"
+		);
 
-            task.metadata = canvasMetadata;
-        } else {
-            // Even if we can't find the source node, mark it as canvas
-            (task.metadata as CanvasTaskMetadata).sourceType = 'canvas';
-        }
+		return {
+			canvasData,
+			textContent: combinedText,
+			textNodes,
+			filePath,
+		};
+	}
 
-        return task as Task<CanvasTaskMetadata>;
-    }
+	/**
+	 * Parse tasks from extracted canvas content
+	 */
+	private parseTasksFromCanvasContent(
+		parsedContent: ParsedCanvasContent
+	): Task[] {
+		const { textContent, filePath, textNodes } = parsedContent;
 
-    /**
-     * Find the source text node for a given task
-     */
-    private findSourceNode(
-        task: Task,
-        parsedContent: ParsedCanvasContent
-    ): CanvasTextData | null {
-        const { textNodes } = parsedContent;
+		// Use the markdown parser to extract tasks from the combined text
+		const tasks = this.markdownParser.parseLegacy(textContent, filePath);
 
-        // Simple heuristic: find the node that contains the task content
-        for (const node of textNodes) {
-            if (node.text.includes(task.originalMarkdown)) {
-                return node;
-            }
-        }
+		// Enhance tasks with canvas-specific metadata
+		return tasks.map((task) =>
+			this.enhanceTaskWithCanvasMetadata(task, parsedContent)
+		);
+	}
 
-        return null;
-    }
+	/**
+	 * Enhance a task with canvas-specific metadata
+	 */
+	private enhanceTaskWithCanvasMetadata(
+		task: Task,
+		parsedContent: ParsedCanvasContent
+	): Task<CanvasTaskMetadata> {
+		// Try to find which text node this task came from
+		const sourceNode = this.findSourceNode(task, parsedContent);
 
-    /**
-     * Update parser configuration
-     */
-    public updateParserConfig(config: TaskParserConfig): void {
-        this.markdownParser = new MarkdownTaskParser(config);
-    }
+		if (sourceNode) {
+			// Add canvas-specific metadata
+			const canvasMetadata: CanvasTaskMetadata = {
+				...task.metadata,
+				canvasNodeId: sourceNode.id,
+				canvasPosition: {
+					x: sourceNode.x,
+					y: sourceNode.y,
+					width: sourceNode.width,
+					height: sourceNode.height,
+				},
+				canvasColor: sourceNode.color,
+				sourceType: "canvas",
+			};
 
-    /**
-     * Update parsing options
-     */
-    public updateOptions(options: Partial<CanvasParsingOptions>): void {
-        this.options = { ...this.options, ...options };
-    }
+			task.metadata = canvasMetadata;
+		} else {
+			// Even if we can't find the source node, mark it as canvas
+			(task.metadata as CanvasTaskMetadata).sourceType = "canvas";
+		}
 
-    /**
-     * Get current parsing options
-     */
-    public getOptions(): CanvasParsingOptions {
-        return { ...this.options };
-    }
+		return task as Task<CanvasTaskMetadata>;
+	}
 
-    /**
-     * Validate canvas file content
-     */
-    public static isValidCanvasContent(content: string): boolean {
-        try {
-            const data = JSON.parse(content);
-            return (
-                typeof data === 'object' &&
-                data !== null &&
-                Array.isArray(data.nodes) &&
-                Array.isArray(data.edges)
-            );
-        } catch {
-            return false;
-        }
-    }
+	/**
+	 * Find the source text node for a given task
+	 */
+	private findSourceNode(
+		task: Task,
+		parsedContent: ParsedCanvasContent
+	): CanvasTextData | null {
+		const { textNodes } = parsedContent;
 
-    /**
-     * Extract only text content without parsing tasks (useful for preview)
-     */
-    public extractTextOnly(canvasContent: string): string {
-        try {
-            const canvasData: CanvasData = JSON.parse(canvasContent);
-            const textNodes = canvasData.nodes.filter(
-                (node): node is CanvasTextData => node.type === 'text'
-            );
+		// Simple heuristic: find the node that contains the task content
+		for (const node of textNodes) {
+			if (node.text.includes(task.originalMarkdown)) {
+				return node;
+			}
+		}
 
-            return textNodes
-                .map(node => node.text)
-                .join(this.options.nodeSeparator || '\n\n');
-        } catch (error) {
-            console.error('Error extracting text from canvas:', error);
-            return '';
-        }
-    }
+		return null;
+	}
+
+	/**
+	 * Update parser configuration
+	 */
+	public updateParserConfig(config: TaskParserConfig): void {
+		this.markdownParser = new MarkdownTaskParser(config);
+	}
+
+	/**
+	 * Update parsing options
+	 */
+	public updateOptions(options: Partial<CanvasParsingOptions>): void {
+		this.options = { ...this.options, ...options };
+	}
+
+	/**
+	 * Get current parsing options
+	 */
+	public getOptions(): CanvasParsingOptions {
+		return { ...this.options };
+	}
+
+	/**
+	 * Validate canvas file content
+	 */
+	public static isValidCanvasContent(content: string): boolean {
+		try {
+			const data = JSON.parse(content);
+			return (
+				typeof data === "object" &&
+				data !== null &&
+				Array.isArray(data.nodes) &&
+				Array.isArray(data.edges)
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Extract only text content without parsing tasks (useful for preview)
+	 */
+	public extractTextOnly(canvasContent: string): string {
+		try {
+			const canvasData: CanvasData = JSON.parse(canvasContent);
+			const textNodes = canvasData.nodes.filter(
+				(node): node is CanvasTextData => node.type === "text"
+			);
+
+			return textNodes
+				.map((node) => node.text)
+				.join(this.options.nodeSeparator || "\n\n");
+		} catch (error) {
+			console.error("Error extracting text from canvas:", error);
+			return "";
+		}
+	}
 }

@@ -99,7 +99,7 @@ export class QuadrantCardComponent extends Component {
 		);
 
 		// Add change event listener for checkbox
-		checkbox.addEventListener("change", () => {
+		this.registerDomEvent(checkbox, "change", () => {
 			const newStatus = checkbox.checked ? "x" : " ";
 			if (this.params.onTaskStatusUpdate) {
 				this.params.onTaskStatusUpdate(this.task.id, newStatus);
@@ -114,7 +114,7 @@ export class QuadrantCardComponent extends Component {
 		});
 		setIcon(moreBtn, "more-horizontal");
 
-		moreBtn.addEventListener("click", (e) => {
+		this.registerDomEvent(moreBtn, "click", (e) => {
 			e.stopPropagation();
 			this.showContextMenu(e);
 		});
@@ -241,7 +241,7 @@ export class QuadrantCardComponent extends Component {
 
 	private addEventListeners() {
 		// Card click to select task
-		this.containerEl.addEventListener("click", (e) => {
+		this.registerDomEvent(this.containerEl, "click", (e) => {
 			if (
 				e.target === this.checkboxEl ||
 				this.checkboxEl.contains(e.target as Node)
@@ -255,7 +255,7 @@ export class QuadrantCardComponent extends Component {
 		});
 
 		// Right-click context menu
-		this.containerEl.addEventListener("contextmenu", (e) => {
+		this.registerDomEvent(this.containerEl, "contextmenu", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 
@@ -267,7 +267,7 @@ export class QuadrantCardComponent extends Component {
 		});
 
 		// Double-click to open file
-		this.containerEl.addEventListener("dblclick", (e) => {
+		this.registerDomEvent(this.containerEl, "dblclick", (e) => {
 			e.stopPropagation();
 			this.openTaskInFile();
 		});

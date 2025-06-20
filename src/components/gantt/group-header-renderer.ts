@@ -88,6 +88,7 @@ export class GroupHeaderRenderer extends Component {
 			attr: {
 				"data-group-id": group.id,
 				"data-level": group.level.toString(),
+				"data-collapsed": (!group.expanded).toString(),
 			},
 		});
 
@@ -95,175 +96,136 @@ export class GroupHeaderRenderer extends Component {
 		headerGroup.classList.add("gantt-group-header-svg");
 		headerGroup.classList.add(`gantt-group-level-${group.level}`);
 
-		// Background rectangle with modern styling
-		const headerBg = headerGroup.createSvg("rect", {
-			cls: "gantt-group-header-bg",
+		console.log(group);
+
+		// Create foreignObject to contain the entire header as HTML
+		const foreignObject = headerGroup.createSvg("foreignObject", {
 			attr: {
 				x: 0,
 				y: group.y + 8,
 				width: totalWidth,
 				height: group.headerHeight,
-				rx: 4, // Modern rounded corners
-				ry: 4,
 			},
 		});
 
+		// Create HTML header container
+		const headerContainer = foreignObject.createDiv({
+			cls: "gantt-group-header-html",
+		});
+
+		// Add data attributes for styling
+		headerContainer.setAttribute("data-level", group.level.toString());
+		headerContainer.setAttribute(
+			"data-collapsed",
+			(!group.expanded).toString()
+		);
+
 		// Add click handler for collapsible groups
 		if (collapsibleGroups) {
-			headerBg.style.cursor = "pointer";
-			headerBg.addEventListener("click", () => {
+			headerContainer.style.cursor = "pointer";
+			this.registerDomEvent(headerContainer, "click", () => {
 				onGroupToggle(group.id);
 			});
 		}
 
 		// Add drag and drop support
-		this.addDragDropSupport(headerBg, group);
+		this.addDragDropSupport(headerContainer, group);
 
-		// Add hover effects
-		this.addHoverEffects(headerBg);
+		// Create left section with icon and label
+		const leftSection = headerContainer.createDiv({
+			cls: "gantt-group-header-left",
+		});
 
 		// Expand/collapse icon for collapsible groups
 		if (collapsibleGroups) {
-			const iconSize = 14; // Slightly larger icon
-			const iconX = 12 + group.level * 20; // Better spacing
-			const iconY = group.y + group.headerHeight / 2;
-
-			const iconGroup = headerGroup.createSvg("g", {
-				cls: "gantt-group-header-icon",
-				attr: {
-					transform: `translate(${iconX}, ${iconY})`,
-				},
+			const iconContainer = leftSection.createDiv({
+				cls: "gantt-group-header-icon-container",
 			});
 
-			// Create modern expand/collapse icon using SVG path
-			const iconPath = group.expanded
-				? "M3 8l4 4 4-4" // Chevron down (expanded)
-				: "M6 3l4 4-4 4"; // Chevron right (collapsed)
-
-			const iconElement = iconGroup.createSvg("path", {
-				attr: {
-					d: iconPath,
-					stroke: "currentColor",
-					"stroke-width": "2",
-					"stroke-linecap": "round",
-					"stroke-linejoin": "round",
-					fill: "none",
-					transform: `translate(-6, -6)`,
-				},
+			const iconElement = iconContainer.createDiv({
+				cls: `gantt-group-header-icon ${
+					group.expanded ? "expanded" : "collapsed"
+				}`,
 			});
 
-			iconGroup.style.cursor = "pointer";
-			iconGroup.addEventListener("click", (e) => {
+			// Add icon content (chevron)
+			iconElement.innerHTML = group.expanded
+				? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+				: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
+			this.registerDomEvent(iconContainer, "click", (e) => {
 				e.stopPropagation();
 				onGroupToggle(group.id);
 			});
-
-			// Add icon hover effect
-			iconGroup.addEventListener("mouseenter", () => {
-				iconElement.style.transform = "translate(-6, -6) scale(1.1)";
-			});
-
-			iconGroup.addEventListener("mouseleave", () => {
-				iconElement.style.transform = "translate(-6, -6) scale(1)";
-			});
 		}
 
-		// Group label with modern typography
-		const labelX = collapsibleGroups
-			? 36 + group.level * 20
-			: 16 + group.level * 20;
-		const labelY = group.y + group.headerHeight / 2;
-
-		const labelText = headerGroup.createSvg("text", {
-			cls: "gantt-group-header-label",
-			attr: {
-				x: labelX,
-				y: labelY,
-				"dominant-baseline": "middle",
-			},
+		// Group label
+		const labelContainer = leftSection.createDiv({
+			cls: "gantt-group-header-label-container",
 		});
-		labelText.textContent = group.label;
 
-		// Task count with modern badge styling
+		const labelElement = labelContainer.createDiv({
+			cls: "gantt-group-header-label",
+			text: group.label,
+		});
+
+		// Create center section with badges
+		const centerSection = headerContainer.createDiv({
+			cls: "gantt-group-header-center",
+		});
+
+		// Task count badge
 		const taskCount = this.getGroupTaskCount(group);
 		if (taskCount > 0) {
-			const countX = labelX + this.getTextWidth(group.label) + 12;
-			const countY = labelY;
-
-			// Create background for count badge
-			const countBg = headerGroup.createSvg("rect", {
-				cls: "gantt-group-header-count-bg",
-				attr: {
-					x: countX - 2,
-					y: countY - 8,
-					width: this.getTextWidth(taskCount.toString()) + 8,
-					height: 16,
-					rx: 8,
-					ry: 8,
-					fill: "var(--gantt-bg-tertiary)",
-					stroke: "var(--gantt-border-color)",
-					"stroke-width": "0.5",
-				},
+			const countBadge = centerSection.createDiv({
+				cls: "gantt-group-header-count-badge",
+				text: taskCount.toString(),
 			});
 
-			const countText = headerGroup.createSvg("text", {
-				cls: "gantt-group-header-count",
-				attr: {
-					x: countX + 2,
-					y: countY,
-					"dominant-baseline": "middle",
-					"text-anchor": "middle",
-				},
-			});
-			countText.textContent = taskCount.toString();
-		}
-
-		// Progress indicator (optional)
-		const completedTasks = this.getCompletedTaskCount(group);
-		if (taskCount > 0) {
-			const progressWidth = 60;
-			const progressHeight = 3;
-			const progressX = totalWidth - progressWidth - 16;
-			const progressY =
-				group.y + group.headerHeight / 2 - progressHeight / 2;
-
-			// Progress background
-			headerGroup.createSvg("rect", {
-				cls: "gantt-group-progress-bg",
-				attr: {
-					x: progressX,
-					y: progressY,
-					width: progressWidth,
-					height: progressHeight,
-					rx: progressHeight / 2,
-					ry: progressHeight / 2,
-					fill: "var(--gantt-bg-tertiary)",
-					stroke: "var(--gantt-border-color)",
-					"stroke-width": "0.5",
-				},
-			});
-
-			// Progress bar
-			const progressPercentage = completedTasks / taskCount;
-			const progressBarWidth = progressWidth * progressPercentage;
-
-			if (progressBarWidth > 0) {
-				headerGroup.createSvg("rect", {
-					cls: "gantt-group-progress-bar",
-					attr: {
-						x: progressX,
-						y: progressY,
-						width: progressBarWidth,
-						height: progressHeight,
-						rx: progressHeight / 2,
-						ry: progressHeight / 2,
-						fill: "var(--gantt-bar-completed)",
-					},
+			// Add collapsed indicator if group is collapsed and has subgroups
+			if (
+				!group.expanded &&
+				group.subGroups &&
+				group.subGroups.length > 0
+			) {
+				const collapsedIndicator = centerSection.createDiv({
+					cls: "gantt-group-header-collapsed-indicator",
+					text: `(${group.subGroups.length} groups hidden)`,
 				});
 			}
 		}
 
-		// Group separator line at bottom with subtle styling
+		// Create right section with progress
+		const rightSection = headerContainer.createDiv({
+			cls: "gantt-group-header-right",
+		});
+
+		// Progress indicator
+		const completedTasks = this.getCompletedTaskCount(group);
+		if (taskCount > 0) {
+			const progressContainer = rightSection.createDiv({
+				cls: "gantt-group-header-progress-container",
+			});
+
+			const progressBar = progressContainer.createDiv({
+				cls: "gantt-group-header-progress-bar",
+			});
+
+			const progressPercentage = completedTasks / taskCount;
+			const progressFill = progressBar.createDiv({
+				cls: "gantt-group-header-progress-fill",
+			});
+
+			progressFill.style.width = `${progressPercentage * 100}%`;
+
+			// Progress text
+			const progressText = progressContainer.createDiv({
+				cls: "gantt-group-header-progress-text",
+				text: `${completedTasks}/${taskCount}`,
+			});
+		}
+
+		// Group separator line at bottom (keep as SVG for precise positioning)
 		headerGroup.createSvg("line", {
 			cls: "gantt-group-separator",
 			attr: {
@@ -331,21 +293,6 @@ export class GroupHeaderRenderer extends Component {
 	}
 
 	/**
-	 * Add hover effects to group headers
-	 */
-	private addHoverEffects(headerElement: SVGElement): void {
-		headerElement.addEventListener("mouseenter", () => {
-			headerElement.style.transition =
-				"all 0.15s cubic-bezier(0.4, 0, 0.2, 1)";
-			headerElement.style.filter = "brightness(1.02)";
-		});
-
-		headerElement.addEventListener("mouseleave", () => {
-			headerElement.style.filter = "none";
-		});
-	}
-
-	/**
 	 * Get group at specific Y coordinate
 	 */
 	getGroupAtY(
@@ -376,24 +323,24 @@ export class GroupHeaderRenderer extends Component {
 	 * Add drag and drop support to group header
 	 */
 	private addDragDropSupport(
-		headerElement: SVGElement,
+		headerElement: HTMLElement | SVGElement,
 		group: TaskGroup
 	): void {
 		// Allow drop on group headers
-		headerElement.addEventListener("dragover", (e) => {
+		this.registerDomEvent(headerElement as HTMLElement, "dragover", (e: DragEvent) => {
 			e.preventDefault();
 			e.dataTransfer!.dropEffect = "move";
 			headerElement.classList.add("gantt-drop-target");
 		});
 
-		headerElement.addEventListener("dragleave", (e) => {
+		this.registerDomEvent(headerElement as HTMLElement, "dragleave", (e: DragEvent) => {
 			// Only remove if we're actually leaving the element
 			if (!headerElement.contains(e.relatedTarget as Node)) {
 				headerElement.classList.remove("gantt-drop-target");
 			}
 		});
 
-		headerElement.addEventListener("drop", (e) => {
+		this.registerDomEvent(headerElement as HTMLElement, "drop", (e: DragEvent) => {
 			e.preventDefault();
 			headerElement.classList.remove("gantt-drop-target");
 

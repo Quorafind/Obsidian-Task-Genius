@@ -79,7 +79,7 @@ export class GanttConfigManager extends Component {
 				showGroupHeaders: true,
 				collapsibleGroups: true,
 				defaultExpanded: true,
-				groupHeaderHeight: 60,
+				groupHeaderHeight: 40,
 				showEmptyGroups: false,
 			},
 			groupStates: {},

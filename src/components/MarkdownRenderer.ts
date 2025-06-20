@@ -12,32 +12,32 @@ import { DEFAULT_SYMBOLS, TAG_REGEX } from "../common/default-symbol";
 function removeTagsWithLinkProtection(text: string): string {
 	let result = "";
 	let i = 0;
-	
+
 	while (i < text.length) {
 		// Check if we're at the start of a wiki link
-		if (i < text.length - 1 && text[i] === '[' && text[i + 1] === '[') {
+		if (i < text.length - 1 && text[i] === "[" && text[i + 1] === "[") {
 			// Find the end of the wiki link
 			let linkEnd = i + 2;
 			let bracketCount = 1;
-			
+
 			while (linkEnd < text.length - 1 && bracketCount > 0) {
-				if (text[linkEnd] === ']' && text[linkEnd + 1] === ']') {
+				if (text[linkEnd] === "]" && text[linkEnd + 1] === "]") {
 					bracketCount--;
 					if (bracketCount === 0) {
 						linkEnd += 2;
 						break;
 					}
-				} else if (text[linkEnd] === '[' && text[linkEnd + 1] === '[') {
+				} else if (text[linkEnd] === "[" && text[linkEnd + 1] === "[") {
 					bracketCount++;
 					linkEnd++;
 				}
 				linkEnd++;
 			}
-			
+
 			// Add the entire wiki link without tag processing
 			result += text.substring(i, linkEnd);
 			i = linkEnd;
-		} else if (text[i] === '#') {
+		} else if (text[i] === "#") {
 			// Check if this is a tag (not inside a link)
 			const tagMatch = text.substring(i).match(TAG_REGEX);
 			if (tagMatch && tagMatch.index === 0) {
@@ -54,7 +54,7 @@ function removeTagsWithLinkProtection(text: string): string {
 			i++;
 		}
 	}
-	
+
 	return result;
 }
 
@@ -126,6 +126,7 @@ export function clearAllMarks(markdown: string): string {
 		text: string;
 		index: number;
 		length: number;
+		id: string; // Add unique identifier for better tracking
 	}
 
 	const preservedSegments: PreservedSegment[] = [];
@@ -133,6 +134,7 @@ export function clearAllMarks(markdown: string): string {
 	const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
 	const markdownLinkRegex = /\[([^\[\]]*)\]\((.*?)\)/g; // Regex for [text](link)
 	let match: RegExpExecArray | null;
+	let segmentCounter = 0;
 
 	// Find all inline code blocks first
 	inlineCodeRegex.lastIndex = 0;
@@ -141,6 +143,7 @@ export function clearAllMarks(markdown: string): string {
 			text: match[0],
 			index: match.index,
 			length: match[0].length,
+			id: `code_${segmentCounter++}`,
 		});
 	}
 
@@ -159,6 +162,7 @@ export function clearAllMarks(markdown: string): string {
 				text: match[0],
 				index: currentStart,
 				length: match[0].length,
+				id: `wiki_${segmentCounter++}`,
 			});
 		}
 	}
@@ -178,20 +182,25 @@ export function clearAllMarks(markdown: string): string {
 				text: match[0],
 				index: currentStart,
 				length: match[0].length,
+				id: `md_${segmentCounter++}`,
 			});
 		}
 	}
 
-	// Create a temporary version of markdown with all preserved segments replaced by placeholders
+	// Create a temporary version of markdown with all preserved segments replaced by unique placeholders
 	let tempMarkdown = cleanedMarkdown;
+	const placeholderMap = new Map<string, string>(); // Map placeholder to original text
+
 	if (preservedSegments.length > 0) {
 		// Sort segments by index in descending order to process from end to beginning
 		// This prevents indices from shifting when replacing
 		preservedSegments.sort((a, b) => b.index - a.index);
 
 		for (const segment of preservedSegments) {
-			// Use a non-space placeholder to avoid tag merging issues
-			const placeholder = "█".repeat(segment.length);
+			// Use unique placeholder with segment ID to avoid conflicts
+			const placeholder = `__PRESERVED_${segment.id}__`;
+			placeholderMap.set(placeholder, segment.text);
+
 			tempMarkdown =
 				tempMarkdown.substring(0, segment.index) +
 				placeholder +
@@ -200,32 +209,17 @@ export function clearAllMarks(markdown: string): string {
 	}
 
 	// Remove tags from temporary markdown (where links/code are placeholders)
-	// Use a more intelligent tag removal that doesn't affect content inside preserved segments
 	tempMarkdown = removeTagsWithLinkProtection(tempMarkdown);
+
 	// Remove context tags from temporary markdown
-	tempMarkdown = tempMarkdown.replace(/@([\w-]+)/g, ""); // Use non-capturing group for potentially better performance if needed
+	tempMarkdown = tempMarkdown.replace(/@[\w-]+/g, "");
 
-	// Now restore the preserved segments in the cleaned version
-	if (preservedSegments.length > 0) {
-		// Process segments in original order (ascending by index) for reconstruction
-		preservedSegments.sort((a, b) => a.index - b.index);
+	// Remove any remaining tags that might have been missed
+	tempMarkdown = tempMarkdown.replace(TAG_REGEX, "");
 
-		let resultMarkdown = "";
-		let lastIndex = 0;
-
-		for (const segment of preservedSegments) {
-			// Add cleaned content (from tempMarkdown) up to this segment
-			resultMarkdown += tempMarkdown.substring(lastIndex, segment.index);
-			// Add the original segment text
-			resultMarkdown += segment.text;
-			// Update lastIndex
-			lastIndex = segment.index + segment.length;
-		}
-
-		// Add any remaining content after the last segment
-		resultMarkdown += tempMarkdown.substring(lastIndex);
-		// Assign the reconstructed string back to tempMarkdown for final processing
-		tempMarkdown = resultMarkdown;
+	// Now restore the preserved segments by replacing placeholders with original content
+	for (const [placeholder, originalText] of placeholderMap) {
+		tempMarkdown = tempMarkdown.replace(placeholder, originalText);
 	}
 
 	// Task marker and final cleaning (applied to the string with links/code restored)

@@ -147,11 +147,11 @@ export class TaskRendererComponent extends Component {
 		group.setAttribute("data-task-id", task.id);
 
 		// 添加任务点击监听器
-		group.addEventListener("click", (e) => {
+		this.registerDomEvent(group as unknown as HTMLElement, "click", (e) => {
 			e.stopPropagation();
 			handleTaskClick(task);
 		});
-		group.addEventListener("contextmenu", (event) => {
+		this.registerDomEvent(group as unknown as HTMLElement, "contextmenu", (event) => {
 			event.stopPropagation();
 			handleTaskContextMenu(event, task);
 		});
@@ -171,7 +171,7 @@ export class TaskRendererComponent extends Component {
 			taskElement = group.createSvg("rect", {
 				attr: {
 					x: x - size / 2,
-					y: y - size / 2,
+					y: y + size / 2,
 					width: size,
 					height: size,
 					rx: 2,
@@ -183,15 +183,15 @@ export class TaskRendererComponent extends Component {
 
 			// 安全地添加状态和优先级类
 			if (task.status && task.status.trim()) {
-				taskElement.classList.add(`status-${task.status.trim()}`);
+				taskElement.dataset.status = task.status.trim();
 			}
 			if (
 				task.metadata.priority &&
 				String(task.metadata.priority).trim()
 			) {
-				taskElement.classList.add(
-					`priority-${String(task.metadata.priority).trim()}`
-				);
+				taskElement.dataset.priority = String(
+					task.metadata.priority
+				).trim();
 			}
 
 			// 在右侧添加文本标签

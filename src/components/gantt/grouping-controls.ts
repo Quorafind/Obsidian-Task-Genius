@@ -45,7 +45,7 @@ export class GanttGroupingControls extends Component {
 			showGroupHeaders: true,
 			collapsibleGroups: true,
 			defaultExpanded: true,
-			groupHeaderHeight: 30,
+			groupHeaderHeight: 40,
 			showEmptyGroups: false,
 		};
 		this.onChange = options.onChange || (() => {});
