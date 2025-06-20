@@ -121,7 +121,8 @@ export class GanttGroupingControls extends Component {
 		this.primaryGroupDropdown = new DropdownComponent(dropdownContainer);
 		this.setupGroupingDropdown(
 			this.primaryGroupDropdown,
-			this.config.primaryGroupBy || "none"
+			this.config.primaryGroupBy || "none",
+			true
 		);
 
 		// Style the dropdown
@@ -150,7 +151,8 @@ export class GanttGroupingControls extends Component {
 		this.secondaryGroupDropdown = new DropdownComponent(dropdownContainer);
 		this.setupGroupingDropdown(
 			this.secondaryGroupDropdown,
-			this.config.secondaryGroupBy || "none"
+			this.config.secondaryGroupBy || "none",
+			false
 		);
 
 		// Style the dropdown
@@ -319,7 +321,8 @@ export class GanttGroupingControls extends Component {
 
 	private setupGroupingDropdown(
 		dropdown: DropdownComponent,
-		selectedValue: string
+		selectedValue: string,
+		isPrimary: boolean = true
 	): void {
 		const availableFields =
 			GanttGroupingManager.getAvailableGroupingFields();
@@ -329,6 +332,16 @@ export class GanttGroupingControls extends Component {
 		});
 
 		dropdown.setValue(selectedValue);
+
+		// Add change event handler
+		dropdown.onChange((value: string) => {
+			if (isPrimary) {
+				this.config.primaryGroupBy = value as GroupingField;
+			} else {
+				this.config.secondaryGroupBy = value as GroupingField;
+			}
+			this.notifyConfigChange();
+		});
 	}
 
 	private updateSecondaryGroupingVisibility(): void {

@@ -30,6 +30,13 @@ export class HabitEditDialog extends Modal {
 	habitType: string = "daily";
 	iconInput: string = "circle-check";
 
+	// Event listeners to clean up
+	private eventListeners: Array<{
+		element: HTMLElement;
+		event: string;
+		handler: EventListener;
+	}> = [];
+
 	constructor(
 		app: App,
 		plugin: TaskProgressBarPlugin,
@@ -55,6 +62,24 @@ export class HabitEditDialog extends Modal {
 		this.modalEl.addClass("habit-edit-dialog");
 
 		this.buildForm();
+	}
+
+	onClose() {
+		// Clean up event listeners
+		this.eventListeners.forEach(({ element, event, handler }) => {
+			element.removeEventListener(event, handler);
+		});
+		this.eventListeners = [];
+	}
+
+	// Helper method to register event listeners for cleanup
+	private registerEventListener(
+		element: HTMLElement,
+		event: string,
+		handler: EventListener
+	) {
+		element.addEventListener(event, handler);
+		this.eventListeners.push({ element, event, handler });
 	}
 
 	buildForm() {
@@ -123,7 +148,7 @@ export class HabitEditDialog extends Modal {
 				text: type.description,
 			});
 
-			typeBtn.addEventListener("click", () => {
+			const clickHandler = () => {
 				document.querySelectorAll(".habit-type-item").forEach((el) => {
 					el.removeClass("selected");
 				});
@@ -132,7 +157,9 @@ export class HabitEditDialog extends Modal {
 				this.habitType = type.id;
 				// Rebuild form
 				this.buildTypeSpecificForm();
-			});
+			};
+
+			this.registerEventListener(typeBtn, "click", clickHandler);
 		});
 
 		// Common fields form
@@ -492,7 +519,7 @@ export class HabitEditDialog extends Modal {
 			text: t("Add new mapping"),
 		});
 
-		addMappingBtn.addEventListener("click", () => {
+		const addMappingHandler = () => {
 			// Find max key and increment by 1
 			let maxKey = 0;
 			this.mappingInputs.forEach((input) => {
@@ -500,7 +527,9 @@ export class HabitEditDialog extends Modal {
 				if (!isNaN(key) && key > maxKey) maxKey = key;
 			});
 			createMappingEditor(maxKey + 1, "");
-		});
+		};
+
+		this.registerEventListener(addMappingBtn, "click", addMappingHandler);
 
 		this.mappingPropertyInput = propertyInput!;
 	}
@@ -594,9 +623,11 @@ export class HabitEditDialog extends Modal {
 			text: t("Add new event"),
 		});
 
-		addEventBtn.addEventListener("click", () => {
+		const addEventHandler = () => {
 			createEventEditor();
-		});
+		};
+
+		this.registerEventListener(addEventBtn, "click", addEventHandler);
 	}
 
 	// Get type-specific field data

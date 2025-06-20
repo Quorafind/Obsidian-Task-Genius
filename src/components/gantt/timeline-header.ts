@@ -175,7 +175,7 @@ export class TimelineHeaderComponent extends Component {
 				headerGroup.createSvg("line", {
 					attr: {
 						x1: x,
-						y1: headerHeight * 0.5,
+						y1: 0,
 						x2: x,
 						y2: headerHeight,
 						class: "gantt-header-tick-minor",

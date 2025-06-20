@@ -1,6 +1,6 @@
 /**
  * TypeScript type definitions for Gantt Chart Grouping functionality
- * 
+ *
  * This file contains all the type definitions related to task grouping,
  * metadata-based organization, and group management in the Gantt chart.
  */
@@ -8,16 +8,16 @@
 import { Task } from "./task";
 
 /** Available fields for grouping tasks */
-export type GroupingField = 
-	| "none" 
-	| "project" 
-	| "priority" 
-	| "status" 
-	| "tags" 
-	| "area" 
-	| "context" 
-	| "assignee" 
-	| "heading" 
+export type GroupingField =
+	| "none"
+	| "project"
+	| "priority"
+	| "status"
+	| "tags"
+	| "area"
+	| "context"
+	| "assignee"
+	| "heading"
 	| "filePath"
 	| "dueDate"
 	| "startDate"
@@ -39,7 +39,7 @@ export enum GroupingOptions {
 	DUE_DATE = "dueDate",
 	START_DATE = "startDate",
 	CREATED_DATE = "createdDate",
-	COMPLETED_DATE = "completedDate"
+	COMPLETED_DATE = "completedDate",
 }
 
 /** Configuration for task grouping */
@@ -246,20 +246,28 @@ export interface GroupPerformanceMetrics {
 /** Utility types for group operations */
 export namespace GroupingTypes {
 	/** Extract group value type based on field */
-	export type GroupValueType<T extends GroupingField> = 
-		T extends "priority" ? number :
-		T extends "dueDate" | "startDate" | "createdDate" | "completedDate" ? number :
-		T extends "tags" ? string[] :
-		string;
+	export type GroupValueType<T extends GroupingField> = T extends "priority"
+		? number
+		: T extends "dueDate" | "startDate" | "createdDate" | "completedDate"
+		? number
+		: T extends "tags"
+		? string[]
+		: string;
 
 	/** Group field display names */
 	export type GroupFieldDisplayNames = Record<GroupingField, string>;
 
 	/** Group field validators */
-	export type GroupFieldValidators = Record<GroupingField, (value: any) => boolean>;
+	export type GroupFieldValidators = Record<
+		GroupingField,
+		(value: any) => boolean
+	>;
 
 	/** Group field formatters */
-	export type GroupFieldFormatters = Record<GroupingField, (value: any) => string>;
+	export type GroupFieldFormatters = Record<
+		GroupingField,
+		(value: any) => string
+	>;
 }
 
 /** Constants for grouping */
@@ -275,24 +283,34 @@ export const GROUPING_CONSTANTS = {
 	/** Virtual scrolling buffer size */
 	VIRTUAL_BUFFER_SIZE: 200,
 	/** Performance monitoring interval */
-	PERFORMANCE_MONITOR_INTERVAL: 5000
+	PERFORMANCE_MONITOR_INTERVAL: 5000,
 } as const;
 
 /** Type guards for grouping */
 export namespace GroupingTypeGuards {
-	export function isValidGroupingField(field: string): field is GroupingField {
-		return Object.values(GroupingOptions).includes(field as GroupingOptions);
+	export function isValidGroupingField(
+		field: string
+	): field is GroupingField {
+		return Object.values(GroupingOptions).includes(
+			field as GroupingOptions
+		);
 	}
 
 	export function isTaskGroup(obj: any): obj is TaskGroup {
 		return obj && typeof obj.id === "string" && Array.isArray(obj.tasks);
 	}
 
-	export function isGroupedGanttTaskItem(obj: any): obj is GroupedGanttTaskItem {
+	export function isGroupedGanttTaskItem(
+		obj: any
+	): obj is GroupedGanttTaskItem {
 		return obj && obj.task && typeof obj.groupId === "string";
 	}
 
 	export function isGroupingConfig(obj: any): obj is GroupingConfig {
-		return obj && (obj.primaryGroupBy === undefined || isValidGroupingField(obj.primaryGroupBy));
+		return (
+			obj &&
+			(obj.primaryGroupBy === undefined ||
+				isValidGroupingField(obj.primaryGroupBy))
+		);
 	}
 }

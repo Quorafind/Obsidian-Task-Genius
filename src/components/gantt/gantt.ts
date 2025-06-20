@@ -18,6 +18,12 @@ import { GroupHeaderRenderer } from "./group-header-renderer";
 import { GroupInteractionManager } from "./group-interaction-manager";
 import { VirtualizationManager } from "./virtualization-manager";
 import { GanttConfigManager } from "./gantt-config-manager";
+import {
+	GanttViewTabs,
+	GanttViewTab,
+	GanttViewConfig,
+} from "./gantt-view-tabs";
+import { GanttControlsPopover } from "./gantt-controls-popover";
 import TaskProgressBarPlugin from "../../index";
 import {
 	FilterComponent,
@@ -128,6 +134,7 @@ export class GanttComponent extends Component {
 	private filterContainerEl: HTMLElement; // Container for filters
 	private headerContainerEl: HTMLElement; // Container for sticky header
 	private groupSidebarEl: HTMLElement; // Left sidebar for group headers
+	private chartAreaEl: HTMLElement; // Chart area container
 	private isScrolling: boolean = false;
 	private isZooming: boolean = false;
 
@@ -137,6 +144,8 @@ export class GanttComponent extends Component {
 	private groupHeaderGroupEl: SVGGElement | null = null;
 
 	// Child Components
+	private viewTabs: GanttViewTabs | null = null;
+	private controlsPopover: GanttControlsPopover | null = null;
 	private filterComponent: FilterComponent | null = null;
 	private timelineHeaderComponent: TimelineHeaderComponent | null = null;
 	private gridBackgroundComponent: GridBackgroundComponent | null = null;
@@ -192,13 +201,15 @@ export class GanttComponent extends Component {
 			cls: "gantt-chart-container",
 		});
 
-		// Create layout containers
+		// Create layout containers - using new view tabs approach
 		this.groupingContainerEl = this.containerEl.createDiv(
-			"gantt-grouping-area" // New container for grouping controls
+			"gantt-view-tabs-area" // Container for view tabs
 		);
 		this.filterContainerEl = this.containerEl.createDiv(
-			"gantt-filter-area" // Container for filters
+			"gantt-filter-area" // Container for filters (will be removed)
 		);
+		// Hide old filter area since it's now in popover
+		this.filterContainerEl.style.display = "none";
 
 		// Create main content area with sidebar and chart
 		const mainContentEl = this.containerEl.createDiv("gantt-main-content");
@@ -207,16 +218,24 @@ export class GanttComponent extends Component {
 		this.groupSidebarEl = mainContentEl.createDiv("gantt-group-sidebar");
 
 		// Create right chart area
-		const chartAreaEl = mainContentEl.createDiv("gantt-chart-area");
+		this.chartAreaEl = mainContentEl.createDiv("gantt-chart-area");
 
-		this.headerContainerEl = chartAreaEl.createDiv(
+		this.headerContainerEl = this.chartAreaEl.createDiv(
 			"gantt-header-container"
 		);
-		this.scrollContainerEl = chartAreaEl.createDiv(
+		this.scrollContainerEl = this.chartAreaEl.createDiv(
 			"gantt-scroll-container"
 		);
 		this.contentWrapperEl = this.scrollContainerEl.createDiv(
 			"gantt-content-wrapper"
+		);
+
+		// Create offscreen indicator containers in chart area for proper positioning
+		this.leftIndicatorEl = this.chartAreaEl.createDiv(
+			"gantt-indicator-container gantt-indicator-container-left"
+		);
+		this.rightIndicatorEl = this.chartAreaEl.createDiv(
+			"gantt-indicator-container gantt-indicator-container-right"
 		);
 
 		// Initialize configuration manager
@@ -265,13 +284,7 @@ export class GanttComponent extends Component {
 			cleanupInterval: 30000, // 30 seconds
 		});
 
-		// Create offscreen indicator containers
-		this.leftIndicatorEl = this.containerEl.createDiv(
-			"gantt-indicator-container gantt-indicator-container-left" // Updated classes
-		);
-		this.rightIndicatorEl = this.containerEl.createDiv(
-			"gantt-indicator-container gantt-indicator-container-right" // Updated classes
-		);
+		// Create offscreen indicator containers - will be moved to chartAreaEl after it's created
 		// Containers are always visible, content determines if indicators show
 		// Debounced functions
 		this.debouncedRender = debounce(
@@ -311,17 +324,52 @@ export class GanttComponent extends Component {
 			new GroupSidebar(this.app, this.groupSidebarEl)
 		);
 
-		// Initialize Grouping Controls
-		this.groupingControls = this.addChild(
-			new GanttGroupingControls({
+		// Initialize View Tabs
+		this.viewTabs = this.addChild(
+			new GanttViewTabs({
 				container: this.groupingContainerEl,
-				initialConfig: this.groupingManager.getConfig(),
-				onChange: (config) => {
+				plugin: this.plugin,
+				onTabChange: (tab: GanttViewTab) => {
+					this.handleTabChange(tab);
+				},
+				onTabCreate: (tab: GanttViewTab) => {
+					this.handleTabCreate(tab);
+				},
+				onTabDelete: (tabId: string) => {
+					this.handleTabDelete(tabId);
+				},
+				onTabRename: (tabId: string, newName: string) => {
+					this.handleTabRename(tabId, newName);
+				},
+			})
+		);
+
+		// Create controls trigger button in the chart area
+		const controlsTrigger = this.chartAreaEl.createDiv(
+			"gantt-controls-trigger-button"
+		);
+
+		// Initialize Controls Popover
+		this.controlsPopover = this.addChild(
+			new GanttControlsPopover({
+				triggerElement: controlsTrigger,
+				onGroupingChange: (config: GroupingConfig) => {
 					this.groupingManager.updateConfig(config);
 					this.configManager.updateGroupingConfig(config);
 					this.regroupAndRender();
+					// Update active tab config
+					this.viewTabs?.updateActiveTabConfig({
+						groupingConfig: config,
+					});
 				},
-				onToggleGroup: (groupId) => {
+				onFiltersChange: (activeFilters: ActiveFilter[]) => {
+					this.applyFiltersAndRender(activeFilters);
+					// Update active tab config
+					this.viewTabs?.updateActiveTabConfig({
+						filters: activeFilters,
+					});
+				},
+				onGroupToggle: (groupId: string) => {
 					this.groupingManager.toggleGroupExpanded(groupId);
 					// Save group state
 					const groupStates = this.configManager.getGroupStates();
@@ -330,7 +378,7 @@ export class GanttComponent extends Component {
 					this.configManager.updateGroupStates(groupStates);
 					this.regroupAndRender();
 				},
-				onExpandCollapseAll: (expand) => {
+				onExpandCollapseAll: (expand: boolean) => {
 					if (expand) {
 						this.groupSidebar?.expandAll();
 					} else {
@@ -338,27 +386,11 @@ export class GanttComponent extends Component {
 					}
 					this.regroupAndRender();
 				},
+				onScrollToDate: (date: Date) => this.scrollToDate(date),
+				initialGroupingConfig: this.groupingManager.getConfig(),
+				initialTasks: this.tasks,
+				plugin: this.plugin,
 			})
-		);
-
-		// Instantiate Filter Component
-		this.filterComponent = this.addChild(
-			new FilterComponent(
-				{
-					container: this.filterContainerEl,
-					options: buildFilterOptionsFromTasks(this.tasks), // Initialize with empty array to satisfy type, will be updated dynamically
-					onChange: (activeFilters: ActiveFilter[]) => {
-						this.applyFiltersAndRender(activeFilters);
-					},
-					components: [
-						new ScrollToDateButton(
-							this.filterContainerEl,
-							(date: Date) => this.scrollToDate(date)
-						),
-					],
-				},
-				this.plugin
-			)
 		);
 
 		if (this.headerContainerEl) {
@@ -429,18 +461,21 @@ export class GanttComponent extends Component {
 		// Group tasks based on current configuration
 		this.taskGroups = this.groupingManager.groupTasks(this.tasks);
 
+		// Ensure date range is calculated before preparing tasks
+		this.calculateDateRange(true); // Force recalculation with new tasks
+
 		// Prepare tasks initially to generate relevant filter options
 		this.prepareTasksForRender(); // Calculate preparedTasks based on the initial full list
 
 		// Update filter options based on the initially prepared task list
-		if (this.filterComponent) {
+		if (this.controlsPopover) {
 			// Extract the original Task objects from preparedTasks
 			const tasksForFiltering = this.preparedTasks.map((pt) => pt.task);
-			this.filterComponent.updateFilterOptions(tasksForFiltering); // Use prepared tasks for initial options
+			this.controlsPopover.updateFilterOptions(tasksForFiltering); // Use prepared tasks for initial options
 		}
 
 		// Apply any existing filters from the component (will re-prepare and re-update filters)
-		const currentFilters = this.filterComponent?.getActiveFilters() || [];
+		const currentFilters = this.controlsPopover?.getActiveFilters() || [];
 		this.applyFiltersAndRender(currentFilters); // This will call prepareTasksForRender again and update filters
 
 		// Scroll to today after the initial render is scheduled
@@ -455,6 +490,12 @@ export class GanttComponent extends Component {
 	setTimescale(newTimescale: Timescale) {
 		this.timescale = newTimescale;
 		this.calculateTimescaleParams(); // Update params based on new scale
+
+		// Ensure date range is calculated before preparing tasks
+		if (!this.startDate || !this.endDate) {
+			this.calculateDateRange();
+		}
+
 		this.prepareTasksForRender(); // Prepare tasks with new scale
 		this.debouncedRender(); // Trigger full render
 	}
@@ -464,6 +505,12 @@ export class GanttComponent extends Component {
 	 */
 	private regroupAndRender(): void {
 		this.taskGroups = this.groupingManager.groupTasks(this.tasks);
+
+		// Ensure date range is calculated before preparing tasks
+		if (!this.startDate || !this.endDate) {
+			this.calculateDateRange();
+		}
+
 		this.prepareTasksForRender();
 		this.debouncedRender();
 	}
@@ -1133,6 +1180,27 @@ export class GanttComponent extends Component {
 					this.configManager.updateGroupStates(groupStates);
 					this.regroupAndRender();
 				},
+				onGroupFilter: (groupId: string, visible: boolean) => {
+					// Handle group visibility filtering
+					console.log(
+						`Group ${groupId} visibility toggled to: ${visible}`
+					);
+					if (this.groupInteractionManager) {
+						this.groupInteractionManager.setGroupVisible(
+							groupId,
+							visible
+						);
+					}
+					// Trigger re-render to apply filter changes
+					this.regroupAndRender();
+				},
+				getGroupVisibility: (groupId: string) => {
+					// Provide access to the GroupInteractionManager's visibility state
+					return (
+						this.groupInteractionManager?.isGroupVisible(groupId) ??
+						true
+					);
+				},
 			});
 		}
 
@@ -1170,29 +1238,45 @@ export class GanttComponent extends Component {
 
 			// Check for offscreen indicators (use smaller buffer or none)
 			const indicatorBuffer = 5; // Small buffer to prevent flicker
-			// Calculate top position relative to the scroll container's viewport
-			const indicatorTop = pt.y - scrollTop - indicatorYOffset;
 
-			if (taskEndX < visibleStartX - indicatorBuffer) {
-				// Task is offscreen to the left
-				this.leftIndicatorEl.createDiv({
-					cls: "gantt-single-indicator",
-					attr: {
-						style: `top: ${indicatorTop + 45}px;`, // Use calculated relative top
-						title: pt.task.content,
-						"data-task-id": pt.task.id,
-					},
-				});
-			} else if (taskStartX > visibleEndX + indicatorBuffer) {
-				// Task is offscreen to the right
-				this.rightIndicatorEl.createDiv({
-					cls: "gantt-single-indicator",
-					attr: {
-						style: `top: ${indicatorTop + 45}px;`, // Use calculated relative top
-						title: pt.task.content,
-						"data-task-id": pt.task.id,
-					},
-				});
+			// Calculate top position relative to the chart area
+			// pt.y is absolute position in the content, we need to account for:
+			// 1. Header height offset
+			// 2. Scroll position to make it relative to visible area
+			const headerOffset = this.headerContainerEl
+				? this.headerContainerEl.offsetHeight
+				: HEADER_HEIGHT;
+			const indicatorTop =
+				pt.y - scrollTop + headerOffset - indicatorYOffset;
+
+			// Only show indicators for tasks that are within the visible vertical range
+			const containerHeight = this.scrollContainerEl.clientHeight;
+			const isVerticallyVisible =
+				indicatorTop >= headerOffset &&
+				indicatorTop <= containerHeight + headerOffset;
+
+			if (isVerticallyVisible) {
+				if (taskEndX < visibleStartX - indicatorBuffer) {
+					// Task is offscreen to the left
+					this.leftIndicatorEl.createDiv({
+						cls: "gantt-single-indicator",
+						attr: {
+							style: `top: ${indicatorTop}px;`,
+							title: pt.task.content,
+							"data-task-id": pt.task.id,
+						},
+					});
+				} else if (taskStartX > visibleEndX + indicatorBuffer) {
+					// Task is offscreen to the right
+					this.rightIndicatorEl.createDiv({
+						cls: "gantt-single-indicator",
+						attr: {
+							style: `top: ${indicatorTop}px;`,
+							title: pt.task.content,
+							"data-task-id": pt.task.id,
+						},
+					});
+				}
 			}
 		}
 
@@ -1540,6 +1624,11 @@ export class GanttComponent extends Component {
 		const metrics = this.getPerformanceMetrics();
 		console.log("Performance metrics:", metrics);
 
+		// Ensure date range is calculated before preparing tasks
+		if (!this.startDate || !this.endDate) {
+			this.calculateDateRange();
+		}
+
 		this.prepareTasksForRender();
 		this.debouncedRender();
 	}
@@ -1602,9 +1691,9 @@ export class GanttComponent extends Component {
 		this.prepareTasksForRender(); // Uses the filtered this.tasks
 
 		// Update filter options based on the current set of prepared tasks after filtering
-		if (this.filterComponent) {
+		if (this.controlsPopover) {
 			const tasksForFiltering = this.preparedTasks.map((pt) => pt.task);
-			this.filterComponent.updateFilterOptions(tasksForFiltering);
+			this.controlsPopover.updateFilterOptions(tasksForFiltering);
 		}
 
 		this.debouncedRender();
@@ -1638,5 +1727,59 @@ export class GanttComponent extends Component {
 	 */
 	public resetPerformanceMetrics() {
 		this.virtualizationManager.resetPerformanceMetrics();
+	}
+
+	// --- Tab Management Methods ---
+
+	/**
+	 * Handle tab change
+	 */
+	private handleTabChange(tab: GanttViewTab): void {
+		console.log("Tab changed:", tab.name);
+
+		// Apply tab configuration
+		if (tab.config.groupingConfig) {
+			this.groupingManager.updateConfig(tab.config.groupingConfig);
+			this.configManager.updateGroupingConfig(tab.config.groupingConfig);
+			this.regroupAndRender();
+		}
+
+		if (tab.config.filters) {
+			this.applyFiltersAndRender(tab.config.filters);
+		}
+
+		// Update controls popover with tab settings
+		if (this.controlsPopover) {
+			this.controlsPopover.updateGroupingConfig(
+				tab.config.groupingConfig || this.groupingManager.getConfig()
+			);
+		}
+	}
+
+	/**
+	 * Handle tab creation
+	 */
+	private handleTabCreate(tab: GanttViewTab): void {
+		console.log("Tab created:", tab.name);
+		// New tab is automatically activated, so we just need to ensure proper state
+		this.regroupAndRender();
+	}
+
+	/**
+	 * Handle tab deletion
+	 */
+	private handleTabDelete(tabId: string): void {
+		console.log("Tab deleted:", tabId);
+		// The active tab will be automatically switched by the GanttViewTabs component
+		// We just need to ensure the view is properly refreshed
+		this.regroupAndRender();
+	}
+
+	/**
+	 * Handle tab rename
+	 */
+	private handleTabRename(tabId: string, newName: string): void {
+		console.log("Tab renamed:", tabId, "->", newName);
+		// No action needed as this is just a UI change
 	}
 }

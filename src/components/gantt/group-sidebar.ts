@@ -16,6 +16,7 @@ export interface GroupSidebarParams {
 	onGroupClick?: (groupId: string) => void;
 	onGroupToggle?: (groupId: string) => void;
 	onGroupFilter?: (groupId: string, visible: boolean) => void;
+	getGroupVisibility?: (groupId: string) => boolean;
 }
 
 export class GroupSidebar extends Component {
@@ -26,6 +27,7 @@ export class GroupSidebar extends Component {
 	private sidebarHeader: HTMLElement;
 	private activeGroupId: string | null = null;
 	private collapsedGroups: Set<string> = new Set();
+	private groupVisibility: Map<string, boolean> = new Map();
 
 	constructor(app: App, containerEl: HTMLElement) {
 		super();
@@ -145,13 +147,6 @@ export class GroupSidebar extends Component {
 			},
 		});
 
-		// Position the item to match the chart
-		groupItem.style.position = "absolute";
-		groupItem.style.top = `${group.y}px`;
-		groupItem.style.height = `${group.headerHeight}px`;
-		groupItem.style.width = "100%";
-		groupItem.style.paddingLeft = `${level * 16 + 12}px`; // Indent based on level
-
 		// Add level-specific styling
 		groupItem.classList.add(`tg-gantt-sidebar-level-${level}`);
 
@@ -173,7 +168,7 @@ export class GroupSidebar extends Component {
 			const isCollapsed = this.collapsedGroups.has(group.id);
 			setIcon(icon, isCollapsed ? "chevron-right" : "chevron-down");
 
-			iconContainer.addEventListener("click", (e) => {
+			this.registerDomEvent(iconContainer, "click", (e) => {
 				e.stopPropagation();
 				this.toggleGroupCollapse(group.id);
 				if (this.params?.onGroupToggle) {
@@ -182,9 +177,9 @@ export class GroupSidebar extends Component {
 			});
 		} else {
 			// Add spacer for alignment
-			const spacer = groupContent.createDiv({
-				cls: "tg-gantt-sidebar-spacer",
-			});
+			// groupContent.createDiv({
+			// 	cls: "tg-gantt-sidebar-spacer",
+			// });
 		}
 
 		// Group label container
@@ -193,7 +188,7 @@ export class GroupSidebar extends Component {
 		});
 
 		// Group label
-		const label = labelContainer.createEl("span", {
+		labelContainer.createEl("span", {
 			cls: "tg-gantt-sidebar-label",
 			text: group.label,
 		});
@@ -206,7 +201,7 @@ export class GroupSidebar extends Component {
 		// Task count badge
 		const taskCount = this.getGroupTaskCount(group);
 		if (taskCount > 0) {
-			const countBadge = metadataContainer.createEl("span", {
+			metadataContainer.createEl("span", {
 				cls: "tg-gantt-sidebar-count",
 				text: taskCount.toString(),
 			});
@@ -231,7 +226,7 @@ export class GroupSidebar extends Component {
 			progressFill.style.width = `${progressPercentage}%`;
 
 			// Progress text
-			const progressText = progressContainer.createEl("span", {
+			progressContainer.createEl("span", {
 				cls: "tg-gantt-sidebar-progress-text",
 				text: `${completedTasks}/${taskCount}`,
 			});
@@ -244,23 +239,33 @@ export class GroupSidebar extends Component {
 
 		// Filter toggle button
 		const filterButton = actionsContainer.createEl("button", {
-			cls: "tg-gantt-sidebar-action-button",
+			cls: "tg-gantt-sidebar-action-button clickable-icon",
 			attr: { title: t("Toggle group visibility") },
 		});
 
 		const filterIcon = filterButton.createDiv({
 			cls: "tg-gantt-sidebar-action-icon",
 		});
-		setIcon(filterIcon, "eye");
 
-		filterButton.addEventListener("click", (e) => {
+		// Get current visibility state from the GroupInteractionManager or local state
+		const currentVisibility = this.getCurrentGroupVisibility(group.id);
+		setIcon(filterIcon, currentVisibility ? "eye" : "eye-off");
+		filterButton.setAttribute(
+			"title",
+			currentVisibility ? t("Hide group") : t("Show group")
+		);
+
+		this.registerDomEvent(filterButton, "click", (e) => {
+			console.log(
+				`GroupSidebar: Filter button clicked for group ${group.id}`
+			);
 			e.stopPropagation();
 			this.toggleGroupFilter(group.id);
 		});
 
 		// More options button
 		const moreButton = actionsContainer.createEl("button", {
-			cls: "tg-gantt-sidebar-action-button",
+			cls: "tg-gantt-sidebar-action-button clickable-icon",
 			attr: { title: t("More options") },
 		});
 
@@ -269,13 +274,16 @@ export class GroupSidebar extends Component {
 		});
 		setIcon(moreIcon, "more-horizontal");
 
-		moreButton.addEventListener("click", (e) => {
+		this.registerDomEvent(moreButton, "click", (e) => {
+			console.log(
+				`GroupSidebar: More options button clicked for group ${group.id}`
+			);
 			e.stopPropagation();
 			this.showGroupContextMenu(e, group);
 		});
 
 		// Add click handler for navigation
-		groupItem.addEventListener("click", () => {
+		this.registerDomEvent(groupItem, "click", () => {
 			this.selectGroup(group.id);
 			if (this.params?.onGroupClick) {
 				this.params.onGroupClick(group.id);
@@ -321,12 +329,42 @@ export class GroupSidebar extends Component {
 		this.render(); // Re-render to update collapsed state
 	}
 
-	private toggleGroupFilter(groupId: string): void {
-		// Toggle group visibility
-		if (this.params?.onGroupFilter) {
-			// For now, assume all groups are visible and toggle to hidden
-			this.params.onGroupFilter(groupId, false);
+	/**
+	 * Get current group visibility state, preferring the external source if available
+	 */
+	private getCurrentGroupVisibility(groupId: string): boolean {
+		// First try to get from external source (GroupInteractionManager)
+		if (this.params?.getGroupVisibility) {
+			return this.params.getGroupVisibility(groupId);
 		}
+		// Fall back to local state (default to true if not set)
+		return this.groupVisibility.get(groupId) ?? true;
+	}
+
+	private toggleGroupFilter(groupId: string): void {
+		console.log(
+			`GroupSidebar: toggleGroupFilter called for group ${groupId}`
+		);
+
+		// Get current visibility state
+		const currentVisibility = this.getCurrentGroupVisibility(groupId);
+		const newVisibility = !currentVisibility;
+
+		// Update local state
+		this.groupVisibility.set(groupId, newVisibility);
+
+		// Call the callback if provided
+		if (this.params?.onGroupFilter) {
+			console.log(
+				`GroupSidebar: Calling onGroupFilter with visibility: ${newVisibility}`
+			);
+			this.params.onGroupFilter(groupId, newVisibility);
+		} else {
+			console.warn("GroupSidebar: onGroupFilter callback not provided");
+		}
+
+		// Update the filter button icon to reflect current state
+		this.updateFilterButtonIcon(groupId, newVisibility);
 	}
 
 	private selectGroup(groupId: string): void {
@@ -347,7 +385,33 @@ export class GroupSidebar extends Component {
 		}
 	}
 
-	private showGroupContextMenu(event: MouseEvent, group: TaskGroup): void {
+	private updateFilterButtonIcon(groupId: string, visible: boolean): void {
+		// Find the filter button for this group and update its icon
+		const groupItem = this.containerEl.querySelector(
+			`[data-group-id="${groupId}"]`
+		);
+		if (groupItem) {
+			const filterButton = groupItem.querySelector(
+				".tg-gantt-sidebar-action-button"
+			) as HTMLElement;
+			if (filterButton) {
+				const filterIcon = filterButton.querySelector(
+					".tg-gantt-sidebar-action-icon"
+				) as HTMLElement;
+				if (filterIcon) {
+					// Clear existing icon and set new one
+					filterIcon.empty();
+					setIcon(filterIcon, visible ? "eye" : "eye-off");
+					filterButton.setAttribute(
+						"title",
+						visible ? t("Hide group") : t("Show group")
+					);
+				}
+			}
+		}
+	}
+
+	private showGroupContextMenu(_event: MouseEvent, group: TaskGroup): void {
 		// TODO: Implement context menu
 		console.log("Group context menu for:", group.id);
 	}
@@ -402,11 +466,11 @@ export class GroupSidebar extends Component {
 	}
 
 	private addHoverEffects(element: HTMLElement): void {
-		element.addEventListener("mouseenter", () => {
+		this.registerDomEvent(element, "mouseenter", () => {
 			element.addClass("tg-gantt-sidebar-item-hover");
 		});
 
-		element.addEventListener("mouseleave", () => {
+		this.registerDomEvent(element, "mouseleave", () => {
 			element.removeClass("tg-gantt-sidebar-item-hover");
 		});
 	}

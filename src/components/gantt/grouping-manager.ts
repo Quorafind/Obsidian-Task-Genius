@@ -66,7 +66,7 @@ export class GanttGroupingManager {
 					level: 0,
 					y: 0,
 					height: 0,
-					headerHeight: 0,
+					headerHeight: this.groupingConfig.groupHeaderHeight || 30,
 				},
 			];
 		}
