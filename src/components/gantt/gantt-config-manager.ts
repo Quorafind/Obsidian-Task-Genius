@@ -1,6 +1,6 @@
 /**
  * Gantt Chart Configuration Manager
- * 
+ *
  * Handles persistence and management of Gantt chart configurations including
  * grouping settings, view preferences, and integration with the plugin's
  * view configuration system.
@@ -9,7 +9,10 @@
 import { Component } from "obsidian";
 import TaskProgressBarPlugin from "../../index";
 import { GroupingConfig, GroupState } from "../../types/gantt-grouping";
-import { ViewConfig, getViewSettingOrDefault } from "../../common/setting-definition";
+import {
+	ViewConfig,
+	getViewSettingOrDefault,
+} from "../../common/setting-definition";
 
 export interface GanttViewConfig {
 	/** Grouping configuration */
@@ -76,8 +79,8 @@ export class GanttConfigManager extends Component {
 				showGroupHeaders: true,
 				collapsibleGroups: true,
 				defaultExpanded: true,
-				groupHeaderHeight: 30,
-				showEmptyGroups: false
+				groupHeaderHeight: 60,
+				showEmptyGroups: false,
 			},
 			groupStates: {},
 			preferences: {
@@ -88,10 +91,10 @@ export class GanttConfigManager extends Component {
 				autoScrollToToday: true,
 				showProgress: true,
 				showRelations: false,
-				colorScheme: "default"
+				colorScheme: "default",
 			},
 			version: "1.0.0",
-			lastUpdated: Date.now()
+			lastUpdated: Date.now(),
 		};
 	}
 
@@ -101,13 +104,19 @@ export class GanttConfigManager extends Component {
 	loadConfig(): GanttViewConfig {
 		try {
 			// First try to load from view-specific configuration
-			const viewConfig = getViewSettingOrDefault(this.plugin, this.viewId);
-			
+			const viewConfig = getViewSettingOrDefault(
+				this.plugin,
+				this.viewId
+			);
+
 			// Check if there's Gantt-specific config in the view
-			if (viewConfig.specificConfig && (viewConfig.specificConfig as any).gantt) {
+			if (
+				viewConfig.specificConfig &&
+				(viewConfig.specificConfig as any).gantt
+			) {
 				this.currentConfig = {
 					...this.getDefaultConfig(),
-					...(viewConfig.specificConfig as any).gantt
+					...(viewConfig.specificConfig as any).gantt,
 				};
 			} else {
 				// Fallback to plugin data
@@ -115,14 +124,13 @@ export class GanttConfigManager extends Component {
 				if (savedConfig) {
 					this.currentConfig = {
 						...this.getDefaultConfig(),
-						...savedConfig
+						...savedConfig,
 					};
 				}
 			}
 
 			// Migrate old configurations if needed
 			this.migrateConfig();
-
 		} catch (error) {
 			console.error("Failed to load Gantt configuration:", error);
 			this.currentConfig = this.getDefaultConfig();
@@ -140,14 +148,17 @@ export class GanttConfigManager extends Component {
 
 			// Save to view-specific configuration
 			const viewConfigs = this.plugin.settings.viewConfiguration;
-			const viewIndex = viewConfigs.findIndex(v => v.id === this.viewId);
-			
+			const viewIndex = viewConfigs.findIndex(
+				(v) => v.id === this.viewId
+			);
+
 			if (viewIndex >= 0) {
 				// Update existing view configuration
 				if (!viewConfigs[viewIndex].specificConfig) {
 					viewConfigs[viewIndex].specificConfig = {};
 				}
-				(viewConfigs[viewIndex].specificConfig as any).gantt = this.currentConfig;
+				(viewConfigs[viewIndex].specificConfig as any).gantt =
+					this.currentConfig;
 			} else {
 				// Fallback to plugin data
 				if (!this.plugin.settings.data) {
@@ -158,7 +169,6 @@ export class GanttConfigManager extends Component {
 
 			// Save plugin settings
 			await this.plugin.saveSettings();
-
 		} catch (error) {
 			console.error("Failed to save Gantt configuration:", error);
 		}
@@ -170,7 +180,7 @@ export class GanttConfigManager extends Component {
 	updateGroupingConfig(config: Partial<GroupingConfig>): void {
 		this.currentConfig.grouping = {
 			...this.currentConfig.grouping,
-			...config
+			...config,
 		};
 		this.saveConfig();
 	}
@@ -181,7 +191,7 @@ export class GanttConfigManager extends Component {
 	updateGroupStates(states: Record<string, boolean>): void {
 		this.currentConfig.groupStates = {
 			...this.currentConfig.groupStates,
-			...states
+			...states,
 		};
 		this.saveConfig();
 	}
@@ -192,7 +202,7 @@ export class GanttConfigManager extends Component {
 	updatePreferences(preferences: Partial<GanttViewPreferences>): void {
 		this.currentConfig.preferences = {
 			...this.currentConfig.preferences,
-			...preferences
+			...preferences,
 		};
 		this.saveConfig();
 	}
@@ -246,13 +256,13 @@ export class GanttConfigManager extends Component {
 	importConfig(configJson: string): boolean {
 		try {
 			const importedConfig = JSON.parse(configJson);
-			
+
 			// Validate the imported configuration
 			if (this.validateConfig(importedConfig)) {
 				this.currentConfig = {
 					...this.getDefaultConfig(),
 					...importedConfig,
-					lastUpdated: Date.now()
+					lastUpdated: Date.now(),
 				};
 				this.saveConfig();
 				return true;
@@ -268,10 +278,12 @@ export class GanttConfigManager extends Component {
 	 */
 	private validateConfig(config: any): boolean {
 		// Basic validation - can be expanded
-		return config && 
-			   typeof config === 'object' &&
-			   (!config.grouping || typeof config.grouping === 'object') &&
-			   (!config.preferences || typeof config.preferences === 'object');
+		return (
+			config &&
+			typeof config === "object" &&
+			(!config.grouping || typeof config.grouping === "object") &&
+			(!config.preferences || typeof config.preferences === "object")
+		);
 	}
 
 	/**
@@ -279,19 +291,23 @@ export class GanttConfigManager extends Component {
 	 */
 	private migrateConfig(): void {
 		// Check if migration is needed
-		if (!this.currentConfig.version || this.currentConfig.version < "1.0.0") {
+		if (
+			!this.currentConfig.version ||
+			this.currentConfig.version < "1.0.0"
+		) {
 			// Perform migration logic here
 			console.log("Migrating Gantt configuration to version 1.0.0");
-			
+
 			// Example migration: ensure all required fields exist
 			if (!this.currentConfig.grouping) {
 				this.currentConfig.grouping = this.getDefaultConfig().grouping;
 			}
-			
+
 			if (!this.currentConfig.preferences) {
-				this.currentConfig.preferences = this.getDefaultConfig().preferences;
+				this.currentConfig.preferences =
+					this.getDefaultConfig().preferences;
 			}
-			
+
 			this.currentConfig.version = "1.0.0";
 		}
 	}
@@ -299,7 +315,10 @@ export class GanttConfigManager extends Component {
 	/**
 	 * Get configuration for a specific view
 	 */
-	static getConfigForView(plugin: TaskProgressBarPlugin, viewId: string): GanttViewConfig {
+	static getConfigForView(
+		plugin: TaskProgressBarPlugin,
+		viewId: string
+	): GanttViewConfig {
 		const manager = new GanttConfigManager(plugin, viewId);
 		return manager.loadConfig();
 	}
@@ -308,8 +327,8 @@ export class GanttConfigManager extends Component {
 	 * Save configuration for a specific view
 	 */
 	static async saveConfigForView(
-		plugin: TaskProgressBarPlugin, 
-		viewId: string, 
+		plugin: TaskProgressBarPlugin,
+		viewId: string,
 		config: GanttViewConfig
 	): Promise<void> {
 		const manager = new GanttConfigManager(plugin, viewId);

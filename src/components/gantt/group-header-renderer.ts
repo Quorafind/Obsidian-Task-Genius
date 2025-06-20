@@ -16,6 +16,7 @@ export interface GroupHeaderRendererParams {
 	onGroupToggle: (groupId: string) => void;
 	showGroupHeaders: boolean;
 	collapsibleGroups: boolean;
+	getGroupVisibility?: (groupId: string) => boolean;
 }
 
 export class GroupHeaderRenderer extends Component {
@@ -73,6 +74,13 @@ export class GroupHeaderRenderer extends Component {
 	private renderSingleGroupHeader(group: TaskGroup): void {
 		if (!this.params) return;
 
+		// Check if group is visible (for filtering)
+		const isGroupVisible =
+			this.params.getGroupVisibility?.(group.id) ?? true;
+		if (!isGroupVisible) {
+			return; // Skip rendering if group is not visible
+		}
+
 		const { totalWidth, collapsibleGroups, onGroupToggle } = this.params;
 
 		// Create group header container
@@ -92,7 +100,7 @@ export class GroupHeaderRenderer extends Component {
 			cls: "gantt-group-header-bg",
 			attr: {
 				x: 0,
-				y: group.y,
+				y: group.y + 8,
 				width: totalWidth,
 				height: group.headerHeight,
 				rx: 4, // Modern rounded corners

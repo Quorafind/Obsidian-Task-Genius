@@ -276,7 +276,7 @@ export class GanttComponent extends Component {
 			viewportHeight: 600, // Will be updated dynamically
 			viewportWidth: 1200, // Will be updated dynamically
 			rowHeight: ROW_HEIGHT,
-			groupHeaderHeight: 30,
+			groupHeaderHeight: 60,
 			overscanCount: 5,
 			bufferSize: this.config.renderBufferSize, // 使用配置的缓冲区大小
 			lazyLoadThreshold: this.config.lazyLoadThreshold, // 使用配置的懒加载阈值
@@ -879,10 +879,21 @@ export class GanttComponent extends Component {
 	): number {
 		let currentY = startY;
 
+		// Check if group is visible (for filtering)
+		const isGroupVisible =
+			this.groupInteractionManager?.isGroupVisible(group.id) ?? true;
+
+		// If group is not visible, skip processing but still update position for layout consistency
+		if (!isGroupVisible) {
+			group.y = startY;
+			group.height = 0;
+			return currentY; // Return without advancing Y position
+		}
+
 		// 为组头部预留空间
 		const groupingConfig = this.groupingManager.getConfig();
 		if (groupingConfig.showGroupHeaders) {
-			currentY += group.headerHeight || 30; // 默认组头部高度
+			currentY += group.headerHeight || 60; // 默认组头部高度
 		}
 
 		// 更新组的Y位置
@@ -1151,6 +1162,13 @@ export class GanttComponent extends Component {
 				},
 				showGroupHeaders: groupingConfig.showGroupHeaders ?? true,
 				collapsibleGroups: groupingConfig.collapsibleGroups ?? true,
+				getGroupVisibility: (groupId: string) => {
+					// Provide access to the GroupInteractionManager's visibility state
+					return (
+						this.groupInteractionManager?.isGroupVisible(groupId) ??
+						true
+					);
+				},
 			});
 		}
 

@@ -147,8 +147,21 @@ export class GroupSidebar extends Component {
 			},
 		});
 
+		// Position the item to align with the corresponding group header in the main chart
+		groupItem.style.position = "absolute";
+		groupItem.style.top = `${group.y + 4}px`;
+		groupItem.style.left = "4px";
+		groupItem.style.right = "4px";
+		groupItem.style.height = `${group.headerHeight}px`;
+
 		// Add level-specific styling
 		groupItem.classList.add(`tg-gantt-sidebar-level-${level}`);
+
+		// Add visual indicator for hidden groups
+		const isGroupVisible = this.getCurrentGroupVisibility(group.id);
+		if (!isGroupVisible) {
+			groupItem.classList.add("tg-gantt-sidebar-group-hidden");
+		}
 
 		// Group content container
 		const groupContent = groupItem.createDiv({
@@ -389,8 +402,15 @@ export class GroupSidebar extends Component {
 		// Find the filter button for this group and update its icon
 		const groupItem = this.containerEl.querySelector(
 			`[data-group-id="${groupId}"]`
-		);
+		) as HTMLElement;
 		if (groupItem) {
+			// Update the visual state of the sidebar item
+			if (visible) {
+				groupItem.removeClass("tg-gantt-sidebar-group-hidden");
+			} else {
+				groupItem.addClass("tg-gantt-sidebar-group-hidden");
+			}
+
 			const filterButton = groupItem.querySelector(
 				".tg-gantt-sidebar-action-button"
 			) as HTMLElement;
@@ -500,6 +520,7 @@ export class GroupSidebar extends Component {
 		) as HTMLElement;
 
 		if (targetItem && this.sidebarContent) {
+			// Get the Y position from the style.top property (set during rendering)
 			const itemTop = parseInt(targetItem.style.top) || 0;
 			const containerHeight = this.containerEl.clientHeight;
 			const itemHeight = parseInt(targetItem.style.height) || 30;

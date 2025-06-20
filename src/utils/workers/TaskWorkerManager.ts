@@ -55,7 +55,7 @@ export interface WorkerPoolOptions {
  * Default worker pool options
  */
 export const DEFAULT_WORKER_OPTIONS: WorkerPoolOptions = {
-	maxWorkers: 2,
+	maxWorkers: 1, // Reduced from 2 to 1 to minimize total worker count
 	cpuUtilization: 0.75,
 	debug: false,
 	settings: {
@@ -150,6 +150,8 @@ export class TaskWorkerManager extends Component {
 	private maxRetries: number = 2;
 	/** File metadata task parser */
 	private fileMetadataParser?: FileMetadataTaskParser;
+	/** Whether workers have been initialized to prevent multiple initialization */
+	private initialized: boolean = false;
 
 	/**
 	 * Create a new worker pool
@@ -202,6 +204,18 @@ export class TaskWorkerManager extends Component {
 	 * Initialize workers in the pool
 	 */
 	private initializeWorkers(): void {
+		// Prevent multiple initialization
+		if (this.initialized) {
+			this.log("Workers already initialized, skipping initialization");
+			return;
+		}
+
+		// Ensure any existing workers are cleaned up first
+		if (this.workers.size > 0) {
+			this.log("Cleaning up existing workers before re-initialization");
+			this.cleanupWorkers();
+		}
+
 		const workerCount = Math.min(
 			this.options.maxWorkers,
 			navigator.hardwareConcurrency || 2
@@ -217,6 +231,7 @@ export class TaskWorkerManager extends Component {
 			}
 		}
 
+		this.initialized = true;
 		this.log(
 			`Initialized ${this.workers.size} workers (requested ${workerCount})`
 		);
@@ -730,6 +745,30 @@ export class TaskWorkerManager extends Component {
 	}
 
 	/**
+	 * Clean up existing workers without affecting the active state
+	 */
+	private cleanupWorkers(): void {
+		// Terminate all workers
+		for (const worker of this.workers.values()) {
+			this.terminate(worker);
+		}
+		this.workers.clear();
+
+		// Clear all remaining queued tasks and reject their promises
+		for (const queue of this.queues) {
+			while (!queue.isEmpty()) {
+				const queueItem = queue.dequeue();
+				if (queueItem) {
+					queueItem.promise.reject("Workers being reinitialized");
+					this.outstanding.delete(queueItem.file.path);
+				}
+			}
+		}
+
+		this.log("Cleaned up existing workers");
+	}
+
+	/**
 	 * Reset throttling for all workers
 	 */
 	public unthrottle(): void {
@@ -762,6 +801,9 @@ export class TaskWorkerManager extends Component {
 				}
 			}
 		}
+
+		// Reset initialization flag to allow re-initialization if needed
+		this.initialized = false;
 
 		this.log("Worker pool shut down");
 	}

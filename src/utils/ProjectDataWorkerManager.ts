@@ -47,14 +47,21 @@ export class ProjectDataWorkerManager {
 
 	// Worker round-robin index for load balancing
 	private currentWorkerIndex = 0;
+	// Whether workers have been initialized to prevent multiple initialization
+	private initialized: boolean = false;
 
 	constructor(options: ProjectDataWorkerManagerOptions) {
 		this.vault = options.vault;
 		this.metadataCache = options.metadataCache;
 		this.projectConfigManager = options.projectConfigManager;
+		// Reduced default worker count to minimize total indexer count
+		// Use at most 2 workers, prefer 1 for most cases
 		this.maxWorkers =
 			options.maxWorkers ||
-			Math.max(1, Math.floor(navigator.hardwareConcurrency / 2));
+			Math.min(
+				2,
+				Math.max(1, Math.floor(navigator.hardwareConcurrency / 4))
+			);
 		this.enableWorkers = options.enableWorkers ?? true;
 
 		this.cache = new ProjectDataCache(
@@ -70,11 +77,27 @@ export class ProjectDataWorkerManager {
 	 * Initialize worker pool
 	 */
 	private initializeWorkers(): void {
+		// Prevent multiple initialization
+		if (this.initialized) {
+			console.log(
+				"ProjectDataWorkerManager: Workers already initialized, skipping initialization"
+			);
+			return;
+		}
+
 		if (!this.enableWorkers) {
 			console.log(
 				"ProjectDataWorkerManager: Workers disabled, using cache-only optimization"
 			);
 			return;
+		}
+
+		// Ensure any existing workers are cleaned up first
+		if (this.workers.length > 0) {
+			console.log(
+				"ProjectDataWorkerManager: Cleaning up existing workers before re-initialization"
+			);
+			this.cleanupWorkers();
 		}
 
 		try {
@@ -99,6 +122,7 @@ export class ProjectDataWorkerManager {
 			// Send initial configuration to all workers
 			this.updateWorkerConfig();
 
+			this.initialized = true;
 			console.log(
 				`ProjectDataWorkerManager: Successfully initialized ${this.workers.length} workers`
 			);
@@ -651,9 +675,9 @@ export class ProjectDataWorkerManager {
 	}
 
 	/**
-	 * Cleanup resources
+	 * Clean up existing workers without destroying the manager
 	 */
-	destroy(): void {
+	private cleanupWorkers(): void {
 		// Terminate all workers
 		for (const worker of this.workers) {
 			try {
@@ -666,8 +690,23 @@ export class ProjectDataWorkerManager {
 
 		// Clear pending requests
 		for (const { reject } of this.pendingRequests.values()) {
-			reject(new Error("Worker manager destroyed"));
+			reject(new Error("Workers being reinitialized"));
 		}
 		this.pendingRequests.clear();
+
+		console.log("ProjectDataWorkerManager: Cleaned up existing workers");
+	}
+
+	/**
+	 * Cleanup resources
+	 */
+	destroy(): void {
+		// Clean up workers
+		this.cleanupWorkers();
+
+		// Reset initialization flag
+		this.initialized = false;
+
+		console.log("ProjectDataWorkerManager: Destroyed");
 	}
 }

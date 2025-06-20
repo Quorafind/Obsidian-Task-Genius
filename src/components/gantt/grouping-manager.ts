@@ -27,7 +27,7 @@ export class GanttGroupingManager {
 			collapsibleGroups: true,
 			defaultExpanded: true,
 			groupOrder: [],
-			groupHeaderHeight: 30,
+			groupHeaderHeight: 60,
 			showEmptyGroups: false,
 			...config,
 		};
@@ -66,7 +66,7 @@ export class GanttGroupingManager {
 					level: 0,
 					y: 0,
 					height: 0,
-					headerHeight: this.groupingConfig.groupHeaderHeight || 30,
+					headerHeight: this.groupingConfig.groupHeaderHeight || 60,
 				},
 			];
 		}
@@ -131,7 +131,7 @@ export class GanttGroupingManager {
 					parentGroup: parentGroup,
 					y: 0,
 					height: 0,
-					headerHeight: this.groupingConfig.groupHeaderHeight || 30,
+					headerHeight: this.groupingConfig.groupHeaderHeight || 60,
 				});
 			}
 

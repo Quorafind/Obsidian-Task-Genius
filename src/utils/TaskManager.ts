@@ -2753,6 +2753,12 @@ export class TaskManager extends Component {
 			this.workerManager.onunload();
 		}
 
+		// Clean up task parsing service and its workers if it exists
+		if (this.taskParsingService) {
+			this.taskParsingService.destroy();
+			this.taskParsingService = undefined;
+		}
+
 		super.onunload();
 	}
 }

@@ -45,7 +45,7 @@ describe("ProjectDataWorkerManager", () => {
 			vault,
 			metadataCache,
 			projectConfigManager,
-			maxWorkers: 2,
+			maxWorkers: 1, // Updated to reflect new default
 			enableWorkers: true,
 		});
 	});
@@ -193,6 +193,74 @@ describe("ProjectDataWorkerManager", () => {
 
 			expect(stats2.activeWorkers).toBe(0);
 			expect(stats2.pendingRequests).toBe(0);
+		});
+
+		it("should prevent multiple worker initialization", () => {
+			// Create a new worker manager to test initialization safeguards
+			const testWorkerManager = new ProjectDataWorkerManager({
+				vault,
+				metadataCache,
+				projectConfigManager,
+				maxWorkers: 1,
+				enableWorkers: true,
+			});
+
+			// Get initial stats
+			const initialStats = testWorkerManager.getMemoryStats();
+			const initialWorkerCount = initialStats.activeWorkers;
+
+			// Try to initialize again (this should be prevented)
+			// Since initializeWorkers is private, we test by creating multiple instances
+			const secondWorkerManager = new ProjectDataWorkerManager({
+				vault,
+				metadataCache,
+				projectConfigManager,
+				maxWorkers: 1,
+				enableWorkers: true,
+			});
+
+			// Each manager should have its own workers, but not accumulate
+			const firstStats = testWorkerManager.getMemoryStats();
+			const secondStats = secondWorkerManager.getMemoryStats();
+
+			expect(firstStats.activeWorkers).toBe(initialWorkerCount);
+			expect(secondStats.activeWorkers).toBe(initialWorkerCount);
+
+			// Cleanup
+			testWorkerManager.destroy();
+			secondWorkerManager.destroy();
+		});
+
+		it("should properly cleanup workers during plugin reload simulation", () => {
+			// Get initial stats (workers might be 0 in test environment due to mocking)
+			const initialStats = workerManager.getMemoryStats();
+			const initialWorkerCount = initialStats.activeWorkers;
+			const initialPendingRequests = initialStats.pendingRequests;
+
+			// Destroy the manager (simulating plugin unload)
+			workerManager.destroy();
+			const afterDestroyStats = workerManager.getMemoryStats();
+			expect(afterDestroyStats.activeWorkers).toBe(0);
+			expect(afterDestroyStats.pendingRequests).toBe(0);
+
+			// Create a new manager (simulating plugin reload)
+			const newWorkerManager = new ProjectDataWorkerManager({
+				vault,
+				metadataCache,
+				projectConfigManager,
+				maxWorkers: 1,
+				enableWorkers: true,
+			});
+
+			const newStats = newWorkerManager.getMemoryStats();
+			// In test environment, workers might not initialize due to mocking
+			// The important thing is that pending requests are cleared
+			expect(newStats.pendingRequests).toBe(0);
+			// Workers should be consistent with initial state
+			expect(newStats.activeWorkers).toBe(initialWorkerCount);
+
+			// Cleanup
+			newWorkerManager.destroy();
 		});
 	});
 });

@@ -840,26 +840,29 @@
 	flex: 1;
 	padding: var(--gantt-space-2);
 	overflow-y: auto;
+	position: relative; /* Enable absolute positioning for children */
 }
 
 .tg-gantt-sidebar-group-item {
 	display: flex;
 	align-items: center;
 	padding: var(--gantt-space-2) var(--gantt-space-3);
-	margin-bottom: 2px;
 	border-radius: var(--radius-s);
 	cursor: pointer;
 	transition: all var(--gantt-transition-fast);
-	position: relative;
 	background: transparent;
 	border: 1px solid transparent;
 	min-height: 30px; /* Ensure minimum height even if headerHeight is 0 */
+	/* Absolute positioning and height are set via JavaScript based on group.y and group.headerHeight */
+	/* Use box-sizing to include padding in height calculation */
+	box-sizing: border-box;
+	/* Ensure content doesn't overflow */
+	overflow: hidden;
 }
 
 .tg-gantt-sidebar-group-item:hover {
 	background: var(--gantt-bg-hover);
 	border-color: var(--gantt-border-color);
-	transform: translateX(2px);
 	box-shadow: var(--gantt-shadow-sm);
 }
 
@@ -874,12 +877,21 @@
 	background: var(--gantt-bg-hover);
 }
 
+.tg-gantt-sidebar-group-hidden {
+	opacity: 0.6; /* Dim the sidebar item to indicate it's hidden in main chart */
+	background: var(
+		--gantt-bg-tertiary
+	); /* Subtle background to indicate hidden state */
+}
+
 .tg-gantt-sidebar-group-content {
 	display: flex;
 	align-items: center;
 	flex: 1;
 	gap: var(--gantt-space-2);
 	min-width: 0;
+	height: 100%; /* Take full height of parent */
+	overflow: hidden; /* Prevent content overflow */
 }
 
 .tg-gantt-sidebar-expand-icon {
@@ -914,7 +926,10 @@
 	flex-direction: column;
 	flex: 1;
 	min-width: 0;
-	gap: 2px;
+	gap: 1px; /* Reduced gap for tighter layout */
+	justify-content: center; /* Center content vertically */
+	height: 100%; /* Take full height */
+	overflow: hidden; /* Prevent overflow */
 }
 
 .tg-gantt-sidebar-label {
@@ -930,7 +945,9 @@
 .tg-gantt-sidebar-metadata {
 	display: flex;
 	align-items: center;
-	gap: var(--gantt-space-2);
+	gap: var(--gantt-space-1); /* Reduced gap for more compact layout */
+	flex-wrap: nowrap; /* Prevent wrapping */
+	overflow: hidden; /* Prevent overflow */
 }
 
 .tg-gantt-sidebar-count {
@@ -955,12 +972,13 @@
 }
 
 .tg-gantt-sidebar-progress-bar {
-	width: 40px;
-	height: 6px;
+	width: 30px; /* Reduced width for more compact layout */
+	height: 4px; /* Reduced height for more compact layout */
 	background: var(--gantt-bg-tertiary);
-	border-radius: 3px;
+	border-radius: 2px;
 	overflow: hidden;
 	position: relative;
+	flex-shrink: 0; /* Prevent shrinking */
 }
 
 .tg-gantt-sidebar-progress-fill {
@@ -970,7 +988,7 @@
 		var(--color-accent) 0%,
 		var(--gantt-bar-completed) 100%
 	);
-	border-radius: 3px;
+	border-radius: 2px; /* Match the progress bar border radius */
 	transition: width var(--gantt-transition-slow);
 }
 
