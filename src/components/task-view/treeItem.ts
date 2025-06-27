@@ -305,6 +305,15 @@ export class TaskTreeItemComponent extends Component {
 	private renderMetadata(metadataEl: HTMLElement) {
 		metadataEl.empty();
 
+		// For cancelled tasks, show cancelled date (independent of completion status)
+		if (this.task.metadata.cancelledDate) {
+			this.renderDateMetadata(
+				metadataEl,
+				"cancelled",
+				this.task.metadata.cancelledDate
+			);
+		}
+
 		// Display dates based on task completion status
 		if (!this.task.completed) {
 			// Due date if available
@@ -371,13 +380,37 @@ export class TaskTreeItemComponent extends Component {
 			this.renderTagsMetadata(metadataEl);
 		}
 
+		// OnCompletion if available
+		if (this.task.metadata.onCompletion) {
+			this.renderOnCompletionMetadata(metadataEl);
+		}
+
+		// DependsOn if available
+		if (
+			this.task.metadata.dependsOn &&
+			this.task.metadata.dependsOn.length > 0
+		) {
+			this.renderDependsOnMetadata(metadataEl);
+		}
+
+		// ID if available
+		if (this.task.metadata.id) {
+			this.renderIdMetadata(metadataEl);
+		}
+
 		// Add metadata button for adding new metadata
 		this.renderAddMetadataButton(metadataEl);
 	}
 
 	private renderDateMetadata(
 		metadataEl: HTMLElement,
-		type: "due" | "scheduled" | "start" | "completed" | "created",
+		type:
+			| "due"
+			| "scheduled"
+			| "start"
+			| "completed"
+			| "cancelled"
+			| "created",
 		dateValue: number
 	) {
 		const dateEl = metadataEl.createEl("div", {
@@ -451,6 +484,10 @@ export class TaskTreeItemComponent extends Component {
 							? "scheduledDate"
 							: type === "start"
 							? "startDate"
+							: type === "cancelled"
+							? "cancelledDate"
+							: type === "completed"
+							? "completedDate"
 							: null;
 
 					if (fieldType) {
@@ -569,6 +606,74 @@ export class TaskTreeItemComponent extends Component {
 		}
 	}
 
+	private renderOnCompletionMetadata(metadataEl: HTMLElement) {
+		const onCompletionEl = metadataEl.createEl("div", {
+			cls: "task-oncompletion",
+		});
+		onCompletionEl.textContent = `🏁 ${this.task.metadata.onCompletion}`;
+
+		// Make onCompletion clickable for editing only if inline editor is enabled
+		if (this.plugin.settings.enableInlineEditor) {
+			this.registerDomEvent(onCompletionEl, "click", (e) => {
+				e.stopPropagation();
+				if (!this.isCurrentlyEditing()) {
+					const editor = this.getInlineEditor();
+					editor.showMetadataEditor(
+						onCompletionEl,
+						"onCompletion",
+						this.task.metadata.onCompletion || ""
+					);
+				}
+			});
+		}
+	}
+
+	private renderDependsOnMetadata(metadataEl: HTMLElement) {
+		const dependsOnEl = metadataEl.createEl("div", {
+			cls: "task-dependson",
+		});
+		dependsOnEl.textContent = `⛔ ${this.task.metadata.dependsOn?.join(
+			", "
+		)}`;
+
+		// Make dependsOn clickable for editing only if inline editor is enabled
+		if (this.plugin.settings.enableInlineEditor) {
+			this.registerDomEvent(dependsOnEl, "click", (e) => {
+				e.stopPropagation();
+				if (!this.isCurrentlyEditing()) {
+					const editor = this.getInlineEditor();
+					editor.showMetadataEditor(
+						dependsOnEl,
+						"dependsOn",
+						this.task.metadata.dependsOn?.join(", ") || ""
+					);
+				}
+			});
+		}
+	}
+
+	private renderIdMetadata(metadataEl: HTMLElement) {
+		const idEl = metadataEl.createEl("div", {
+			cls: "task-id",
+		});
+		idEl.textContent = `🆔 ${this.task.metadata.id}`;
+
+		// Make id clickable for editing only if inline editor is enabled
+		if (this.plugin.settings.enableInlineEditor) {
+			this.registerDomEvent(idEl, "click", (e) => {
+				e.stopPropagation();
+				if (!this.isCurrentlyEditing()) {
+					const editor = this.getInlineEditor();
+					editor.showMetadataEditor(
+						idEl,
+						"id",
+						this.task.metadata.id || ""
+					);
+				}
+			});
+		}
+	}
+
 	private renderAddMetadataButton(metadataEl: HTMLElement) {
 		// Only show add metadata button if inline editor is enabled
 		if (!this.plugin.settings.enableInlineEditor) {
@@ -606,8 +711,13 @@ export class TaskTreeItemComponent extends Component {
 			{ key: "dueDate", label: "Due Date", icon: "calendar" },
 			{ key: "startDate", label: "Start Date", icon: "play" },
 			{ key: "scheduledDate", label: "Scheduled Date", icon: "clock" },
+			{ key: "cancelledDate", label: "Cancelled Date", icon: "x" },
+			{ key: "completedDate", label: "Completed Date", icon: "check" },
 			{ key: "priority", label: "Priority", icon: "alert-triangle" },
 			{ key: "recurrence", label: "Recurrence", icon: "repeat" },
+			{ key: "onCompletion", label: "On Completion", icon: "flag" },
+			{ key: "dependsOn", label: "Depends On", icon: "link" },
+			{ key: "id", label: "Task ID", icon: "hash" },
 		];
 
 		// Filter out fields that already have values
@@ -628,10 +738,23 @@ export class TaskTreeItemComponent extends Component {
 					return !this.task.metadata.startDate;
 				case "scheduledDate":
 					return !this.task.metadata.scheduledDate;
+				case "cancelledDate":
+					return !this.task.metadata.cancelledDate;
+				case "completedDate":
+					return !this.task.metadata.completedDate;
 				case "priority":
 					return !this.task.metadata.priority;
 				case "recurrence":
 					return !this.task.metadata.recurrence;
+				case "onCompletion":
+					return !this.task.metadata.onCompletion;
+				case "dependsOn":
+					return (
+						!this.task.metadata.dependsOn ||
+						this.task.metadata.dependsOn.length === 0
+					);
+				case "id":
+					return !this.task.metadata.id;
 				default:
 					return true;
 			}

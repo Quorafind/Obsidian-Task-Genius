@@ -463,6 +463,10 @@ export class MarkdownTaskParser {
 			scheduled: "scheduledDate",
 			completion: "completedDate",
 			created: "createdDate",
+			cancelled: "cancelledDate",
+			id: "id",
+			dependsOn: "dependsOn",
+			onCompletion: "onCompletion",
 		};
 
 		// Apply key mapping if it exists
@@ -525,9 +529,20 @@ export class MarkdownTaskParser {
 
 		const value = valuePart.substring(0, valueEnd).trim();
 
-		// For priority emojis, use specific values based on the emoji
-		const metadataValue =
-			value || this.getDefaultEmojiValue(earliestEmoji.emoji);
+		// Handle special field processing
+		let metadataValue: string;
+		if (earliestEmoji.key === "dependsOn" && value) {
+			// For dependsOn, split by comma and join back as string for metadata storage
+			metadataValue = value
+				.split(",")
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0)
+				.join(",");
+		} else {
+			// For priority emojis, use specific values based on the emoji
+			metadataValue =
+				value || this.getDefaultEmojiValue(earliestEmoji.emoji);
+		}
 
 		const newPos =
 			earliestEmoji.pos +
@@ -1061,11 +1076,20 @@ export class MarkdownTaskParser {
 				createdDate:
 					enhancedTask.createdDate ||
 					enhancedTask.metadata.createdDate,
+				cancelledDate: enhancedTask.metadata.cancelledDate,
 				recurrence:
 					enhancedTask.recurrence || enhancedTask.metadata.recurrence,
 				project: enhancedTask.project || enhancedTask.metadata.project,
 				context: enhancedTask.context || enhancedTask.metadata.context,
 				area: enhancedTask.metadata.area,
+				id: enhancedTask.metadata.id,
+				dependsOn: enhancedTask.metadata.dependsOn
+					? enhancedTask.metadata.dependsOn
+							.split(",")
+							.map((id) => id.trim())
+							.filter((id) => id.length > 0)
+					: undefined,
+				onCompletion: enhancedTask.metadata.onCompletion,
 				heading: Array.isArray(enhancedTask.heading)
 					? enhancedTask.heading
 					: enhancedTask.heading

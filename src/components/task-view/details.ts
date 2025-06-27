@@ -478,6 +478,111 @@ export class TaskDetailsComponent extends Component {
 			scheduledDateInput.value = `${year}-${month}-${day}`;
 		}
 
+		// Cancelled date
+		const cancelledDateField = this.createFormField(
+			this.editFormEl,
+			t("Cancelled Date")
+		);
+		const cancelledDateInput = cancelledDateField.createEl("input", {
+			type: "date",
+			cls: "date-input",
+		});
+		if (task.metadata.cancelledDate) {
+			// Use local date to avoid timezone issues
+			const date = new Date(task.metadata.cancelledDate);
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
+			cancelledDateInput.value = `${year}-${month}-${day}`;
+		}
+
+		// On completion action
+		const onCompletionField = this.createFormField(
+			this.editFormEl,
+			t("On Completion")
+		);
+		
+		// Import OnCompletionConfigurator dynamically to avoid circular imports
+		import("../onCompletion/OnCompletionConfigurator").then(({ OnCompletionConfigurator }) => {
+			const onCompletionConfigurator = new OnCompletionConfigurator(
+				onCompletionField,
+				this.plugin,
+				{
+					initialValue: task.metadata.onCompletion || "",
+					onChange: (value) => {
+						// Update the task metadata immediately
+						if (task.metadata) {
+							task.metadata.onCompletion = value || undefined;
+							// Trigger save
+							saveTask();
+						}
+					},
+					onValidationChange: (isValid, error) => {
+						// Show validation feedback
+						const existingMessage = onCompletionField.querySelector('.oncompletion-validation-message');
+						if (existingMessage) {
+							existingMessage.remove();
+						}
+						
+						if (error) {
+							const messageEl = onCompletionField.createDiv({
+								cls: 'oncompletion-validation-message error',
+								text: error
+							});
+						} else if (isValid) {
+							const messageEl = onCompletionField.createDiv({
+								cls: 'oncompletion-validation-message success',
+								text: t('Configuration is valid')
+							});
+						}
+					}
+				}
+			);
+			
+			this.addChild(onCompletionConfigurator);
+		}).catch(error => {
+			// Fallback to simple text input if OnCompletionConfigurator fails to load
+			console.warn("Failed to load OnCompletionConfigurator, using fallback:", error);
+			const onCompletionInput = new TextComponent(onCompletionField);
+			onCompletionInput.setValue(task.metadata.onCompletion || "");
+			onCompletionField
+				.createSpan({ cls: "field-description" })
+				.setText(t("Action to execute when task is completed"));
+				
+			// Register blur event for fallback input
+			this.registerDomEvent(onCompletionInput.inputEl, "blur", () => {
+				if (task.metadata) {
+					task.metadata.onCompletion = onCompletionInput.getValue() || undefined;
+					saveTask();
+				}
+			});
+		});
+
+		// Dependencies
+		const dependsOnField = this.createFormField(
+			this.editFormEl,
+			t("Depends On")
+		);
+		const dependsOnInput = new TextComponent(dependsOnField);
+		dependsOnInput.setValue(
+			Array.isArray(task.metadata.dependsOn)
+				? task.metadata.dependsOn.join(", ")
+				: task.metadata.dependsOn || ""
+		);
+		dependsOnField
+			.createSpan({ cls: "field-description" })
+			.setText(
+				t("Comma-separated list of task IDs this task depends on")
+			);
+
+		// Task ID
+		const taskIdField = this.createFormField(this.editFormEl, t("Task ID"));
+		const taskIdInput = new TextComponent(taskIdField);
+		taskIdInput.setValue(task.metadata.id || "");
+		taskIdField
+			.createSpan({ cls: "field-description" })
+			.setText(t("Unique identifier for this task"));
+
 		// Recurrence pattern
 		const recurrenceField = this.createFormField(
 			this.editFormEl,
@@ -594,6 +699,46 @@ export class TaskDetailsComponent extends Component {
 				metadata.scheduledDate = task.metadata.scheduledDate;
 			}
 
+			const cancelledDateValue = cancelledDateInput.value;
+			if (cancelledDateValue) {
+				// Create date in local timezone to avoid timezone offset issues
+				const [year, month, day] = cancelledDateValue
+					.split("-")
+					.map(Number);
+				const newCancelledDate = new Date(
+					year,
+					month - 1,
+					day
+				).getTime();
+				// Only update if the date has changed or is different from the original
+				if (task.metadata.cancelledDate !== newCancelledDate) {
+					metadata.cancelledDate = newCancelledDate;
+				} else {
+					metadata.cancelledDate = task.metadata.cancelledDate;
+				}
+			} else if (!cancelledDateValue && task.metadata.cancelledDate) {
+				// Only update if field was cleared and previously had a value
+				metadata.cancelledDate = undefined;
+			} else {
+				// Keep original value if both are empty/undefined
+				metadata.cancelledDate = task.metadata.cancelledDate;
+			}
+
+			// onCompletion is now handled by OnCompletionConfigurator
+
+			// Update dependencies
+			const dependsOnValue = dependsOnInput.getValue();
+			metadata.dependsOn = dependsOnValue
+				? dependsOnValue
+						.split(",")
+						.map((id) => id.trim())
+						.filter((id) => id)
+				: undefined;
+
+			// Update task ID
+			const taskIdValue = taskIdInput.getValue();
+			metadata.id = taskIdValue || undefined;
+
 			// Update recurrence
 			const recurrenceValue = recurrenceInput.getValue();
 			metadata.recurrence = recurrenceValue || undefined;
@@ -653,12 +798,16 @@ export class TaskDetailsComponent extends Component {
 		// registerBlurEvent(dueDateInput);
 		// registerBlurEvent(startDateInput);
 		// registerBlurEvent(scheduledDateInput);
+		// onCompletion input is now handled by OnCompletionConfigurator or in fallback
+		registerBlurEvent(dependsOnInput.inputEl);
+		registerBlurEvent(taskIdInput.inputEl);
 		registerBlurEvent(recurrenceInput.inputEl);
 
 		// Register change events for date inputs
 		registerDateChangeEvent(dueDateInput);
 		registerDateChangeEvent(startDateInput);
 		registerDateChangeEvent(scheduledDateInput);
+		registerDateChangeEvent(cancelledDateInput);
 	}
 
 	private hasTaskChanges(
@@ -724,6 +873,10 @@ export class TaskDetailsComponent extends Component {
 			"dueDate",
 			"startDate",
 			"scheduledDate",
+			"cancelledDate",
+			"onCompletion",
+			"dependsOn",
+			"id",
 			"recurrence",
 		];
 

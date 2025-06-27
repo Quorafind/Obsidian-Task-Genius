@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Bases View Test</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+			}
+			.container {
+				max-width: 800px;
+				margin: 0 auto;
+			}
+			.view-container {
+				border: 1px solid #ccc;
+				padding: 20px;
+				margin: 10px 0;
+			}
+			.log {
+				background: #f5f5f5;
+				padding: 10px;
+				margin: 10px 0;
+			}
+			button {
+				padding: 10px 20px;
+				margin: 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Bases View Implementation Test</h1>
+
+			<div class="log" id="log">
+				<h3>Test Results:</h3>
+				<div id="logContent"></div>
+			</div>
+
+			<div class="view-container">
+				<h2>Test Data Structure</h2>
+				<button onclick="testDataConversion()">
+					Test Data Conversion
+				</button>
+				<button onclick="testViewCreation()">Test View Creation</button>
+				<div id="testResults"></div>
+			</div>
+
+			<div class="view-container">
+				<h2>Mock Bases Entry</h2>
+				<pre id="mockData"></pre>
+			</div>
+		</div>
+
+		<script>
+			// Mock Bases Entry structure based on your research
+			const mockBasesEntry = {
+				file: {
+					path: "test/sample-task.md",
+					name: "sample-task.md",
+					basename: "sample-task",
+					extension: "md",
+					stat: {
+						ctime: Date.now() - 86400000,
+						mtime: Date.now(),
+						size: 256,
+					},
+				},
+				frontmatter: {
+					title: "Sample Task",
+					completed: false,
+					status: " ",
+					priority: 3,
+					tags: ["work", "urgent"],
+					project: "Sample Project",
+					dueDate: "2025-01-01",
+					createdAt: new Date().toISOString(),
+				},
+				getValue: function (prop) {
+					if (prop.type === "note") {
+						return this.frontmatter[prop.name];
+					}
+					if (prop.type === "file") {
+						return this.file[prop.name];
+					}
+					return null;
+				},
+			};
+
+			const mockBasesData = [
+				{
+					aggregations: {},
+					entries: [mockBasesEntry],
+				},
+			];
+
+			function log(message) {
+				const logContent = document.getElementById("logContent");
+				logContent.innerHTML +=
+					"<div>" +
+					new Date().toLocaleTimeString() +
+					": " +
+					message +
+					"</div>";
+			}
+
+			function testDataConversion() {
+				log("Testing data conversion...");
+
+				try {
+					// Test property access
+					const title = mockBasesEntry.getValue({
+						type: "note",
+						name: "title",
+					});
+					const filePath = mockBasesEntry.getValue({
+						type: "file",
+						name: "path",
+					});
+
+					log("✓ Property access works - Title: " + title);
+					log("✓ File access works - Path: " + filePath);
+
+					// Test task conversion logic (simplified)
+					const task = {
+						id: mockBasesEntry.file.path,
+						content: title || mockBasesEntry.file.basename,
+						completed: mockBasesEntry.frontmatter.completed,
+						status: mockBasesEntry.frontmatter.status,
+						filePath: mockBasesEntry.file.path,
+						metadata: {
+							tags: mockBasesEntry.frontmatter.tags || [],
+							project: mockBasesEntry.frontmatter.project || "",
+							priority: mockBasesEntry.frontmatter.priority || 0,
+							children: [],
+						},
+					};
+
+					log("✓ Task conversion successful");
+					document.getElementById("testResults").innerHTML =
+						"<h3>Converted Task:</h3><pre>" +
+						JSON.stringify(task, null, 2) +
+						"</pre>";
+				} catch (error) {
+					log("✗ Error in data conversion: " + error.message);
+				}
+			}
+
+			function testViewCreation() {
+				log("Testing view creation simulation...");
+
+				try {
+					// Simulate view registration
+					const viewTypes = [
+						"inbox-bases-view",
+						"flagged-bases-view",
+						"projects-bases-view",
+						"tags-bases-view",
+					];
+
+					viewTypes.forEach((viewType) => {
+						log("✓ Would register view: " + viewType);
+					});
+
+					log("✓ All view types would be registered successfully");
+				} catch (error) {
+					log("✗ Error in view creation: " + error.message);
+				}
+			}
+
+			// Initialize
+			document.getElementById("mockData").textContent = JSON.stringify(
+				mockBasesData,
+				null,
+				2
+			);
+			log("Test page loaded successfully");
+			log("Mock data structure matches your console output");
+		</script>
+	</body>
+</html>

@@ -60,6 +60,20 @@ interface BasesLocalization {
 	 * @param options - Contains viewID that failed to register
 	 */
 	msgErrorRegisterView(options: { viewID: string }): string;
+
+	/**
+	 * Table view localization
+	 */
+	table: {
+		name(): string;
+	};
+
+	/**
+	 * Cards view localization
+	 */
+	cards: {
+		name(): string;
+	};
 }
 
 /**
@@ -240,6 +254,25 @@ interface BasesOperatorFunction extends BasesFunction {
 // View factory function type
 type BasesViewFactory = (container: HTMLElement) => BaseView;
 
+/**
+ * View registration configuration
+ */
+interface BasesViewRegistration {
+	name: string;
+	icon: string;
+	factory: BasesViewFactory;
+	getSettings?: () => any;
+}
+
+/**
+ * Operator function configuration
+ */
+interface OperatorFuncConfig {
+	funcName: string;
+	display: string;
+	inverseDisplay: string;
+}
+
 // Plugin interface extension
 interface BasesPlugin {
 	id: string;
@@ -249,14 +282,18 @@ interface BasesPlugin {
 	app: any;
 	handlers: Record<string, BasesViewFactory>;
 	functions: Record<string, BasesFunction>;
+	registrations: Record<string, BasesViewRegistration>;
 
 	// Methods
 	init(app: any, plugin: any): void;
 	onEnable(app: any, plugin: any): void;
 	registerView(viewId: string, factory: BasesViewFactory): void;
+	registerView(viewId: string, config: BasesViewRegistration): void;
 	deregisterView(viewId: string): void;
 	getViewTypes(): string[];
 	getViewFactory(viewId: string): BasesViewFactory | null;
+	getRegistration(viewId: string): BasesViewRegistration | null;
+	getRegistrations(): Record<string, BasesViewRegistration>;
 	registerFunction(func: BasesFunction): void;
 	deregisterFunction(name: string): void;
 	getFunction(name: string): BasesFunction | null;
