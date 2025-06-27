@@ -94,6 +94,10 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 			scheduledDate: new Map<string, Set<string>>(),
 			completed: new Map<boolean, Set<string>>(),
 			priority: new Map<number, Set<string>>(),
+			cancelledDate: new Map<string, Set<string>>(),
+			onCompletion: new Map<string, Set<string>>(),
+			dependsOn: new Map<string, Set<string>>(),
+			taskId: new Map<string, Set<string>>(),
 		};
 	}
 
@@ -350,6 +354,45 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 			priorityTasks.add(task.id);
 			this.taskCache.priority.set(task.metadata.priority, priorityTasks);
 		}
+
+		// Update cancelled date index
+		if (task.metadata.cancelledDate) {
+			const dateStr = formatDateForIndex(task.metadata.cancelledDate);
+			let cancelledTasks =
+				this.taskCache.cancelledDate.get(dateStr) || new Set();
+			cancelledTasks.add(task.id);
+			this.taskCache.cancelledDate.set(dateStr, cancelledTasks);
+		}
+
+		// Update onCompletion index
+		if (task.metadata.onCompletion) {
+			let onCompletionTasks =
+				this.taskCache.onCompletion.get(task.metadata.onCompletion) ||
+				new Set();
+			onCompletionTasks.add(task.id);
+			this.taskCache.onCompletion.set(
+				task.metadata.onCompletion,
+				onCompletionTasks
+			);
+		}
+
+		// Update dependsOn index
+		if (task.metadata.dependsOn && task.metadata.dependsOn.length > 0) {
+			for (const dependency of task.metadata.dependsOn) {
+				let dependsOnTasks =
+					this.taskCache.dependsOn.get(dependency) || new Set();
+				dependsOnTasks.add(task.id);
+				this.taskCache.dependsOn.set(dependency, dependsOnTasks);
+			}
+		}
+
+		// Update task ID index
+		if (task.metadata.id) {
+			let taskIdTasks =
+				this.taskCache.taskId.get(task.metadata.id) || new Set();
+			taskIdTasks.add(task.id);
+			this.taskCache.taskId.set(task.metadata.id, taskIdTasks);
+		}
 	}
 
 	/**
@@ -445,6 +488,57 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 				priorityTasks.delete(task.id);
 				if (priorityTasks.size === 0) {
 					this.taskCache.priority.delete(task.metadata.priority);
+				}
+			}
+		}
+
+		// Remove from cancelled date index
+		if (task.metadata.cancelledDate) {
+			const dateStr = formatDateForIndex(task.metadata.cancelledDate);
+			const cancelledTasks = this.taskCache.cancelledDate.get(dateStr);
+			if (cancelledTasks) {
+				cancelledTasks.delete(task.id);
+				if (cancelledTasks.size === 0) {
+					this.taskCache.cancelledDate.delete(dateStr);
+				}
+			}
+		}
+
+		// Remove from onCompletion index
+		if (task.metadata.onCompletion) {
+			const onCompletionTasks = this.taskCache.onCompletion.get(
+				task.metadata.onCompletion
+			);
+			if (onCompletionTasks) {
+				onCompletionTasks.delete(task.id);
+				if (onCompletionTasks.size === 0) {
+					this.taskCache.onCompletion.delete(
+						task.metadata.onCompletion
+					);
+				}
+			}
+		}
+
+		// Remove from dependsOn index
+		if (task.metadata.dependsOn && task.metadata.dependsOn.length > 0) {
+			for (const dependency of task.metadata.dependsOn) {
+				const dependsOnTasks = this.taskCache.dependsOn.get(dependency);
+				if (dependsOnTasks) {
+					dependsOnTasks.delete(task.id);
+					if (dependsOnTasks.size === 0) {
+						this.taskCache.dependsOn.delete(dependency);
+					}
+				}
+			}
+		}
+
+		// Remove from task ID index
+		if (task.metadata.id) {
+			const taskIdTasks = this.taskCache.taskId.get(task.metadata.id);
+			if (taskIdTasks) {
+				taskIdTasks.delete(task.id);
+				if (taskIdTasks.size === 0) {
+					this.taskCache.taskId.delete(task.metadata.id);
 				}
 			}
 		}

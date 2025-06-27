@@ -122,6 +122,7 @@ export function extractDates(
 			| "scheduledDate"
 			| "startDate"
 			| "completedDate"
+			| "cancelledDate"
 			| "createdDate"
 	): boolean => {
 		if (task.metadata[fieldName] !== undefined) return false; // Already assigned

@@ -498,6 +498,18 @@ export interface TimelineSidebarSettings {
 	maxEventsToShow: number;
 }
 
+/** OnCompletion Settings */
+export interface OnCompletionSettings {
+	/** Whether onCompletion functionality is enabled */
+	enableOnCompletion: boolean;
+	/** Default archive file path for archive operations */
+	defaultArchiveFile: string;
+	/** Default archive section name */
+	defaultArchiveSection: string;
+	/** Whether to show advanced configuration options in UI */
+	showAdvancedOptions: boolean;
+}
+
 /** File Filter Settings */
 export interface FileFilterRule {
 	type: "file" | "folder" | "pattern";
@@ -642,6 +654,9 @@ export interface TaskProgressBarSettings {
 
 	// File Filter Settings
 	fileFilter: FileFilterSettings;
+
+	// OnCompletion Settings
+	onCompletion: OnCompletionSettings;
 }
 
 /** Define the default settings */
@@ -1230,6 +1245,14 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		rules: [
 			// No default rules - let users explicitly choose via preset templates
 		],
+	},
+
+	// OnCompletion Defaults
+	onCompletion: {
+		enableOnCompletion: true,
+		defaultArchiveFile: "Archive/Completed Tasks.md",
+		defaultArchiveSection: "Completed Tasks",
+		showAdvancedOptions: false,
 	},
 };
 

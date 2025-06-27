@@ -34,6 +34,7 @@ import { CanvasParser } from "./parsing/CanvasParser";
 import { CanvasTaskUpdater } from "./parsing/CanvasTaskUpdater";
 import { FileMetadataTaskUpdater } from "./workers/FileMetadataTaskUpdater";
 import { RebuildProgressManager } from "./RebuildProgressManager";
+import { OnCompletionManager } from "./OnCompletionManager";
 
 /**
  * TaskManager options
@@ -86,6 +87,8 @@ export class TaskManager extends Component {
 	private canvasTaskUpdater: CanvasTaskUpdater;
 	/** File filter manager for filtering files during indexing */
 	private fileFilterManager?: FileFilterManager;
+	/** OnCompletion manager for handling task completion actions */
+	private onCompletionManager?: OnCompletionManager;
 
 	/**
 	 * Create a new task manager
@@ -130,6 +133,9 @@ export class TaskManager extends Component {
 		// Initialize file filter manager
 		this.initializeFileFilterManager();
 
+		// Initialize onCompletion manager
+		this.initializeOnCompletionManager();
+
 		// Set up the indexer's parse callback to use our parser
 		this.indexer.setParseFileCallback(async (file: TFile) => {
 			const content = await this.vault.cachedRead(file);
@@ -168,6 +174,9 @@ export class TaskManager extends Component {
 		if (this.workerManager) {
 			this.addChild(this.workerManager);
 		}
+		if (this.onCompletionManager) {
+			this.addChild(this.onCompletionManager);
+		}
 	}
 
 	/**
@@ -184,6 +193,21 @@ export class TaskManager extends Component {
 			this.fileFilterManager = undefined;
 			this.indexer.setFileFilterManager(undefined);
 		}
+	}
+
+	/**
+	 * Initialize onCompletion manager
+	 */
+	private initializeOnCompletionManager(): void {
+		this.onCompletionManager = new OnCompletionManager(this.app, this.plugin);
+		this.log("OnCompletion manager initialized");
+	}
+
+	/**
+	 * Get the onCompletion manager instance
+	 */
+	public getOnCompletionManager(): OnCompletionManager | undefined {
+		return this.onCompletionManager;
 	}
 
 	/**
@@ -1788,6 +1812,7 @@ export class TaskManager extends Component {
 			updatedLine = updatedLine.replace(/🛫\s*\d{4}-\d{2}-\d{2}/g, "");
 			updatedLine = updatedLine.replace(/⏳\s*\d{4}-\d{2}-\d{2}/g, "");
 			updatedLine = updatedLine.replace(/✅\s*\d{4}-\d{2}-\d{2}/g, "");
+			updatedLine = updatedLine.replace(/❌\s*\d{4}-\d{2}-\d{2}/g, ""); // Added cancelled date emoji
 			updatedLine = updatedLine.replace(/➕\s*\d{4}-\d{2}-\d{2}/g, ""); // Added created date emoji
 			// Dataview dates (inline field format) - match key or emoji
 			updatedLine = updatedLine.replace(
@@ -1810,6 +1835,10 @@ export class TaskManager extends Component {
 				/\[(?:scheduled|⏳)::\s*\d{4}-\d{2}-\d{2}\]/gi,
 				""
 			);
+			updatedLine = updatedLine.replace(
+				/\[(?:cancelled|❌)::\s*\d{4}-\d{2}-\d{2}\]/gi,
+				""
+			);
 
 			// Emoji Priority markers
 			updatedLine = updatedLine.replace(
@@ -1826,6 +1855,22 @@ export class TaskManager extends Component {
 				/\[(?:repeat|recurrence)::\s*[^\]]+\]/gi,
 				""
 			); // Allow 'repeat' or 'recurrence'
+
+			// New fields - Emoji format
+			updatedLine = updatedLine.replace(/🏁\s*[^\s]+/g, ""); // onCompletion
+			updatedLine = updatedLine.replace(/⛔\s*[^\s]+/g, ""); // dependsOn
+			updatedLine = updatedLine.replace(/🆔\s*[^\s]+/g, ""); // id
+
+			// New fields - Dataview format
+			updatedLine = updatedLine.replace(
+				/\[(?:onCompletion|🏁)::\s*[^\]]+\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(
+				/\[(?:dependsOn|⛔)::\s*[^\]]+\]/gi,
+				""
+			);
+			updatedLine = updatedLine.replace(/\[(?:id|🆔)::\s*[^\]]+\]/gi, "");
 
 			// Dataview Project and Context (using configurable prefixes)
 			const projectPrefix =
@@ -1867,6 +1912,9 @@ export class TaskManager extends Component {
 			);
 			const formattedCompletedDate = formatDate(
 				updatedTask.metadata.completedDate
+			);
+			const formattedCancelledDate = formatDate(
+				updatedTask.metadata.cancelledDate
 			);
 
 			// --- Add non-project/context tags first (1. Tags) ---
@@ -2071,6 +2119,46 @@ export class TaskManager extends Component {
 					useDataviewFormat
 						? `[completion:: ${formattedCompletedDate}]`
 						: `✅ ${formattedCompletedDate}`
+				);
+			}
+
+			// 10. Cancelled Date (if present)
+			if (formattedCancelledDate) {
+				metadata.push(
+					useDataviewFormat
+						? `[cancelled:: ${formattedCancelledDate}]`
+						: `❌ ${formattedCancelledDate}`
+				);
+			}
+
+			// 11. OnCompletion
+			if (updatedTask.metadata.onCompletion) {
+				metadata.push(
+					useDataviewFormat
+						? `[onCompletion:: ${updatedTask.metadata.onCompletion}]`
+						: `🏁 ${updatedTask.metadata.onCompletion}`
+				);
+			}
+
+			// 12. DependsOn
+			if (
+				updatedTask.metadata.dependsOn &&
+				updatedTask.metadata.dependsOn.length > 0
+			) {
+				const dependsOnValue = updatedTask.metadata.dependsOn.join(",");
+				metadata.push(
+					useDataviewFormat
+						? `[dependsOn:: ${dependsOnValue}]`
+						: `⛔ ${dependsOnValue}`
+				);
+			}
+
+			// 13. ID
+			if (updatedTask.metadata.id) {
+				metadata.push(
+					useDataviewFormat
+						? `[id:: ${updatedTask.metadata.id}]`
+						: `🆔 ${updatedTask.metadata.id}`
 				);
 			}
 
