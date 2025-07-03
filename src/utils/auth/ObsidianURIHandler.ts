@@ -7,7 +7,7 @@
 import { Plugin, Notice } from "obsidian";
 import { OAuth2AuthResponse } from "../../types/cloud-calendar";
 import { OAuth2Manager } from "./OAuth2Manager";
-import { TaskProgressBarPlugin } from "../../index";
+import TaskProgressBarPlugin from "../../index";
 
 export class ObsidianURIHandler {
 	private plugin: TaskProgressBarPlugin;

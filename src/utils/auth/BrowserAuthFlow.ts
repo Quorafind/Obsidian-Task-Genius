@@ -8,6 +8,7 @@ import { Component, Notice } from "obsidian";
 import { OAuth2Manager } from "./OAuth2Manager";
 import { ObsidianURIHandler } from "./ObsidianURIHandler";
 import { OAuth2Config, OAuth2Tokens } from "../../types/cloud-calendar";
+import { LocalOAuthServer } from "./LocalOAuthServer";
 import TaskProgressBarPlugin from "../../index";
 
 export class BrowserAuthFlow extends Component {
@@ -50,7 +51,12 @@ export class BrowserAuthFlow extends Component {
 
 			this.activeFlows.set(flowId, context);
 
-			// Update redirect URI to use Obsidian protocol
+			// For Google, use OOB flow
+			if (provider === "google") {
+				return await this.startGoogleOOBFlow(config, context);
+			}
+
+			// Update redirect URI to use Obsidian protocol for other providers
 			const updatedConfig = {
 				...config,
 				redirectUri: this.uriHandler.getOAuthRedirectUri(),
@@ -268,6 +274,175 @@ export class BrowserAuthFlow extends Component {
 	}
 
 	/**
+	 * Start Google OAuth OOB (Out-of-Band) flow
+	 */
+	private async startGoogleOOBFlow(
+		config: OAuth2Config,
+		context: AuthFlowContext
+	): Promise<OAuth2Tokens> {
+		const oauthProvider = this.oauth2Manager.getProvider("google");
+		if (!oauthProvider) {
+			throw new Error("Google OAuth provider not found");
+		}
+
+		// Update config to use OOB redirect URI
+		const oobConfig = {
+			...config,
+			redirectUri: "urn:ietf:wg:oauth:2.0:oob",
+		};
+
+		// Build auth URL
+		const authUrl = oauthProvider.buildAuthUrl(oobConfig);
+
+		// Show instructions to user
+		this.showFlowNotification(
+			"Opening Google authentication page. After completing authentication, you'll see an authorization code. Copy it and return to Obsidian.",
+			"info",
+			15000
+		);
+
+		// Open browser
+		try {
+			window.open(authUrl, "_blank");
+			context.status = "browser_opened";
+
+			// Wait for user to enter the authorization code
+			const authCode = await this.promptForAuthCode();
+			context.status = "code_received";
+
+			// Exchange code for tokens
+			const tokens = await oauthProvider.exchangeCodeForTokens(
+				authCode,
+				oobConfig
+			);
+
+			context.status = "completed";
+			context.tokens = tokens;
+
+			this.showFlowNotification(
+				"Google authentication successful!",
+				"success"
+			);
+
+			return tokens;
+		} catch (error) {
+			context.status = "error";
+			context.error =
+				error instanceof Error ? error.message : "Unknown error";
+			throw error;
+		}
+	}
+
+	/**
+	 * Prompt user for authorization code
+	 */
+	private async promptForAuthCode(): Promise<string> {
+		return new Promise((resolve, reject) => {
+			// Create a modal for code input
+			const modal = document.createElement("div");
+			modal.style.cssText = `
+				position: fixed;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background: var(--background-primary);
+				border: 1px solid var(--background-modifier-border);
+				border-radius: 8px;
+				padding: 20px;
+				z-index: 1000;
+				min-width: 400px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+			`;
+
+			modal.innerHTML = `
+				<h3 style="margin: 0 0 15px 0; color: var(--text-normal);">Enter Authorization Code</h3>
+				<p style="margin: 0 0 15px 0; color: var(--text-muted);">
+					Please paste the authorization code from Google:
+				</p>
+				<input 
+					type="text" 
+					id="auth-code-input" 
+					style="
+						width: 100%; 
+						padding: 8px; 
+						margin: 10px 0; 
+						border: 1px solid var(--background-modifier-border);
+						border-radius: 4px;
+						background: var(--background-primary);
+						color: var(--text-normal);
+					" 
+					placeholder="Paste authorization code here"
+				>
+				<div style="text-align: right; margin-top: 15px;">
+					<button 
+						id="auth-code-cancel" 
+						style="
+							margin-right: 10px;
+							padding: 8px 16px;
+							border: 1px solid var(--background-modifier-border);
+							border-radius: 4px;
+							background: var(--background-primary);
+							color: var(--text-normal);
+							cursor: pointer;
+						"
+					>Cancel</button>
+					<button 
+						id="auth-code-submit"
+						style="
+							padding: 8px 16px;
+							border: none;
+							border-radius: 4px;
+							background: var(--interactive-accent);
+							color: var(--text-on-accent);
+							cursor: pointer;
+						"
+					>Submit</button>
+				</div>
+			`;
+
+			document.body.appendChild(modal);
+
+			const input = modal.querySelector(
+				"#auth-code-input"
+			) as HTMLInputElement;
+			const submitBtn = modal.querySelector(
+				"#auth-code-submit"
+			) as HTMLButtonElement;
+			const cancelBtn = modal.querySelector(
+				"#auth-code-cancel"
+			) as HTMLButtonElement;
+
+			const cleanup = () => {
+				document.body.removeChild(modal);
+			};
+
+			submitBtn.onclick = () => {
+				const code = input.value.trim();
+				if (code) {
+					cleanup();
+					resolve(code);
+				} else {
+					new Notice("Please enter the authorization code");
+				}
+			};
+
+			cancelBtn.onclick = () => {
+				cleanup();
+				reject(new Error("Authentication cancelled"));
+			};
+
+			// Handle Enter key
+			input.onkeydown = (e) => {
+				if (e.key === "Enter") {
+					submitBtn.click();
+				}
+			};
+
+			input.focus();
+		});
+	}
+
+	/**
 	 * Open browser for manual OAuth flow
 	 */
 	async openBrowserForManualAuth(
@@ -435,6 +610,7 @@ export interface AuthFlowStatus {
 	status:
 		| "starting"
 		| "browser_opened"
+		| "code_received"
 		| "validating"
 		| "completed"
 		| "error"

@@ -778,6 +778,10 @@ const translations = {
 		"Choose which calendars to sync from this source",
 	"Cloud calendar source updated": "Cloud calendar source updated",
 	"Failed to save configuration: ": "Failed to save configuration: ",
+	"Copy the authorization code shown on the page":
+		"Copy the authorization code shown on the page",
+	"Return to Obsidian and paste the code when prompted":
+		"Return to Obsidian and paste the code when prompted",
 	"Type of authentication required": "Type of authentication required",
 	"ICS Auth None": "None",
 	"Basic Auth": "Basic Auth",
@@ -2117,6 +2121,10 @@ const translations = {
 	"Comma-separated list of task IDs this task depends on":
 		"Comma-separated list of task IDs this task depends on",
 	"Unique identifier for this task": "Unique identifier for this task",
+	"Open Apple ID Management": "Open Apple ID Management",
+	"This will open Apple ID management page in your browser":
+		"This will open Apple ID management page in your browser",
+	"Create App-Specific Password": "Create App-Specific Password",
 };
 
 export default translations;

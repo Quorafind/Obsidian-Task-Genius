@@ -11,7 +11,7 @@ import {
 	OAuth2AuthResponse,
 } from "../../types/cloud-calendar";
 import { OAuth2Provider } from "./OAuth2Provider";
-import { TaskProgressBarPlugin } from "../../index";
+import TaskProgressBarPlugin from "../../index";
 
 export class OAuth2Manager extends Component {
 	private plugin: TaskProgressBarPlugin;

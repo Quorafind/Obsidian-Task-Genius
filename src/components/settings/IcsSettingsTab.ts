@@ -1870,7 +1870,10 @@ class GoogleCalendarAuthModal extends Modal {
 			),
 		});
 		instructionsList.createEl("li", {
-			text: t("You will be redirected back to Obsidian automatically"),
+			text: t("Copy the authorization code shown on the page"),
+		});
+		instructionsList.createEl("li", {
+			text: t("Return to Obsidian and paste the code when prompted"),
 		});
 
 		// Authentication status
@@ -1990,6 +1993,45 @@ class iCloudCalendarAuthModal extends Modal {
 		});
 		instructionsList.createEl("li", {
 			text: t("Enter your Apple ID and the generated password below"),
+		});
+
+		// Helper button to open Apple ID management page
+		const helperContainer = contentEl.createDiv("auth-helper-buttons");
+		const appleIdButton = helperContainer.createEl("button", {
+			text: t("Open Apple ID Management"),
+			cls: "apple-id-link-button",
+		});
+		appleIdButton.onclick = () => {
+			const cloudManager = this.plugin.getCloudCalendarManager();
+			if (cloudManager) {
+				const icloudProvider = cloudManager.getOAuth2Provider("icloud");
+				if (
+					icloudProvider &&
+					typeof (icloudProvider as any).getAppSpecificPasswordUrl ===
+						"function"
+				) {
+					const url = (
+						icloudProvider as any
+					).getAppSpecificPasswordUrl();
+					window.open(url, "_blank");
+				} else {
+					// Fallback URL
+					window.open(
+						"https://appleid.apple.com/account/manage#security",
+						"_blank"
+					);
+				}
+			} else {
+				// Fallback URL
+				window.open(
+					"https://appleid.apple.com/account/manage#security",
+					"_blank"
+				);
+			}
+		};
+		helperContainer.createEl("div", {
+			text: t("This will open Apple ID management page in your browser"),
+			cls: "apple-id-link-description",
 		});
 
 		// Username input

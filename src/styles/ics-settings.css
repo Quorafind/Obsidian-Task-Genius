@@ -628,6 +628,41 @@
 	color: var(--text-muted);
 }
 
+/* Apple ID management button styles */
+.auth-helper-buttons {
+	margin: 16px 0;
+	padding: 12px;
+	background: var(--background-modifier-form-field);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	text-align: center;
+}
+
+.apple-id-link-button {
+	background: var(--color-orange);
+	color: white;
+	border: none;
+	padding: 0.6rem 1.2rem;
+	border-radius: 6px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	font-size: 0.9em;
+	margin-bottom: 0.5rem;
+}
+
+.apple-id-link-button:hover {
+	background: var(--color-orange);
+	opacity: 0.8;
+	transform: translateY(-1px);
+}
+
+.apple-id-link-description {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 0.5rem;
+}
+
 .auth-status {
 	margin: 16px 0;
 	padding: 12px;
@@ -640,17 +675,14 @@
 }
 
 .auth-status-pending {
-	background: var(--background-modifier-info);
 	color: var(--text-info);
 }
 
 .auth-status-success {
-	background: var(--background-modifier-success);
 	color: var(--text-success);
 }
 
 .auth-status-error {
-	background: var(--background-modifier-error);
 	color: var(--text-error);
 }
 

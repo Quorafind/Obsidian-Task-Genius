@@ -6,6 +6,7 @@
 
 import { OAuth2Provider, OAuth2Error } from "./OAuth2Provider";
 import { OAuth2Config, OAuth2Tokens } from "../../types/cloud-calendar";
+import { requestUrl } from "obsidian";
 
 export class iCloudOAuth2Provider extends OAuth2Provider {
 	readonly name = "icloud";
@@ -52,17 +53,43 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 			);
 		}
 
+		// Validate and normalize username
+		const validatedUsername = this.validateAndNormalizeUsername(username);
+		const validatedPassword = this.validateAppSpecificPassword(appPassword);
+
 		// Validate credentials by making a test CalDAV request
-		const isValid = await this.validateCredentials(username, appPassword);
-		if (!isValid) {
-			throw new OAuth2Error(
-				"invalid_grant",
-				"Invalid username or app-specific password"
+		try {
+			const isValid = await this.validateCredentials(
+				validatedUsername,
+				validatedPassword
 			);
+			if (!isValid) {
+				throw new OAuth2Error(
+					"invalid_grant",
+					"Invalid username or app-specific password. Please check your Apple ID and ensure you're using an app-specific password (not your regular Apple ID password)."
+				);
+			}
+		} catch (error) {
+			if (error instanceof OAuth2Error) {
+				// Re-throw OAuth2Error with potentially more specific message
+				if (error.code === "network_error") {
+					throw new OAuth2Error(
+						"network_error",
+						"Unable to connect to iCloud servers. Please check your internet connection and try again."
+					);
+				}
+				throw error;
+			} else {
+				// Handle unexpected errors
+				throw new OAuth2Error(
+					"unknown_error",
+					"An unexpected error occurred during authentication. Please try again."
+				);
+			}
 		}
 
 		// Create a pseudo-token using base64 encoded credentials
-		const credentials = btoa(`${username}:${appPassword}`);
+		const credentials = btoa(`${validatedUsername}:${validatedPassword}`);
 
 		return {
 			accessToken: credentials,
@@ -139,8 +166,18 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 		password: string
 	): Promise<boolean> {
 		try {
+			// Normalize username - remove @icloud.com if present
+			const normalizedUsername = username.replace(/@icloud\.com$/, "");
+
+			// Try the principal URL first for better compatibility
+			const principalUrl = `${this.caldavUrl}/${normalizedUsername}/principal/`;
+
+			console.log(
+				`Attempting iCloud CalDAV authentication for user: ${normalizedUsername}`
+			);
+
 			const response = await this.makeCalDAVRequest(
-				`${this.caldavUrl}/${username}/calendars/`,
+				principalUrl,
 				"PROPFIND",
 				{
 					Authorization: `Basic ${btoa(`${username}:${password}`)}`,
@@ -150,15 +187,109 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 				'<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>'
 			);
 
-			return response.status === 207; // Multi-Status response indicates success
+			// Accept both 207 (Multi-Status) and 200 (OK) as success
+			const isSuccess =
+				response.status === 207 || response.status === 200;
+
+			if (!isSuccess) {
+				console.warn(
+					`iCloud CalDAV principal URL failed with status ${response.status}`
+				);
+
+				// Check for specific authentication errors
+				if (response.status === 401) {
+					console.error(
+						"Authentication failed - invalid credentials"
+					);
+					return false;
+				}
+
+				if (response.status === 403) {
+					console.error(
+						"Access forbidden - check if 2FA is enabled and app-specific password is correct"
+					);
+					return false;
+				}
+
+				// Try alternative URL format if principal fails
+				console.log("Trying alternative CalDAV URL format...");
+				const alternativeUrl = `${this.caldavUrl}/${normalizedUsername}/calendars/`;
+
+				try {
+					const altResponse = await this.makeCalDAVRequest(
+						alternativeUrl,
+						"PROPFIND",
+						{
+							Authorization: `Basic ${btoa(
+								`${username}:${password}`
+							)}`,
+							"Content-Type": "application/xml; charset=utf-8",
+							Depth: "0",
+						},
+						'<?xml version="1.0" encoding="utf-8" ?><propfind xmlns="DAV:"><prop><displayname/></prop></propfind>'
+					);
+
+					const altSuccess =
+						altResponse.status === 207 ||
+						altResponse.status === 200;
+
+					if (altSuccess) {
+						console.log("Alternative CalDAV URL succeeded");
+					} else {
+						console.warn(
+							`Alternative CalDAV URL also failed with status ${altResponse.status}`
+						);
+
+						// Provide specific error information
+						if (altResponse.status === 401) {
+							console.error(
+								"Authentication failed on alternative URL - credentials are invalid"
+							);
+						} else if (altResponse.status === 403) {
+							console.error(
+								"Access forbidden on alternative URL - check permissions"
+							);
+						}
+					}
+
+					return altSuccess;
+				} catch (altError) {
+					console.error(
+						"Alternative CalDAV URL request failed:",
+						altError
+					);
+					return false;
+				}
+			}
+
+			console.log("iCloud CalDAV authentication successful");
+			return isSuccess;
 		} catch (error) {
-			console.error("iCloud credential validation failed:", error);
-			return false;
+			if (error instanceof OAuth2Error) {
+				console.error(
+					"iCloud credential validation failed:",
+					error.message
+				);
+				// Re-throw OAuth2Error to preserve error details
+				throw error;
+			} else {
+				console.error(
+					"iCloud credential validation failed with unexpected error:",
+					error
+				);
+				// Convert unexpected errors to OAuth2Error
+				throw new OAuth2Error(
+					"network_error",
+					error instanceof Error
+						? error.message
+						: "Unknown network error occurred"
+				);
+			}
 		}
 	}
 
 	/**
-	 * Make CalDAV request to iCloud
+	 * Make CalDAV request to iCloud using Obsidian's requestUrl API
 	 */
 	private async makeCalDAVRequest(
 		url: string,
@@ -167,13 +298,31 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 		body?: string
 	): Promise<Response> {
 		try {
-			const response = await fetch(url, {
+			const response = await requestUrl({
+				url,
 				method,
 				headers,
 				body,
+				throw: false, // Don't throw on HTTP errors, handle them manually
 			});
 
-			return response;
+			// Convert Obsidian's response format to standard Response-like object
+			return {
+				status: response.status,
+				statusText: response.status.toString(),
+				ok: response.status >= 200 && response.status < 300,
+				headers: new Headers(response.headers || {}),
+				text: async () => response.text || "",
+				json: async () => {
+					try {
+						return (
+							response.json || JSON.parse(response.text || "{}")
+						);
+					} catch {
+						return {};
+					}
+				},
+			} as Response;
 		} catch (error) {
 			throw new OAuth2Error(
 				"network_error",
@@ -208,6 +357,13 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 				"Cannot extract user info from token"
 			);
 		}
+	}
+
+	/**
+	 * Get the direct URL to Apple ID App-Specific Password creation page
+	 */
+	getAppSpecificPasswordUrl(): string {
+		return `${this.authUrl}#security`;
 	}
 
 	/**
@@ -280,10 +436,81 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 	}
 
 	/**
+	 * Validate and normalize Apple ID username
+	 */
+	private validateAndNormalizeUsername(username: string): string {
+		if (!username || typeof username !== "string") {
+			throw new OAuth2Error("invalid_request", "Username is required");
+		}
+
+		const trimmed = username.trim();
+		if (!trimmed) {
+			throw new OAuth2Error(
+				"invalid_request",
+				"Username cannot be empty"
+			);
+		}
+
+		// Basic email format validation
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(trimmed)) {
+			throw new OAuth2Error(
+				"invalid_request",
+				"Please enter a valid Apple ID email address"
+			);
+		}
+
+		// Normalize to lowercase
+		return trimmed.toLowerCase();
+	}
+
+	/**
+	 * Validate app-specific password format
+	 */
+	private validateAppSpecificPassword(password: string): string {
+		if (!password || typeof password !== "string") {
+			throw new OAuth2Error(
+				"invalid_request",
+				"App-specific password is required"
+			);
+		}
+
+		const trimmed = password.trim();
+		if (!trimmed) {
+			throw new OAuth2Error(
+				"invalid_request",
+				"App-specific password cannot be empty"
+			);
+		}
+
+		// Remove any spaces or hyphens that might be in the password
+		const cleaned = trimmed.replace(/[\s-]/g, "");
+
+		// App-specific passwords are typically 16 characters long
+		if (cleaned.length < 12) {
+			throw new OAuth2Error(
+				"invalid_request",
+				"App-specific password appears to be too short. Please ensure you're using the complete app-specific password."
+			);
+		}
+
+		return cleaned;
+	}
+
+	/**
 	 * Get CalDAV principal URL for the user
 	 */
 	async getPrincipalUrl(username: string, password: string): Promise<string> {
-		const isValid = await this.validateCredentials(username, password);
+		const validatedUsername = this.validateAndNormalizeUsername(username);
+		const normalizedUsername = validatedUsername.replace(
+			/@icloud\.com$/,
+			""
+		);
+
+		const isValid = await this.validateCredentials(
+			validatedUsername,
+			password
+		);
 		if (!isValid) {
 			throw new OAuth2Error(
 				"invalid_credentials",
@@ -291,7 +518,7 @@ export class iCloudOAuth2Provider extends OAuth2Provider {
 			);
 		}
 
-		return `${this.caldavUrl}/${username}/`;
+		return `${this.caldavUrl}/${normalizedUsername}/`;
 	}
 
 	/**

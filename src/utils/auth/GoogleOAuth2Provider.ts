@@ -5,6 +5,7 @@
 
 import { OAuth2Provider, OAuth2Error } from "./OAuth2Provider";
 import { OAuth2Config, OAuth2Tokens } from "../../types/cloud-calendar";
+import { LocalOAuthServer } from "./LocalOAuthServer";
 
 export class GoogleOAuth2Provider extends OAuth2Provider {
 	readonly name = "google";
@@ -24,9 +25,14 @@ export class GoogleOAuth2Provider extends OAuth2Provider {
 	buildAuthUrl(config: OAuth2Config): string {
 		this.validateConfig(config);
 
+		// Use out-of-band (OOB) redirect URI for Google OAuth compliance
+		const redirectUri = config.redirectUri.startsWith("obsidian://")
+			? "urn:ietf:wg:oauth:2.0:oob"
+			: config.redirectUri;
+
 		const params = {
 			client_id: config.clientId,
-			redirect_uri: config.redirectUri,
+			redirect_uri: redirectUri,
 			scope: config.scopes.join(" "),
 			response_type: "code",
 			access_type: "offline", // Required for refresh token
@@ -47,12 +53,17 @@ export class GoogleOAuth2Provider extends OAuth2Provider {
 	): Promise<OAuth2Tokens> {
 		this.validateConfig(config);
 
+		// Use the appropriate redirect URI based on the flow
+		const redirectUri = config.redirectUri.startsWith("obsidian://")
+			? "urn:ietf:wg:oauth:2.0:oob"
+			: config.redirectUri;
+
 		const requestBody = {
 			client_id: config.clientId,
 			client_secret: config.clientSecret || "",
 			code: code,
 			grant_type: "authorization_code",
-			redirect_uri: config.redirectUri,
+			redirect_uri: redirectUri,
 		};
 
 		const tokenData = await this.makeRequest({

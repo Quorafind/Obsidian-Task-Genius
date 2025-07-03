@@ -5,14 +5,16 @@
  */
 
 import { Component, Notice } from "obsidian";
-import { TaskProgressBarPlugin } from "../../index";
+import TaskProgressBarPlugin from "../../index";
 import { OAuth2Manager } from "../auth/OAuth2Manager";
 import { BrowserAuthFlow } from "../auth/BrowserAuthFlow";
 import { ObsidianURIHandler } from "../auth/ObsidianURIHandler";
 import { GoogleOAuth2Provider } from "../auth/GoogleOAuth2Provider";
 import { iCloudOAuth2Provider } from "../auth/iCloudOAuth2Provider";
+import { OAuth2Provider } from "../auth/OAuth2Provider";
 import { CloudCalendarAdapter } from "./CloudCalendarAdapter";
 import { GoogleCalendarAdapter } from "./GoogleCalendarAdapter";
+import { iCloudCalendarAdapter } from "./iCloudCalendarAdapter";
 import {
 	CloudCalendarConfig,
 	CloudSyncResult,
@@ -67,6 +69,7 @@ export class CloudCalendarManager extends Component {
 
 			// Register cloud adapters
 			this.adapters.set("google", new GoogleCalendarAdapter());
+			this.adapters.set("icloud", new iCloudCalendarAdapter());
 
 			// Initialize URI handler
 			this.uriHandler.initialize();
@@ -367,6 +370,13 @@ export class CloudCalendarManager extends Component {
 	 */
 	getConfigurations(): CloudCalendarConfig[] {
 		return Array.from(this.configurations.values());
+	}
+
+	/**
+	 * Get OAuth2 provider by name
+	 */
+	getOAuth2Provider(providerName: string): OAuth2Provider | undefined {
+		return this.oauth2Manager.getProvider(providerName);
 	}
 
 	/**

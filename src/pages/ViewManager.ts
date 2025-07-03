@@ -12,6 +12,7 @@ import { TagsBasesView } from "./TagsBasesView";
 import TaskProgressBarPlugin from "../index";
 import "../styles/base-view.css";
 import { requireApiVersion } from "obsidian";
+import { BasesPlugin } from "../types/bases";
 
 export class ViewManager extends Component {
 	private app: App;
