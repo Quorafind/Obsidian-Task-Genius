@@ -58,6 +58,11 @@ abstract class BaseSuggest<T> extends AbstractInputSuggest<T> {
 
 	// Common method to select suggestion
 	selectSuggestion(item: T, evt: MouseEvent | KeyboardEvent): void {
+		if (!this.inputEl) {
+			console.warn("BaseSuggest: inputEl is undefined, cannot set value");
+			this.close();
+			return;
+		}
 		this.inputEl.value = this.getSuggestionValue(item);
 		this.inputEl.trigger("input"); // Trigger change event
 		this.close();

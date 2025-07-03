@@ -447,9 +447,7 @@ export class TimelineSidebarView extends ItemView {
 			this.addChild(markdownRenderer);
 
 			// Set the file context if available
-			const file = this.app.vault.getAbstractFileByPath(
-				event.task.filePath
-			);
+			const file = this.app.vault.getFileByPath(event.task.filePath);
 			if (file instanceof TFile) {
 				markdownRenderer.setFile(file);
 			}
@@ -497,8 +495,8 @@ export class TimelineSidebarView extends ItemView {
 	}
 
 	private async goToTask(task: Task): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
-		if (!(file instanceof TFile)) return;
+		const file = this.app.vault.getFileByPath(task.filePath);
+		if (!file) return;
 
 		// Check if it's a canvas file
 		if ((task.metadata as any).sourceType === "canvas") {

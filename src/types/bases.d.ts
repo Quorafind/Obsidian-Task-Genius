@@ -1,3 +1,5 @@
+import { App } from "obsidian";
+
 /**
  * Sort direction enum
  */
@@ -60,6 +62,20 @@ interface BasesLocalization {
 	 * @param options - Contains viewID that failed to register
 	 */
 	msgErrorRegisterView(options: { viewID: string }): string;
+
+	/**
+	 * Table view localization
+	 */
+	table: {
+		name(): string;
+	};
+
+	/**
+	 * Cards view localization
+	 */
+	cards: {
+		name(): string;
+	};
 }
 
 /**
@@ -113,7 +129,7 @@ interface BasesEntry {
 	/** Context object with app instance and filter */
 	ctx: {
 		_local: any;
-		app: any;
+		app: App;
 		filter: any;
 		formulas: any;
 		localUsed: boolean;
@@ -204,7 +220,7 @@ interface BaseView {
  */
 interface BasesView extends BaseView {
 	type: string;
-	app: any;
+	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
 	data: BasesViewData[];
@@ -240,23 +256,46 @@ interface BasesOperatorFunction extends BasesFunction {
 // View factory function type
 type BasesViewFactory = (container: HTMLElement) => BaseView;
 
+/**
+ * View registration configuration
+ */
+interface BasesViewRegistration {
+	name: string;
+	icon: string;
+	factory: BasesViewFactory;
+	getSettings?: () => any;
+}
+
+/**
+ * Operator function configuration
+ */
+interface OperatorFuncConfig {
+	funcName: string;
+	display: string;
+	inverseDisplay: string;
+}
+
 // Plugin interface extension
 interface BasesPlugin {
 	id: string;
 	name: string;
 	description: string;
 	defaultOn: boolean;
-	app: any;
+	app: App;
 	handlers: Record<string, BasesViewFactory>;
 	functions: Record<string, BasesFunction>;
+	registrations: Record<string, BasesViewRegistration>;
 
 	// Methods
-	init(app: any, plugin: any): void;
-	onEnable(app: any, plugin: any): void;
+	init(app: App, plugin: any): void;
+	onEnable(app: App, plugin: any): void;
 	registerView(viewId: string, factory: BasesViewFactory): void;
+	registerView(viewId: string, config: BasesViewRegistration): void;
 	deregisterView(viewId: string): void;
 	getViewTypes(): string[];
 	getViewFactory(viewId: string): BasesViewFactory | null;
+	getRegistration(viewId: string): BasesViewRegistration | null;
+	getRegistrations(): Record<string, BasesViewRegistration>;
 	registerFunction(func: BasesFunction): void;
 	deregisterFunction(name: string): void;
 	getFunction(name: string): BasesFunction | null;

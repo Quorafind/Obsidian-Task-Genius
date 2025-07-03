@@ -7,7 +7,12 @@ const EMOJI_COMPLETED_DATE_REGEX = /✅\s*(\d{4}-\d{2}-\d{2})/;
 const EMOJI_DUE_DATE_REGEX = /📅\s*(\d{4}-\d{2}-\d{2})/;
 const EMOJI_SCHEDULED_DATE_REGEX = /⏳\s*(\d{4}-\d{2}-\d{2})/;
 const EMOJI_CREATED_DATE_REGEX = /➕\s*(\d{4}-\d{2}-\d{2})/;
-const EMOJI_RECURRENCE_REGEX = /🔁\s*(.*?)(?=\s(?:🗓️|🛫|⏳|✅|➕|🔁|@|#)|$)/u;
+const EMOJI_CANCELLED_DATE_REGEX = /❌\s*(\d{4}-\d{2}-\d{2})/;
+const EMOJI_ID_REGEX = /🆔\s*([^\s]+)/;
+const EMOJI_DEPENDS_ON_REGEX = /⛔\s*([^\s]+)/;
+const EMOJI_ON_COMPLETION_REGEX = /🏁\s*([^\s]+)/;
+const EMOJI_RECURRENCE_REGEX =
+	/🔁\s*(.*?)(?=\s(?:🗓️|🛫|⏳|✅|➕|❌|🆔|⛔|🏁|🔁|@|#)|$)/u;
 const EMOJI_PRIORITY_REGEX = /(([🔺⏫🔼🔽⏬️⏬])|(\[#[A-E]\]))/u; // Using the corrected variant selector
 const EMOJI_CONTEXT_REGEX = /@([\w-]+)/g;
 const EMOJI_TAG_REGEX =
@@ -83,6 +88,10 @@ const DV_COMPLETED_DATE_REGEX =
 const DV_DUE_DATE_REGEX = /\[(?:due|🗓️)::\s*(\d{4}-\d{2}-\d{2})\]/i;
 const DV_SCHEDULED_DATE_REGEX = /\[(?:scheduled|⏳)::\s*(\d{4}-\d{2}-\d{2})\]/i;
 const DV_CREATED_DATE_REGEX = /\[(?:created|➕)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_CANCELLED_DATE_REGEX = /\[(?:cancelled|❌)::\s*(\d{4}-\d{2}-\d{2})\]/i;
+const DV_ID_REGEX = /\[(?:id|🆔)::\s*([^\]]+)\]/i;
+const DV_DEPENDS_ON_REGEX = /\[(?:dependsOn|⛔)::\s*([^\]]+)\]/i;
+const DV_ON_COMPLETION_REGEX = /\[(?:onCompletion|🏁)::\s*([^\]]+)\]/i;
 const DV_RECURRENCE_REGEX = /\[(?:repeat|recurrence|🔁)::\s*([^\]]+)\]/i;
 const DV_PRIORITY_REGEX = /\[priority::\s*([^\]]+)\]/i;
 const DV_PROJECT_REGEX = /\[project::\s*([^\]]+)\]/i; // Default project regex
@@ -97,6 +106,10 @@ export {
 	EMOJI_DUE_DATE_REGEX,
 	EMOJI_SCHEDULED_DATE_REGEX,
 	EMOJI_CREATED_DATE_REGEX,
+	EMOJI_CANCELLED_DATE_REGEX,
+	EMOJI_ID_REGEX,
+	EMOJI_DEPENDS_ON_REGEX,
+	EMOJI_ON_COMPLETION_REGEX,
 	EMOJI_RECURRENCE_REGEX,
 	EMOJI_PRIORITY_REGEX,
 	EMOJI_CONTEXT_REGEX,
@@ -107,6 +120,10 @@ export {
 	DV_DUE_DATE_REGEX,
 	DV_SCHEDULED_DATE_REGEX,
 	DV_CREATED_DATE_REGEX,
+	DV_CANCELLED_DATE_REGEX,
+	DV_ID_REGEX,
+	DV_DEPENDS_ON_REGEX,
+	DV_ON_COMPLETION_REGEX,
 	DV_RECURRENCE_REGEX,
 	DV_PRIORITY_REGEX,
 	DV_PROJECT_REGEX,

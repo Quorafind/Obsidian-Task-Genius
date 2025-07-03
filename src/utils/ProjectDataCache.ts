@@ -260,13 +260,13 @@ export class ProjectDataCache {
 	private async findConfigFileInDirectory(
 		directory: string
 	): Promise<TFile | null> {
-		const abstractFile = this.vault.getAbstractFileByPath(directory);
-		if (!abstractFile || !("children" in abstractFile)) {
+		const file = this.vault.getFileByPath(directory);
+		if (!file || !("children" in file)) {
 			return null;
 		}
 
 		const configFileName = "task-genius.config.md"; // TODO: Make configurable
-		const configFile = (abstractFile as any).children.find(
+		const configFile = (file as any).children.find(
 			(child: any) =>
 				child && child.name === configFileName && "stat" in child
 		) as TFile | undefined;

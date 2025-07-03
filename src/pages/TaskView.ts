@@ -803,7 +803,11 @@ export class TaskView extends ItemView {
 			originalTask: Task,
 			updatedTask: Task
 		) => {
-			console.log("triggered by detailsComponent");
+			console.log(
+				"triggered by detailsComponent",
+				originalTask,
+				updatedTask
+			);
 			await this.updateTask(originalTask, updatedTask);
 		};
 		this.detailsComponent.toggleDetailsVisibility = (visible: boolean) => {
@@ -1260,7 +1264,12 @@ export class TaskView extends ItemView {
 			this.switchView(this.currentViewId);
 
 			if (this.currentSelectedTaskId === updatedTask.id) {
-				this.detailsComponent.showTaskDetails(updatedTask);
+				if (this.detailsComponent.isCurrentlyEditing()) {
+					// Update the current task reference without re-rendering UI
+					this.detailsComponent.currentTask = updatedTask;
+				} else {
+					this.detailsComponent.showTaskDetails(updatedTask);
+				}
 			}
 
 			return updatedTask;
@@ -1271,7 +1280,7 @@ export class TaskView extends ItemView {
 	}
 
 	private async editTask(task: Task) {
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
+		const file = this.app.vault.getFileByPath(task.filePath);
 		if (!(file instanceof TFile)) return;
 
 		const leaf = this.app.workspace.getLeaf(false);

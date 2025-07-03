@@ -1090,8 +1090,14 @@ export class TaskSpecificView extends ItemView {
 			}
 
 			// If the updated task is the currently selected one, refresh details view
+			// Only refresh if not currently editing to prevent UI disruption
 			if (this.currentSelectedTaskId === updatedTask.id) {
-				this.detailsComponent.showTaskDetails(updatedTask);
+				if (this.detailsComponent.isCurrentlyEditing()) {
+					// Update the current task reference without re-rendering UI
+					this.detailsComponent.currentTask = updatedTask;
+				} else {
+					this.detailsComponent.showTaskDetails(updatedTask);
+				}
 			}
 
 			// 直接更新当前视图
@@ -1108,8 +1114,8 @@ export class TaskSpecificView extends ItemView {
 	}
 
 	private async editTask(task: Task) {
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
-		if (!(file instanceof TFile)) return;
+		const file = this.app.vault.getFileByPath(task.filePath);
+		if (!file) return;
 
 		// Prefer activating existing leaf if file is open
 		const existingLeaf = this.app.workspace

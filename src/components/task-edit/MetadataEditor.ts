@@ -18,6 +18,7 @@ import { ProjectSuggest, TagSuggest, ContextSuggest } from "../AutoComplete";
 import { StatusComponent } from "../StatusComponent";
 import { format } from "date-fns";
 import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { OnCompletionConfigurator } from "../onCompletion/OnCompletionConfigurator";
 
 export interface MetadataChangeEvent {
 	field: string;
@@ -161,6 +162,12 @@ export class TaskMetadataEditor extends Component {
 			"scheduledDate",
 			this.getDateString(this.task.metadata.scheduledDate)
 		);
+		this.createDateEditor(
+			pane,
+			t("Cancelled Date"),
+			"cancelledDate",
+			this.getDateString(this.task.metadata.cancelledDate)
+		);
 		this.createRecurrenceEditor(pane);
 	}
 
@@ -168,6 +175,9 @@ export class TaskMetadataEditor extends Component {
 		this.createProjectEditor(pane);
 		this.createTagsEditor(pane);
 		this.createContextEditor(pane);
+		this.createOnCompletionEditor(pane);
+		this.createDependsOnEditor(pane);
+		this.createIdEditor(pane);
 	}
 
 	/**
@@ -216,9 +226,20 @@ export class TaskMetadataEditor extends Component {
 			"scheduledDate",
 			this.getDateString(this.task.metadata.scheduledDate)
 		);
+		this.createDateEditor(
+			datesContainer,
+			t("Cancelled Date"),
+			"cancelledDate",
+			this.getDateString(this.task.metadata.cancelledDate)
+		);
 
 		// Recurrence rule editor
 		this.createRecurrenceEditor(metadataContainer);
+
+		// New fields
+		this.createOnCompletionEditor(metadataContainer);
+		this.createDependsOnEditor(metadataContainer);
+		this.createIdEditor(metadataContainer);
 	}
 
 	/**
@@ -463,6 +484,123 @@ export class TaskMetadataEditor extends Component {
 				"recurrence",
 				recurrenceInput.inputEl.value
 			);
+		});
+	}
+
+	/**
+	 * Creates an onCompletion editor.
+	 */
+	private createOnCompletionEditor(container: HTMLElement): void {
+		const fieldContainer = container.createDiv({
+			cls: "field-container oncompletion-container",
+		});
+		const fieldLabel = fieldContainer.createDiv({ cls: "field-label" });
+		fieldLabel.setText(t("On Completion"));
+
+		try {
+			const onCompletionConfigurator = new OnCompletionConfigurator(
+				fieldContainer,
+				this.plugin,
+				{
+					initialValue: this.task.metadata.onCompletion || "",
+					onChange: (value) => {
+						this.notifyMetadataChange("onCompletion", value);
+					},
+					onValidationChange: (isValid, error) => {
+						// Show validation feedback
+						const existingMessage = fieldContainer.querySelector(
+							".oncompletion-validation-message"
+						);
+						if (existingMessage) {
+							existingMessage.remove();
+						}
+
+						if (error) {
+							const messageEl = fieldContainer.createDiv({
+								cls: "oncompletion-validation-message error",
+								text: error,
+							});
+						} else if (isValid && this.task.metadata.onCompletion) {
+							const messageEl = fieldContainer.createDiv({
+								cls: "oncompletion-validation-message success",
+								text: t("Configuration is valid"),
+							});
+						}
+					},
+				}
+			);
+
+			this.addChild(onCompletionConfigurator);
+		} catch (error) {
+			// Fallback to simple text input if OnCompletionConfigurator fails to load
+			console.warn(
+				"Failed to load OnCompletionConfigurator, using fallback:",
+				error
+			);
+
+			const onCompletionInput = new TextComponent(fieldContainer)
+				.setPlaceholder(t("Action to execute on completion"))
+				.setValue(this.task.metadata.onCompletion || "")
+				.onChange((value) => {
+					this.notifyMetadataChange("onCompletion", value);
+				});
+
+			this.registerDomEvent(onCompletionInput.inputEl, "blur", () => {
+				this.notifyMetadataChange(
+					"onCompletion",
+					onCompletionInput.inputEl.value
+				);
+			});
+		}
+	}
+
+	/**
+	 * Creates a dependsOn editor.
+	 */
+	private createDependsOnEditor(container: HTMLElement): void {
+		const fieldContainer = container.createDiv({
+			cls: "field-container dependson-container",
+		});
+		const fieldLabel = fieldContainer.createDiv({ cls: "field-label" });
+		fieldLabel.setText(t("Depends On"));
+
+		const dependsOnInput = new TextComponent(fieldContainer)
+			.setPlaceholder(t("Task IDs separated by commas"))
+			.setValue(
+				Array.isArray(this.task.metadata.dependsOn)
+					? this.task.metadata.dependsOn.join(", ")
+					: ""
+			);
+
+		this.registerDomEvent(dependsOnInput.inputEl, "blur", () => {
+			const dependsOnValue = dependsOnInput.inputEl.value;
+			const dependsOnArray = dependsOnValue
+				.split(",")
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0);
+			this.notifyMetadataChange("dependsOn", dependsOnArray);
+		});
+	}
+
+	/**
+	 * Creates an id editor.
+	 */
+	private createIdEditor(container: HTMLElement): void {
+		const fieldContainer = container.createDiv({
+			cls: "field-container id-container",
+		});
+		const fieldLabel = fieldContainer.createDiv({ cls: "field-label" });
+		fieldLabel.setText(t("Task ID"));
+
+		const idInput = new TextComponent(fieldContainer)
+			.setPlaceholder(t("Unique task identifier"))
+			.setValue(this.task.metadata.id || "")
+			.onChange((value) => {
+				this.notifyMetadataChange("id", value);
+			});
+
+		this.registerDomEvent(idInput.inputEl, "blur", () => {
+			this.notifyMetadataChange("id", idInput.inputEl.value);
 		});
 	}
 

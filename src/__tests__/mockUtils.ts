@@ -409,6 +409,93 @@ const createMockEditorView = (docContent: string): EditorView => {
 	return mockView;
 };
 
+// Canvas Testing Utilities
+
+/**
+ * Create mock Canvas data
+ */
+export function createMockCanvasData(nodes: any[] = [], edges: any[] = []) {
+	return {
+		nodes,
+		edges,
+	};
+}
+
+/**
+ * Create mock Canvas text node
+ */
+export function createMockCanvasTextNode(
+	id: string,
+	text: string,
+	x: number = 0,
+	y: number = 0,
+	width: number = 250,
+	height: number = 60
+) {
+	return {
+		type: "text" as const,
+		id,
+		x,
+		y,
+		width,
+		height,
+		text,
+	};
+}
+
+/**
+ * Create mock Canvas task with metadata
+ */
+export function createMockCanvasTask(
+	id: string,
+	content: string,
+	filePath: string,
+	nodeId: string,
+	completed: boolean = false,
+	originalMarkdown?: string
+) {
+	return {
+		id,
+		content,
+		filePath,
+		line: 0,
+		completed,
+		status: completed ? "x" : " ",
+		originalMarkdown:
+			originalMarkdown || `- [${completed ? "x" : " "}] ${content}`,
+		metadata: {
+			sourceType: "canvas" as const,
+			canvasNodeId: nodeId,
+			tags: [],
+			children: [],
+		},
+	};
+}
+
+/**
+ * Create mock execution context for onCompletion tests
+ */
+export function createMockExecutionContext(task: any, plugin?: any, app?: any) {
+	return {
+		task,
+		plugin: plugin || createMockPlugin(),
+		app: app || createMockApp(),
+	};
+}
+
+/**
+ * Mock Canvas task updater with common methods
+ */
+export function createMockCanvasTaskUpdater() {
+	return {
+		deleteCanvasTask: jest.fn(),
+		moveCanvasTask: jest.fn(),
+		duplicateCanvasTask: jest.fn(),
+		addTaskToCanvasNode: jest.fn(),
+		isCanvasTask: jest.fn(),
+	};
+}
+
 export {
 	// createMockText is already exported inline
 	createMockChangeSet, // Export the consolidated function

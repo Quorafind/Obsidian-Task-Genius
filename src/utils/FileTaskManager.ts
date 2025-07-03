@@ -17,7 +17,7 @@ import { TFile } from "obsidian";
 interface BasesEntry {
 	ctx: {
 		_local: any;
-		app: any;
+		app: App;
 		filter: any;
 		formulas: any;
 		localUsed: boolean;
@@ -316,8 +316,8 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		newContent: string
 	): Promise<void> {
 		try {
-			const file = this.app.vault.getAbstractFileByPath(task.filePath);
-			if (file && file instanceof TFile) {
+			const file = this.app.vault.getFileByPath(task.filePath);
+			if (file) {
 				const currentPath = task.filePath;
 				const lastSlashIndex = currentPath.lastIndexOf("/");
 				const directory =
