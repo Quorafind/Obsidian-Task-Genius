@@ -91,6 +91,7 @@ import { taskGutterExtension } from "./editor-ext/TaskGutterHandler";
 import { autoDateManagerExtension } from "./editor-ext/autoDateManager";
 import { ViewManager } from "./pages/ViewManager";
 import { IcsManager } from "./utils/ics/IcsManager";
+import { CloudCalendarManager } from "./utils/cloud/CloudCalendarManager";
 import { VersionManager } from "./utils/VersionManager";
 import { RebuildProgressManager } from "./utils/RebuildProgressManager";
 
@@ -181,6 +182,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// ICS manager instance
 	icsManager: IcsManager;
+
+	// Cloud calendar manager instance
+	cloudCalendarManager: CloudCalendarManager;
 
 	// Version manager instance
 	versionManager: VersionManager;
@@ -429,6 +433,18 @@ export default class TaskProgressBarPlugin extends Plugin {
 					console.error("Failed to initialize ICS manager:", error);
 				});
 			}
+
+			// Initialize Cloud Calendar manager
+			this.cloudCalendarManager = new CloudCalendarManager(this);
+			this.addChild(this.cloudCalendarManager);
+
+			// Initialize Cloud Calendar manager
+			this.cloudCalendarManager.initialize().catch((error) => {
+				console.error(
+					"Failed to initialize Cloud Calendar manager:",
+					error
+				);
+			});
 
 			// Auto-open timeline sidebar if enabled
 			if (
@@ -1129,6 +1145,13 @@ export default class TaskProgressBarPlugin extends Plugin {
 	 */
 	getIcsManager(): IcsManager | undefined {
 		return this.icsManager;
+	}
+
+	/**
+	 * Get the Cloud Calendar manager instance
+	 */
+	getCloudCalendarManager(): CloudCalendarManager | undefined {
+		return this.cloudCalendarManager;
 	}
 
 	/**

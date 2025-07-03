@@ -67,7 +67,7 @@ export interface IcsEventFilter {
 /** Authentication configuration for ICS sources */
 export interface IcsAuthConfig {
 	/** Authentication type */
-	type: "none" | "basic" | "bearer" | "custom";
+	type: "none" | "basic" | "bearer" | "oauth2" | "custom";
 	/** Username for basic auth */
 	username?: string;
 	/** Password for basic auth */
@@ -76,6 +76,19 @@ export interface IcsAuthConfig {
 	token?: string;
 	/** Custom headers */
 	headers?: Record<string, string>;
+	/** OAuth 2.0 configuration */
+	oauth2?: {
+		provider: "google" | "icloud" | "custom";
+		clientId: string;
+		clientSecret?: string;
+		redirectUri: string;
+		scopes: string[];
+		accessToken?: string;
+		refreshToken?: string;
+		tokenExpiry?: number;
+		authUrl?: string;
+		tokenUrl?: string;
+	};
 }
 
 /** Text replacement rule for ICS events */

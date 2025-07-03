@@ -24,6 +24,7 @@ import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import "../../styles/ics-settings.css";
 import { HolidayDetector } from "../../utils/ics/HolidayDetector";
+import { CloudCalendarManager } from "../../utils/cloud/CloudCalendarManager";
 
 export class IcsSettingsComponent {
 	private plugin: TaskProgressBarPlugin;
@@ -101,10 +102,17 @@ export class IcsSettingsComponent {
 			text: "+ " + t("Add New Calendar Source"),
 		});
 		addButton.onclick = () => {
-			new IcsSourceModal(this.plugin.app, (source) => {
-				this.config.sources.push(source);
-				this.saveAndRefresh();
-			}).open();
+			new CalendarSourceSelectionModal(
+				this.plugin.app,
+				this.plugin,
+				(source) => {
+					if (source.type === "ics") {
+						this.config.sources.push(source.data);
+						this.saveAndRefresh();
+					}
+					// Cloud calendar sources are handled by CloudCalendarManager
+				}
+			).open();
 		};
 	}
 
@@ -211,7 +219,13 @@ export class IcsSettingsComponent {
 		const sourcesContainer = this.containerEl.createDiv("ics-sources-list");
 		sourcesContainer.createEl("h3", { text: t("Calendar Sources") });
 
-		if (this.config.sources.length === 0) {
+		// Get cloud calendar sources
+		const cloudManager = this.plugin.getCloudCalendarManager();
+		const cloudSources = cloudManager
+			? cloudManager.getConfigurations()
+			: [];
+
+		if (this.config.sources.length === 0 && cloudSources.length === 0) {
 			const emptyState = sourcesContainer.createDiv("ics-empty-state");
 			emptyState.createEl("p", {
 				text: t(
@@ -219,6 +233,19 @@ export class IcsSettingsComponent {
 				),
 			});
 			return;
+		}
+
+		// Display cloud calendar sources first
+		if (cloudSources.length > 0) {
+			sourcesContainer.createEl("h4", {
+				text: t("Cloud Calendar Sources"),
+			});
+			this.displayCloudSources(sourcesContainer, cloudSources);
+		}
+
+		// Display ICS sources
+		if (this.config.sources.length > 0) {
+			sourcesContainer.createEl("h4", { text: t("ICS/iCal Sources") });
 		}
 
 		this.config.sources.forEach((source, index) => {
@@ -362,6 +389,172 @@ export class IcsSettingsComponent {
 				) {
 					this.config.sources.splice(index, 1);
 					this.saveAndRefresh();
+				}
+			};
+		});
+	}
+
+	private displayCloudSources(
+		container: HTMLElement,
+		cloudSources: any[]
+	): void {
+		cloudSources.forEach((source, index) => {
+			const sourceContainer = container.createDiv(
+				"ics-source-item cloud-source"
+			);
+
+			// Source header
+			const sourceHeader = sourceContainer.createDiv("ics-source-header");
+
+			const titleContainer = sourceHeader.createDiv("ics-source-title");
+			titleContainer.createEl("strong", { text: source.name });
+
+			const statusEl = sourceHeader.createEl("span", {
+				cls: "ics-source-status",
+			});
+			statusEl.setText(source.enabled ? t("Enabled") : t("Disabled"));
+			statusEl.addClass(
+				source.enabled ? "status-enabled" : "status-disabled"
+			);
+
+			// Source details
+			const sourceDetails =
+				sourceContainer.createDiv("ics-source-details");
+			sourceDetails.createEl("div", {
+				text: `${t("Type")}: ${
+					source.type === "google"
+						? "Google Calendar"
+						: "iCloud Calendar"
+				}`,
+			});
+			sourceDetails.createEl("div", {
+				text: `${t("Status")}: ${source.syncStatus || "Not Synced"}`,
+			});
+			if (source.lastSync) {
+				sourceDetails.createEl("div", {
+					text: `${t("Last Sync")}: ${new Date(
+						source.lastSync
+					).toLocaleString()}`,
+				});
+			}
+
+			// Source actions
+			const sourceActions =
+				sourceContainer.createDiv("ics-source-actions");
+
+			// Primary actions
+			const primaryActions = sourceActions.createDiv("primary-actions");
+
+			// Edit button
+			const editButton = primaryActions.createEl("button", {
+				text: t("Edit"),
+				cls: "mod-cta",
+				title: t("Edit this calendar source"),
+			});
+			editButton.onclick = () => {
+				new CloudCalendarConfigModal(
+					this.plugin.app,
+					this.plugin,
+					(updatedConfig: any) => {
+						// Update configuration and refresh display
+						this.display();
+						new Notice(t("Cloud calendar source updated"));
+					},
+					source
+				).open();
+			};
+
+			// Sync button
+			const syncButton = primaryActions.createEl("button", {
+				text: t("Sync"),
+				title: t("Sync this calendar source now"),
+			});
+			syncButton.onclick = async () => {
+				syncButton.disabled = true;
+				syncButton.addClass("syncing");
+				syncButton.setText("⟳ " + t("Syncing..."));
+
+				try {
+					const cloudManager = this.plugin.getCloudCalendarManager();
+					if (cloudManager) {
+						await cloudManager.syncConfiguration(source.id);
+						new Notice(t("Sync completed successfully"));
+						syncButton.removeClass("syncing");
+						syncButton.addClass("success");
+						setTimeout(
+							() => syncButton.removeClass("success"),
+							2000
+						);
+						this.display(); // Refresh to show updated sync status
+					}
+				} catch (error) {
+					new Notice(t("Sync failed: ") + error.message);
+					syncButton.removeClass("syncing");
+					syncButton.addClass("error");
+					setTimeout(() => syncButton.removeClass("error"), 2000);
+				} finally {
+					syncButton.disabled = false;
+					syncButton.setText(t("Sync"));
+				}
+			};
+
+			// Secondary actions
+			const secondaryActions =
+				sourceActions.createDiv("secondary-actions");
+
+			// Toggle button
+			const toggleButton = secondaryActions.createEl("button", {
+				text: source.enabled ? t("Disable") : t("Enable"),
+				title: source.enabled
+					? t("Disable this source")
+					: t("Enable this source"),
+			});
+			toggleButton.onclick = async () => {
+				try {
+					const cloudManager = this.plugin.getCloudCalendarManager();
+					if (cloudManager) {
+						await cloudManager.updateConfiguration(source.id, {
+							enabled: !source.enabled,
+						});
+						this.display(); // Refresh to show updated status
+						new Notice(
+							source.enabled
+								? t("Source disabled")
+								: t("Source enabled")
+						);
+					}
+				} catch (error) {
+					new Notice(t("Failed to toggle source: ") + error.message);
+				}
+			};
+
+			// Delete button
+			const deleteButton = secondaryActions.createEl("button", {
+				text: t("Delete"),
+				cls: "mod-warning",
+				title: t("Delete this calendar source"),
+			});
+			deleteButton.onclick = async () => {
+				if (
+					confirm(
+						t(
+							"Are you sure you want to delete this calendar source?"
+						)
+					)
+				) {
+					try {
+						const cloudManager =
+							this.plugin.getCloudCalendarManager();
+						if (cloudManager) {
+							await cloudManager.removeConfiguration(source.id);
+							this.display(); // Refresh to remove deleted source
+							new Notice(t("Cloud calendar source deleted"));
+						}
+					} catch (error) {
+						new Notice(
+							t("Failed to delete source: ") + error.message
+						);
+					}
 				}
 			};
 		});
@@ -1525,5 +1718,571 @@ class TextReplacementModal extends Modal {
 
 	private generateId(): string {
 		return `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	}
+}
+
+/**
+ * Calendar Source Selection Modal
+ * Allows users to choose between ICS URL and cloud calendar sources
+ */
+class CalendarSourceSelectionModal extends Modal {
+	private plugin: TaskProgressBarPlugin;
+	private onSelect: (source: { type: "ics" | "cloud"; data: any }) => void;
+
+	constructor(
+		app: App,
+		plugin: TaskProgressBarPlugin,
+		onSelect: (source: { type: "ics" | "cloud"; data: any }) => void
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.onSelect = onSelect;
+		this.modalEl.addClass("calendar-source-selection-modal");
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl("h2", {
+			text: t("Add New Calendar Source"),
+		});
+
+		contentEl.createEl("p", {
+			text: t("Choose the type of calendar source you want to add:"),
+			cls: "setting-item-description",
+		});
+
+		// Source type options
+		const optionsContainer = contentEl.createDiv("source-type-options");
+
+		// ICS URL option
+		const icsOption = optionsContainer.createDiv("source-type-option");
+		icsOption.createEl("h3", { text: t("ICS/iCal URL") });
+		icsOption.createEl("p", {
+			text: t("Add a calendar by providing an ICS/iCal URL"),
+			cls: "source-type-description",
+		});
+		const icsButton = icsOption.createEl("button", {
+			text: t("Add ICS Source"),
+			cls: "mod-cta",
+		});
+		icsButton.onclick = () => {
+			this.close();
+			new IcsSourceModal(this.app, (source) => {
+				this.onSelect({ type: "ics", data: source });
+			}).open();
+		};
+
+		// Google Calendar option
+		const googleOption = optionsContainer.createDiv("source-type-option");
+		googleOption.createEl("h3", { text: t("Google Calendar") });
+		googleOption.createEl("p", {
+			text: t("Connect your Google Calendar account"),
+			cls: "source-type-description",
+		});
+		const googleButton = googleOption.createEl("button", {
+			text: t("Connect Google Calendar"),
+			cls: "mod-cta",
+		});
+		googleButton.onclick = () => {
+			this.close();
+			new GoogleCalendarAuthModal(this.app, this.plugin, (config) => {
+				this.onSelect({ type: "cloud", data: config });
+			}).open();
+		};
+
+		// iCloud Calendar option
+		const icloudOption = optionsContainer.createDiv("source-type-option");
+		icloudOption.createEl("h3", { text: t("iCloud Calendar") });
+		icloudOption.createEl("p", {
+			text: t("Connect your iCloud Calendar using App-Specific Password"),
+			cls: "source-type-description",
+		});
+		const icloudButton = icloudOption.createEl("button", {
+			text: t("Connect iCloud Calendar"),
+			cls: "mod-cta",
+		});
+		icloudButton.onclick = () => {
+			this.close();
+			new iCloudCalendarAuthModal(this.app, this.plugin, (config) => {
+				this.onSelect({ type: "cloud", data: config });
+			}).open();
+		};
+
+		// Cancel button
+		const buttonContainer = contentEl.createDiv("modal-button-container");
+		const cancelButton = buttonContainer.createEl("button", {
+			text: t("Cancel"),
+		});
+		cancelButton.onclick = () => {
+			this.close();
+		};
+	}
+}
+
+/**
+ * Google Calendar Authentication Modal
+ * Handles Google OAuth 2.0 authentication flow
+ */
+class GoogleCalendarAuthModal extends Modal {
+	private plugin: TaskProgressBarPlugin;
+	private onSuccess: (config: any) => void;
+	private isAuthenticating: boolean = false;
+
+	constructor(
+		app: App,
+		plugin: TaskProgressBarPlugin,
+		onSuccess: (config: any) => void
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.onSuccess = onSuccess;
+		this.modalEl.addClass("google-calendar-auth-modal");
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl("h2", {
+			text: t("Connect Google Calendar"),
+		});
+
+		contentEl.createEl("p", {
+			text: t("Authenticate with Google to access your calendars"),
+			cls: "setting-item-description",
+		});
+
+		// Instructions
+		const instructionsContainer = contentEl.createDiv("auth-instructions");
+		instructionsContainer.createEl("h3", { text: t("Instructions") });
+
+		const instructionsList = instructionsContainer.createEl("ol");
+		instructionsList.createEl("li", {
+			text: t(
+				"Click 'Start Authentication' to open Google's authorization page"
+			),
+		});
+		instructionsList.createEl("li", {
+			text: t(
+				"Sign in to your Google account and grant calendar permissions"
+			),
+		});
+		instructionsList.createEl("li", {
+			text: t("You will be redirected back to Obsidian automatically"),
+		});
+
+		// Authentication status
+		const statusContainer = contentEl.createDiv("auth-status");
+		const statusEl = statusContainer.createEl("div", {
+			cls: "auth-status-message",
+		});
+
+		// Buttons
+		const buttonContainer = contentEl.createDiv("modal-button-container");
+
+		const authButton = buttonContainer.createEl("button", {
+			text: t("Start Authentication"),
+			cls: "mod-cta",
+		});
+
+		const cancelButton = buttonContainer.createEl("button", {
+			text: t("Cancel"),
+		});
+
+		authButton.onclick = async () => {
+			if (this.isAuthenticating) return;
+
+			this.isAuthenticating = true;
+			authButton.disabled = true;
+			authButton.setText(t("Authenticating..."));
+			statusEl.setText(t("Opening Google authorization page..."));
+			statusEl.className = "auth-status-message auth-status-pending";
+
+			try {
+				const cloudManager = this.plugin.getCloudCalendarManager();
+				if (!cloudManager) {
+					throw new Error("Cloud Calendar Manager not available");
+				}
+
+				// For now, use a placeholder client ID - in production this should be configurable
+				const config = await cloudManager.authenticateGoogle(
+					"your-google-client-id.apps.googleusercontent.com"
+				);
+
+				statusEl.setText(t("Authentication successful!"));
+				statusEl.className = "auth-status-message auth-status-success";
+
+				new Notice(t("Google Calendar connected successfully!"));
+				this.onSuccess(config);
+				this.close();
+			} catch (error) {
+				console.error("Google authentication failed:", error);
+				statusEl.setText(t("Authentication failed: ") + error.message);
+				statusEl.className = "auth-status-message auth-status-error";
+				new Notice(t("Google Calendar authentication failed"));
+			} finally {
+				this.isAuthenticating = false;
+				authButton.disabled = false;
+				authButton.setText(t("Start Authentication"));
+			}
+		};
+
+		cancelButton.onclick = () => {
+			this.close();
+		};
+	}
+}
+
+/**
+ * iCloud Calendar Authentication Modal
+ * Handles iCloud authentication using App-Specific Password
+ */
+class iCloudCalendarAuthModal extends Modal {
+	private plugin: TaskProgressBarPlugin;
+	private onSuccess: (config: any) => void;
+	private username: string = "";
+	private appPassword: string = "";
+	private isAuthenticating: boolean = false;
+
+	constructor(
+		app: App,
+		plugin: TaskProgressBarPlugin,
+		onSuccess: (config: any) => void
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.onSuccess = onSuccess;
+		this.modalEl.addClass("icloud-calendar-auth-modal");
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl("h2", {
+			text: t("Connect iCloud Calendar"),
+		});
+
+		contentEl.createEl("p", {
+			text: t(
+				"Connect your iCloud Calendar using your Apple ID and App-Specific Password"
+			),
+			cls: "setting-item-description",
+		});
+
+		// Instructions
+		const instructionsContainer = contentEl.createDiv("auth-instructions");
+		instructionsContainer.createEl("h3", { text: t("Setup Instructions") });
+
+		const instructionsList = instructionsContainer.createEl("ol");
+		instructionsList.createEl("li", {
+			text: t("Go to appleid.apple.com and sign in"),
+		});
+		instructionsList.createEl("li", {
+			text: t("Navigate to 'App-Specific Passwords' section"),
+		});
+		instructionsList.createEl("li", {
+			text: t(
+				"Generate a new app-specific password for 'Obsidian Task Genius'"
+			),
+		});
+		instructionsList.createEl("li", {
+			text: t("Enter your Apple ID and the generated password below"),
+		});
+
+		// Username input
+		new Setting(contentEl)
+			.setName(t("Apple ID"))
+			.setDesc(t("Your Apple ID email address"))
+			.addText((text) => {
+				text.setPlaceholder("your-email@icloud.com")
+					.setValue(this.username)
+					.onChange((value) => {
+						this.username = value;
+					});
+			});
+
+		// App-specific password input
+		new Setting(contentEl)
+			.setName(t("App-Specific Password"))
+			.setDesc(t("The app-specific password generated for Obsidian"))
+			.addText((text) => {
+				text.setPlaceholder("xxxx-xxxx-xxxx-xxxx")
+					.setValue(this.appPassword)
+					.onChange((value) => {
+						this.appPassword = value;
+					});
+				text.inputEl.type = "password";
+			});
+
+		// Authentication status
+		const statusContainer = contentEl.createDiv("auth-status");
+		const statusEl = statusContainer.createEl("div", {
+			cls: "auth-status-message",
+		});
+
+		// Buttons
+		const buttonContainer = contentEl.createDiv("modal-button-container");
+
+		const authButton = buttonContainer.createEl("button", {
+			text: t("Connect iCloud Calendar"),
+			cls: "mod-cta",
+		});
+
+		const cancelButton = buttonContainer.createEl("button", {
+			text: t("Cancel"),
+		});
+
+		authButton.onclick = async () => {
+			if (this.isAuthenticating) return;
+
+			if (!this.username.trim() || !this.appPassword.trim()) {
+				statusEl.setText(
+					t("Please enter both Apple ID and App-Specific Password")
+				);
+				statusEl.className = "auth-status-message auth-status-error";
+				return;
+			}
+
+			this.isAuthenticating = true;
+			authButton.disabled = true;
+			authButton.setText(t("Connecting..."));
+			statusEl.setText(t("Verifying credentials..."));
+			statusEl.className = "auth-status-message auth-status-pending";
+
+			try {
+				const cloudManager = this.plugin.getCloudCalendarManager();
+				if (!cloudManager) {
+					throw new Error("Cloud Calendar Manager not available");
+				}
+
+				const config = await cloudManager.authenticateiCloud(
+					this.username,
+					this.appPassword
+				);
+
+				statusEl.setText(t("Authentication successful!"));
+				statusEl.className = "auth-status-message auth-status-success";
+
+				new Notice(t("iCloud Calendar connected successfully!"));
+				this.onSuccess(config);
+				this.close();
+			} catch (error) {
+				console.error("iCloud authentication failed:", error);
+				statusEl.setText(t("Authentication failed: ") + error.message);
+				statusEl.className = "auth-status-message auth-status-error";
+				new Notice(t("iCloud Calendar authentication failed"));
+			} finally {
+				this.isAuthenticating = false;
+				authButton.disabled = false;
+				authButton.setText(t("Connect iCloud Calendar"));
+			}
+		};
+
+		cancelButton.onclick = () => {
+			this.close();
+		};
+	}
+}
+
+/**
+ * Cloud Calendar Configuration Modal
+ * Allows editing of cloud calendar source settings
+ */
+class CloudCalendarConfigModal extends Modal {
+	private plugin: TaskProgressBarPlugin;
+	private onSave: (config: any) => void;
+	private config: any;
+
+	constructor(
+		app: App,
+		plugin: TaskProgressBarPlugin,
+		onSave: (config: any) => void,
+		existingConfig: any
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.onSave = onSave;
+		this.config = { ...existingConfig };
+		this.modalEl.addClass("cloud-calendar-config-modal");
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl("h2", {
+			text: t("Edit Cloud Calendar Source"),
+		});
+
+		// Basic settings
+		new Setting(contentEl)
+			.setName(t("Source Name"))
+			.setDesc(t("Display name for this calendar source"))
+			.addText((text) => {
+				text.setPlaceholder(t("My Calendar"))
+					.setValue(this.config.name)
+					.onChange((value) => {
+						this.config.name = value;
+					});
+			});
+
+		// Enabled toggle
+		new Setting(contentEl)
+			.setName(t("Enabled"))
+			.setDesc(t("Whether this source is active"))
+			.addToggle((toggle) => {
+				toggle.setValue(this.config.enabled).onChange((value) => {
+					this.config.enabled = value;
+				});
+			});
+
+		// Sync settings section
+		contentEl.createEl("h3", { text: t("Sync Settings") });
+
+		new Setting(contentEl)
+			.setName(t("Refresh Interval"))
+			.setDesc(t("How often to refresh this source (minutes)"))
+			.addText((text) => {
+				text.setPlaceholder("60")
+					.setValue(
+						this.config.syncSettings?.refreshInterval?.toString() ||
+							"60"
+					)
+					.onChange((value) => {
+						const interval = parseInt(value, 10);
+						if (!isNaN(interval) && interval > 0) {
+							if (!this.config.syncSettings) {
+								this.config.syncSettings = {};
+							}
+							this.config.syncSettings.refreshInterval = interval;
+						}
+					});
+			});
+
+		new Setting(contentEl)
+			.setName(t("Sync Past Days"))
+			.setDesc(t("Number of days in the past to sync"))
+			.addText((text) => {
+				text.setPlaceholder("30")
+					.setValue(
+						this.config.syncSettings?.syncPastDays?.toString() ||
+							"30"
+					)
+					.onChange((value) => {
+						const days = parseInt(value, 10);
+						if (!isNaN(days) && days >= 0) {
+							if (!this.config.syncSettings) {
+								this.config.syncSettings = {};
+							}
+							this.config.syncSettings.syncPastDays = days;
+						}
+					});
+			});
+
+		new Setting(contentEl)
+			.setName(t("Sync Future Days"))
+			.setDesc(t("Number of days in the future to sync"))
+			.addText((text) => {
+				text.setPlaceholder("365")
+					.setValue(
+						this.config.syncSettings?.syncFutureDays?.toString() ||
+							"365"
+					)
+					.onChange((value) => {
+						const days = parseInt(value, 10);
+						if (!isNaN(days) && days >= 0) {
+							if (!this.config.syncSettings) {
+								this.config.syncSettings = {};
+							}
+							this.config.syncSettings.syncFutureDays = days;
+						}
+					});
+			});
+
+		// Event type settings
+		new Setting(contentEl)
+			.setName(t("Show All-Day Events"))
+			.setDesc(t("Include all-day events from this source"))
+			.addToggle((toggle) => {
+				toggle
+					.setValue(
+						this.config.syncSettings?.showAllDayEvents ?? true
+					)
+					.onChange((value) => {
+						if (!this.config.syncSettings) {
+							this.config.syncSettings = {};
+						}
+						this.config.syncSettings.showAllDayEvents = value;
+					});
+			});
+
+		new Setting(contentEl)
+			.setName(t("Show Timed Events"))
+			.setDesc(t("Include timed events from this source"))
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.config.syncSettings?.showTimedEvents ?? true)
+					.onChange((value) => {
+						if (!this.config.syncSettings) {
+							this.config.syncSettings = {};
+						}
+						this.config.syncSettings.showTimedEvents = value;
+					});
+			});
+
+		// Calendar selection section
+		if (this.config.calendars && this.config.calendars.length > 0) {
+			contentEl.createEl("h3", { text: t("Calendar Selection") });
+			contentEl.createEl("p", {
+				text: t("Choose which calendars to sync from this source"),
+				cls: "setting-item-description",
+			});
+
+			this.config.calendars.forEach((calendar: any, index: number) => {
+				new Setting(contentEl)
+					.setName(calendar.name || `Calendar ${index + 1}`)
+					.setDesc(calendar.description || calendar.id)
+					.addToggle((toggle) => {
+						toggle
+							.setValue(calendar.enabled ?? false)
+							.onChange((value) => {
+								this.config.calendars[index].enabled = value;
+							});
+					});
+			});
+		}
+
+		// Buttons
+		const buttonContainer = contentEl.createDiv("modal-button-container");
+
+		const saveButton = buttonContainer.createEl("button", {
+			text: t("Save"),
+			cls: "mod-cta",
+		});
+		saveButton.onclick = async () => {
+			try {
+				const cloudManager = this.plugin.getCloudCalendarManager();
+				if (cloudManager) {
+					await cloudManager.updateConfiguration(
+						this.config.id,
+						this.config
+					);
+					this.onSave(this.config);
+					this.close();
+				}
+			} catch (error) {
+				new Notice(t("Failed to save configuration: ") + error.message);
+			}
+		};
+
+		const cancelButton = buttonContainer.createEl("button", {
+			text: t("Cancel"),
+		});
+		cancelButton.onclick = () => {
+			this.close();
+		};
 	}
 }

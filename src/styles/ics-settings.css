@@ -2,7 +2,6 @@
 
 /* Main container */
 .ics-settings-container {
-	padding: 1rem;
 	max-width: 800px;
 	margin: 0 auto;
 }
@@ -313,10 +312,6 @@
 }
 
 @media (max-width: 480px) {
-	.ics-settings-container {
-		padding: 0.5rem;
-	}
-
 	.ics-source-item {
 		padding: 1rem;
 	}
@@ -552,4 +547,142 @@
 .ics-text-replacement-modal .modal-content,
 .ics-source-modal .modal-content {
 	padding-right: var(--size-4-2);
+}
+
+/* Cloud calendar source specific styles */
+.ics-source-item.cloud-source {
+	border-left: 3px solid var(--color-accent);
+	background: var(--background-secondary);
+}
+
+.cloud-source .ics-source-header {
+	position: relative;
+}
+
+.cloud-source .ics-source-header::after {
+	content: "☁";
+	position: absolute;
+	right: 0;
+	top: 0;
+	font-size: 16px;
+	color: var(--color-accent);
+	opacity: 0.7;
+}
+
+/* Calendar source selection modal styles */
+.calendar-source-selection-modal .source-type-options {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+	margin: 20px 0;
+}
+
+.source-type-option {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 16px;
+	transition: all 0.2s ease;
+}
+
+.source-type-option:hover {
+	border-color: var(--color-accent);
+	background: var(--background-secondary);
+}
+
+.source-type-option h3 {
+	margin: 0 0 8px 0;
+	color: var(--text-normal);
+}
+
+.source-type-description {
+	margin: 0 0 12px 0;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.source-type-option button {
+	width: 100%;
+}
+
+/* Authentication modal styles */
+.google-calendar-auth-modal .auth-instructions,
+.icloud-calendar-auth-modal .auth-instructions {
+	margin: 20px 0;
+	padding: 16px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+}
+
+.auth-instructions h3 {
+	margin: 0 0 12px 0;
+	color: var(--text-normal);
+}
+
+.auth-instructions ol {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.auth-instructions li {
+	margin: 8px 0;
+	color: var(--text-muted);
+}
+
+.auth-status {
+	margin: 16px 0;
+	padding: 12px;
+	border-radius: 6px;
+	min-height: 20px;
+}
+
+.auth-status-message {
+	font-weight: 500;
+}
+
+.auth-status-pending {
+	background: var(--background-modifier-info);
+	color: var(--text-info);
+}
+
+.auth-status-success {
+	background: var(--background-modifier-success);
+	color: var(--text-success);
+}
+
+.auth-status-error {
+	background: var(--background-modifier-error);
+	color: var(--text-error);
+}
+
+/* Sync button states */
+.ics-source-actions button.syncing {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+
+.ics-source-actions button.success {
+	background: var(--color-green);
+	color: white;
+}
+
+.ics-source-actions button.error {
+	background: var(--color-red);
+	color: white;
+}
+
+/* Cloud source details styling */
+.cloud-source .ics-source-details {
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+}
+
+.cloud-source .ics-source-details div {
+	margin: 4px 0;
+}
+
+/* Responsive grid for larger screens */
+@media (min-width: 768px) {
+	.calendar-source-selection-modal .source-type-options {
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	}
 }
