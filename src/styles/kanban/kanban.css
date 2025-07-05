@@ -379,3 +379,28 @@
 	background-color: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
+
+/* Column Drag & Drop Styling */
+.tg-kanban-column-dragging {
+	/* Style for the column being dragged */
+	transform: rotate(5deg);
+	opacity: 0.8;
+	box-shadow: var(--shadow-xl);
+	z-index: 1000;
+}
+
+.tg-kanban-column-ghost {
+	/* Style for the ghost placeholder when dragging columns */
+	background-color: var(--background-modifier-border);
+	border: 2px dashed var(--background-modifier-accent);
+	opacity: 0.5;
+}
+
+.tg-kanban-column-header {
+	/* Make column headers draggable */
+	cursor: grab;
+}
+
+.tg-kanban-column-header:active {
+	cursor: grabbing;
+}

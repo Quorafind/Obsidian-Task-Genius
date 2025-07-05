@@ -342,7 +342,7 @@ export class QuadrantCardComponent extends Component {
 	}
 
 	private async openTaskInFile() {
-		const file = this.app.vault.getAbstractFileByPath(this.task.filePath);
+		const file = this.app.vault.getFileByPath(this.task.filePath);
 		if (file) {
 			const leaf = this.app.workspace.getLeaf(false);
 			await leaf.openFile(file as any);

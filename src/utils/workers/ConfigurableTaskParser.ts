@@ -463,6 +463,10 @@ export class MarkdownTaskParser {
 			scheduled: "scheduledDate",
 			completion: "completedDate",
 			created: "createdDate",
+			cancelled: "cancelledDate",
+			id: "id",
+			dependsOn: "dependsOn",
+			onCompletion: "onCompletion",
 		};
 
 		// Apply key mapping if it exists
@@ -516,7 +520,24 @@ export class MarkdownTaskParser {
 				Object.keys(this.config.emojiMapping).some((e) =>
 					valuePart.substring(i).startsWith(e)
 				) ||
-				["[", "#"].includes(char)
+				char === "["
+			) {
+				valueEnd = i;
+				break;
+			}
+
+			// Check for file extensions followed by space or end of content
+			const fileExtensionEnd = this.findFileExtensionEnd(valuePart, i);
+			if (fileExtensionEnd > i) {
+				valueEnd = fileExtensionEnd;
+				break;
+			}
+
+			// Check for space followed by # (tag) - this handles cases without file extensions
+			if (
+				char === " " &&
+				i + 1 < valuePart.length &&
+				valuePart[i + 1] === "#"
 			) {
 				valueEnd = i;
 				break;
@@ -525,9 +546,20 @@ export class MarkdownTaskParser {
 
 		const value = valuePart.substring(0, valueEnd).trim();
 
-		// For priority emojis, use specific values based on the emoji
-		const metadataValue =
-			value || this.getDefaultEmojiValue(earliestEmoji.emoji);
+		// Handle special field processing
+		let metadataValue: string;
+		if (earliestEmoji.key === "dependsOn" && value) {
+			// For dependsOn, split by comma and join back as string for metadata storage
+			metadataValue = value
+				.split(",")
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0)
+				.join(",");
+		} else {
+			// For priority emojis, use specific values based on the emoji
+			metadataValue =
+				value || this.getDefaultEmojiValue(earliestEmoji.emoji);
+		}
 
 		const newPos =
 			earliestEmoji.pos +
@@ -537,6 +569,35 @@ export class MarkdownTaskParser {
 		const afterRemaining = content.substring(newPos);
 
 		return [earliestEmoji.key, metadataValue, beforeEmoji, afterRemaining];
+	}
+
+	/**
+	 * Find the end position of a file extension pattern (e.g., .md, .canvas)
+	 * followed by optional heading (#heading) and then space or end of content
+	 */
+	private findFileExtensionEnd(content: string, startPos: number): number {
+		const supportedExtensions = [".md", ".canvas", ".txt", ".pdf"];
+
+		for (const ext of supportedExtensions) {
+			if (content.substring(startPos).startsWith(ext)) {
+				let pos = startPos + ext.length;
+
+				// Check for optional heading (#heading)
+				if (pos < content.length && content[pos] === "#") {
+					// Find the end of the heading (next space or end of content)
+					while (pos < content.length && content[pos] !== " ") {
+						pos++;
+					}
+				}
+
+				// Check if we're at end of content or followed by space
+				if (pos >= content.length || content[pos] === " ") {
+					return pos;
+				}
+			}
+		}
+
+		return startPos; // No file extension pattern found
 	}
 
 	private getDefaultEmojiValue(emoji: string): string {
@@ -1061,11 +1122,20 @@ export class MarkdownTaskParser {
 				createdDate:
 					enhancedTask.createdDate ||
 					enhancedTask.metadata.createdDate,
+				cancelledDate: enhancedTask.metadata.cancelledDate,
 				recurrence:
 					enhancedTask.recurrence || enhancedTask.metadata.recurrence,
 				project: enhancedTask.project || enhancedTask.metadata.project,
 				context: enhancedTask.context || enhancedTask.metadata.context,
 				area: enhancedTask.metadata.area,
+				id: enhancedTask.metadata.id,
+				dependsOn: enhancedTask.metadata.dependsOn
+					? enhancedTask.metadata.dependsOn
+							.split(",")
+							.map((id) => id.trim())
+							.filter((id) => id.length > 0)
+					: undefined,
+				onCompletion: enhancedTask.metadata.onCompletion,
 				heading: Array.isArray(enhancedTask.heading)
 					? enhancedTask.heading
 					: enhancedTask.heading

@@ -10,7 +10,7 @@ export interface IcsSource {
 	id: string;
 	/** Display name for the source */
 	name: string;
-	/** URL to the ICS file */
+	/** URL to the ICS file (supports http://, https://, and webcal:// protocols) */
 	url: string;
 	/** Whether this source is enabled */
 	enabled: boolean;
@@ -382,4 +382,36 @@ export interface IcsEventWithHoliday extends IcsEvent {
 	holidayGroup?: IcsHolidayGroup;
 	/** Whether this event should be shown in forecast */
 	showInForecast: boolean;
+}
+
+/** Webcal URL validation and conversion result */
+export interface WebcalValidationResult {
+	/** Whether the URL is valid */
+	isValid: boolean;
+	/** Whether the URL is a webcal URL */
+	isWebcal: boolean;
+	/** The URL to use for fetching (converted if needed) */
+	fetchUrl?: string;
+	/** Error message if validation failed */
+	error?: string;
+	/** Warning message for user information */
+	warning?: string;
+}
+
+/** Webcal-related error types */
+export type WebcalError =
+	| "invalid-url"
+	| "conversion-failed"
+	| "fetch-failed"
+	| "protocol-not-supported"
+	| "network-error";
+
+/** Webcal conversion options */
+export interface WebcalConversionOptions {
+	/** Prefer HTTPS over HTTP when converting webcal URLs */
+	preferHttps?: boolean;
+	/** Custom protocol mapping for specific hosts */
+	protocolMapping?: Record<string, "http" | "https">;
+	/** Timeout for URL validation in milliseconds */
+	validationTimeout?: number;
 }

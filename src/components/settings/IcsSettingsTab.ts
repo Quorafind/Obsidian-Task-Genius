@@ -24,6 +24,7 @@ import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import "../../styles/ics-settings.css";
 import { HolidayDetector } from "../../utils/ics/HolidayDetector";
+import { WebcalUrlConverter } from "../../utils/ics/WebcalUrlConverter";
 
 export class IcsSettingsComponent {
 	private plugin: TaskProgressBarPlugin;
@@ -289,7 +290,9 @@ export class IcsSettingsComponent {
 			// Sync button
 			const syncButton = primaryActions.createEl("button", {
 				text: t("Sync"),
-				title: t("Sync this calendar source now"),
+				attr: {
+					"aria-label": t("Sync this calendar source now"),
+				},
 			});
 			syncButton.onclick = async () => {
 				syncButton.disabled = true;
@@ -447,12 +450,51 @@ class IcsSourceModal extends Modal {
 		// URL
 		new Setting(contentEl)
 			.setName(t("ICS URL"))
-			.setDesc(t("URL to the ICS/iCal file"))
+			.setDesc(
+				t(
+					"URL to the ICS/iCal file (supports http://, https://, and webcal:// protocols)"
+				)
+			)
 			.addText((text) => {
-				text.setPlaceholder("https://example.com/calendar.ics")
+				text.setPlaceholder(
+					"https://example.com/calendar.ics or webcal://example.com/calendar.ics"
+				)
 					.setValue(this.source.url)
 					.onChange((value) => {
 						this.source.url = value;
+
+						// Show URL conversion info for webcal URLs
+						if (WebcalUrlConverter.isWebcalUrl(value)) {
+							const conversionResult =
+								WebcalUrlConverter.convertWebcalUrl(value);
+							if (conversionResult.success) {
+								const description =
+									WebcalUrlConverter.getConversionDescription(
+										conversionResult
+									);
+								// Find the description element and update it
+								const descEl =
+									text.inputEl.parentElement?.querySelector(
+										".setting-item-description"
+									);
+								if (descEl) {
+									descEl.textContent = `${t(
+										"URL to the ICS/iCal file (supports http://, https://, and webcal:// protocols)"
+									)} - ${description}`;
+								}
+							}
+						} else {
+							// Reset description for non-webcal URLs
+							const descEl =
+								text.inputEl.parentElement?.querySelector(
+									".setting-item-description"
+								);
+							if (descEl) {
+								descEl.textContent = t(
+									"URL to the ICS/iCal file (supports http://, https://, and webcal:// protocols)"
+								);
+							}
+						}
 					});
 			});
 
@@ -1228,10 +1270,14 @@ class IcsSourceModal extends Modal {
 			return false;
 		}
 
-		try {
-			new URL(this.source.url);
-		} catch {
-			new Notice(t("Please enter a valid URL"));
+		// Use WebcalUrlConverter for URL validation
+		const conversionResult = WebcalUrlConverter.convertWebcalUrl(
+			this.source.url
+		);
+		if (!conversionResult.success) {
+			new Notice(
+				t("Please enter a valid URL") + ": " + conversionResult.error
+			);
 			return false;
 		}
 

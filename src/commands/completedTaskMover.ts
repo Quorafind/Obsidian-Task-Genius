@@ -1492,11 +1492,22 @@ export async function autoMoveCompletedTasks(
 	const settings = plugin.settings.completedTaskMover;
 
 	// Check if auto-move is enabled and default file is set
-	const isCompletedMode = moveMode === "allCompleted" || moveMode === "directChildren" || moveMode === "all";
-	const isAutoMoveEnabled = isCompletedMode ? settings.enableAutoMove : settings.enableIncompletedAutoMove;
-	const defaultTargetFile = isCompletedMode ? settings.defaultTargetFile : settings.incompletedDefaultTargetFile;
-	const defaultInsertionMode = isCompletedMode ? settings.defaultInsertionMode : settings.incompletedDefaultInsertionMode;
-	const defaultHeadingName = isCompletedMode ? settings.defaultHeadingName : settings.incompletedDefaultHeadingName;
+	const isCompletedMode =
+		moveMode === "allCompleted" ||
+		moveMode === "directChildren" ||
+		moveMode === "all";
+	const isAutoMoveEnabled = isCompletedMode
+		? settings.enableAutoMove
+		: settings.enableIncompletedAutoMove;
+	const defaultTargetFile = isCompletedMode
+		? settings.defaultTargetFile
+		: settings.incompletedDefaultTargetFile;
+	const defaultInsertionMode = isCompletedMode
+		? settings.defaultInsertionMode
+		: settings.incompletedDefaultInsertionMode;
+	const defaultHeadingName = isCompletedMode
+		? settings.defaultHeadingName
+		: settings.incompletedDefaultHeadingName;
 
 	if (!isAutoMoveEnabled || !defaultTargetFile) {
 		return false; // Auto-move not configured, fall back to manual selection
@@ -1514,7 +1525,7 @@ export async function autoMoveCompletedTasks(
 		);
 
 		// Find or create target file
-		let targetFile = plugin.app.vault.getAbstractFileByPath(defaultTargetFile);
+		let targetFile = plugin.app.vault.getFileByPath(defaultTargetFile);
 
 		if (!targetFile) {
 			// Create the file if it doesn't exist
@@ -1542,12 +1553,23 @@ export async function autoMoveCompletedTasks(
 				break;
 			case "after-heading":
 				// Find the heading or create it
-				const headingPattern = new RegExp(`^#+\\s+${defaultHeadingName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
-				let headingLineIndex = lines.findIndex(line => headingPattern.test(line));
+				const headingPattern = new RegExp(
+					`^#+\\s+${defaultHeadingName.replace(
+						/[.*+?^${}()|[\]\\]/g,
+						"\\$&"
+					)}\\s*$`,
+					"i"
+				);
+				let headingLineIndex = lines.findIndex((line) =>
+					headingPattern.test(line)
+				);
 
 				if (headingLineIndex === -1) {
 					// Create the heading at the end of the file
-					if (lines.length > 0 && lines[lines.length - 1].trim() !== "") {
+					if (
+						lines.length > 0 &&
+						lines[lines.length - 1].trim() !== ""
+					) {
 						lines.push(""); // Add empty line before heading
 					}
 					lines.push(`## ${defaultHeadingName}`);
@@ -1557,7 +1579,10 @@ export async function autoMoveCompletedTasks(
 
 				insertPosition = headingLineIndex + 1;
 				// Skip any empty lines after the heading
-				while (insertPosition < lines.length && lines[insertPosition].trim() === "") {
+				while (
+					insertPosition < lines.length &&
+					lines[insertPosition].trim() === ""
+				) {
 					insertPosition++;
 				}
 				break;
@@ -1586,7 +1611,11 @@ export async function autoMoveCompletedTasks(
 		TaskUtils.removeTasksFromFile(editor, linesToRemove);
 
 		const taskType = isCompletedMode ? "completed" : "incomplete";
-		new Notice(`${t("Auto-moved")} ${taskType} ${t("tasks to")} ${defaultTargetFile}`);
+		new Notice(
+			`${t("Auto-moved")} ${taskType} ${t(
+				"tasks to"
+			)} ${defaultTargetFile}`
+		);
 
 		return true;
 	} catch (error) {
@@ -1616,7 +1645,10 @@ export function autoMoveCompletedTasksCommand(
 
 	if (checking) {
 		// Check if auto-move is enabled for this mode
-		const isCompletedMode = moveMode === "allCompleted" || moveMode === "directChildren" || moveMode === "all";
+		const isCompletedMode =
+			moveMode === "allCompleted" ||
+			moveMode === "directChildren" ||
+			moveMode === "all";
 		const isAutoMoveEnabled = isCompletedMode
 			? plugin.settings.completedTaskMover.enableAutoMove
 			: plugin.settings.completedTaskMover.enableIncompletedAutoMove;
@@ -1669,20 +1701,25 @@ export function autoMoveCompletedTasksCommand(
 	const selectedLines = Array.from(selectedLinesSet);
 
 	// Try auto-move first, fall back to manual selection if it fails
-	autoMoveCompletedTasks(editor, currentFile, plugin, selectedLines, moveMode)
-		.then((success) => {
-			if (!success) {
-				// Fall back to manual selection
-				new CompletedTaskFileSelectionModal(
-					plugin.app,
-					plugin,
-					editor,
-					currentFile,
-					selectedLines,
-					moveMode
-				).open();
-			}
-		});
+	autoMoveCompletedTasks(
+		editor,
+		currentFile,
+		plugin,
+		selectedLines,
+		moveMode
+	).then((success) => {
+		if (!success) {
+			// Fall back to manual selection
+			new CompletedTaskFileSelectionModal(
+				plugin.app,
+				plugin,
+				editor,
+				currentFile,
+				selectedLines,
+				moveMode
+			).open();
+		}
+	});
 
 	return true;
 }

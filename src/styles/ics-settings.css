@@ -2,7 +2,6 @@
 
 /* Main container */
 .ics-settings-container {
-	padding: 1rem;
 	max-width: 800px;
 	margin: 0 auto;
 }
@@ -313,10 +312,6 @@
 }
 
 @media (max-width: 480px) {
-	.ics-settings-container {
-		padding: 0.5rem;
-	}
-
 	.ics-source-item {
 		padding: 1rem;
 	}

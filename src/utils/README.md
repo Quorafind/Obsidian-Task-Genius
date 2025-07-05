@@ -146,6 +146,50 @@ The task parsing system follows a layered architecture:
   - Batch indexing operations
   - Error handling and reporting
 
+### OnCompletion Action System
+
+#### `onCompletion/BaseActionExecutor.ts`
+**Abstract base class for all onCompletion actions**
+- Provides task type detection and routing logic
+- Automatically routes Canvas vs Markdown tasks to appropriate handlers
+- Implements common error handling and result formatting
+- **Key Features:**
+  - Canvas task detection via `isCanvasTask()`
+  - Automatic execution routing to `executeForCanvas()` or `executeForMarkdown()`
+  - Shared utility methods for Canvas task operations
+
+#### `onCompletion/DeleteActionExecutor.ts`
+**Removes completed tasks from files**
+- **Canvas Support**: Removes tasks from Canvas text nodes
+- **Markdown Support**: Removes task lines from Markdown files
+- Maintains file structure integrity
+
+#### `onCompletion/MoveActionExecutor.ts`
+**Moves completed tasks between files/sections**
+- **Canvas to Canvas**: Moves tasks between Canvas text nodes
+- **Canvas to Markdown**: Converts and moves to Markdown files
+- **Markdown to Canvas**: Adds tasks to Canvas text nodes
+- **Cross-format Support**: Seamless format conversion
+
+#### `onCompletion/DuplicateActionExecutor.ts`
+**Creates copies of completed tasks**
+- **Metadata Preservation**: Optional metadata retention
+- **Cross-format Duplication**: Support for all file type combinations
+- **Timestamp Tracking**: Adds duplication timestamps
+
+#### `onCompletion/ArchiveActionExecutor.ts`
+**Archives completed tasks to designated files**
+- **Default Archive Location**: `Archive/Completed Tasks.md`
+- **Custom Archive Support**: User-defined archive files and sections
+- **Canvas Integration**: Archives Canvas tasks to Markdown format
+
+#### `onCompletion/CanvasTaskOperationUtils.ts`
+**Utility class for Canvas task operations**
+- **Text Node Management**: Find, create, and position Canvas text nodes
+- **Section Handling**: Insert tasks into specific sections
+- **Format Conversion**: Convert between Canvas and Markdown formats
+- **Metadata Handling**: Preserve task metadata during operations
+
 ### Data Management
 
 #### `import/TaskIndexer.ts`
@@ -271,6 +315,52 @@ const options: TaskManagerOptions = {
 - **Supporting New File Types**: Add to `fileTypeUtils.ts` and create parser
 - **Custom Filtering**: Extend `TaskFilterUtils.ts` filter implementations
 - **Performance Tuning**: Adjust worker pool size and queue priorities
+
+## 🎯 OnCompletion Actions
+
+The plugin supports automatic actions when tasks are completed through the `onCompletion` metadata field.
+
+### Supported Actions
+
+#### Delete Action
+```markdown
+- [ ] Task to delete on completion onCompletion:delete
+```
+
+#### Move Action
+```markdown
+- [ ] Task to move onCompletion:move(Archive.md)
+- [ ] Task to move to section onCompletion:move(Archive.md, Completed Tasks)
+```
+
+#### Duplicate Action
+```markdown
+- [ ] Recurring task onCompletion:duplicate
+- [ ] Duplicate to file onCompletion:duplicate(Templates.md)
+- [ ] Duplicate without metadata onCompletion:duplicate(Templates.md, , false)
+```
+
+#### Archive Action
+```markdown
+- [ ] Task to archive onCompletion:archive
+- [ ] Custom archive location onCompletion:archive(Custom Archive.md, Done)
+```
+
+### Canvas Task Support
+
+All onCompletion actions fully support Canvas tasks:
+
+- **Canvas to Canvas**: Move/duplicate tasks between Canvas files
+- **Canvas to Markdown**: Convert Canvas tasks to Markdown format
+- **Markdown to Canvas**: Add tasks to Canvas text nodes
+- **Cross-format Operations**: Seamless integration between file types
+
+#### Canvas-Specific Features
+
+- **Text Node Management**: Automatic creation and positioning of new text nodes
+- **Section Support**: Target specific sections within Canvas text nodes
+- **Metadata Preservation**: Maintain task metadata during format conversion
+- **JSON Structure Integrity**: Safe manipulation of Canvas file structure
 
 ## 📚 Related Documentation
 

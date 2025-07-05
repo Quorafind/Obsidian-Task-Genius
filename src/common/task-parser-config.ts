@@ -18,7 +18,7 @@ export const getConfig = (
 		// Basic parsing controls
 		parseTags: true,
 		parseMetadata: true,
-		parseHeadings: false, // taskUtil functions are for single-line parsing
+		parseHeadings: true, // taskUtil functions are for single-line parsing
 		parseComments: false, // Not needed for single-line parsing
 
 		// Metadata format preference
@@ -58,8 +58,12 @@ export const getConfig = (
 			"🛫": "startDate",
 			"⏳": "scheduledDate",
 			"✅": "completedDate",
+			"❌": "cancelledDate",
 			"➕": "createdDate",
 			"🔁": "recurrence",
+			"🏁": "onCompletion",
+			"⛔": "dependsOn",
+			"🆔": "id",
 			"🔺": "priority",
 			"⏫": "priority",
 			"🔼": "priority",

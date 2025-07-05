@@ -71,6 +71,7 @@ export function clearAllMarks(markdown: string): string {
 		DEFAULT_SYMBOLS.scheduledDateSymbol, // ⏳
 		DEFAULT_SYMBOLS.dueDateSymbol, // 📅
 		DEFAULT_SYMBOLS.doneDateSymbol, // ✅
+		"❌", // cancelledDate
 	].filter(Boolean); // Filter out any potentially undefined symbols
 
 	// Remove date fields (symbol followed by date)
@@ -91,6 +92,11 @@ export function clearAllMarks(markdown: string): string {
 		""
 	);
 
+	// Remove non-date metadata fields (id, dependsOn, onCompletion)
+	cleanedMarkdown = cleanedMarkdown.replace(/🆔\s*[^\s]+/g, ""); // Remove id
+	cleanedMarkdown = cleanedMarkdown.replace(/⛔\s*[^\s]+/g, ""); // Remove dependsOn
+	cleanedMarkdown = cleanedMarkdown.replace(/🏁\s*[^\s]+/g, ""); // Remove onCompletion
+
 	// Remove recurrence information (Symbol + value)
 	if (DEFAULT_SYMBOLS.recurrenceSymbol) {
 		const escapedRecurrenceSymbol =
@@ -102,11 +108,16 @@ export function clearAllMarks(markdown: string): string {
 		const escapedOtherSymbols = symbolsToRemove
 			.map((s) => s!.replace(/[.*+?^${}()|[\\\]]/g, "\\$&"))
 			.join("");
+		
+		// Add escaped non-date symbols to lookahead
+		const escapedNonDateSymbols = ["🆔", "⛔", "🏁"]
+			.map((s) => s.replace(/[.*+?^${}()|[\\\]]/g, "\\$&"))
+			.join("");
 
 		const recurrenceRegex = new RegExp(
 			`${escapedRecurrenceSymbol}\\uFE0F? *.*?` +
-				// Lookahead for: space followed by (any date/completion/recurrence symbol OR @ OR #) OR end of string
-				`(?=\s(?:[${escapedOtherSymbols}${escapedRecurrenceSymbol}]|@|#)|$)`,
+				// Lookahead for: space followed by (any date/completion/recurrence symbol OR non-date symbols OR @ OR #) OR end of string
+				`(?=\s(?:[${escapedOtherSymbols}${escapedNonDateSymbols}${escapedRecurrenceSymbol}]|@|#)|$)`,
 			"gu"
 		);
 		cleanedMarkdown = cleanedMarkdown.replace(recurrenceRegex, "");
@@ -114,7 +125,7 @@ export function clearAllMarks(markdown: string): string {
 
 	// --- Remove Dataview Style Metadata ---
 	cleanedMarkdown = cleanedMarkdown.replace(
-		/\[(?:due|📅|completion|✅|created|➕|start|🛫|scheduled|⏳|priority|repeat|recurrence|🔁|project|context)::\s*[^\]]+\]/gi,
+		/\[(?:due|📅|completion|✅|created|➕|start|🛫|scheduled|⏳|cancelled|❌|id|🆔|dependsOn|⛔|onCompletion|🏁|priority|repeat|recurrence|🔁|project|context)::\s*[^\]]+\]/gi,
 		// Corrected the emoji in the previous attempt
 		""
 	);
