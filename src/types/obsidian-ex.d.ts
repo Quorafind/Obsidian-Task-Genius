@@ -355,6 +355,22 @@ declare module "obsidian" {
 		_loaded: boolean;
 	}
 
+	/**
+	 * Plugin interface extension for Bases API support
+	 */
+	interface Plugin {
+		/**
+		 * Register a bases view (Obsidian 1.9.3+)
+		 * @param viewId - Unique identifier for the view
+		 * @param factory - Factory function to create the view
+		 * @returns true if registration was successful, false otherwise
+		 */
+		registerBasesView(
+			viewId: string,
+			config: BasesViewRegistration
+		): boolean;
+	}
+
 	interface Workspace {
 		on(
 			event: "task-genius:task-added",

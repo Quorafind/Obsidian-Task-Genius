@@ -3,13 +3,14 @@
  * Compatible with existing Task interface but uses file properties for data storage
  */
 
+import { App } from "obsidian";
 import { Task } from "./task";
 
 // Forward declaration for BasesEntry
 interface BasesEntry {
 	ctx: {
 		_local: any;
-		app: any;
+		app: App;
 		filter: any;
 		formulas: any;
 		localUsed: boolean;

@@ -20,6 +20,12 @@ import { MarkdownRendererComponent } from "./MarkdownRenderer";
 import { StatusComponent } from "./StatusComponent";
 import { Task } from "../types/task";
 import { ContextSuggest, ProjectSuggest } from "./AutoComplete";
+import {
+	TimeParsingService,
+	DEFAULT_TIME_PARSING_CONFIG,
+	ParsedTimeResult,
+	LineParseResult,
+} from "../utils/TimeParsingService";
 
 interface TaskMetadata {
 	startDate?: Date;
@@ -30,6 +36,12 @@ interface TaskMetadata {
 	context?: string;
 	recurrence?: string;
 	status?: string;
+	// Track which fields were manually set by user
+	manuallySet?: {
+		startDate?: boolean;
+		dueDate?: boolean;
+		scheduledDate?: boolean;
+	};
 }
 
 /**
@@ -81,6 +93,18 @@ export class QuickCaptureModal extends Modal {
 	markdownRenderer: MarkdownRendererComponent | null = null;
 
 	preferMetadataFormat: "dataview" | "tasks" = "tasks";
+	timeParsingService: TimeParsingService;
+
+	// References to date input elements for updating from parsed dates
+	startDateInput?: HTMLInputElement;
+	dueDateInput?: HTMLInputElement;
+	scheduledDateInput?: HTMLInputElement;
+
+	// Reference to parsed time expressions display
+	parsedTimeDisplayEl?: HTMLElement;
+
+	// Debounce timer for real-time parsing
+	private parseDebounceTimer?: number;
 
 	constructor(
 		app: App,
@@ -109,6 +133,11 @@ export class QuickCaptureModal extends Modal {
 		}
 
 		this.preferMetadataFormat = this.plugin.settings.preferMetadataFormat;
+
+		// Initialize time parsing service
+		this.timeParsingService = new TimeParsingService(
+			this.plugin.settings.timeParsing || DEFAULT_TIME_PARSING_CONFIG
+		);
 
 		if (metadata) {
 			this.taskMetadata = metadata;
@@ -244,6 +273,20 @@ export class QuickCaptureModal extends Modal {
 			cls: "quick-capture-section-title",
 		});
 
+		// // Parsed time expressions display
+		// const parsedTimeContainer = configPanel.createDiv({
+		// 	cls: "quick-capture-parsed-time",
+		// });
+
+		// const parsedTimeTitle = parsedTimeContainer.createDiv({
+		// 	text: t("Parsed Time Expressions"),
+		// 	cls: "quick-capture-section-subtitle",
+		// });
+
+		// this.parsedTimeDisplayEl = parsedTimeContainer.createDiv({
+		// 	cls: "quick-capture-parsed-time-display",
+		// });
+
 		const statusComponent = new StatusComponent(
 			this.plugin,
 			configPanel,
@@ -271,12 +314,19 @@ export class QuickCaptureModal extends Modal {
 				.onChange((value) => {
 					if (value) {
 						this.taskMetadata.startDate = this.parseDate(value);
+						this.markAsManuallySet("startDate");
 					} else {
 						this.taskMetadata.startDate = undefined;
+						// Reset manual flag when cleared
+						if (this.taskMetadata.manuallySet) {
+							this.taskMetadata.manuallySet.startDate = false;
+						}
 					}
 					this.updatePreview();
 				});
 			text.inputEl.type = "date";
+			// Store reference for updating from parsed dates
+			this.startDateInput = text.inputEl;
 		});
 
 		// Due Date
@@ -290,12 +340,19 @@ export class QuickCaptureModal extends Modal {
 				.onChange((value) => {
 					if (value) {
 						this.taskMetadata.dueDate = this.parseDate(value);
+						this.markAsManuallySet("dueDate");
 					} else {
 						this.taskMetadata.dueDate = undefined;
+						// Reset manual flag when cleared
+						if (this.taskMetadata.manuallySet) {
+							this.taskMetadata.manuallySet.dueDate = false;
+						}
 					}
 					this.updatePreview();
 				});
 			text.inputEl.type = "date";
+			// Store reference for updating from parsed dates
+			this.dueDateInput = text.inputEl;
 		});
 
 		// Scheduled Date
@@ -312,12 +369,20 @@ export class QuickCaptureModal extends Modal {
 						if (value) {
 							this.taskMetadata.scheduledDate =
 								this.parseDate(value);
+							this.markAsManuallySet("scheduledDate");
 						} else {
 							this.taskMetadata.scheduledDate = undefined;
+							// Reset manual flag when cleared
+							if (this.taskMetadata.manuallySet) {
+								this.taskMetadata.manuallySet.scheduledDate =
+									false;
+							}
 						}
 						this.updatePreview();
 					});
 				text.inputEl.type = "date";
+				// Store reference for updating from parsed dates
+				this.scheduledDateInput = text.inputEl;
 			});
 
 		// Priority
@@ -453,6 +518,17 @@ export class QuickCaptureModal extends Modal {
 						// Handle changes if needed
 						this.capturedContent = this.markdownEditor?.value || "";
 
+						// Clear previous debounce timer
+						if (this.parseDebounceTimer) {
+							clearTimeout(this.parseDebounceTimer);
+						}
+
+						// Debounce time parsing to avoid excessive parsing on rapid typing
+						this.parseDebounceTimer = window.setTimeout(() => {
+							this.performRealTimeParsing();
+						}, 300); // 300ms debounce
+
+						// Update preview immediately for better responsiveness
 						if (this.updatePreview) {
 							this.updatePreview();
 						}
@@ -528,57 +604,70 @@ export class QuickCaptureModal extends Modal {
 	}
 
 	processContentWithMetadata(content: string): string {
-		// Split content into lines
+		// Step 1: Split content into lines FIRST to preserve line structure
 		const lines = content.split("\n");
 		const processedLines: string[] = [];
 		const indentationRegex = /^(\s+)/;
 
+		// Step 2: Process each line individually
 		for (const line of lines) {
 			if (!line.trim()) {
 				processedLines.push(line);
 				continue;
 			}
 
-			// Check for indentation to identify sub-tasks
+			// Step 3: Parse time expressions for THIS line only
+			const lineParseResult =
+				this.timeParsingService.parseTimeExpressionsForLine(line);
+
+			// Step 4: Use cleaned line content (with time expressions removed from this line)
+			const cleanedLine = lineParseResult.cleanedLine;
+
+			// Step 5: Check for indentation to identify sub-tasks
 			const indentMatch = line.match(indentationRegex);
 			const isSubTask = indentMatch && indentMatch[1].length > 0;
 
-			// Check if line is already a task or a list item
-			const isTaskOrList = line
+			// Step 6: Check if line is already a task or a list item
+			const isTaskOrList = cleanedLine
 				.trim()
 				.match(/^(-|\d+\.|\*|\+)(\s+\[[^\]]+\])?/);
 
 			if (isSubTask) {
-				// Don't add metadata to sub-tasks
-				processedLines.push(line);
+				// Don't add metadata to sub-tasks, but still clean time expressions
+				// Preserve the original indentation from the original line
+				const originalIndent = indentMatch[1];
+				const cleanedContent = cleanedLine.trim();
+				processedLines.push(originalIndent + cleanedContent);
 			} else if (isTaskOrList) {
-				// If it's a task, add metadata
-				if (line.trim().match(/^(-|\d+\.|\*|\+)\s+\[[^\]]+\]/)) {
-					processedLines.push(this.addMetadataToTask(line));
+				// If it's a task, add line-specific metadata
+				if (cleanedLine.trim().match(/^(-|\d+\.|\*|\+)\s+\[[^\]]+\]/)) {
+					processedLines.push(
+						this.addLineMetadataToTask(cleanedLine, lineParseResult)
+					);
 				} else {
-					// If it's a list item but not a task, convert to task and add metadata
-					const listPrefix = line
+					// If it's a list item but not a task, convert to task and add line-specific metadata
+					const listPrefix = cleanedLine
 						.trim()
 						.match(/^(-|\d+\.|\*|\+)/)?.[0];
-					const restOfLine = line
+					const restOfLine = cleanedLine
 						.trim()
 						.substring(listPrefix?.length || 0)
 						.trim();
 
 					// Use the specified status or default to empty checkbox
 					const statusMark = this.taskMetadata.status || " ";
+					const taskLine = `${listPrefix} [${statusMark}] ${restOfLine}`;
 					processedLines.push(
-						this.addMetadataToTask(
-							`${listPrefix} [${statusMark}] ${restOfLine}`
-						)
+						this.addLineMetadataToTask(taskLine, lineParseResult)
 					);
 				}
 			} else {
-				// Not a list item or task, convert to task and add metadata
+				// Not a list item or task, convert to task and add line-specific metadata
 				// Use the specified status or default to empty checkbox
 				const statusMark = this.taskMetadata.status || " ";
+				const taskLine = `- [${statusMark}] ${cleanedLine}`;
 				processedLines.push(
-					this.addMetadataToTask(`- [${statusMark}] ${line}`)
+					this.addLineMetadataToTask(taskLine, lineParseResult)
 				);
 			}
 		}
@@ -591,6 +680,167 @@ export class QuickCaptureModal extends Modal {
 		if (!metadata) return taskLine;
 
 		return `${taskLine} ${metadata}`.trim();
+	}
+
+	/**
+	 * Add line-specific metadata to a task line
+	 * @param taskLine - The task line to add metadata to
+	 * @param lineParseResult - Parse result for this specific line
+	 * @returns Task line with line-specific metadata
+	 */
+	addLineMetadataToTask(
+		taskLine: string,
+		lineParseResult: LineParseResult
+	): string {
+		const metadata = this.generateLineMetadata(lineParseResult);
+		if (!metadata) return taskLine;
+
+		return `${taskLine} ${metadata}`.trim();
+	}
+
+	/**
+	 * Generate metadata string for a specific line using line-specific dates
+	 * @param lineParseResult - Parse result for this specific line
+	 * @returns Metadata string for this line
+	 */
+	generateLineMetadata(lineParseResult: LineParseResult): string {
+		const metadata: string[] = [];
+		const useDataviewFormat = this.preferMetadataFormat === "dataview";
+
+		// Use line-specific dates first, fall back to global metadata
+		const startDate =
+			lineParseResult.startDate || this.taskMetadata.startDate;
+		const dueDate = lineParseResult.dueDate || this.taskMetadata.dueDate;
+		const scheduledDate =
+			lineParseResult.scheduledDate || this.taskMetadata.scheduledDate;
+
+		// Format dates to strings in YYYY-MM-DD format
+		if (startDate) {
+			const formattedStartDate = this.formatDate(startDate);
+			metadata.push(
+				useDataviewFormat
+					? `[start:: ${formattedStartDate}]`
+					: `🛫 ${formattedStartDate}`
+			);
+		}
+
+		if (dueDate) {
+			const formattedDueDate = this.formatDate(dueDate);
+			metadata.push(
+				useDataviewFormat
+					? `[due:: ${formattedDueDate}]`
+					: `📅 ${formattedDueDate}`
+			);
+		}
+
+		if (scheduledDate) {
+			const formattedScheduledDate = this.formatDate(scheduledDate);
+			metadata.push(
+				useDataviewFormat
+					? `[scheduled:: ${formattedScheduledDate}]`
+					: `⏳ ${formattedScheduledDate}`
+			);
+		}
+
+		// Add priority if set (use global metadata)
+		if (this.taskMetadata.priority) {
+			if (useDataviewFormat) {
+				// 使用 dataview 格式
+				let priorityValue: string | number;
+				switch (this.taskMetadata.priority) {
+					case 5:
+						priorityValue = "highest";
+						break;
+					case 4:
+						priorityValue = "high";
+						break;
+					case 3:
+						priorityValue = "medium";
+						break;
+					case 2:
+						priorityValue = "low";
+						break;
+					case 1:
+						priorityValue = "lowest";
+						break;
+					default:
+						priorityValue = this.taskMetadata.priority;
+				}
+				metadata.push(`[priority:: ${priorityValue}]`);
+			} else {
+				// 使用 emoji 格式
+				let priorityMarker = "";
+				switch (this.taskMetadata.priority) {
+					case 5:
+						priorityMarker = "🔺";
+						break; // Highest
+					case 4:
+						priorityMarker = "⏫";
+						break; // High
+					case 3:
+						priorityMarker = "🔼";
+						break; // Medium
+					case 2:
+						priorityMarker = "🔽";
+						break; // Low
+					case 1:
+						priorityMarker = "⏬";
+						break; // Lowest
+				}
+				if (priorityMarker) {
+					metadata.push(priorityMarker);
+				}
+			}
+		}
+
+		// Add project if set (use global metadata)
+		if (this.taskMetadata.project) {
+			if (useDataviewFormat) {
+				const projectPrefix =
+					this.plugin.settings.projectTagPrefix?.[
+						this.plugin.settings.preferMetadataFormat
+					] || "project";
+				metadata.push(
+					`[${projectPrefix}:: ${this.taskMetadata.project}]`
+				);
+			} else {
+				const projectPrefix =
+					this.plugin.settings.projectTagPrefix?.[
+						this.plugin.settings.preferMetadataFormat
+					] || "project";
+				metadata.push(`#${projectPrefix}/${this.taskMetadata.project}`);
+			}
+		}
+
+		// Add context if set (use global metadata)
+		if (this.taskMetadata.context) {
+			if (useDataviewFormat) {
+				const contextPrefix =
+					this.plugin.settings.contextTagPrefix?.[
+						this.plugin.settings.preferMetadataFormat
+					] || "context";
+				metadata.push(
+					`[${contextPrefix}:: ${this.taskMetadata.context}]`
+				);
+			} else {
+				const contextPrefix =
+					this.plugin.settings.contextTagPrefix?.[
+						this.plugin.settings.preferMetadataFormat
+					] || "@";
+				metadata.push(`${contextPrefix}${this.taskMetadata.context}`);
+			}
+		}
+
+		// Add recurrence if set (use global metadata)
+		if (this.taskMetadata.recurrence) {
+			metadata.push(
+				useDataviewFormat
+					? `[repeat:: ${this.taskMetadata.recurrence}]`
+					: `🔁 ${this.taskMetadata.recurrence}`
+			);
+		}
+
+		return metadata.join(" ");
 	}
 
 	generateMetadataString(): string {
@@ -742,8 +992,134 @@ export class QuickCaptureModal extends Modal {
 		return new Date(year, month - 1, day); // month is 0-indexed in JavaScript Date
 	}
 
+	/**
+	 * Check if a metadata field was manually set by the user
+	 * @param field - The field name to check
+	 * @returns True if the field was manually set
+	 */
+	isManuallySet(field: "startDate" | "dueDate" | "scheduledDate"): boolean {
+		return this.taskMetadata.manuallySet?.[field] || false;
+	}
+
+	/**
+	 * Mark a metadata field as manually set
+	 * @param field - The field name to mark
+	 */
+	markAsManuallySet(field: "startDate" | "dueDate" | "scheduledDate"): void {
+		if (!this.taskMetadata.manuallySet) {
+			this.taskMetadata.manuallySet = {};
+		}
+		this.taskMetadata.manuallySet[field] = true;
+	}
+
+	/**
+	 * Perform real-time parsing with debouncing
+	 */
+	private performRealTimeParsing(): void {
+		if (!this.capturedContent) return;
+
+		// Parse each line separately to get per-line results
+		const lines = this.capturedContent.split("\n");
+		const lineParseResults =
+			this.timeParsingService.parseTimeExpressionsPerLine(lines);
+
+		// Aggregate dates from all lines to update global metadata (only if not manually set)
+		let aggregatedStartDate: Date | undefined;
+		let aggregatedDueDate: Date | undefined;
+		let aggregatedScheduledDate: Date | undefined;
+
+		// Find the first occurrence of each date type across all lines
+		for (const lineResult of lineParseResults) {
+			if (lineResult.startDate && !aggregatedStartDate) {
+				aggregatedStartDate = lineResult.startDate;
+			}
+			if (lineResult.dueDate && !aggregatedDueDate) {
+				aggregatedDueDate = lineResult.dueDate;
+			}
+			if (lineResult.scheduledDate && !aggregatedScheduledDate) {
+				aggregatedScheduledDate = lineResult.scheduledDate;
+			}
+		}
+
+		// Update task metadata with aggregated dates (only if not manually set)
+		if (aggregatedStartDate && !this.isManuallySet("startDate")) {
+			this.taskMetadata.startDate = aggregatedStartDate;
+			// Update UI input field
+			if (this.startDateInput) {
+				this.startDateInput.value =
+					this.formatDate(aggregatedStartDate);
+			}
+		}
+		if (aggregatedDueDate && !this.isManuallySet("dueDate")) {
+			this.taskMetadata.dueDate = aggregatedDueDate;
+			// Update UI input field
+			if (this.dueDateInput) {
+				this.dueDateInput.value = this.formatDate(aggregatedDueDate);
+			}
+		}
+		if (aggregatedScheduledDate && !this.isManuallySet("scheduledDate")) {
+			this.taskMetadata.scheduledDate = aggregatedScheduledDate;
+			// Update UI input field
+			if (this.scheduledDateInput) {
+				this.scheduledDateInput.value = this.formatDate(
+					aggregatedScheduledDate
+				);
+			}
+		}
+	}
+
+	/**
+	 * Update the parsed time expressions display
+	 * @param parseResult - The result from time parsing
+	 */
+	// updateParsedTimeDisplay(parseResult: ParsedTimeResult): void {
+	// 	if (!this.parsedTimeDisplayEl) return;
+
+	// 	this.parsedTimeDisplayEl.empty();
+
+	// 	if (parseResult.parsedExpressions.length === 0) {
+	// 		this.parsedTimeDisplayEl.createDiv({
+	// 			text: t("No time expressions found"),
+	// 			cls: "quick-capture-no-expressions",
+	// 		});
+	// 		return;
+	// 	}
+
+	// 	parseResult.parsedExpressions.forEach((expression, index) => {
+	// 		const expressionEl = this.parsedTimeDisplayEl!.createDiv({
+	// 			cls: "quick-capture-expression-item",
+	// 		});
+
+	// 		const textEl = expressionEl.createSpan({
+	// 			text: `"${expression.text}"`,
+	// 			cls: "quick-capture-expression-text",
+	// 		});
+
+	// 		const arrowEl = expressionEl.createSpan({
+	// 			text: " → ",
+	// 			cls: "quick-capture-expression-arrow",
+	// 		});
+
+	// 		const dateEl = expressionEl.createSpan({
+	// 			text: this.formatDate(expression.date),
+	// 			cls: "quick-capture-expression-date",
+	// 		});
+
+	// 		const typeEl = expressionEl.createSpan({
+	// 			text: ` (${expression.type})`,
+	// 			cls: `quick-capture-expression-type quick-capture-type-${expression.type}`,
+	// 		});
+	// 	});
+	// }
+
 	onClose() {
 		const { contentEl } = this;
+
+		// Clear debounce timer
+		if (this.parseDebounceTimer) {
+			clearTimeout(this.parseDebounceTimer);
+			this.parseDebounceTimer = undefined;
+		}
 
 		// Clean up the markdown editor
 		if (this.markdownEditor) {

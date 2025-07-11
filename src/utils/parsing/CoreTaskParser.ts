@@ -128,6 +128,9 @@ export class CoreTaskParser {
 		remainingContent = this.extractPriority(task, remainingContent);
 		remainingContent = this.extractProject(task, remainingContent);
 		remainingContent = this.extractContext(task, remainingContent);
+		remainingContent = this.extractOnCompletion(task, remainingContent);
+		remainingContent = this.extractDependsOn(task, remainingContent);
+		remainingContent = this.extractId(task, remainingContent);
 		remainingContent = this.extractTags(task, remainingContent);
 
 		task.content = remainingContent.replace(/\s{2,}/g, " ").trim();
@@ -284,6 +287,7 @@ export class CoreTaskParser {
 				| "scheduledDate"
 				| "startDate"
 				| "completedDate"
+				| "cancelledDate"
 				| "createdDate"
 		): boolean => {
 			if (task.metadata[fieldName] !== undefined) return false;
@@ -474,6 +478,124 @@ export class CoreTaskParser {
 					""
 				);
 			}
+		}
+
+		return remainingContent;
+	}
+
+	private extractOnCompletion(task: Task, content: string): string {
+		let remainingContent = content;
+		const useDataview = this.options.preferMetadataFormat === "dataview";
+		let match: RegExpMatchArray | null = null;
+
+		if (useDataview) {
+			// Enhanced dataview format parsing - supports JSON and simple formats
+			match = remainingContent.match(/\[onCompletion::\s*([^\]]+)\]/i);
+			if (match && match[1]) {
+				const onCompletionValue = match[1].trim();
+				// Support both JSON and simple text formats
+				task.metadata.onCompletion = onCompletionValue;
+				remainingContent = remainingContent.replace(match[0], "");
+				return remainingContent;
+			}
+		}
+
+		// Enhanced emoji format parsing - supports complex configurations
+		// Pattern: 🏁 value or 🏁value (with various possible values)
+		match = remainingContent.match(/🏁\s*(.+?)(?=\s|$)/);
+		if (match && match[1]) {
+			let onCompletionValue = match[1].trim();
+			
+			// Handle JSON format in emoji notation
+			if (onCompletionValue.startsWith('{')) {
+				// Find the complete JSON object
+				const jsonStart = remainingContent.indexOf('{', match.index!);
+				let braceCount = 0;
+				let jsonEnd = jsonStart;
+				
+				for (let i = jsonStart; i < remainingContent.length; i++) {
+					if (remainingContent[i] === '{') braceCount++;
+					if (remainingContent[i] === '}') braceCount--;
+					if (braceCount === 0) {
+						jsonEnd = i;
+						break;
+					}
+				}
+				
+				if (braceCount === 0) {
+					onCompletionValue = remainingContent.substring(jsonStart, jsonEnd + 1);
+					// Remove the entire JSON object from content
+					remainingContent = remainingContent.substring(0, match.index!) + 
+						remainingContent.substring(jsonEnd + 1);
+				}
+			} else {
+				// Simple format - remove the matched portion
+				remainingContent = remainingContent.replace(match[0], "");
+			}
+			
+			task.metadata.onCompletion = onCompletionValue;
+			return remainingContent;
+		}
+
+		// Fallback: look for simple patterns without emoji
+		match = remainingContent.match(/\bonCompletion:\s*([^\s]+)/i);
+		if (match && match[1]) {
+			task.metadata.onCompletion = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
+		}
+
+		return remainingContent;
+	}
+
+	private extractDependsOn(task: Task, content: string): string {
+		let remainingContent = content;
+		const useDataview = this.options.preferMetadataFormat === "dataview";
+		let match: RegExpMatchArray | null = null;
+
+		if (useDataview) {
+			match = remainingContent.match(/\[dependsOn::\s*([^\]]+)\]/i);
+			if (match && match[1]) {
+				// Split by comma and clean up
+				task.metadata.dependsOn = match[1]
+					.split(",")
+					.map((id) => id.trim())
+					.filter((id) => id.length > 0);
+				remainingContent = remainingContent.replace(match[0], "");
+				return remainingContent;
+			}
+		}
+
+		match = remainingContent.match(/⛔\s*([^\s]+)/);
+		if (match && match[1]) {
+			// For emoji format, assume single dependency or comma-separated
+			task.metadata.dependsOn = match[1]
+				.split(",")
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0);
+			remainingContent = remainingContent.replace(match[0], "");
+		}
+
+		return remainingContent;
+	}
+
+	private extractId(task: Task, content: string): string {
+		let remainingContent = content;
+		const useDataview = this.options.preferMetadataFormat === "dataview";
+		let match: RegExpMatchArray | null = null;
+
+		if (useDataview) {
+			match = remainingContent.match(/\[id::\s*([^\]]+)\]/i);
+			if (match && match[1]) {
+				task.metadata.id = match[1].trim();
+				remainingContent = remainingContent.replace(match[0], "");
+				return remainingContent;
+			}
+		}
+
+		match = remainingContent.match(/🆔\s*([^\s]+)/);
+		if (match && match[1]) {
+			task.metadata.id = match[1].trim();
+			remainingContent = remainingContent.replace(match[0], "");
 		}
 
 		return remainingContent;

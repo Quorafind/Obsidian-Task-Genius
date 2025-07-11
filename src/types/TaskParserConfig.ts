@@ -106,6 +106,12 @@ export function createDefaultParserConfig(): TaskParserConfig {
 		"🛫": "startDate",
 		"✅": "completedDate",
 		"➕": "createdDate",
+		"❌": "cancelledDate",
+
+		// Task management emojis
+		"🆔": "id",
+		"⛔": "dependsOn",
+		"🏁": "onCompletion",
 
 		// Priority emojis (Tasks plugin style)
 		"🔺": "priority", // highest

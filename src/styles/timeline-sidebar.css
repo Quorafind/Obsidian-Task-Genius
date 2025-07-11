@@ -281,13 +281,150 @@ div[data-type^="tg-timeline-sidebar-view"] .timeline-quick-input {
 	flex-direction: column;
 	gap: var(--size-4-3);
 	padding-bottom: var(--size-4-12);
+	position: relative;
+	transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	overflow: hidden;
 }
 
+/* Collapsed state */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-quick-input.is-collapsed {
+	padding: 0;
+	gap: 0;
+	height: auto;
+}
+
+div[data-type^="tg-timeline-sidebar-view"]
+	.timeline-quick-input.is-collapsed
+	.quick-input-header,
+div[data-type^="tg-timeline-sidebar-view"]
+	.timeline-quick-input.is-collapsed
+	.quick-input-editor,
+div[data-type^="tg-timeline-sidebar-view"]
+	.timeline-quick-input.is-collapsed
+	.quick-input-actions {
+	display: none;
+}
+
+/* Animation states */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-quick-input.is-collapsing {
+	overflow: hidden;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-quick-input.is-expanding {
+	overflow: hidden;
+}
+
+/* Collapsed header */
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-header-collapsed {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-3) var(--size-4-4);
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	transition: background-color 200ms ease;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-header-collapsed:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-expand-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--size-4-6);
+	height: var(--size-4-6);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	transition: all 200ms ease;
+	cursor: pointer;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-expand-btn:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-border);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-title {
+	flex: 1;
+	font-weight: 600;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	margin-left: var(--size-4-2);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-quick-actions {
+	display: flex;
+	gap: var(--size-4-2);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-quick-capture,
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-more-options {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--size-4-7);
+	height: var(--size-4-7);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: all 200ms ease;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-quick-capture:hover,
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-more-options:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-border);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .collapsed-quick-capture:hover {
+	color: var(--interactive-accent);
+}
+
+/* Expanded header with collapse button */
 div[data-type^="tg-timeline-sidebar-view"] .quick-input-header {
 	display: flex;
-	flex-direction: column;
-	gap: var(--size-4-1);
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: var(--size-4-2);
 	margin-bottom: var(--size-4-2);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-header-left {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-collapse-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--size-4-6);
+	height: var(--size-4-6);
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: all 200ms ease;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-collapse-btn:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-border);
+}
+
+/* Rotate collapse button icon */
+div[data-type^="tg-timeline-sidebar-view"] .quick-input-collapse-btn svg {
+	transition: transform 200ms ease;
+}
+
+div[data-type^="tg-timeline-sidebar-view"]
+	.timeline-quick-input.is-collapsed
+	.quick-input-collapse-btn
+	svg {
+	transform: rotate(-90deg);
 }
 
 div[data-type^="tg-timeline-sidebar-view"] .quick-input-title {
@@ -303,7 +440,6 @@ div[data-type^="tg-timeline-sidebar-view"] .quick-input-target-info {
 	padding: var(--size-4-1) var(--size-4-2);
 	background-color: var(--background-modifier-hover);
 	border-radius: var(--radius-s);
-	border-left: 3px solid var(--interactive-accent);
 	word-break: break-all;
 }
 
@@ -407,8 +543,23 @@ div[data-type^="tg-timeline-sidebar-view"] .quick-modal-btn:hover {
 		padding: var(--size-4-3);
 	}
 
+	div[data-type^="tg-timeline-sidebar-view"]
+		.timeline-quick-input.is-collapsed {
+		padding: 0;
+	}
+
 	div[data-type^="tg-timeline-sidebar-view"] .quick-input-editor {
 		min-height: 60px;
+	}
+
+	div[data-type^="tg-timeline-sidebar-view"] .quick-input-header-collapsed {
+		padding: var(--size-4-2) var(--size-4-3);
+	}
+
+	div[data-type^="tg-timeline-sidebar-view"] .collapsed-quick-capture,
+	div[data-type^="tg-timeline-sidebar-view"] .collapsed-more-options {
+		width: var(--size-4-6);
+		height: var(--size-4-6);
 	}
 }
 

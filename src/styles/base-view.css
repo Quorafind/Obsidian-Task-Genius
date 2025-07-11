@@ -176,6 +176,54 @@
 	height: auto;
 }
 
-.bases-view .task-genius-container {
+.bases-view.task-genius-container {
 	border-top: unset;
+}
+
+/* Bases update error notification */
+.bases-update-error-notification {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	background: var(--background-modifier-error);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 12px 16px;
+	max-width: 400px;
+	box-shadow: var(--shadow-s);
+	z-index: 1000;
+	cursor: pointer;
+	animation: slideInRight 0.3s ease-out;
+}
+
+.bases-update-error-notification:hover {
+	opacity: 0.8;
+}
+
+.bases-update-error-notification .error-icon {
+	font-size: 16px;
+	margin-bottom: 8px;
+}
+
+.bases-update-error-notification .error-message .error-title {
+	font-weight: 600;
+	color: var(--text-error);
+	margin-bottom: 4px;
+}
+
+.bases-update-error-notification .error-message .error-details {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+@keyframes slideInRight {
+	from {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
 }

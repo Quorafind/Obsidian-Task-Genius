@@ -24,6 +24,14 @@ import { MarkdownRendererComponent } from "../MarkdownRenderer";
 
 export const TIMELINE_SIDEBAR_VIEW_TYPE = "tg-timeline-sidebar-view";
 
+// Date type priority for deduplication (higher number = higher priority)
+const DATE_TYPE_PRIORITY = {
+	due: 4,
+	scheduled: 3,
+	start: 2,
+	completed: 1,
+} as const;
+
 interface TimelineEvent {
 	id: string;
 	content: string;
@@ -43,6 +51,13 @@ export class TimelineSidebarView extends ItemView {
 	private currentDate: moment.Moment = moment();
 	private events: TimelineEvent[] = [];
 	private isAutoScrolling: boolean = false;
+
+	// Collapse state management
+	private isInputCollapsed: boolean = false;
+	private tempEditorContent: string = "";
+	private isAnimating: boolean = false;
+	private collapsedHeaderEl: HTMLElement | null = null;
+	private quickInputHeaderEl: HTMLElement | null = null;
 
 	// Debounced methods
 	private debouncedRender = debounce(async () => {
@@ -72,6 +87,9 @@ export class TimelineSidebarView extends ItemView {
 		this.containerEl = this.contentEl;
 		this.containerEl.empty();
 		this.containerEl.addClass("timeline-sidebar-container");
+
+		// Restore collapsed state from settings
+		this.isInputCollapsed = this.plugin.settings.timelineSidebar.quickInputCollapsed;
 
 		this.createHeader();
 		this.createTimelineArea();
@@ -169,14 +187,30 @@ export class TimelineSidebarView extends ItemView {
 			"timeline-quick-input"
 		);
 
+		// Create collapsed header (always exists but hidden when expanded)
+		this.collapsedHeaderEl = this.quickInputContainerEl.createDiv(
+			"quick-input-header-collapsed"
+		);
+		this.createCollapsedHeader();
+
 		// Input header with target info
-		const inputHeaderEl =
+		this.quickInputHeaderEl =
 			this.quickInputContainerEl.createDiv("quick-input-header");
 
-		const headerTitle = inputHeaderEl.createDiv("quick-input-title");
+		// Add collapse button to header
+		const headerLeft = this.quickInputHeaderEl.createDiv("quick-input-header-left");
+		
+		const collapseBtn = headerLeft.createDiv("quick-input-collapse-btn");
+		setIcon(collapseBtn, "chevron-down");
+		collapseBtn.setAttribute("aria-label", t("Collapse quick input"));
+		this.registerDomEvent(collapseBtn, "click", () => {
+			this.toggleInputCollapse();
+		});
+
+		const headerTitle = headerLeft.createDiv("quick-input-title");
 		headerTitle.setText(t("Quick Capture"));
 
-		const targetInfo = inputHeaderEl.createDiv("quick-input-target-info");
+		const targetInfo = this.quickInputHeaderEl.createDiv("quick-input-target-info");
 		this.updateTargetInfo(targetInfo);
 
 		// Editor container
@@ -210,8 +244,10 @@ export class TimelineSidebarView extends ItemView {
 				}
 			);
 
-			// Focus the editor
-			this.markdownEditor?.editor?.focus();
+			// Focus the editor if not collapsed
+			if (!this.isInputCollapsed) {
+				this.markdownEditor?.editor?.focus();
+			}
 		}, 50);
 
 		// Action buttons
@@ -234,6 +270,14 @@ export class TimelineSidebarView extends ItemView {
 		this.registerDomEvent(fullModalBtn, "click", () => {
 			new QuickCaptureModal(this.app, this.plugin, {}, true).open();
 		});
+
+		// Apply initial collapsed state
+		if (this.isInputCollapsed) {
+			this.quickInputContainerEl.addClass("is-collapsed");
+			this.collapsedHeaderEl?.show();
+		} else {
+			this.collapsedHeaderEl?.hide();
+		}
 	}
 
 	private loadEvents(): void {
@@ -282,9 +326,80 @@ export class TimelineSidebarView extends ItemView {
 		this.events.sort((a, b) => b.time.getTime() - a.time.getTime());
 	}
 
+	/**
+	 * Deduplicates dates by priority when multiple date types fall on the same day
+	 * @param dates Array of date objects with type information
+	 * @returns Deduplicated array with highest priority date per day
+	 */
+	private deduplicateDatesByPriority(
+		dates: Array<{ date: Date; type: string }>
+	): Array<{ date: Date; type: string }> {
+		if (dates.length <= 1) {
+			return dates;
+		}
+
+		// Group dates by day (YYYY-MM-DD format)
+		const dateGroups = new Map<
+			string,
+			Array<{ date: Date; type: string }>
+		>();
+
+		dates.forEach((dateItem) => {
+			const dateKey = moment(dateItem.date).format("YYYY-MM-DD");
+			if (!dateGroups.has(dateKey)) {
+				dateGroups.set(dateKey, []);
+			}
+			dateGroups.get(dateKey)!.push(dateItem);
+		});
+
+		// For each day, keep only the highest priority date type
+		const deduplicatedDates: Array<{ date: Date; type: string }> = [];
+
+		dateGroups.forEach((dayDates) => {
+			if (dayDates.length === 1) {
+				// Only one date for this day, keep it
+				deduplicatedDates.push(dayDates[0]);
+			} else {
+				// Multiple dates for same day, find highest priority
+				const highestPriorityDate = dayDates.reduce(
+					(highest, current) => {
+						const currentPriority =
+							DATE_TYPE_PRIORITY[
+								current.type as keyof typeof DATE_TYPE_PRIORITY
+							] || 0;
+						const highestPriority =
+							DATE_TYPE_PRIORITY[
+								highest.type as keyof typeof DATE_TYPE_PRIORITY
+							] || 0;
+
+						return currentPriority > highestPriority
+							? current
+							: highest;
+					}
+				);
+
+				deduplicatedDates.push(highestPriorityDate);
+			}
+		});
+
+		return deduplicatedDates;
+	}
+
 	private extractDatesFromTask(
 		task: Task
 	): Array<{ date: Date; type: string }> {
+		// Task-level deduplication: ensure each task appears only once in timeline
+		
+		// For completed tasks: prioritize due date, fallback to completed date
+		if (task.completed) {
+			if (task.metadata.dueDate) {
+				return [{ date: new Date(task.metadata.dueDate), type: "due" }];
+			} else if (task.metadata.completedDate) {
+				return [{ date: new Date(task.metadata.completedDate), type: "completed" }];
+			}
+		}
+		
+		// For non-completed tasks: select single highest priority date
 		const dates: Array<{ date: Date; type: string }> = [];
 
 		if (task.metadata.dueDate) {
@@ -302,14 +417,27 @@ export class TimelineSidebarView extends ItemView {
 				type: "start",
 			});
 		}
+		
+		// For non-completed tasks, select the highest priority date
+		if (dates.length > 0) {
+			const highestPriorityDate = dates.reduce((highest, current) => {
+				const currentPriority = DATE_TYPE_PRIORITY[current.type as keyof typeof DATE_TYPE_PRIORITY] || 0;
+				const highestPriority = DATE_TYPE_PRIORITY[highest.type as keyof typeof DATE_TYPE_PRIORITY] || 0;
+				return currentPriority > highestPriority ? current : highest;
+			});
+			return [highestPriorityDate];
+		}
+		
+		// Fallback: if no planning dates exist, use deduplication for edge cases
+		const allDates: Array<{ date: Date; type: string }> = [];
 		if (task.metadata.completedDate) {
-			dates.push({
+			allDates.push({
 				date: new Date(task.metadata.completedDate),
 				type: "completed",
 			});
 		}
-
-		return dates;
+		
+		return this.deduplicateDatesByPriority(allDates);
 	}
 
 	private renderTimeline(): void {
@@ -447,9 +575,7 @@ export class TimelineSidebarView extends ItemView {
 			this.addChild(markdownRenderer);
 
 			// Set the file context if available
-			const file = this.app.vault.getAbstractFileByPath(
-				event.task.filePath
-			);
+			const file = this.app.vault.getFileByPath(event.task.filePath);
 			if (file instanceof TFile) {
 				markdownRenderer.setFile(file);
 			}
@@ -497,8 +623,8 @@ export class TimelineSidebarView extends ItemView {
 	}
 
 	private async goToTask(task: Task): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
-		if (!(file instanceof TFile)) return;
+		const file = this.app.vault.getFileByPath(task.filePath);
+		if (!file) return;
 
 		// Check if it's a canvas file
 		if ((task.metadata as any).sourceType === "canvas") {
@@ -546,8 +672,13 @@ export class TimelineSidebarView extends ItemView {
 			await this.loadEvents();
 			this.renderTimeline();
 
-			// Focus back to input
-			this.markdownEditor.editor?.focus();
+			// Check if we should collapse after capture
+			if (this.plugin.settings.timelineSidebar.quickInputCollapseOnCapture) {
+				this.toggleInputCollapse();
+			} else {
+				// Focus back to input
+				this.markdownEditor.editor?.focus();
+			}
 		} catch (error) {
 			console.error("Failed to capture:", error);
 		}
@@ -691,5 +822,126 @@ export class TimelineSidebarView extends ItemView {
 	public async refreshTimeline(): Promise<void> {
 		await this.loadEvents();
 		this.renderTimeline();
+	}
+
+	// Create collapsed header content
+	private createCollapsedHeader(): void {
+		if (!this.collapsedHeaderEl) return;
+
+		// Expand button
+		const expandBtn = this.collapsedHeaderEl.createDiv("collapsed-expand-btn");
+		setIcon(expandBtn, "chevron-right");
+		expandBtn.setAttribute("aria-label", t("Expand quick input"));
+		this.registerDomEvent(expandBtn, "click", () => {
+			this.toggleInputCollapse();
+		});
+
+		// Title
+		const titleEl = this.collapsedHeaderEl.createDiv("collapsed-title");
+		titleEl.setText(t("Quick Capture"));
+
+		// Quick actions
+		if (this.plugin.settings.timelineSidebar.quickInputShowQuickActions) {
+			const quickActionsEl = this.collapsedHeaderEl.createDiv("collapsed-quick-actions");
+
+			// Quick capture button
+			const quickCaptureBtn = quickActionsEl.createDiv("collapsed-quick-capture");
+			setIcon(quickCaptureBtn, "plus");
+			quickCaptureBtn.setAttribute("aria-label", t("Quick capture"));
+			this.registerDomEvent(quickCaptureBtn, "click", () => {
+				// Expand and focus editor
+				if (this.isInputCollapsed) {
+					this.toggleInputCollapse();
+					setTimeout(() => {
+						this.markdownEditor?.editor?.focus();
+					}, 350); // Wait for animation
+				}
+			});
+
+			// More options button
+			const moreOptionsBtn = quickActionsEl.createDiv("collapsed-more-options");
+			setIcon(moreOptionsBtn, "more-horizontal");
+			moreOptionsBtn.setAttribute("aria-label", t("More options"));
+			this.registerDomEvent(moreOptionsBtn, "click", () => {
+				new QuickCaptureModal(this.app, this.plugin, {}, true).open();
+			});
+		}
+	}
+
+	// Toggle collapse state
+	private toggleInputCollapse(): void {
+		if (this.isAnimating) return;
+
+		this.isAnimating = true;
+		this.isInputCollapsed = !this.isInputCollapsed;
+
+		// Save state to settings
+		this.plugin.settings.timelineSidebar.quickInputCollapsed = this.isInputCollapsed;
+		this.plugin.saveSettings();
+
+		if (this.isInputCollapsed) {
+			this.handleCollapseEditor();
+		} else {
+			this.handleExpandEditor();
+		}
+
+		// Reset animation flag after animation completes
+		setTimeout(() => {
+			this.isAnimating = false;
+		}, this.plugin.settings.timelineSidebar.quickInputAnimationDuration);
+	}
+
+	// Handle collapsing the editor
+	private handleCollapseEditor(): void {
+		// Save current editor content
+		if (this.markdownEditor) {
+			this.tempEditorContent = this.markdownEditor.value;
+		}
+
+		// Add collapsed class for animation
+		this.quickInputContainerEl.addClass("is-collapsing");
+		this.quickInputContainerEl.addClass("is-collapsed");
+
+		// Show collapsed header after a slight delay
+		setTimeout(() => {
+			this.collapsedHeaderEl?.show();
+			this.quickInputContainerEl.removeClass("is-collapsing");
+		}, 50);
+
+		// Update collapse button icon
+		const collapseBtn = this.quickInputHeaderEl?.querySelector(".quick-input-collapse-btn");
+		if (collapseBtn) {
+			setIcon(collapseBtn as HTMLElement, "chevron-right");
+			collapseBtn.setAttribute("aria-label", t("Expand quick input"));
+		}
+	}
+
+	// Handle expanding the editor
+	private handleExpandEditor(): void {
+		// Hide collapsed header immediately
+		this.collapsedHeaderEl?.hide();
+
+		// Remove collapsed class for animation
+		this.quickInputContainerEl.addClass("is-expanding");
+		this.quickInputContainerEl.removeClass("is-collapsed");
+
+		// Restore editor content
+		if (this.markdownEditor && this.tempEditorContent) {
+			this.markdownEditor.set(this.tempEditorContent, false);
+			this.tempEditorContent = "";
+		}
+
+		// Focus editor after animation
+		setTimeout(() => {
+			this.quickInputContainerEl.removeClass("is-expanding");
+			this.markdownEditor?.editor?.focus();
+		}, 50);
+
+		// Update collapse button icon
+		const collapseBtn = this.quickInputHeaderEl?.querySelector(".quick-input-collapse-btn");
+		if (collapseBtn) {
+			setIcon(collapseBtn as HTMLElement, "chevron-down");
+			collapseBtn.setAttribute("aria-label", t("Collapse quick input"));
+		}
 	}
 }

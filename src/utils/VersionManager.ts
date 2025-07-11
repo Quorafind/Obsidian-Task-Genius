@@ -355,4 +355,51 @@ export class VersionManager extends Component {
 			canWrite,
 		};
 	}
+
+	/**
+	 * Check if the current Obsidian version supports a specific API version
+	 */
+	public isObsidianVersionSupported(requiredVersion: string): boolean {
+		try {
+			// Use Obsidian's requireApiVersion function if available
+			if (typeof (window as any).requireApiVersion === "function") {
+				return (window as any).requireApiVersion(requiredVersion);
+			}
+
+			// Fallback: check if the app has version information
+			const obsidianVersion = (this.app as any).appVersion;
+			if (obsidianVersion) {
+				return (
+					this.compareVersions(obsidianVersion, requiredVersion) >= 0
+				);
+			}
+
+			console.warn(
+				"Cannot determine Obsidian version, assuming not supported"
+			);
+			return false;
+		} catch (error) {
+			console.error("Error checking Obsidian version support:", error);
+			return false;
+		}
+	}
+
+	/**
+	 * Check if the new Bases API (registerBasesView) is supported
+	 */
+	public isNewBasesApiSupported(): boolean {
+		try {
+			// Check if Obsidian version is 1.9.3 or higher
+			const hasVersionSupport = this.isObsidianVersionSupported("1.9.3");
+
+			// Check if the plugin has the registerBasesView method
+			const hasMethodSupport =
+				typeof (this.plugin as any).registerBasesView === "function";
+
+			return hasVersionSupport && hasMethodSupport;
+		} catch (error) {
+			console.error("Error checking new Bases API support:", error);
+			return false;
+		}
+	}
 }

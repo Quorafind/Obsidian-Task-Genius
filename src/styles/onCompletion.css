@@ -1,0 +1,302 @@
+/* OnCompletion Configurator Styles */
+.oncompletion-configurator {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background-color: var(--background-secondary);
+}
+
+.oncompletion-action-type {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.oncompletion-label {
+	font-weight: 600;
+	color: var(--text-normal);
+	font-size: 0.9em;
+}
+
+.oncompletion-config {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border-hover);
+}
+
+.oncompletion-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.oncompletion-description {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	font-style: italic;
+	margin-top: 2px;
+}
+
+/* Action Type Dropdown */
+.oncompletion-action-type .dropdown {
+	width: 100%;
+}
+
+/* Input Fields */
+.oncompletion-field .text-input {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.oncompletion-field .text-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Toggle Component */
+.oncompletion-field .checkbox-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* Suggester Styles */
+.task-id-suggestion {
+	font-weight: 600;
+	color: var(--text-accent);
+}
+
+.task-content-preview {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 300px;
+}
+
+.file-name {
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.file-path {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.action-type-suggestion {
+	font-weight: 600;
+	color: var(--text-accent);
+}
+
+.action-description {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+/* Validation States */
+.oncompletion-configurator.invalid {
+	border-color: var(--text-error);
+	background-color: var(--background-modifier-error);
+}
+
+.oncompletion-configurator.valid {
+	border-color: var(--text-success);
+}
+
+.oncompletion-validation-message {
+	font-size: 0.8em;
+	margin-top: 4px;
+	padding: 4px 6px;
+	border-radius: 3px;
+}
+
+.oncompletion-validation-message.error {
+	color: var(--text-error);
+	background-color: var(--background-modifier-error);
+}
+
+.oncompletion-validation-message.success {
+	color: var(--text-success);
+	background-color: var(--background-modifier-success);
+}
+
+/* Integration with Task Details */
+.task-details .oncompletion-configurator {
+	margin-top: 8px;
+	border: none;
+	background-color: transparent;
+	padding: 0;
+}
+
+.task-details .oncompletion-field {
+	margin-bottom: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.oncompletion-configurator {
+		padding: 8px;
+		gap: 8px;
+	}
+
+	.oncompletion-config {
+		gap: 8px;
+	}
+
+	.task-content-preview {
+		max-width: 200px;
+	}
+}
+
+/* Dark Theme Adjustments */
+.theme-dark .oncompletion-configurator {
+	background-color: var(--background-primary-alt);
+}
+
+.theme-dark .oncompletion-field .text-input {
+	background-color: var(--background-secondary);
+	border-color: var(--background-modifier-border-hover);
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+	.oncompletion-configurator {
+		border-width: 2px;
+	}
+
+	.oncompletion-field .text-input {
+		border-width: 2px;
+	}
+
+	.oncompletion-field .text-input:focus {
+		box-shadow: 0 0 0 3px var(--interactive-accent-hover);
+	}
+}
+
+/* Animation for Configuration Changes */
+.oncompletion-config {
+	transition: all 0.2s ease-in-out;
+}
+
+.oncompletion-field {
+	opacity: 1;
+	transform: translateY(0);
+	transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.oncompletion-field.entering {
+	opacity: 0;
+	transform: translateY(-10px);
+}
+
+.oncompletion-field.exiting {
+	opacity: 0;
+	transform: translateY(10px);
+}
+
+/* OnCompletion Modal Styles */
+.oncompletion-modal {
+	--dialog-width: 600px;
+	--dialog-max-width: 90vw;
+	--dialog-max-height: 80vh;
+}
+
+.oncompletion-modal .modal-content {
+	padding: 0;
+	max-height: var(--dialog-max-height);
+	overflow-y: auto;
+}
+
+.oncompletion-modal-content {
+	padding: 20px;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.oncompletion-modal-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 16px 20px;
+	border-top: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+}
+
+.oncompletion-modal-buttons button {
+	min-width: 80px;
+}
+
+/* Inline OnCompletion Button Styles */
+.inline-oncompletion-button-container {
+	display: inline-flex;
+	align-items: center;
+}
+
+.inline-oncompletion-config-button {
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	min-width: 100px;
+	text-align: left;
+}
+
+.inline-oncompletion-config-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.inline-oncompletion-config-button:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.inline-oncompletion-config-button:active {
+	background-color: var(--background-modifier-active);
+	transform: scale(0.98);
+}
+
+/* Responsive Design for Modal */
+@media (max-width: 768px) {
+	.oncompletion-modal {
+		--dialog-width: 95vw;
+		--dialog-max-height: 85vh;
+	}
+
+	.oncompletion-modal-content {
+		padding: 16px;
+		max-height: 65vh;
+	}
+
+	.oncompletion-modal-buttons {
+		padding: 12px 16px;
+		flex-direction: column-reverse;
+	}
+
+	.oncompletion-modal-buttons button {
+		width: 100%;
+		min-width: unset;
+	}
+}

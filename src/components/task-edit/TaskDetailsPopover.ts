@@ -102,12 +102,28 @@ export class TaskDetailsPopover
 					...updatedTask.metadata,
 					completedDate: Date.now(),
 				};
-			} else if (event.field === "status") {
-				// If status is changing to something else, mark as not completed
+				// Remove cancelled date if task is completed
+				const { cancelledDate, ...metadataWithoutCancelledDate } =
+					updatedTask.metadata;
+				updatedTask.metadata = metadataWithoutCancelledDate;
+			} else if (event.field === "status" && event.value === "-") {
+				// If status is changing to cancelled, mark as not completed and add cancelled date
 				updatedTask.completed = false;
 				const { completedDate, ...metadataWithoutCompletedDate } =
 					updatedTask.metadata;
-				updatedTask.metadata = metadataWithoutCompletedDate;
+				updatedTask.metadata = {
+					...metadataWithoutCompletedDate,
+					cancelledDate: Date.now(),
+				};
+			} else if (event.field === "status") {
+				// If status is changing to something else, mark as not completed
+				updatedTask.completed = false;
+				const {
+					completedDate,
+					cancelledDate,
+					...metadataWithoutDates
+				} = updatedTask.metadata;
+				updatedTask.metadata = metadataWithoutDates;
 			}
 
 			// Update the internal task reference

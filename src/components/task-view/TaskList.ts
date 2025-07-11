@@ -147,37 +147,82 @@ export class TaskListRendererComponent extends Component {
 		const sectionTaskIds = new Set(sectionTasks.map((t) => t.id)); // IDs of tasks belonging to this section
 
 		// --- Determine Root Tasks for Rendering ---
-		const rootTasksToRenderMap = new Map<string, Task>(); // Use Map to avoid duplicates easily
+		// Helper function to mark subtree as processed
+		const markSubtreeAsProcessed = (
+			rootTask: Task,
+			sectionTaskIds: Set<string>,
+			processedTaskIds: Set<string>
+		) => {
+			if (sectionTaskIds.has(rootTask.id)) {
+				processedTaskIds.add(rootTask.id);
+			}
+
+			if (rootTask.metadata.children) {
+				rootTask.metadata.children.forEach((childId) => {
+					const childTask = allTasksMap.get(childId);
+					if (childTask) {
+						markSubtreeAsProcessed(
+							childTask,
+							sectionTaskIds,
+							processedTaskIds
+						);
+					}
+				});
+			}
+		};
+
+		// Identify true root tasks to avoid duplicate rendering
+		const rootTasksToRender: Task[] = [];
+		const processedTaskIds = new Set<string>();
 
 		for (const task of sectionTasks) {
-			let currentTask = task;
-			let potentialRoot = task;
-
-			// Traverse upwards to find the highest ancestor that is NOT in this section,
-			// or stop at the task itself if it has no parent or its parent IS in the section.
-			while (
-				currentTask.metadata.parent &&
-				!sectionTaskIds.has(currentTask.metadata.parent)
-			) {
-				const parentTask = allTasksMap.get(currentTask.metadata.parent);
-				if (!parentTask) {
-					// Parent ID exists but task not found in map - data inconsistency? Stop ascending.
-					console.warn(
-						`Parent task ${currentTask.metadata.parent} not found in allTasksMap.`
-					);
-					break;
-				}
-				potentialRoot = parentTask; // The parent becomes the new potential root for this branch
-				currentTask = parentTask; // Continue checking the parent's parent
+			// Skip already processed tasks
+			if (processedTaskIds.has(task.id)) {
+				continue;
 			}
 
-			// Add the determined root task (could be the original task or an ancestor) to the map
-			if (!rootTasksToRenderMap.has(potentialRoot.id)) {
-				rootTasksToRenderMap.set(potentialRoot.id, potentialRoot);
+			// Check if this is a root task (no parent or parent not in current section)
+			if (
+				!task.metadata.parent ||
+				!sectionTaskIds.has(task.metadata.parent)
+			) {
+				// This is a root task
+				let actualRoot = task;
+
+				// If has parent but parent not in current section, find the complete root
+				if (task.metadata.parent) {
+					let currentTask = task;
+					while (
+						currentTask.metadata.parent &&
+						!sectionTaskIds.has(currentTask.metadata.parent)
+					) {
+						const parentTask = allTasksMap.get(
+							currentTask.metadata.parent
+						);
+						if (!parentTask) {
+							console.warn(
+								`Parent task ${currentTask.metadata.parent} not found in allTasksMap.`
+							);
+							break;
+						}
+						actualRoot = parentTask;
+						currentTask = parentTask;
+					}
+				}
+
+				// Add root task to render list if not already added
+				if (!rootTasksToRender.some((t) => t.id === actualRoot.id)) {
+					rootTasksToRender.push(actualRoot);
+				}
+
+				// Mark entire subtree as processed to avoid duplicate rendering
+				markSubtreeAsProcessed(
+					actualRoot,
+					sectionTaskIds,
+					processedTaskIds
+				);
 			}
 		}
-
-		const rootTasksToRender = Array.from(rootTasksToRenderMap.values());
 
 		// Optional: Sort root tasks (e.g., by line number)
 		rootTasksToRender.sort((a, b) => a.line - b.line);

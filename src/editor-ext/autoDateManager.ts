@@ -656,9 +656,12 @@ function findMetadataInsertPosition(
 	let position = taskMatch[0].length;
 
 	// Find the main task content (description) before any metadata
+	// FIXED: Removed @ from metadata detection since @ mentions (like @陈烽) are part of content, not metadata
+	// Only actual metadata markers are: [ (dataview), # (tags), and emoji markers (📅🚀✅❌)
 	const contentMatch = lineText
 		.slice(position)
-		.match(/^[^\[#@📅🚀✅❌]*(?=\s*[\[#@📅🚀✅❌]|$)/);
+		.match(/^[^\[#📅🚀✅❌]*?(?=\s*[\[#📅🚀✅❌]|\s*$)/);
+	
 	if (contentMatch) {
 		position += contentMatch[0].trimEnd().length;
 	}

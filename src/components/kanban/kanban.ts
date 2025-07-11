@@ -49,9 +49,11 @@ export class KanbanComponent extends Component {
 	private columnContainerEl: HTMLElement;
 	// private dragManager: DragManager;
 	private sortableInstances: Sortable[] = [];
+	private columnSortableInstance: Sortable | null = null;
 	private tasks: Task[] = [];
 	private allTasks: Task[] = [];
 	private currentViewId: string = "kanban"; // 新增：当前视图ID
+	private columnOrder: string[] = [];
 	private params: {
 		onTaskStatusUpdate?: (
 			taskId: string,
@@ -126,6 +128,13 @@ export class KanbanComponent extends Component {
 		super.onunload();
 		this.columns.forEach((col) => col.unload());
 		this.sortableInstances.forEach((instance) => instance.destroy());
+
+		// Destroy column sortable instance
+		if (this.columnSortableInstance) {
+			this.columnSortableInstance.destroy();
+			this.columnSortableInstance = null;
+		}
+
 		this.columns = [];
 		this.containerEl.empty();
 		console.log("KanbanComponent unloaded.");
@@ -453,6 +462,9 @@ export class KanbanComponent extends Component {
 
 		// Re-initialize sortable instances after columns are rendered
 		this.initializeSortableInstances();
+
+		// Initialize column sorting
+		this.initializeColumnSortable();
 	}
 
 	private renderStatusColumns() {
@@ -489,7 +501,12 @@ export class KanbanComponent extends Component {
 		// 按照要求的顺序合并状态名称
 		statusNames = [...spaceStatus, ...otherStatuses, ...xStatus];
 
-		statusNames.forEach((statusName) => {
+		// Apply saved column order to status names
+		const statusColumns = statusNames.map((name) => ({ title: name }));
+		const orderedStatusColumns = this.applyColumnOrder(statusColumns);
+		const orderedStatusNames = orderedStatusColumns.map((col) => col.title);
+
+		orderedStatusNames.forEach((statusName) => {
 			const tasksForStatus = this.getTasksForStatus(statusName);
 
 			const column = new KanbanColumnComponent(
@@ -532,7 +549,10 @@ export class KanbanComponent extends Component {
 			columnConfigs = this.generateDefaultColumns(groupBy);
 		}
 
-		columnConfigs.forEach((config) => {
+		// Apply saved column order to column configurations
+		const orderedColumnConfigs = this.applyColumnOrder(columnConfigs);
+
+		orderedColumnConfigs.forEach((config) => {
 			const tasksForColumn = this.getTasksForProperty(
 				groupBy,
 				config.value
@@ -889,6 +909,9 @@ export class KanbanComponent extends Component {
 				),
 			};
 		}
+
+		// Load saved column order
+		this.loadColumnOrder();
 	}
 
 	private getSortOptionLabel(field: string, order: string): string {
@@ -1379,6 +1402,156 @@ export class KanbanComponent extends Component {
 			return "nextWeek";
 		} else {
 			return "later";
+		}
+	}
+
+	// Column order management methods
+	private getColumnOrderKey(): string {
+		const kanbanConfig = this.plugin.settings.viewConfiguration.find(
+			(v) => v.id === this.currentViewId
+		)?.specificConfig as KanbanSpecificConfig;
+		const groupBy = kanbanConfig?.groupBy || "status";
+		return `kanban-column-order-${this.currentViewId}-${groupBy}`;
+	}
+
+	private loadColumnOrder(): void {
+		try {
+			const key = this.getColumnOrderKey();
+			const savedOrder = this.app.loadLocalStorage(key);
+			if (savedOrder) {
+				this.columnOrder = JSON.parse(savedOrder);
+			} else {
+				this.columnOrder = [];
+			}
+		} catch (error) {
+			console.warn(
+				"Failed to load column order from localStorage:",
+				error
+			);
+			this.columnOrder = [];
+		}
+	}
+
+	private saveColumnOrder(order: string[]): void {
+		try {
+			const key = this.getColumnOrderKey();
+			this.app.saveLocalStorage(key, JSON.stringify(order));
+			this.columnOrder = [...order];
+		} catch (error) {
+			console.warn("Failed to save column order to localStorage:", error);
+		}
+	}
+
+	private applyColumnOrder<T extends { title: string; id?: string }>(
+		columns: T[]
+	): T[] {
+		try {
+			if (this.columnOrder.length === 0) {
+				return columns;
+			}
+
+			if (!Array.isArray(columns)) {
+				console.warn(
+					"Invalid columns array provided to applyColumnOrder"
+				);
+				return [];
+			}
+
+			const orderedColumns: T[] = [];
+			const remainingColumns = [...columns];
+
+			// First, add columns in the saved order
+			this.columnOrder.forEach((orderedId) => {
+				if (orderedId) {
+					const columnIndex = remainingColumns.findIndex(
+						(col) =>
+							(col.id && col.id === orderedId) ||
+							col.title === orderedId
+					);
+					if (columnIndex !== -1) {
+						orderedColumns.push(
+							remainingColumns.splice(columnIndex, 1)[0]
+						);
+					}
+				}
+			});
+
+			// Then, add any remaining columns that weren't in the saved order
+			orderedColumns.push(...remainingColumns);
+
+			return orderedColumns;
+		} catch (error) {
+			console.error("Error applying column order:", error);
+			return columns; // Fallback to original order
+		}
+	}
+
+	private initializeColumnSortable(): void {
+		// Destroy existing column sortable instance if it exists
+		if (this.columnSortableInstance) {
+			this.columnSortableInstance.destroy();
+			this.columnSortableInstance = null;
+		}
+
+		// Create sortable instance for column container
+		this.columnSortableInstance = Sortable.create(this.columnContainerEl, {
+			group: "kanban-columns",
+			animation: 150,
+			ghostClass: "tg-kanban-column-ghost",
+			dragClass: "tg-kanban-column-dragging",
+			handle: ".tg-kanban-column-header", // Only allow dragging by header
+			direction: "horizontal", // Columns are arranged horizontally
+			swapThreshold: 0.65, // Threshold for swapping elements
+			filter: ".tg-kanban-column-content, .tg-kanban-card, .tg-kanban-add-card-button", // Prevent dragging these elements
+			preventOnFilter: false, // Don't prevent default on filtered elements
+			onEnd: (event) => {
+				this.handleColumnSortEnd(event);
+			},
+		});
+	}
+
+	private handleColumnSortEnd(event: Sortable.SortableEvent): void {
+		console.log("Column sort end:", event.oldIndex, event.newIndex);
+
+		try {
+			if (event.oldIndex === event.newIndex) {
+				return; // No change in position
+			}
+
+			// Get the current column order from DOM
+			const newColumnOrder: string[] = [];
+			const columnElements =
+				this.columnContainerEl.querySelectorAll(".tg-kanban-column");
+
+			if (columnElements.length === 0) {
+				console.warn("No column elements found during column sort end");
+				return;
+			}
+
+			columnElements.forEach((columnEl) => {
+				const columnTitle = (columnEl as HTMLElement).querySelector(
+					".tg-kanban-column-title"
+				)?.textContent;
+				if (columnTitle) {
+					// Use the data-status-name attribute if available, otherwise use title
+					const statusName = (columnEl as HTMLElement).getAttribute(
+						"data-status-name"
+					);
+					const columnId = statusName || columnTitle;
+
+					newColumnOrder.push(columnId);
+				}
+			});
+
+			if (newColumnOrder.length === 0) {
+				console.warn("No valid column order found during sort end");
+				return;
+			}
+
+			// Save the new order
+			this.saveColumnOrder(newColumnOrder);
+		} catch (error) {
+			console.error("Error handling column sort end:", error);
 		}
 	}
 }

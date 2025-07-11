@@ -1,4 +1,10 @@
-import { App, PluginSettingTab, setIcon, ButtonComponent } from "obsidian";
+import {
+	App,
+	PluginSettingTab,
+	setIcon,
+	ButtonComponent,
+	Setting,
+} from "obsidian";
 import TaskProgressBarPlugin from ".";
 
 import { t } from "./translations/helper";
@@ -23,6 +29,7 @@ import {
 	IcsSettingsComponent,
 } from "./components/settings";
 import { renderFileFilterSettingsTab } from "./components/settings/FileFilterSettingsTab";
+import { renderTimeParsingSettingsTab } from "./components/settings/TimeParsingSettingsTab";
 
 export class TaskProgressBarSettingTab extends PluginSettingTab {
 	plugin: TaskProgressBarPlugin;
@@ -108,6 +115,12 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			id: "quick-capture",
 			name: t("Quick Capture"),
 			icon: "zap",
+			category: "workflow",
+		},
+		{
+			id: "time-parsing",
+			name: t("Time Parsing"),
+			icon: "clock",
 			category: "workflow",
 		},
 		{
@@ -415,6 +428,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		const quickCaptureSection = this.createTabSection("quick-capture");
 		this.displayQuickCaptureSettings(quickCaptureSection);
 
+		// Time Parsing Tab
+		const timeParsingSection = this.createTabSection("time-parsing");
+		this.displayTimeParsingSettings(timeParsingSection);
+
 		// Timeline Sidebar Tab
 		const timelineSidebarSection =
 			this.createTabSection("timeline-sidebar");
@@ -488,6 +505,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 	private displayQuickCaptureSettings(containerEl: HTMLElement): void {
 		renderQuickCaptureSettingsTab(this, containerEl);
+	}
+
+	private displayTimeParsingSettings(containerEl: HTMLElement): void {
+		renderTimeParsingSettingsTab(this, containerEl);
 	}
 
 	private displayTimelineSidebarSettings(containerEl: HTMLElement): void {

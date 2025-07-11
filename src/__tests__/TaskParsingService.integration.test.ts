@@ -39,6 +39,7 @@ class MockTFolder {
 
 class MockVault {
 	private files = new Map<string, MockTFile>();
+	private folders = new Map<string, MockTFolder>();
 	private fileContents = new Map<string, string>();
 
 	addFile(path: string, content: string): MockTFile {
@@ -51,10 +52,16 @@ class MockVault {
 
 	addFolder(path: string): MockTFolder {
 		const folderName = path.split("/").pop() || "";
-		return new MockTFolder(path, folderName);
+		const folder = new MockTFolder(path, folderName);
+		this.folders.set(path, folder);
+		return folder;
 	}
 
 	getAbstractFileByPath(path: string): MockTFile | null {
+		return this.files.get(path) || null;
+	}
+
+	getFileByPath(path: string): MockTFile | null {
 		return this.files.get(path) || null;
 	}
 
@@ -152,7 +159,6 @@ describe("TaskParsingService Integration", () => {
 				stripExtension: true,
 				enabled: false,
 			},
-			enhancedProjectEnabled: true,
 			metadataConfigEnabled: true,
 			configFileEnabled: true,
 		},
@@ -227,7 +233,20 @@ describe("TaskParsingService Integration", () => {
 
 		it("should parse tasks with metadata-based projects", async () => {
 			const parserConfig = createParserConfig();
-			const serviceOptions = createServiceOptions(parserConfig);
+			const serviceOptions = createServiceOptions(parserConfig, {
+				configFileName: "project.md",
+				searchRecursively: true,
+				metadataKey: "project",
+				pathMappings: [],
+				metadataMappings: [],
+				defaultProjectNaming: {
+					strategy: "filename",
+					stripExtension: true,
+					enabled: false,
+				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
+			});
 
 			parsingService = new TaskParsingService(serviceOptions);
 
@@ -261,7 +280,20 @@ describe("TaskParsingService Integration", () => {
 
 		it("should parse tasks with config file-based projects", async () => {
 			const parserConfig = createParserConfig();
-			const serviceOptions = createServiceOptions(parserConfig);
+			const serviceOptions = createServiceOptions(parserConfig, {
+				configFileName: "project.md",
+				searchRecursively: true,
+				metadataKey: "project",
+				pathMappings: [],
+				metadataMappings: [],
+				defaultProjectNaming: {
+					strategy: "filename",
+					stripExtension: true,
+					enabled: false,
+				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
+			});
 
 			parsingService = new TaskParsingService(serviceOptions);
 
@@ -575,6 +607,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -622,6 +656,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -671,7 +707,6 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
-				enhancedProjectEnabled: true,
 				metadataConfigEnabled: true,
 				configFileEnabled: true,
 			});
@@ -754,7 +789,6 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
-				enhancedProjectEnabled: true,
 				metadataConfigEnabled: true,
 				configFileEnabled: true,
 			});
@@ -840,6 +874,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -901,6 +937,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -952,6 +990,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: true,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -1013,6 +1053,8 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: false,
 				},
+				metadataConfigEnabled: true,
+				configFileEnabled: true,
 			});
 
 			parsingService = new TaskParsingService(serviceOptions);
@@ -1064,7 +1106,6 @@ describe("TaskParsingService Integration", () => {
 					stripExtension: true,
 					enabled: true,
 				},
-				enhancedProjectEnabled: true,
 				metadataConfigEnabled: true,
 				configFileEnabled: true,
 			});

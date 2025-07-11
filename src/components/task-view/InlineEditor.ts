@@ -80,6 +80,11 @@ export class InlineEditor extends Component {
 		this.isEditing = false;
 		this.isSaving = false;
 
+		// Create debounced save function
+		this.debouncedSave = debounce(async () => {
+			await this.saveTask();
+		}, 800);
+
 		// Store original task state for potential restoration - deep clone to avoid reference issues
 		this.originalTask = {
 			...this.task,
@@ -235,8 +240,13 @@ export class InlineEditor extends Component {
 			| "dueDate"
 			| "startDate"
 			| "scheduledDate"
+			| "cancelledDate"
+			| "completedDate"
 			| "priority"
-			| "recurrence",
+			| "recurrence"
+			| "onCompletion"
+			| "dependsOn"
+			| "id",
 		currentValue?: string
 	): void {
 		this.initializeEditingState();
@@ -273,6 +283,8 @@ export class InlineEditor extends Component {
 			case "dueDate":
 			case "startDate":
 			case "scheduledDate":
+			case "cancelledDate":
+			case "completedDate":
 				this.createDateEditor(editorContainer, fieldType, currentValue);
 				break;
 			case "priority":
@@ -280,6 +292,15 @@ export class InlineEditor extends Component {
 				break;
 			case "recurrence":
 				this.createRecurrenceEditor(editorContainer, currentValue);
+				break;
+			case "onCompletion":
+				this.createOnCompletionEditor(editorContainer, currentValue);
+				break;
+			case "dependsOn":
+				this.createDependsOnEditor(editorContainer, currentValue);
+				break;
+			case "id":
+				this.createIdEditor(editorContainer, currentValue);
 				break;
 		}
 	}
@@ -490,7 +511,12 @@ export class InlineEditor extends Component {
 
 	private createDateEditor(
 		container: HTMLElement,
-		fieldType: "dueDate" | "startDate" | "scheduledDate",
+		fieldType:
+			| "dueDate"
+			| "startDate"
+			| "scheduledDate"
+			| "cancelledDate"
+			| "completedDate",
 		currentValue?: string
 	): void {
 		const input = container.createEl("input", {
@@ -612,6 +638,191 @@ export class InlineEditor extends Component {
 		};
 
 		this.setupInputEvents(input, updateRecurrence, "recurrence");
+
+		// Focus and select
+		input.focus();
+		input.select();
+	}
+
+	private createOnCompletionEditor(
+		container: HTMLElement,
+		currentValue?: string
+	): void {
+		const buttonContainer = container.createDiv({
+			cls: "inline-oncompletion-button-container",
+		});
+
+		// Prevent event bubbling on container
+		this.registerDomEvent(
+			buttonContainer,
+			"click",
+			this.boundHandlers.stopPropagation
+		);
+		this.registerDomEvent(
+			buttonContainer,
+			"mousedown",
+			this.boundHandlers.stopPropagation
+		);
+
+		// Create a simple button to show current value and open modal
+		const configButton = buttonContainer.createEl("button", {
+			cls: "inline-oncompletion-config-button",
+			text:
+				currentValue ||
+				this.task.metadata.onCompletion ||
+				t("Configure..."),
+		});
+
+		// Add click handler to open modal
+		this.registerDomEvent(configButton, "click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.openOnCompletionModal(container, currentValue);
+		});
+
+		// Set up keyboard handling
+		this.registerDomEvent(buttonContainer, "keydown", (e) => {
+			if (e.key === "Escape") {
+				const targetEl = buttonContainer.closest(
+					".inline-metadata-editor"
+				)?.parentElement as HTMLElement;
+				if (targetEl) {
+					this.cancelMetadataEdit(targetEl);
+				}
+			} else if (e.key === "Enter" && !e.shiftKey) {
+				e.preventDefault();
+				this.openOnCompletionModal(container, currentValue);
+			}
+		});
+
+		// Focus the button
+		configButton.focus();
+	}
+
+	private async openOnCompletionModal(
+		container: HTMLElement,
+		currentValue?: string
+	): Promise<void> {
+		const { OnCompletionModal } = await import(
+			"../onCompletion/OnCompletionModal"
+		);
+
+		const modal = new OnCompletionModal(this.app, this.plugin, {
+			initialValue: currentValue || this.task.metadata.onCompletion || "",
+			onSave: (value) => {
+				// Update the task metadata
+				this.task.metadata.onCompletion = value || undefined;
+
+				// Update the button text
+				const button = container.querySelector(
+					".inline-oncompletion-config-button"
+				) as HTMLElement;
+				if (button) {
+					button.textContent = value || t("Configure...");
+				}
+
+				// Trigger debounced save
+				this.debouncedSave?.();
+
+				// Finish the metadata edit
+				const targetEl = container.closest(".inline-metadata-editor")
+					?.parentElement as HTMLElement;
+				if (targetEl) {
+					this.finishMetadataEdit(targetEl, "onCompletion").catch(
+						console.error
+					);
+				}
+			},
+			onCancel: () => {
+				// Finish the metadata edit without saving
+				const targetEl = container.closest(".inline-metadata-editor")
+					?.parentElement as HTMLElement;
+				if (targetEl) {
+					this.cancelMetadataEdit(targetEl);
+				}
+			},
+		});
+
+		modal.open();
+	}
+
+	private createDependsOnEditor(
+		container: HTMLElement,
+		currentValue?: string
+	): void {
+		const input = container.createEl("input", {
+			type: "text",
+			cls: "inline-dependson-input",
+			value:
+				currentValue ||
+				(this.task.metadata.dependsOn
+					? this.task.metadata.dependsOn.join(", ")
+					: ""),
+			placeholder: "Task IDs separated by commas",
+		});
+
+		this.activeInput = input;
+
+		// Prevent event bubbling on input element
+		this.registerDomEvent(
+			input,
+			"click",
+			this.boundHandlers.stopPropagation
+		);
+		this.registerDomEvent(
+			input,
+			"mousedown",
+			this.boundHandlers.stopPropagation
+		);
+
+		const updateDependsOn = (value: string) => {
+			if (value.trim()) {
+				this.task.metadata.dependsOn = value
+					.split(",")
+					.map((id) => id.trim())
+					.filter((id) => id.length > 0);
+			} else {
+				this.task.metadata.dependsOn = undefined;
+			}
+		};
+
+		this.setupInputEvents(input, updateDependsOn, "dependsOn");
+
+		// Focus and select
+		input.focus();
+		input.select();
+	}
+
+	private createIdEditor(
+		container: HTMLElement,
+		currentValue?: string
+	): void {
+		const input = container.createEl("input", {
+			type: "text",
+			cls: "inline-id-input",
+			value: currentValue || this.task.metadata.id || "",
+			placeholder: "Unique task identifier",
+		});
+
+		this.activeInput = input;
+
+		// Prevent event bubbling on input element
+		this.registerDomEvent(
+			input,
+			"click",
+			this.boundHandlers.stopPropagation
+		);
+		this.registerDomEvent(
+			input,
+			"mousedown",
+			this.boundHandlers.stopPropagation
+		);
+
+		const updateId = (value: string) => {
+			this.task.metadata.id = value || undefined;
+		};
+
+		this.setupInputEvents(input, updateId, "id");
 
 		// Focus and select
 		input.focus();
@@ -758,8 +969,13 @@ export class InlineEditor extends Component {
 			{ key: "dueDate", label: "Due Date", icon: "calendar" },
 			{ key: "startDate", label: "Start Date", icon: "play" },
 			{ key: "scheduledDate", label: "Scheduled Date", icon: "clock" },
+			{ key: "cancelledDate", label: "Cancelled Date", icon: "x" },
+			{ key: "completedDate", label: "Completed Date", icon: "check" },
 			{ key: "priority", label: "Priority", icon: "alert-triangle" },
 			{ key: "recurrence", label: "Recurrence", icon: "repeat" },
+			{ key: "onCompletion", label: "On Completion", icon: "flag" },
+			{ key: "dependsOn", label: "Depends On", icon: "link" },
+			{ key: "id", label: "Task ID", icon: "hash" },
 		];
 
 		// Filter out fields that already have values
@@ -780,10 +996,23 @@ export class InlineEditor extends Component {
 					return !this.task.metadata.startDate;
 				case "scheduledDate":
 					return !this.task.metadata.scheduledDate;
+				case "cancelledDate":
+					return !this.task.metadata.cancelledDate;
+				case "completedDate":
+					return !this.task.metadata.completedDate;
 				case "priority":
 					return !this.task.metadata.priority;
 				case "recurrence":
 					return !this.task.metadata.recurrence;
+				case "onCompletion":
+					return !this.task.metadata.onCompletion;
+				case "dependsOn":
+					return (
+						!this.task.metadata.dependsOn ||
+						this.task.metadata.dependsOn.length === 0
+					);
+				case "id":
+					return !this.task.metadata.id;
 				default:
 					return true;
 			}
@@ -864,6 +1093,8 @@ export class InlineEditor extends Component {
 			"dueDate",
 			"startDate",
 			"scheduledDate",
+			"cancelledDate",
+			"completedDate",
 			"recurrence",
 		];
 
@@ -1087,6 +1318,8 @@ export class InlineEditor extends Component {
 			case "dueDate":
 			case "startDate":
 			case "scheduledDate":
+			case "cancelledDate":
+			case "completedDate":
 				const dateValue = (this.task.metadata as StandardTaskMetadata)[
 					fieldType
 				] as number;
@@ -1114,6 +1347,28 @@ export class InlineEditor extends Component {
 					targetEl.className = `task-priority priority-${this.task.metadata.priority}`;
 				}
 				break;
+			case "onCompletion":
+				if (this.task.metadata.onCompletion) {
+					targetEl.textContent = this.task.metadata.onCompletion;
+					targetEl.className = "task-oncompletion";
+				}
+				break;
+			case "dependsOn":
+				if (
+					this.task.metadata.dependsOn &&
+					this.task.metadata.dependsOn.length > 0
+				) {
+					targetEl.textContent =
+						this.task.metadata.dependsOn.join(", ");
+					targetEl.className = "task-dependson";
+				}
+				break;
+			case "id":
+				if (this.task.metadata.id) {
+					targetEl.textContent = this.task.metadata.id;
+					targetEl.className = "task-id";
+				}
+				break;
 		}
 	}
 
@@ -1135,6 +1390,9 @@ export class InlineEditor extends Component {
 
 		this.activeInput = null;
 		this.contentInput = null;
+
+		// Clean up debounced save function
+		this.debouncedSave = null;
 	}
 
 	public isCurrentlyEditing(): boolean {

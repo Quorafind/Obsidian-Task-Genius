@@ -168,7 +168,7 @@ export class ProjectConfigManager {
 		}
 
 		try {
-			const file = this.vault.getAbstractFileByPath(filePath);
+			const file = this.vault.getFileByPath(filePath);
 			// Check if file exists and is a TFile (or has TFile-like properties for testing)
 			if (!file || !("stat" in file)) {
 				return null;
@@ -310,7 +310,7 @@ export class ProjectConfigManager {
 			return null;
 		}
 
-		const file = this.vault.getAbstractFileByPath(filePath);
+		const file = this.vault.getFileByPath(filePath);
 		if (!file) {
 			return null;
 		}
@@ -351,7 +351,7 @@ export class ProjectConfigManager {
 			return null;
 		}
 
-		const file = this.vault.getAbstractFileByPath(filePath);
+		const file = this.vault.getFileByPath(filePath);
 		if (!file) {
 			return null;
 		}

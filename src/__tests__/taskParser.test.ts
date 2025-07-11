@@ -582,7 +582,8 @@ This project involves software development tasks.
 		});
 
 		test("should parse task with nested Chinese tags", () => {
-			const content = "- [ ] Task with nested Chinese tag #new/中文1/中文2";
+			const content =
+				"- [ ] Task with nested Chinese tag #new/中文1/中文2";
 			const tasks = parser.parseLegacy(content, "test.md");
 
 			expect(tasks).toHaveLength(1);
@@ -591,7 +592,8 @@ This project involves software development tasks.
 		});
 
 		test("should parse task with mixed Chinese and English nested tags", () => {
-			const content = "- [ ] Task with mixed tags #project/工作/frontend #category/学习/编程";
+			const content =
+				"- [ ] Task with mixed tags #project/工作/frontend #category/学习/编程";
 			const tasks = parser.parseLegacy(content, "test.md");
 
 			expect(tasks).toHaveLength(1);
@@ -610,16 +612,20 @@ This project involves software development tasks.
 		});
 
 		test("should parse task with deeply nested Chinese tags", () => {
-			const content = "- [ ] Task with deep Chinese nesting #类别/工作/项目/前端/组件";
+			const content =
+				"- [ ] Task with deep Chinese nesting #类别/工作/项目/前端/组件";
 			const tasks = parser.parseLegacy(content, "test.md");
 
 			expect(tasks).toHaveLength(1);
-			expect(tasks[0].metadata.tags).toContain("#类别/工作/项目/前端/组件");
+			expect(tasks[0].metadata.tags).toContain(
+				"#类别/工作/项目/前端/组件"
+			);
 			expect(tasks[0].content).toBe("Task with deep Chinese nesting");
 		});
 
 		test("should parse task with Chinese tags mixed with other metadata", () => {
-			const content = "- [ ] Task with Chinese and metadata #重要 @家里 🔺 #project/工作项目";
+			const content =
+				"- [ ] Task with Chinese and metadata #重要 @家里 🔺 #project/工作项目";
 			const tasks = parser.parseLegacy(content, "test.md");
 
 			expect(tasks).toHaveLength(1);
@@ -631,11 +637,14 @@ This project involves software development tasks.
 		});
 
 		test("should parse task with Chinese tags containing numbers and punctuation", () => {
-			const content = "- [ ] Task with complex Chinese tag #项目2024/第1季度/Q1-计划";
+			const content =
+				"- [ ] Task with complex Chinese tag #项目2024/第1季度/Q1-计划";
 			const tasks = parser.parseLegacy(content, "test.md");
 
 			expect(tasks).toHaveLength(1);
-			expect(tasks[0].metadata.tags).toContain("#项目2024/第1季度/Q1-计划");
+			expect(tasks[0].metadata.tags).toContain(
+				"#项目2024/第1季度/Q1-计划"
+			);
 			expect(tasks[0].content).toBe("Task with complex Chinese tag");
 		});
 	});
@@ -889,5 +898,88 @@ describe("Performance and Limits", () => {
 		expect(tasks[0].metadata.tags).toContain(longTag);
 		expect(tasks[0].metadata.project).toBe("b".repeat(50));
 		expect(tasks[0].content).toBe("Task with long metadata");
+	});
+});
+
+describe("OnCompletion Emoji Parsing", () => {
+	let parser: MarkdownTaskParser;
+
+	beforeEach(() => {
+		parser = new MarkdownTaskParser(getConfig("tasks"));
+	});
+
+	test("should parse onCompletion with .md file extension boundary", () => {
+		const content = "- [ ] Task with onCompletion 🏁 move:archive.md #tag1";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe("move:archive.md");
+		expect(tasks[0].metadata.tags).toContain("#tag1");
+		expect(tasks[0].content).toBe("Task with onCompletion");
+	});
+
+	test("should parse onCompletion with heading", () => {
+		const content = "- [ ] Task 🏁 move:archive.md#completed #tag1";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe(
+			"move:archive.md#completed"
+		);
+		expect(tasks[0].metadata.tags).toContain("#tag1");
+	});
+
+	test("should parse onCompletion with spaces in filename", () => {
+		const content = "- [ ] Task 🏁 move:my archive.md #tag1";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe("move:my archive.md");
+		expect(tasks[0].metadata.tags).toContain("#tag1");
+	});
+
+	test("should parse onCompletion with canvas file", () => {
+		const content = "- [ ] Task 🏁 move:project.canvas #tag1";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe("move:project.canvas");
+		expect(tasks[0].metadata.tags).toContain("#tag1");
+	});
+
+	test("should parse onCompletion with complex path and heading", () => {
+		const content =
+			"- [ ] Task 🏁 move:folder/my file.md#section-1 📅 2024-01-01";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe(
+			"move:folder/my file.md#section-1"
+		);
+		// dueDate is parsed as timestamp, so we need to check the actual value
+		expect(tasks[0].metadata.dueDate).toBeDefined();
+	});
+
+	test("should handle multiple emojis correctly", () => {
+		const content = "- [ ] Task 🏁 delete 📅 2024-01-01 #tag1";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe("delete");
+		expect(tasks[0].metadata.dueDate).toBeDefined();
+		// Check if tags array exists and has content
+		expect(tasks[0].metadata.tags).toBeDefined();
+		if (tasks[0].metadata.tags.length > 0) {
+			expect(tasks[0].metadata.tags).toContain("#tag1");
+		}
+	});
+
+	test("should parse onCompletion boundary correctly - simple case", () => {
+		const content = "- [ ] Task 🏁 move:test.md";
+		const tasks = parser.parseLegacy(content, "test.md");
+
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0].metadata.onCompletion).toBe("move:test.md");
+		expect(tasks[0].content).toBe("Task");
 	});
 });

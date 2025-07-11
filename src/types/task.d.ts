@@ -34,8 +34,16 @@ export interface StandardTaskMetadata {
 	dueDate?: number;
 	/** Date when the task was completed */
 	completedDate?: number;
+	/** Date when the task was cancelled */
+	cancelledDate?: number;
 	/** Recurrence pattern (Tasks plugin compatible) */
 	recurrence?: string;
+	/** Task completion action/command */
+	onCompletion?: string;
+	/** Task dependencies (IDs of tasks this depends on) */
+	dependsOn?: string[];
+	/** Unique task identifier */
+	id?: string;
 
 	/** Tags associated with the task */
 	tags: string[];
@@ -66,6 +74,8 @@ export interface StandardTaskMetadata {
 
 	/** Task Genius enhanced project information */
 	tgProject?: TgProject;
+
+	[key: string]: any;
 }
 
 export interface StandardFileTaskMetadata extends StandardTaskMetadata {
@@ -99,6 +109,7 @@ export interface CanvasTaskMetadata extends StandardTaskMetadata {
 
 	/** Source type to distinguish canvas tasks */
 	sourceType?: "canvas" | "markdown";
+
 }
 
 /** Task Genius Project interface */
@@ -185,6 +196,18 @@ export interface TaskCache {
 	/** Scheduled date index: scheduledDate(YYYY-MM-DD) -> Set<taskIds> */
 	scheduledDate: Map<string, Set<string>>;
 
+	/** Cancelled date index: cancelledDate(YYYY-MM-DD) -> Set<taskIds> */
+	cancelledDate: Map<string, Set<string>>;
+
+	/** On completion action index: action -> Set<taskIds> */
+	onCompletion: Map<string, Set<string>>;
+
+	/** Dependencies index: dependsOn -> Set<taskIds> */
+	dependsOn: Map<string, Set<string>>;
+
+	/** Task ID index: id -> Set<taskIds> */
+	taskId: Map<string, Set<string>>;
+
 	/** Completion status index: boolean -> Set<taskIds> */
 	completed: Map<boolean, Set<string>>;
 
@@ -201,6 +224,10 @@ export interface TaskFilter {
 		| "dueDate"
 		| "startDate"
 		| "scheduledDate"
+		| "cancelledDate"
+		| "onCompletion"
+		| "dependsOn"
+		| "id"
 		| "status"
 		| "priority"
 		| "recurrence";

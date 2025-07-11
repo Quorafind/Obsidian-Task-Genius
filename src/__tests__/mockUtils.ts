@@ -15,6 +15,7 @@ import {
 } from "../editor-ext/autoCompleteParent"; // Adjust the import path as necessary
 import { TaskProgressBarSettings } from "../common/setting-definition";
 import { EditorView } from "@codemirror/view";
+import { Task } from "../types/task";
 
 const mockAnnotationType = {
 	of: jest.fn().mockImplementation((value: string) => ({
@@ -278,24 +279,93 @@ const createMockTransaction = (options: {
 
 // Mock App Object - Consolidated version
 const createMockApp = (): App => {
-	const app = new App();
+	// Create a mock app object with all necessary properties
+	const mockApp = {
+		// Workspace mock
+		workspace: {
+			getActiveFile: jest.fn(() => ({
+				path: "test.md",
+				name: "test.md",
+			})),
+			getActiveViewOfType: jest.fn(),
+			getLeaf: jest.fn(),
+			createLeafBySplit: jest.fn(),
+			on: jest.fn(),
+			off: jest.fn(),
+			trigger: jest.fn(),
+			onLayoutReady: jest.fn(),
+		},
+		// MetadataCache mock
+		metadataCache: {
+			getFileCache: jest.fn(() => ({
+				headings: [],
+			})),
+			getCache: jest.fn(),
+			on: jest.fn(),
+			off: jest.fn(),
+			trigger: jest.fn(),
+		},
+		// Vault mock with all necessary methods for ActionExecutor tests
+		vault: {
+			getFileByPath: jest.fn(),
+			getAbstractFileByPath: jest.fn(),
+			read: jest.fn(),
+			modify: jest.fn(),
+			create: jest.fn(),
+			createFolder: jest.fn(),
+			delete: jest.fn(),
+			rename: jest.fn(),
+			exists: jest.fn(),
+			getFiles: jest.fn(() => []),
+			getFolders: jest.fn(() => []),
+			on: jest.fn(),
+			off: jest.fn(),
+			trigger: jest.fn(),
+		},
+		// Keymap mock
+		keymap: {
+			pushScope: jest.fn(),
+			popScope: jest.fn(),
+			getModifiers: jest.fn(),
+		},
+		// Scope mock
+		scope: {
+			register: jest.fn(),
+			unregister: jest.fn(),
+		},
+		// FileManager mock
+		fileManager: {
+			generateMarkdownLink: jest.fn(),
+			getNewFileParent: jest.fn(),
+			processFrontMatter: jest.fn(),
+		},
+		// MetadataTypeManager mock
+		metadataTypeManager: {
+			getPropertyInfo: jest.fn(),
+			getAllPropertyInfos: jest.fn(),
+		},
+		// Additional App properties that might be needed
+		plugins: {
+			plugins: {},
+			manifests: {},
+			enabledPlugins: new Set(),
+			getPlugin: jest.fn(),
+			enablePlugin: jest.fn(),
+			disablePlugin: jest.fn(),
+		},
+		// Storage methods
+		loadLocalStorage: jest.fn(),
+		saveLocalStorage: jest.fn(),
+		// Event handling
+		on: jest.fn(),
+		off: jest.fn(),
+		trigger: jest.fn(),
+		// Other common App methods
+		openWithDefaultApp: jest.fn(),
+		showInFolder: jest.fn(),
+	} as unknown as App;
 
-	// Add workspace mock
-	app.workspace = {
-		getActiveFile: jest.fn(() => ({
-			path: "test.md",
-			name: "test.md",
-		})),
-	} as any;
-
-	// Add metadataCache mock
-	app.metadataCache = {
-		getFileCache: jest.fn(() => ({
-			headings: [],
-		})),
-	} as any;
-
-	return app;
+	return mockApp;
 };
 
 // Mock Plugin Object - Consolidated version with merged settings
@@ -353,11 +423,104 @@ const createMockPlugin = (
 		sortCriteria: settings.sortCriteria || defaults.sortCriteria,
 	};
 
-	// Return the plugin with app property
+	// Create mock app instance
+	const mockApp = createMockApp();
+
+	// Create mock task manager with Canvas task updater
+	const mockTaskManager = {
+		getCanvasTaskUpdater: jest.fn(() => createMockCanvasTaskUpdater()),
+		// Add other TaskManager methods as needed
+		refreshTasks: jest.fn(),
+		getTasks: jest.fn(() => []),
+		addTask: jest.fn(),
+		updateTask: jest.fn(),
+		deleteTask: jest.fn(),
+	};
+
+	// Return the plugin with all necessary properties
 	return {
 		settings: mergedSettings as TaskProgressBarSettings,
-		app: createMockApp(), // Use the consolidated mock app
-	} as TaskProgressBarPlugin;
+		app: mockApp,
+		taskManager: mockTaskManager,
+		rewardManager: {
+			// Mock RewardManager
+			showReward: jest.fn(),
+			addReward: jest.fn(),
+		},
+		habitManager: {
+			// Mock HabitManager
+			getHabits: jest.fn(() => []),
+			addHabit: jest.fn(),
+			updateHabit: jest.fn(),
+		},
+		icsManager: {
+			// Mock IcsManager
+			getEvents: jest.fn(() => []),
+			refreshEvents: jest.fn(),
+		},
+		versionManager: {
+			// Mock VersionManager
+			getCurrentVersion: jest.fn(() => "1.0.0"),
+			checkForUpdates: jest.fn(),
+		},
+		rebuildProgressManager: {
+			// Mock RebuildProgressManager
+			startRebuild: jest.fn(),
+			getProgress: jest.fn(() => 0),
+		},
+		preloadedTasks: [],
+		settingTab: {
+			// Mock SettingTab
+			display: jest.fn(),
+			hide: jest.fn(),
+		},
+		// Plugin lifecycle methods
+		onload: jest.fn(),
+		onunload: jest.fn(),
+		// Command registration methods
+		registerCommands: jest.fn(),
+		registerEditorExt: jest.fn(),
+		// Settings methods
+		loadSettings: jest.fn(),
+		saveSettings: jest.fn(),
+		// View methods
+		loadViews: jest.fn(),
+		activateTaskView: jest.fn(),
+		activateTimelineSidebarView: jest.fn(),
+		triggerViewUpdate: jest.fn(),
+		getIcsManager: jest.fn(),
+		initializeTaskManagerWithVersionCheck: jest.fn(),
+		// Plugin base class properties
+		addRibbonIcon: jest.fn(),
+		addCommand: jest.fn(),
+		addSettingTab: jest.fn(),
+		registerView: jest.fn(),
+		registerEditorExtension: jest.fn(),
+		registerMarkdownPostProcessor: jest.fn(),
+		registerEvent: jest.fn(),
+		addChild: jest.fn(),
+		removeChild: jest.fn(),
+		register: jest.fn(),
+		registerInterval: jest.fn(),
+		registerDomEvent: jest.fn(),
+		registerObsidianProtocolHandler: jest.fn(),
+		registerEditorSuggest: jest.fn(),
+		registerHoverLinkSource: jest.fn(),
+		registerMarkdownCodeBlockProcessor: jest.fn(),
+		// Plugin manifest and loading state
+		manifest: {
+			id: "task-progress-bar",
+			name: "Task Progress Bar",
+			version: "1.0.0",
+			minAppVersion: "0.15.0",
+			description: "Mock plugin for testing",
+			author: "Test Author",
+			authorUrl: "",
+			fundingUrl: "",
+			isDesktopOnly: false,
+		},
+		_loaded: true,
+	} as unknown as TaskProgressBarPlugin;
 };
 
 // Mock EditorView Object
@@ -408,6 +571,114 @@ const createMockEditorView = (docContent: string): EditorView => {
 
 	return mockView;
 };
+
+// Canvas Testing Utilities
+
+/**
+ * Create mock Canvas data
+ */
+export function createMockCanvasData(nodes: any[] = [], edges: any[] = []) {
+	return {
+		nodes,
+		edges,
+	};
+}
+
+/**
+ * Create mock Canvas text node
+ */
+export function createMockCanvasTextNode(
+	id: string,
+	text: string,
+	x: number = 0,
+	y: number = 0,
+	width: number = 250,
+	height: number = 60
+) {
+	return {
+		type: "text" as const,
+		id,
+		x,
+		y,
+		width,
+		height,
+		text,
+	};
+}
+
+/**
+ * Create mock Canvas task with metadata
+ */
+export function createMockCanvasTask(
+	id: string,
+	content: string,
+	filePath: string,
+	nodeId: string,
+	completed: boolean = false,
+	originalMarkdown?: string
+) {
+	return {
+		id,
+		content,
+		filePath,
+		line: 0,
+		completed,
+		status: completed ? "x" : " ",
+		originalMarkdown:
+			originalMarkdown || `- [${completed ? "x" : " "}] ${content}`,
+		metadata: {
+			sourceType: "canvas" as const,
+			canvasNodeId: nodeId,
+			tags: [],
+			children: [],
+		},
+	};
+}
+
+/**
+ * Create mock execution context for onCompletion tests
+ */
+export function createMockExecutionContext(task: any, plugin?: any, app?: any) {
+	return {
+		task,
+		plugin: plugin || createMockPlugin(),
+		app: app || createMockApp(),
+	};
+}
+
+/**
+ * Mock Canvas task updater with common methods
+ */
+export function createMockCanvasTaskUpdater() {
+	return {
+		deleteCanvasTask: jest.fn(),
+		moveCanvasTask: jest.fn(),
+		duplicateCanvasTask: jest.fn(),
+		addTaskToCanvasNode: jest.fn(),
+		isCanvasTask: jest.fn(),
+	};
+}
+
+/**
+ * Create a mock Task object with all required fields
+ */
+export function createMockTask(overrides: Partial<Task> = {}): Task {
+	return {
+		id: "test-task-id",
+		content: "Test task content",
+		completed: false,
+		status: " ",
+		metadata: {
+			tags: [],
+			children: [],
+			...overrides.metadata,
+		},
+		filePath: "test.md",
+		line: 1,
+		originalMarkdown: "- [ ] Test task content",
+		...overrides,
+	};
+}
 
 export {
 	// createMockText is already exported inline

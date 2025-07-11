@@ -130,6 +130,10 @@ export class TaskPropertyTwoColumnView extends TwoColumnViewBase<string> {
 				return task.metadata.scheduledDate
 					? [this.formatDate(task.metadata.scheduledDate)]
 					: [];
+			case "cancelledDate":
+				return task.metadata.cancelledDate
+					? [this.formatDate(task.metadata.cancelledDate)]
+					: [];
 			case "filePath":
 				// Extract just the filename without path and extension
 				const pathParts = task.filePath.split("/");
@@ -226,7 +230,9 @@ export class TaskPropertyTwoColumnView extends TwoColumnViewBase<string> {
 
 		// For dates, could add "Today", "Tomorrow", etc.
 		if (
-			["dueDate", "startDate", "scheduledDate"].includes(this.propertyKey)
+			["dueDate", "startDate", "scheduledDate", "cancelledDate"].includes(
+				this.propertyKey
+			)
 		) {
 			const today = this.formatDate(Date.now());
 			if (value === today) return t("Today");

@@ -20,6 +20,7 @@ import { StatusComponent } from "../StatusComponent";
 import { ContextSuggest, ProjectSuggest, TagSuggest } from "../AutoComplete";
 import { FileTask } from "../../types/file-task";
 import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { OnCompletionConfigurator } from "../onCompletion/OnCompletionConfigurator";
 
 function getStatus(task: Task, settings: TaskProgressBarSettings) {
 	const status = Object.keys(settings.taskStatuses).find((key) => {
@@ -478,16 +479,29 @@ export class TaskDetailsComponent extends Component {
 			scheduledDateInput.value = `${year}-${month}-${day}`;
 		}
 
-		// Recurrence pattern
-		const recurrenceField = this.createFormField(
+		// Cancelled date
+		const cancelledDateField = this.createFormField(
 			this.editFormEl,
-			t("Recurrence")
+			t("Cancelled Date")
 		);
-		const recurrenceInput = new TextComponent(recurrenceField);
-		recurrenceInput.setValue(task.metadata.recurrence || "");
-		recurrenceField
-			.createSpan({ cls: "field-description" })
-			.setText(t("e.g. every day, every 2 weeks"));
+		const cancelledDateInput = cancelledDateField.createEl("input", {
+			type: "date",
+			cls: "date-input",
+		});
+		if (task.metadata.cancelledDate) {
+			// Use local date to avoid timezone issues
+			const date = new Date(task.metadata.cancelledDate);
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
+			cancelledDateInput.value = `${year}-${month}-${day}`;
+		}
+
+		// On completion action
+		const onCompletionField = this.createFormField(
+			this.editFormEl,
+			t("On Completion")
+		);
 
 		// Create a debounced save function
 		const saveTask = debounce(async () => {
@@ -594,6 +608,49 @@ export class TaskDetailsComponent extends Component {
 				metadata.scheduledDate = task.metadata.scheduledDate;
 			}
 
+			const cancelledDateValue = cancelledDateInput.value;
+			if (cancelledDateValue) {
+				// Create date in local timezone to avoid timezone offset issues
+				const [year, month, day] = cancelledDateValue
+					.split("-")
+					.map(Number);
+				const newCancelledDate = new Date(
+					year,
+					month - 1,
+					day
+				).getTime();
+				// Only update if the date has changed or is different from the original
+				if (task.metadata.cancelledDate !== newCancelledDate) {
+					metadata.cancelledDate = newCancelledDate;
+				} else {
+					metadata.cancelledDate = task.metadata.cancelledDate;
+				}
+			} else if (!cancelledDateValue && task.metadata.cancelledDate) {
+				// Only update if field was cleared and previously had a value
+				metadata.cancelledDate = undefined;
+			} else {
+				// Keep original value if both are empty/undefined
+				metadata.cancelledDate = task.metadata.cancelledDate;
+			}
+
+			// onCompletion is now handled by OnCompletionConfigurator
+
+			// Update dependencies
+			const dependsOnValue = dependsOnInput.getValue();
+			metadata.dependsOn = dependsOnValue
+				? dependsOnValue
+						.split(",")
+						.map((id) => id.trim())
+						.filter((id) => id)
+				: undefined;
+
+			const onCompletionValue = onCompletionConfigurator.getValue();
+			metadata.onCompletion = onCompletionValue || undefined;
+
+			// Update task ID
+			const taskIdValue = taskIdInput.getValue();
+			metadata.id = taskIdValue || undefined;
+
 			// Update recurrence
 			const recurrenceValue = recurrenceInput.getValue();
 			metadata.recurrence = recurrenceValue || undefined;
@@ -604,13 +661,6 @@ export class TaskDetailsComponent extends Component {
 			// Check if any task data has changed before updating
 			const hasChanges = this.hasTaskChanges(task, updatedTask);
 
-			console.log(
-				"dueDate",
-				task.metadata.dueDate,
-				metadata.dueDate,
-				hasChanges
-			);
-
 			// Call the update callback only if there are changes
 			if (this.onTaskUpdate && hasChanges) {
 				try {
@@ -619,13 +669,96 @@ export class TaskDetailsComponent extends Component {
 					// Update the current task reference but don't redraw the UI
 					this.currentTask = updatedTask;
 					console.log("updatedTask", updatedTask);
-					this.showTaskDetails(updatedTask);
 				} catch (error) {
 					console.error("Failed to update task:", error);
 					// TODO: Show error message to user
 				}
 			}
 		}, 800); // 800ms debounce time
+
+		// Use OnCompletionConfigurator directly
+		const onCompletionConfigurator = new OnCompletionConfigurator(
+			onCompletionField,
+			this.plugin,
+			{
+				initialValue: task.metadata.onCompletion || "",
+				onChange: (value) => {
+					console.log(value, "onCompletion value changed");
+					// Use smarter save logic: allow basic configurations to save immediately
+					// and allow partial configurations for complex types
+					const config = onCompletionConfigurator.getConfig();
+					const shouldSave = this.shouldTriggerOnCompletionSave(
+						config,
+						value
+					);
+
+					if (shouldSave) {
+						// Trigger save - the saveTask function will get the latest value
+						// from onCompletionConfigurator.getValue() to avoid data races
+						saveTask();
+					}
+				},
+				onValidationChange: (isValid, error) => {
+					// Show validation feedback
+					const existingMessage = onCompletionField.querySelector(
+						".oncompletion-validation-message"
+					);
+					if (existingMessage) {
+						existingMessage.remove();
+					}
+
+					if (error) {
+						const messageEl = onCompletionField.createDiv({
+							cls: "oncompletion-validation-message error",
+							text: error,
+						});
+					} else if (isValid) {
+						const messageEl = onCompletionField.createDiv({
+							cls: "oncompletion-validation-message success",
+							text: t("Configuration is valid"),
+						});
+					}
+				},
+			}
+		);
+
+		this.addChild(onCompletionConfigurator);
+
+		// Dependencies
+		const dependsOnField = this.createFormField(
+			this.editFormEl,
+			t("Depends On")
+		);
+		const dependsOnInput = new TextComponent(dependsOnField);
+		dependsOnInput.setValue(
+			Array.isArray(task.metadata.dependsOn)
+				? task.metadata.dependsOn.join(", ")
+				: task.metadata.dependsOn || ""
+		);
+		dependsOnField
+			.createSpan({ cls: "field-description" })
+			.setText(
+				t("Comma-separated list of task IDs this task depends on")
+			);
+
+		// Task ID
+		const taskIdField = this.createFormField(this.editFormEl, t("Task ID"));
+		const taskIdInput = new TextComponent(taskIdField);
+		taskIdInput.setValue(task.metadata.id || "");
+		taskIdField
+			.createSpan({ cls: "field-description" })
+			.setText(t("Unique identifier for this task"));
+
+		// Recurrence pattern
+		const recurrenceField = this.createFormField(
+			this.editFormEl,
+			t("Recurrence")
+		);
+		const recurrenceInput = new TextComponent(recurrenceField);
+		recurrenceInput.setValue(task.metadata.recurrence || "");
+		recurrenceField
+			.createSpan({ cls: "field-description" })
+			.setText(t("e.g. every day, every 2 weeks"));
 
 		// Register blur events for all input elements
 		const registerBlurEvent = (
@@ -653,12 +786,16 @@ export class TaskDetailsComponent extends Component {
 		// registerBlurEvent(dueDateInput);
 		// registerBlurEvent(startDateInput);
 		// registerBlurEvent(scheduledDateInput);
+		// onCompletion input is now handled by OnCompletionConfigurator or in fallback
+		registerBlurEvent(dependsOnInput.inputEl);
+		registerBlurEvent(taskIdInput.inputEl);
 		registerBlurEvent(recurrenceInput.inputEl);
 
 		// Register change events for date inputs
 		registerDateChangeEvent(dueDateInput);
 		registerDateChangeEvent(startDateInput);
 		registerDateChangeEvent(scheduledDateInput);
+		registerDateChangeEvent(cancelledDateInput);
 	}
 
 	private hasTaskChanges(
@@ -724,6 +861,10 @@ export class TaskDetailsComponent extends Component {
 			"dueDate",
 			"startDate",
 			"scheduledDate",
+			"cancelledDate",
+			"onCompletion",
+			"dependsOn",
+			"id",
 			"recurrence",
 		];
 
@@ -788,10 +929,10 @@ export class TaskDetailsComponent extends Component {
 	private async editTask(task: Task | FileTask) {
 		if (typeof task === "object" && "isFileTask" in task) {
 			const fileTask = task as FileTask;
-			const file = this.app.vault.getAbstractFileByPath(
+			const file = this.app.vault.getFileByPath(
 				fileTask.sourceEntry.file.path
 			);
-			if (!(file instanceof TFile)) return;
+			if (!file) return;
 			const leaf = this.app.workspace.getLeaf(true);
 			await leaf.openFile(file);
 			const editor = this.app.workspace.activeEditor?.editor;
@@ -803,8 +944,8 @@ export class TaskDetailsComponent extends Component {
 		}
 
 		// Get the file from the vault
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
-		if (!(file instanceof TFile)) return;
+		const file = this.app.vault.getFileByPath(task.filePath);
+		if (!file) return;
 
 		// Open the file
 		const leaf = this.app.workspace.getLeaf(false);
@@ -844,6 +985,42 @@ export class TaskDetailsComponent extends Component {
 
 	public isCurrentlyEditing(): boolean {
 		return this.isEditing;
+	}
+
+	private shouldTriggerOnCompletionSave(config: any, value: string): boolean {
+		// Don't save if value is empty
+		if (!value || !value.trim()) {
+			return false;
+		}
+
+		// Don't save if no config (invalid state)
+		if (!config) {
+			return false;
+		}
+
+		// For basic action types, allow immediate save
+		if (
+			config.type === "delete" ||
+			config.type === "keep" ||
+			config.type === "archive" ||
+			config.type === "duplicate"
+		) {
+			return true;
+		}
+
+		// For complex types, allow save if we have partial but meaningful config
+		if (config.type === "complete") {
+			// Allow save for "complete:" even without taskIds
+			return value.startsWith("complete:");
+		}
+
+		if (config.type === "move") {
+			// Allow save for "move:" even without targetFile
+			return value.startsWith("move:");
+		}
+
+		// Default: allow save if value is not empty
+		return true;
 	}
 
 	onunload() {

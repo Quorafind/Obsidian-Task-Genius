@@ -4,6 +4,15 @@
 
 import './__mocks__/dom-helpers';
 
+// Add Jest types
+declare global {
+	namespace jest {
+		interface Mock<T = any, Y extends any[] = any[]> {
+			(...args: Y): T;
+		}
+	}
+}
+
 // jsdom is already set up by jest-environment-jsdom
 // Just need to ensure our DOM helpers are loaded
 

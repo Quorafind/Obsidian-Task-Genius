@@ -729,4 +729,72 @@ export function renderTaskHandlerSettingsTab(
 
 		refreshCriteriaList(); // Initial render
 	}
+
+	// Add OnCompletion settings
+	new Setting(containerEl).setName(t("On Completion")).setHeading();
+
+	new Setting(containerEl)
+		.setName(t("Enable OnCompletion"))
+		.setDesc(t("Enable automatic actions when tasks are completed"))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(
+					settingTab.plugin.settings.onCompletion.enableOnCompletion
+				)
+				.onChange(async (value) => {
+					settingTab.plugin.settings.onCompletion.enableOnCompletion =
+						value;
+					settingTab.applySettingsUpdate();
+					settingTab.display(); // Refresh to show/hide onCompletion settings
+				})
+		);
+
+	if (settingTab.plugin.settings.onCompletion.enableOnCompletion) {
+		new Setting(containerEl)
+			.setName(t("Default Archive File"))
+			.setDesc(t("Default file for archive action"))
+			.addText((text) =>
+				text
+					.setPlaceholder("Archive/Completed Tasks.md")
+					.setValue(
+						settingTab.plugin.settings.onCompletion.defaultArchiveFile
+					)
+					.onChange(async (value) => {
+						settingTab.plugin.settings.onCompletion.defaultArchiveFile =
+							value;
+						settingTab.applySettingsUpdate();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("Default Archive Section"))
+			.setDesc(t("Default section for archive action"))
+			.addText((text) =>
+				text
+					.setPlaceholder("Completed Tasks")
+					.setValue(
+						settingTab.plugin.settings.onCompletion.defaultArchiveSection
+					)
+					.onChange(async (value) => {
+						settingTab.plugin.settings.onCompletion.defaultArchiveSection =
+							value;
+						settingTab.applySettingsUpdate();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("Show Advanced Options"))
+			.setDesc(t("Show advanced configuration options in task editors"))
+			.addToggle((toggle) =>
+				toggle
+					.setValue(
+						settingTab.plugin.settings.onCompletion.showAdvancedOptions
+					)
+					.onChange(async (value) => {
+						settingTab.plugin.settings.onCompletion.showAdvancedOptions =
+							value;
+						settingTab.applySettingsUpdate();
+					})
+			);
+	}
 }

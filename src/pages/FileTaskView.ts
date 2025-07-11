@@ -45,7 +45,7 @@ interface BaseView {
 
 interface BasesView extends BaseView {
 	type: string;
-	app: any;
+	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
 	data: BasesViewData[];
@@ -442,6 +442,15 @@ export class FileTaskView extends Component implements BasesView {
 	updateConfig(settings: BasesViewSettings): void {
 		this.settings = settings;
 		console.log("[FileTaskView] Config updated:", settings);
+		this.onConfigUpdated();
+	}
+
+	/**
+	 * Handle configuration updates
+	 */
+	private onConfigUpdated(): void {
+		// Update view components with new configuration
+		this.updateTaskViewComponents();
 	}
 
 	updateData(properties: BasesProperty[], data: BasesViewData[]): void {
@@ -455,12 +464,20 @@ export class FileTaskView extends Component implements BasesView {
 		// Only update the task view components if there were actual changes
 		if (hasChanges) {
 			console.log("[FileTaskView] Changes detected, updating components");
-			this.updateTaskViewComponents();
+			this.onDataUpdated();
 		} else {
 			console.log(
 				"[FileTaskView] No changes detected, skipping component update"
 			);
 		}
+	}
+
+	/**
+	 * Handle data updates
+	 */
+	private onDataUpdated(): void {
+		// Update task view components with new data
+		this.updateTaskViewComponents();
 	}
 
 	display(): void {
@@ -1144,8 +1161,8 @@ export class FileTaskView extends Component implements BasesView {
 	}
 
 	private async editTask(task: FileTask) {
-		const file = this.app.vault.getAbstractFileByPath(task.filePath);
-		if (!(file instanceof TFile)) return;
+		const file = this.app.vault.getFileByPath(task.filePath);
+		if (!file) return;
 
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(file);
