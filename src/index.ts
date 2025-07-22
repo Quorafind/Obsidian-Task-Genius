@@ -72,6 +72,7 @@ import { MarkdownView } from "obsidian";
 import { Notice } from "obsidian";
 import { t } from "./translations/helper";
 import { TaskManager } from "./utils/TaskManager";
+import { createTaskManager, TaskManagerAdapter } from "./utils/data-managers/index";
 import { TaskView, TASK_VIEW_TYPE } from "./pages/TaskView";
 import "./styles/global.css";
 import "./styles/setting.css";
@@ -91,6 +92,7 @@ import { HabitManager } from "./utils/HabitManager";
 import { TaskGeniusIconManager } from "./utils/TaskGeniusIconManager";
 import { monitorTaskCompletedExtension } from "./editor-ext/monitorTaskCompleted";
 import { sortTasksInDocument } from "./commands/sortTaskCommands";
+import { registerArchitectureTestCommands } from "./commands/architectureTestCommands";
 import { taskGutterExtension } from "./editor-ext/TaskGutterHandler";
 import { autoDateManagerExtension } from "./editor-ext/autoDateManager";
 import { taskMarkCleanupExtension } from "./editor-ext/taskMarkCleanup";
@@ -179,6 +181,19 @@ export default class TaskProgressBarPlugin extends Plugin {
 	settings: TaskProgressBarSettings;
 	// Task manager instance
 	taskManager: TaskManager;
+	// 新统一数据管理器（可选使用）
+	unifiedTaskManager?: TaskManagerAdapter;
+
+	/**
+	 * 获取当前活动的任务管理器实例
+	 * 根据设置返回新架构或旧架构的管理器
+	 */
+	getActiveTaskManager(): TaskManager | TaskManagerAdapter {
+		if (this.settings.experimental?.enableUnifiedDataManager && this.unifiedTaskManager) {
+			return this.unifiedTaskManager;
+		}
+		return this.taskManager;
+	}
 
 	rewardManager: RewardManager;
 
@@ -240,18 +255,39 @@ export default class TaskProgressBarPlugin extends Plugin {
 			addIcon("abandoned", getStatusIcon("abandoned"));
 			addIcon("notStarted", getStatusIcon("notStarted"));
 
-			this.taskManager = new TaskManager(
-				this.app,
-				this.app.vault,
-				this.app.metadataCache,
-				this,
-				{
-					useWorkers: true,
-					debug: true, // Set to true for debugging
-				}
-			);
-
-			this.addChild(this.taskManager);
+			// 根据设置选择使用新架构或旧架构
+			if (this.settings.experimental?.enableUnifiedDataManager) {
+				// 使用新的统一数据管理架构
+				this.unifiedTaskManager = createTaskManager(
+					this.app,
+					this.app.vault,
+					this.app.metadataCache,
+					this,
+					{
+						useWorkers: true,
+						debug: this.settings.experimental.unifiedDataManagerDebug || false,
+					}
+				);
+				this.addChild(this.unifiedTaskManager);
+				
+				// 为了兼容性，将统一管理器包装为旧接口
+				// 注意：这需要创建一个适配器来桥接两个接口
+				console.log("🚀 使用新的统一数据管理架构");
+			} else {
+				// 使用现有的TaskManager架构
+				this.taskManager = new TaskManager(
+					this.app,
+					this.app.vault,
+					this.app.metadataCache,
+					this,
+					{
+						useWorkers: true,
+						debug: true, // Set to true for debugging
+					}
+				);
+				this.addChild(this.taskManager);
+				console.log("📊 使用现有的TaskManager架构");
+			}
 		}
 
 		if (this.settings.rewards.enableRewards) {
@@ -1051,6 +1087,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Add task mark cleanup extension (always enabled)
 		this.registerEditorExtension([taskMarkCleanupExtension()]);
+
+		// 注册架构测试命令（Beta功能）
+		if (this.settings.experimental?.enableUnifiedDataManager) {
+			registerArchitectureTestCommands(this);
+		}
 	}
 
 	onunload() {
@@ -1060,7 +1101,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 		}
 
 		// Clean up task manager when plugin is unloaded
-		if (this.taskManager) {
+		// 清理任务管理器 - 支持新旧架构
+		const activeTaskManager = this.getActiveTaskManager();
+		if (activeTaskManager && 'onunload' in activeTaskManager) {
+			activeTaskManager.onunload();
+		} else if (this.taskManager) {
 			this.taskManager.onunload();
 		}
 
@@ -1209,6 +1254,10 @@ export default class TaskProgressBarPlugin extends Plugin {
 	 * Initialize task manager with version checking and rebuild handling
 	 */
 	private async initializeTaskManagerWithVersionCheck(): Promise<void> {
+		// 获取当前活动的任务管理器
+		const activeTaskManager = this.getActiveTaskManager();
+		console.log(`初始化任务管理器: ${this.settings.experimental?.enableUnifiedDataManager ? '新统一架构' : '传统架构'}`);
+		
 		let retryCount = 0;
 		const maxRetries = 3;
 
@@ -1257,36 +1306,37 @@ export default class TaskProgressBarPlugin extends Plugin {
 					);
 
 					// Force clear all caches before rebuild
-					if (this.taskManager.persister) {
+					if ('persister' in activeTaskManager && activeTaskManager.persister) {
 						try {
-							await this.taskManager.persister.clear();
+							await activeTaskManager.persister.clear();
 						} catch (clearError) {
 							console.warn(
 								"Error clearing cache, attempting to recreate storage:",
 								clearError
 							);
-							await this.taskManager.persister.recreate();
+							await activeTaskManager.persister.recreate?.();
 						}
 					}
 
-					// Set progress manager for the task manager
-					this.taskManager.setProgressManager(
-						this.rebuildProgressManager
-					);
+					// Set progress manager for the task manager (旧架构特有)
+					if ('setProgressManager' in activeTaskManager) {
+						activeTaskManager.setProgressManager(
+							this.rebuildProgressManager
+						);
+					}
 
 					// Initialize task manager (this will trigger the rebuild)
-					await this.taskManager.initialize();
+					await activeTaskManager.initialize();
 
 					// Mark rebuild as complete
-					const finalTaskCount =
-						this.taskManager.getAllTasks().length;
+					const finalTaskCount = activeTaskManager.getAllTasks?.()?.length || 0;
 					this.rebuildProgressManager.completeRebuild(finalTaskCount);
 
 					// Mark version as processed
 					await this.versionManager.markVersionProcessed();
 				} else {
 					// No rebuild needed, normal initialization
-					await this.taskManager.initialize();
+					await activeTaskManager.initialize();
 				}
 
 				// If we get here, initialization was successful
@@ -1326,21 +1376,22 @@ export default class TaskProgressBarPlugin extends Plugin {
 						);
 
 						// Force recreate storage
-						if (this.taskManager.persister) {
-							await this.taskManager.persister.recreate();
+						if ('persister' in activeTaskManager && activeTaskManager.persister) {
+							await activeTaskManager.persister.recreate?.();
 						}
 
-						// Set progress manager for the task manager
-						this.taskManager.setProgressManager(
-							this.rebuildProgressManager
-						);
+						// Set progress manager for the task manager (旧架构特有)
+						if ('setProgressManager' in activeTaskManager) {
+							activeTaskManager.setProgressManager(
+								this.rebuildProgressManager
+							);
+						}
 
 						// Initialize with minimal error handling
-						await this.taskManager.initialize();
+						await activeTaskManager.initialize();
 
 						// Mark emergency rebuild as complete
-						const finalTaskCount =
-							this.taskManager.getAllTasks().length;
+						const finalTaskCount = activeTaskManager.getAllTasks?.()?.length || 0;
 						this.rebuildProgressManager.completeRebuild(
 							finalTaskCount
 						);

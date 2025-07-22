@@ -552,6 +552,12 @@ export interface FileFilterSettings {
 
 /** Define the main settings structure */
 export interface TaskProgressBarSettings {
+	// 实验性设置 - 启用新统一数据管理架构
+	experimental?: {
+		enableUnifiedDataManager?: boolean;
+		unifiedDataManagerDebug?: boolean;
+	};
+	
 	// General Settings (Example)
 	progressBarDisplayMode: "none" | "graphical" | "text" | "both";
 	supportHoverToShowProgressInfo: boolean;
@@ -689,6 +695,12 @@ export interface TaskProgressBarSettings {
 
 /** Define the default settings */
 export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
+	// 实验性设置默认值
+	experimental: {
+		enableUnifiedDataManager: false, // 默认关闭新架构
+		unifiedDataManagerDebug: false,
+	},
+	
 	// General Defaults
 	progressBarDisplayMode: "both",
 	supportHoverToShowProgressInfo: false,
