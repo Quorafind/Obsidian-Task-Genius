@@ -11,6 +11,7 @@ import { t } from "./translations/helper";
 import "./styles/setting.css";
 import "./styles/setting-v2.css";
 import "./styles/beta-warning.css";
+import "./styles/settings-search.css";
 import {
 	renderAboutSettingsTab,
 	renderBetaTestSettingsTab,
@@ -30,10 +31,12 @@ import {
 } from "./components/settings";
 import { renderFileFilterSettingsTab } from "./components/settings/FileFilterSettingsTab";
 import { renderTimeParsingSettingsTab } from "./components/settings/TimeParsingSettingsTab";
+import { SettingsSearchComponent } from "./components/settings/SettingsSearchComponent";
 
 export class TaskProgressBarSettingTab extends PluginSettingTab {
 	plugin: TaskProgressBarPlugin;
 	private applyDebounceTimer: number = 0;
+	private searchComponent: SettingsSearchComponent | null = null;
 
 	// Tabs management
 	private currentTab: string = "general";
@@ -181,9 +184,20 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		}, 100);
 	}
 
+	// 创建搜索组件
+	private createSearchComponent() {
+		if (this.searchComponent) {
+			this.searchComponent.destroy();
+		}
+		this.searchComponent = new SettingsSearchComponent(this, this.containerEl);
+	}
+
 	// Tabs management with categories
 	private createCategorizedTabsUI() {
 		this.containerEl.toggleClass("task-genius-settings", true);
+
+		// 创建搜索组件
+		this.createSearchComponent();
 
 		// Group tabs by category
 		const categories = {
@@ -278,7 +292,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		sectionsContainer.addClass("settings-tab-sections");
 	}
 
-	private switchToTab(tabId: string) {
+	public switchToTab(tabId: string) {
 		console.log("Switching to tab:", tabId);
 
 		// Update current tab

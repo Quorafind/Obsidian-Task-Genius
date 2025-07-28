@@ -1,0 +1,189 @@
+/* Settings Search Component Styles */
+
+/* 搜索容器 */
+.settings-search-container {
+	margin-bottom: 20px;
+	position: relative;
+}
+
+/* 搜索输入框容器 */
+.settings-search-input-container {
+	position: relative;
+	display: flex;
+	align-items: center;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	transition: border-color 0.2s ease;
+}
+
+.settings-search-input-container:focus-within {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-rgb);
+}
+
+/* 搜索图标 */
+.settings-search-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 8px;
+	color: var(--text-muted);
+	font-size: 16px;
+}
+
+/* 搜索输入框 */
+.settings-search-input {
+	flex: 1;
+	padding: 8px 4px;
+	border: none;
+	background: transparent;
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	outline: none;
+}
+
+.settings-search-input::placeholder {
+	color: var(--text-muted);
+}
+
+/* 清除按钮 */
+.settings-search-clear {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px;
+	margin-right: 4px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+}
+
+.settings-search-clear:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* 搜索结果容器 */
+.settings-search-results {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	box-shadow: var(--shadow-s);
+	z-index: 1000;
+	max-height: 300px;
+	overflow-y: auto;
+	margin-top: 4px;
+}
+
+/* 搜索结果项 */
+.settings-search-result {
+	padding: 12px 16px;
+	cursor: pointer;
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+	transition: background-color 0.2s ease;
+}
+
+.settings-search-result:last-child {
+	border-bottom: none;
+}
+
+.settings-search-result:hover,
+.settings-search-result-selected {
+	background: var(--background-modifier-hover);
+}
+
+/* 搜索结果名称 */
+.settings-search-result-name {
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+	font-size: var(--font-ui-medium);
+}
+
+/* 搜索结果元信息 */
+.settings-search-result-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+
+.settings-search-result-category {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background: var(--background-modifier-border);
+	padding: 2px 6px;
+	border-radius: 4px;
+}
+
+/* 搜索结果描述 */
+.settings-search-result-desc {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+/* 无结果状态 */
+.settings-search-no-result {
+	padding: 16px;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium);
+}
+
+/* 设置项高亮效果 */
+.settings-search-highlight {
+	background: var(--background-modifier-success) !important;
+	border-radius: 4px;
+	transition: background-color 0.3s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+	.settings-search-results {
+		max-height: 250px;
+	}
+	
+	.settings-search-result {
+		padding: 10px 12px;
+	}
+	
+	.settings-search-result-name {
+		font-size: var(--font-ui-small);
+	}
+}
+
+/* Dark theme adjustments */
+.theme-dark .settings-search-input-container:focus-within {
+	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.theme-dark .settings-search-results {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 滚动条样式 */
+.settings-search-results::-webkit-scrollbar {
+	width: 6px;
+}
+
+.settings-search-results::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.settings-search-results::-webkit-scrollbar-thumb {
+	background: var(--scrollbar-thumb-bg);
+	border-radius: 3px;
+}
+
+.settings-search-results::-webkit-scrollbar-thumb:hover {
+	background: var(--scrollbar-thumb-bg-hover);
+}
