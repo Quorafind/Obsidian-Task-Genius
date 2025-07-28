@@ -686,6 +686,9 @@ export interface TaskProgressBarSettings {
 	// Time Parsing Settings
 	timeParsing: TimeParsingConfig;
 
+	// New Parsing System Settings
+	useNewParsingSystem?: boolean;
+
 	// Onboarding Settings
 	onboarding?: {
 		completed: boolean;
@@ -1364,6 +1367,9 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		perLineProcessing: true,
 		realTimeReplacement: true,
 	},
+
+	// New Parsing System Defaults
+	useNewParsingSystem: false, // Default to false for backward compatibility
 
 	// Onboarding Defaults
 	onboarding: {
