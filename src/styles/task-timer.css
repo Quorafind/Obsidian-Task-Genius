@@ -1,0 +1,289 @@
+/* Task Timer Widget Styles */
+
+.task-timer-widget {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	margin: 2px 0;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	font-size: 0.9em;
+	font-family: var(--font-interface);
+	color: var(--text-muted);
+	line-height: 1.4;
+	transition: all 0.2s ease;
+}
+
+.task-timer-widget:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+/* Button group container */
+.task-timer-buttons {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+/* Individual button styles */
+.task-timer-button {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 0.85em;
+	cursor: pointer;
+	user-select: none;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+}
+
+.task-timer-button:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+	color: var(--text-normal);
+}
+
+.task-timer-button:active {
+	background: var(--background-modifier-active);
+	transform: translateY(1px);
+}
+
+/* Specific button types */
+.task-timer-button.start {
+	background: var(--color-green);
+	color: var(--text-on-accent);
+	border-color: var(--color-green);
+}
+
+.task-timer-button.start:hover {
+	background: var(--color-green-hover, var(--color-green));
+	opacity: 0.9;
+}
+
+.task-timer-button.pause {
+	background: var(--color-orange);
+	color: var(--text-on-accent);
+	border-color: var(--color-orange);
+}
+
+.task-timer-button.pause:hover {
+	background: var(--color-orange-hover, var(--color-orange));
+	opacity: 0.9;
+}
+
+.task-timer-button.resume {
+	background: var(--color-blue);
+	color: var(--text-on-accent);
+	border-color: var(--color-blue);
+}
+
+.task-timer-button.resume:hover {
+	background: var(--color-blue-hover, var(--color-blue));
+	opacity: 0.9;
+}
+
+.task-timer-button.reset {
+	background: var(--color-yellow);
+	color: var(--text-on-accent);
+	border-color: var(--color-yellow);
+}
+
+.task-timer-button.reset:hover {
+	background: var(--color-yellow-hover, var(--color-yellow));
+	opacity: 0.9;
+}
+
+.task-timer-button.complete {
+	background: var(--color-purple);
+	color: var(--text-on-accent);
+	border-color: var(--color-purple);
+}
+
+.task-timer-button.complete:hover {
+	background: var(--color-purple-hover, var(--color-purple));
+	opacity: 0.9;
+}
+
+/* Time display area */
+.task-timer-display {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 6px;
+	background: var(--background-primary-alt);
+	border-radius: 3px;
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	color: var(--text-normal);
+	min-width: 60px;
+	justify-content: center;
+}
+
+/* Status-specific styles */
+.task-timer-widget.running {
+	border-color: var(--color-green);
+	box-shadow: 0 0 0 1px var(--color-green-transparent, rgba(46, 160, 67, 0.2));
+}
+
+.task-timer-widget.running .task-timer-display {
+	color: var(--color-green);
+	background: var(--color-green-transparent, rgba(46, 160, 67, 0.1));
+}
+
+.task-timer-widget.paused {
+	border-color: var(--color-orange);
+	box-shadow: 0 0 0 1px var(--color-orange-transparent, rgba(233, 151, 63, 0.2));
+}
+
+.task-timer-widget.paused .task-timer-display {
+	color: var(--color-orange);
+	background: var(--color-orange-transparent, rgba(233, 151, 63, 0.1));
+}
+
+/* Animation for running timer */
+.task-timer-display.running {
+	animation: pulse-timer 2s ease-in-out infinite;
+}
+
+@keyframes pulse-timer {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+/* Compact mode for smaller screens */
+.task-timer-widget.compact {
+	padding: 2px 4px;
+	font-size: 0.8em;
+}
+
+.task-timer-widget.compact .task-timer-button {
+	padding: 1px 4px;
+	font-size: 0.75em;
+}
+
+.task-timer-widget.compact .task-timer-display {
+	padding: 1px 4px;
+	font-size: 0.8em;
+	min-width: 50px;
+}
+
+/* Dark theme adjustments */
+.theme-dark .task-timer-widget {
+	background: var(--background-secondary-alpha);
+	border-color: var(--background-modifier-border);
+}
+
+.theme-dark .task-timer-button {
+	background: var(--background-primary-alt);
+	border-color: var(--background-modifier-border);
+}
+
+.theme-dark .task-timer-display {
+	background: var(--background-modifier-form-field);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+	.task-timer-widget {
+		border-width: 2px;
+		border-color: var(--text-normal);
+	}
+	
+	.task-timer-button {
+		border-width: 2px;
+		font-weight: 600;
+	}
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+	.task-timer-widget {
+		flex-wrap: wrap;
+		font-size: 0.85em;
+	}
+	
+	.task-timer-buttons {
+		gap: 4px;
+	}
+	
+	.task-timer-button {
+		padding: 3px 6px;
+		min-height: 28px;
+		font-size: 0.8em;
+	}
+}
+
+/* Print styles */
+@media print {
+	.task-timer-widget {
+		display: none !important;
+	}
+}
+
+/* Accessibility improvements */
+.task-timer-button:focus {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+.task-timer-button:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Screen reader only text */
+.task-timer-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Loading/processing state */
+.task-timer-widget.processing {
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+.task-timer-widget.processing .task-timer-button {
+	cursor: not-allowed;
+}
+
+/* Error state */
+.task-timer-widget.error {
+	border-color: var(--color-red);
+	background: var(--color-red-transparent, rgba(233, 49, 71, 0.1));
+}
+
+.task-timer-widget.error .task-timer-display {
+	color: var(--color-red);
+}
+
+/* Icon support for buttons */
+.task-timer-button .task-timer-icon {
+	width: 12px;
+	height: 12px;
+	margin-right: 3px;
+	flex-shrink: 0;
+}
+
+.task-timer-button.compact .task-timer-icon {
+	width: 10px;
+	height: 10px;
+	margin-right: 2px;
+}
