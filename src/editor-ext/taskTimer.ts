@@ -7,7 +7,7 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { EditorState, Range, StateField } from "@codemirror/state";
-import { TFile, App, MetadataCache, editorInfoField, editorViewField } from "obsidian";
+import { TFile, App, MetadataCache, editorInfoField, editorEditorField } from "obsidian";
 import { TaskTimerSettings } from "../common/setting-definition";
 import { TaskTimerMetadataDetector } from "../utils/TaskTimerMetadataDetector";
 import { TaskTimerManager, TimerState } from "../utils/TaskTimerManager";
@@ -139,7 +139,7 @@ class TaskTimerWidget extends WidgetType {
 				const blockId = this.timerManager.generateBlockId(this.settings.blockRefPrefix);
 				
 				// Get EditorView - try multiple methods
-				let view = this.state.field(editorViewField, false);
+				let view = this.state.field(editorEditorField, false);
 				
 				// If that doesn't work, try through the app
 				if (!view) {
@@ -316,7 +316,7 @@ class TaskTimerWidget extends WidgetType {
 			const formattedDuration = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
 
 			// Get EditorView to modify document
-			let view = this.state.field(editorViewField, false);
+			let view = this.state.field(editorEditorField, false);
 			
 			// If that doesn't work, try through the app
 			if (!view) {
