@@ -1,5 +1,9 @@
 // English translations
 const translations = {
+  // Settings Search
+  "Search settings...": "Search settings...",
+  "Clear search": "Clear search",
+  "No settings found": "No settings found",
   "File Metadata Inheritance": "File Metadata Inheritance",
   "Configure how tasks inherit metadata from file frontmatter": "Configure how tasks inherit metadata from file frontmatter",
   "Enable file metadata inheritance": "Enable file metadata inheritance",
