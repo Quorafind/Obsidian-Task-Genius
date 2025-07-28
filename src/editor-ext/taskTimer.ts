@@ -454,12 +454,11 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 	console.log("[TaskTimer] Processing file:", file.path);
 	
 	const metadataDetector = new TaskTimerMetadataDetector(
-		editorInfo.app, 
 		timerConfig.settings, 
 		timerConfig.metadataCache
 	);
 	
-	if (!metadataDetector.isTimerEnabledForFile(file)) {
+	if (!metadataDetector.isTaskTimerEnabled(file)) {
 		console.log("[TaskTimer] Timer not enabled for file:", file.path);
 		return Decoration.none;
 	}
