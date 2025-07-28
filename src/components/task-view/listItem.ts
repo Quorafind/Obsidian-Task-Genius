@@ -766,6 +766,14 @@ export class TaskListItemComponent extends Component {
 			return;
 		}
 
+		// Check if dynamic metadata positioning is enabled
+		if (!this.plugin.settings.enableDynamicMetadataPositioning) {
+			// If disabled, always use multi-line (traditional) layout
+			this.contentMetadataContainer.toggleClass("multi-line-content", true);
+			this.contentMetadataContainer.toggleClass("single-line-content", false);
+			return;
+		}
+
 		// Get the line height of the content element
 		const computedStyle = window.getComputedStyle(this.contentEl);
 		const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize) * 1.4;
