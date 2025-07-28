@@ -13,6 +13,8 @@
 	font-family: var(--font-interface);
 	color: var(--text-muted);
 	line-height: 1.4;
+	width: 100%;
+	box-sizing: border-box;
 	transition: all 0.2s ease;
 }
 
