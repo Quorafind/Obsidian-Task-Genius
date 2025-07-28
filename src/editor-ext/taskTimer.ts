@@ -7,7 +7,7 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import { EditorState, Range, StateField } from "@codemirror/state";
-import { TFile, App, MetadataCache, editorInfoField } from "obsidian";
+import { TFile, App, MetadataCache, editorInfoField, editorViewField } from "obsidian";
 import { TaskTimerSettings } from "../common/setting-definition";
 import { TaskTimerMetadataDetector } from "../utils/TaskTimerMetadataDetector";
 import { TaskTimerManager, TimerState } from "../utils/TaskTimerManager";
@@ -138,42 +138,76 @@ class TaskTimerWidget extends WidgetType {
 			if (!taskId) {
 				const blockId = this.timerManager.generateBlockId(this.settings.blockRefPrefix);
 				
-				// Get the active editor through the app
-				const activeView = (window as any).app?.workspace?.getActiveViewOfType((window as any).app?.viewRegistry?.getViewCreatorByType("markdown"));
-				const editor = activeView?.editor;
+				// Get EditorView - try multiple methods
+				let view = this.state.field(editorViewField, false);
 				
-				console.log("[TaskTimer] Active view:", activeView);
-				console.log("[TaskTimer] Editor:", editor);
+				// If that doesn't work, try through the app
+				if (!view) {
+					const app = (window as any).app;
+					const activeLeaf = app?.workspace?.activeLeaf;
+					if (activeLeaf?.view?.editor?.cm) {
+						view = activeLeaf.view.editor.cm;
+						console.log("[TaskTimer] Got EditorView from activeLeaf");
+					}
+				}
 				
-				if (editor) {
+				console.log("[TaskTimer] EditorView:", view);
+				
+				if (view) {
 					const line = this.state.doc.lineAt(this.lineFrom);
 					const lineText = line.text;
-					const updatedText = lineText.trimEnd() + ` ^${blockId}`;
+					const blockRef = ` ^${blockId}`;
 					
 					console.log(`[TaskTimer] Inserting block ID at line ${line.number}: ^${blockId}`);
 					console.log("[TaskTimer] Original text:", lineText);
-					console.log("[TaskTimer] Updated text:", updatedText);
+					console.log("[TaskTimer] Insertion position:", line.to);
 					
 					try {
-						// Use Obsidian's Editor API
-						const lineNumber = line.number - 1;
-						editor.replaceRange(updatedText,
-							{ line: lineNumber, ch: 0 },
-							{ line: lineNumber, ch: lineText.length }
-						);
+						// Use CodeMirror's dispatch to insert the block reference
+						view.dispatch({
+							changes: {
+								from: line.to,
+								insert: blockRef
+							}
+						});
 						
 						// Update our local reference
 						this.existingBlockId = blockId;
 						taskId = `${this.filePath}#^${blockId}`;
+						
+						// Force widget refresh after successful insertion
+						setTimeout(() => {
+							this.updateTimerState();
+							this.refreshUI();
+						}, 100);
 					} catch (err) {
-						console.error("[TaskTimer] Error replacing text:", err);
+						console.error("[TaskTimer] Error dispatching change:", err);
 						return;
 					}
 				} else {
-					console.error("[TaskTimer] No editor available to insert block ID");
-					// Try alternative approach
+					console.error("[TaskTimer] No EditorView available");
+					// Fallback: try to get editor from editorInfoField
 					const editorInfo = this.state.field(editorInfoField);
-					console.log("[TaskTimer] EditorInfo from state:", editorInfo);
+					console.log("[TaskTimer] Trying editorInfo:", editorInfo);
+					
+					if (editorInfo?.editor) {
+						const line = this.state.doc.lineAt(this.lineFrom);
+						const lineText = line.text;
+						const updatedText = lineText.trimEnd() + ` ^${blockId}`;
+						
+						try {
+							editorInfo.editor.replaceRange(updatedText,
+								{ line: line.number - 1, ch: 0 },
+								{ line: line.number - 1, ch: lineText.length }
+							);
+							
+							this.existingBlockId = blockId;
+							taskId = `${this.filePath}#^${blockId}`;
+						} catch (err) {
+							console.error("[TaskTimer] Fallback also failed:", err);
+							return;
+						}
+					}
 					return;
 				}
 			}
@@ -281,25 +315,55 @@ class TaskTimerWidget extends WidgetType {
 			const elapsedMs = this.timerManager.completeTimer(taskId);
 			const formattedDuration = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
 
-			// Get editor info to access editor
-			const editorInfo = this.state.field(editorInfoField);
-			if (!editorInfo?.editor) {
-				console.warn("[TaskTimer] Cannot access editor");
+			// Get EditorView to modify document
+			let view = this.state.field(editorViewField, false);
+			
+			// If that doesn't work, try through the app
+			if (!view) {
+				const app = (window as any).app;
+				const activeLeaf = app?.workspace?.activeLeaf;
+				if (activeLeaf?.view?.editor?.cm) {
+					view = activeLeaf.view.editor.cm;
+					console.log("[TaskTimer] Got EditorView from activeLeaf for completion");
+				}
+			}
+			
+			if (view) {
+				const line = this.state.doc.lineAt(this.lineFrom);
+				const lineText = line.text;
+				
+				// Create the updated text
+				const updatedText = lineText
+					.replace(/\[[ ]\]/, '[x]') // Mark as completed
+					.replace(/\s*$/, ` (${formattedDuration})`); // Add duration at end
+				
+				console.log("[TaskTimer] Completing task - original:", lineText);
+				console.log("[TaskTimer] Completing task - updated:", updatedText);
+				
+				try {
+					// Use dispatch to replace the entire line
+					view.dispatch({
+						changes: {
+							from: line.from,
+							to: line.to,
+							insert: updatedText
+						}
+					});
+				} catch (err) {
+					console.error("[TaskTimer] Error updating task:", err);
+					// Try fallback
+					const editorInfo = this.state.field(editorInfoField);
+					if (editorInfo?.editor) {
+						editorInfo.editor.replaceRange(updatedText,
+							{ line: line.number - 1, ch: 0 },
+							{ line: line.number - 1, ch: lineText.length }
+						);
+					}
+				}
+			} else {
+				console.error("[TaskTimer] No view available to complete task");
 				return;
 			}
-
-			// Update the task line to mark as complete and add duration
-			const lineText = this.state.doc.lineAt(this.lineFrom).text;
-			const completedTaskText = lineText
-				.replace(/\[[ ]\]/, '[x]') // Mark as completed
-				.replace(/\s*$/, ` (${formattedDuration})`); // Add duration at end
-
-			// Apply the change to the document using the editor
-			const line = this.state.doc.lineAt(this.lineFrom);
-			editorInfo.editor.replaceRange(completedTaskText, 
-				{ line: line.number - 1, ch: 0 }, 
-				{ line: line.number - 1, ch: line.text.length }
-			);
 
 			this.stopRealtimeUpdates();
 			this.updateTimerState();
