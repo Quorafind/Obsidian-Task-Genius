@@ -65,93 +65,68 @@ class TaskTimerWidget extends WidgetType {
 			return this.dom;
 		}
 
-		this.dom = createDiv({ cls: `task-timer-widget ${this.timerState?.status || 'idle'}` });
-		this.createTimeDisplay(this.dom);
-		this.createButtons(this.dom);
+		// Create a simple text-based widget
+		this.dom = createDiv({ cls: 'task-timer-widget' });
+		this.dom.style.cssText = 'margin: 2px 0; font-size: 0.9em; color: var(--text-muted);';
+		this.updateTimerState();
+		this.createContent();
 		return this.dom;
 	}
 
 	/**
-	 * Create time display area
+	 * Create content based on timer state
 	 */
-	private createTimeDisplay(container: HTMLElement): void {
-		const timeSpan = container.createSpan({ cls: "task-timer-display" });
-		this.updateTimerState();
-		this.refreshTimeDisplay();
-	}
-
-	/**
-	 * Create action buttons
-	 */
-	private createButtons(container: HTMLElement): void {
-		const buttonContainer = container.createDiv({ cls: "task-timer-buttons" });
+	private createContent(): void {
+		if (!this.dom) return;
 		
-		this.updateTimerState();
+		this.dom.empty();
 		
 		if (!this.timerState || this.timerState.status === 'idle') {
-			const startButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button start",
-				text: "Start Task"
-			});
-			startButton.addEventListener("click", (e) => {
+			// Create text-style start button
+			const startSpan = this.dom.createSpan();
+			startSpan.style.cssText = 'cursor: pointer; text-decoration: underline; color: var(--text-accent);';
+			startSpan.setText('Start Task');
+			startSpan.addEventListener('click', (e) => {
 				e.preventDefault();
+				e.stopPropagation();
 				this.startTimer();
 			});
-		} else if (this.timerState.status === 'running') {
-			const pauseButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button pause",
-				text: "Pause"
-			});
-			pauseButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.pauseTimer();
-			});
-
-			const resetButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button reset",
-				text: "Reset"
-			});
-			resetButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.resetTimer();
-			});
-
-			const completeButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button complete",
-				text: "Complete"
-			});
-			completeButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.completeTimer();
-			});
-		} else if (this.timerState.status === 'paused') {
-			const resumeButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button resume",
-				text: "Resume"
-			});
-			resumeButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.resumeTimer();
-			});
-
-			const resetButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button reset",
-				text: "Reset"
-			});
-			resetButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.resetTimer();
-			});
-
-			const completeButton = buttonContainer.createEl("button", {
-				cls: "task-timer-button complete",
-				text: "Complete"
-			});
-			completeButton.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.completeTimer();
-			});
+		} else {
+			// Show elapsed time
+			const elapsedMs = Date.now() - this.timerState.startTime + (this.timerState.elapsed || 0);
+			const formattedTime = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
+			const timeSpan = this.dom.createSpan();
+			timeSpan.setText(`⏱ ${formattedTime} `);
+			
+			// Add action links
+			if (this.timerState.status === 'running') {
+				this.addActionLink('Pause', () => this.pauseTimer());
+				this.dom.appendText(' | ');
+				this.addActionLink('Complete', () => this.completeTimer());
+			} else if (this.timerState.status === 'paused') {
+				this.addActionLink('Resume', () => this.resumeTimer());
+				this.dom.appendText(' | ');
+				this.addActionLink('Complete', () => this.completeTimer());
+			}
+			this.dom.appendText(' | ');
+			this.addActionLink('Reset', () => this.resetTimer());
 		}
+	}
+	
+	/**
+	 * Add clickable action link
+	 */
+	private addActionLink(text: string, action: () => void): void {
+		if (!this.dom) return;
+		
+		const link = this.dom.createSpan();
+		link.style.cssText = 'cursor: pointer; text-decoration: underline; color: var(--text-accent);';
+		link.setText(text);
+		link.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			action();
+		});
 	}
 
 	/**
@@ -340,8 +315,8 @@ class TaskTimerWidget extends WidgetType {
 		}
 		
 		this.updateInterval = window.setInterval(() => {
-			this.refreshTimeDisplay();
-		}, 5000); // Update every 5 seconds for performance
+			this.createContent(); // Update the entire content
+		}, 1000); // Update every second
 	}
 
 	/**
@@ -355,50 +330,13 @@ class TaskTimerWidget extends WidgetType {
 	}
 
 	/**
-	 * Refresh only the time display (performance optimization)
-	 */
-	private refreshTimeDisplay(): void {
-		if (!this.dom) return;
-		
-		const timeDisplay = this.dom.querySelector('.task-timer-display') as HTMLElement;
-		if (!timeDisplay) return;
-
-		this.updateTimerState();
-		
-		if (this.timerState) {
-			const elapsedMs = Date.now() - this.timerState.startTime;
-			const formattedTime = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
-			
-			// Only update if the text has changed
-			if (timeDisplay.textContent !== formattedTime) {
-				timeDisplay.textContent = formattedTime;
-			}
-			
-			// Update animation class
-			if (this.timerState.status === 'running') {
-				timeDisplay.addClass('running');
-			} else {
-				timeDisplay.removeClass('running');
-			}
-		} else {
-			timeDisplay.textContent = "00:00";
-			timeDisplay.removeClass('running');
-		}
-	}
-
-	/**
 	 * Refresh the entire UI (used when state changes significantly)
 	 */
 	private refreshUI(): void {
 		if (!this.dom) return;
 		
-		// Update widget class
-		this.dom.className = `task-timer-widget ${this.timerState?.status || 'idle'}`;
-		
-		// Clear and recreate content
-		this.dom.empty();
-		this.createTimeDisplay(this.dom);
-		this.createButtons(this.dom);
+		this.updateTimerState();
+		this.createContent();
 	}
 
 	destroy() {
@@ -536,18 +474,33 @@ function hasSubTasks(rangeText: string, parentLineText: string): boolean {
 	const parentMatch = parentLineText.match(/^(\s*)/);
 	const parentIndent = parentMatch ? parentMatch[1].length : 0;
 	
+	console.log(`[TaskTimer] Checking subtasks for parent with indent ${parentIndent}`);
+	
 	// Check subsequent lines for subtasks
+	let foundSubtask = false;
 	for (let i = 1; i < lines.length; i++) {
 		const line = lines[i];
-		if (isTaskLine(line)) {
-			const lineMatch = line.match(/^(\s*)/);
-			const lineIndent = lineMatch ? lineMatch[1].length : 0;
-			if (lineIndent > parentIndent) {
-				return true; // Found a subtask with greater indentation
-			}
+		
+		// Skip empty lines
+		if (!line.trim()) continue;
+		
+		const lineMatch = line.match(/^(\s*)/);
+		const lineIndent = lineMatch ? lineMatch[1].length : 0;
+		
+		// If we find a line with same or less indentation that's not empty, stop checking
+		if (lineIndent <= parentIndent) {
+			break;
+		}
+		
+		// Check if this indented line is a task
+		if (isTaskLine(line) && lineIndent > parentIndent) {
+			console.log(`[TaskTimer] Found subtask: ${line.trim()}`);
+			foundSubtask = true;
+			break;
 		}
 	}
-	return false;
+	
+	return foundSubtask;
 }
 
 function extractBlockRef(lineText: string): string | undefined {
