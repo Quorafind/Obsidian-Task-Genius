@@ -130,18 +130,27 @@ export class SettingsSearchComponent {
 	 * 执行搜索
 	 */
 	private performSearch(query: string): void {
+		console.log(`[SettingsSearch] Performing search for: "${query}"`);
+		
 		if (query.length === 0) {
+			console.log(`[SettingsSearch] Empty query, hiding results`);
 			this.hideResults();
 			return;
 		}
 
 		// 最少输入2个字符开始搜索
 		if (query.length < 2) {
+			console.log(`[SettingsSearch] Query too short (${query.length} chars), skipping search`);
 			return;
 		}
 
 		this.currentResults = this.indexer.search(query, 8);
 		this.selectedIndex = -1;
+		
+		console.log(`[SettingsSearch] Found ${this.currentResults.length} results:`);
+		this.currentResults.forEach((result, index) => {
+			console.log(`  ${index + 1}. ${result.item.name} (${result.matchType}, score: ${result.score})`);
+		});
 		
 		if (this.currentResults.length > 0) {
 			this.renderResults();

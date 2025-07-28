@@ -33,7 +33,7 @@ export class SettingsIndexer {
 		this.buildIndex();
 		
 		const endTime = performance.now();
-		console.log(`Settings index built in ${(endTime - startTime).toFixed(2)}ms`);
+		console.log(`[SettingsIndexer] Index built in ${(endTime - startTime).toFixed(2)}ms with ${this.index.items.length} items`);
 		
 		this.isInitialized = true;
 	}
@@ -81,7 +81,7 @@ export class SettingsIndexer {
 			this.initialize();
 		}
 
-		if (!query || query.trim().length === 0) {
+		if (!query || query.trim().length < 2) {
 			return [];
 		}
 
