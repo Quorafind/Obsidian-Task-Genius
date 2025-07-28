@@ -8,18 +8,11 @@ import {
 } from "@codemirror/view";
 import { EditorState, Range, StateField } from "@codemirror/state";
 import { TFile, App, MetadataCache, editorInfoField } from "obsidian";
-import { foldable, syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { RegExpCursor } from "./regexp-cursor";
 import { TaskTimerSettings } from "../common/setting-definition";
 import { TaskTimerMetadataDetector } from "../utils/TaskTimerMetadataDetector";
 import { TaskTimerManager, TimerState } from "../utils/TaskTimerManager";
 import { TaskTimerFormatter } from "../utils/TaskTimerFormatter";
 import "../styles/task-timer.css";
-
-interface TextRange {
-	from: number;
-	to: number;
-}
 
 // Extension configuration for StateField access
 interface TaskTimerConfig {
@@ -418,39 +411,40 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 		if (isTaskLine(lineText)) {
 			console.log("[TaskTimer] Found task line:", lineText.trim());
 			
-			// Use existing folding logic to check if this is a parent task
-			const range = calculateRangeForTransform(state, {
-				from: line.from,
-				to: line.to,
-			});
-			
-			if (
-				range &&
-				range.to > line.to &&
-				hasSubTasks(doc.sliceString(range.from, range.to), lineText)
-			) {
-				console.log("[TaskTimer] Found parent task with subtasks");
-				// Extract existing block reference if present
-				const existingBlockId = extractBlockRef(lineText);
+			// Check if next line exists and has greater indentation (simple check)
+			if (i < doc.lines) {
+				const nextLine = doc.line(i + 1);
+				const nextLineText = nextLine.text;
 				
-				// Create block-level timer widget decoration
-				const timerDeco = Decoration.widget({
-					widget: new TaskTimerWidget(
-						state,
-						timerConfig.settings,
-						timerManager,
-						line.from,
-						line.to,
-						file.path,
-						existingBlockId
-					),
-					side: -1,
-					block: true // This is now allowed in StateField
-				});
+				// Simple indentation check
+				const currentIndent = lineText.match(/^(\s*)/)?.[1].length || 0;
+				const nextIndent = nextLineText.match(/^(\s*)/)?.[1].length || 0;
 				
-				// Add decoration at the start of the line
-				decorations.push(timerDeco.range(line.from));
-				console.log("[TaskTimer] Added timer decoration for line:", i);
+				// If next line has more indentation, this is a parent task
+				if (nextIndent > currentIndent && nextLineText.trim()) {
+					console.log("[TaskTimer] Found parent task with subtasks (next line indent:", nextIndent, "vs", currentIndent, ")");
+					// Extract existing block reference if present
+					const existingBlockId = extractBlockRef(lineText);
+					
+					// Create block-level timer widget decoration
+					const timerDeco = Decoration.widget({
+						widget: new TaskTimerWidget(
+							state,
+							timerConfig.settings,
+							timerManager,
+							line.from,
+							line.to,
+							file.path,
+							existingBlockId
+						),
+						side: -1,
+						block: true // This is now allowed in StateField
+					});
+					
+					// Add decoration at the start of the line
+					decorations.push(timerDeco.range(line.from));
+					console.log("[TaskTimer] Added timer decoration for line:", i);
+				}
 			}
 		}
 	}
@@ -466,72 +460,12 @@ function isTaskLine(lineText: string): boolean {
 	return /^\s*[-*+]\s+\[[ xX]\]/.test(lineText);
 }
 
-function hasSubTasks(rangeText: string, parentLineText: string): boolean {
-	const lines = rangeText.split("\n");
-	if (lines.length <= 1) return false;
-	
-	// Get parent indentation level
-	const parentMatch = parentLineText.match(/^(\s*)/);
-	const parentIndent = parentMatch ? parentMatch[1].length : 0;
-	
-	console.log(`[TaskTimer] Checking subtasks for parent with indent ${parentIndent}`);
-	
-	// Check subsequent lines for subtasks
-	let foundSubtask = false;
-	for (let i = 1; i < lines.length; i++) {
-		const line = lines[i];
-		
-		// Skip empty lines
-		if (!line.trim()) continue;
-		
-		const lineMatch = line.match(/^(\s*)/);
-		const lineIndent = lineMatch ? lineMatch[1].length : 0;
-		
-		// If we find a line with same or less indentation that's not empty, stop checking
-		if (lineIndent <= parentIndent) {
-			break;
-		}
-		
-		// Check if this indented line is a task
-		if (isTaskLine(line) && lineIndent > parentIndent) {
-			console.log(`[TaskTimer] Found subtask: ${line.trim()}`);
-			foundSubtask = true;
-			break;
-		}
-	}
-	
-	return foundSubtask;
-}
 
 function extractBlockRef(lineText: string): string | undefined {
 	const match = lineText.match(/\^([a-zA-Z0-9\-_]+)\s*$/);
 	return match ? match[1] : undefined;
 }
 
-function calculateRangeForTransform(
-	state: EditorState,
-	range: TextRange
-): TextRange | null {
-	const tree = syntaxTree(state);
-	
-	// Find the node at the current position
-	let node = tree.resolveInner(range.from, 1);
-	
-	// Traverse up to find a foldable node
-	while (node) {
-		if (foldable(state, node.from, node.to)) {
-			// This node is foldable, so it represents a section
-			return {
-				from: node.from,
-				to: node.to,
-			};
-		}
-		node = node.parent;
-	}
-	
-	// If no foldable node found, return the original range
-	return range;
-}
 
 /**
  * Main task timer extension function
