@@ -60,7 +60,11 @@ class TaskTimerWidget extends WidgetType {
 
 		// Create a simple text-based widget
 		this.dom = createDiv({ cls: 'task-timer-widget' });
-		this.dom.style.cssText = 'margin: 2px 0; font-size: 0.9em; color: var(--text-muted);';
+		this.dom.style.cssText = 'display: block; margin: 4px 0; padding: 2px 0; font-size: 0.9em; color: var(--text-muted);';
+		
+		// Add debug info
+		console.log("[TaskTimer] Creating widget for line", this.lineFrom, "blockId:", this.existingBlockId);
+		
 		this.updateTimerState();
 		this.createContent();
 		return this.dom;
@@ -82,6 +86,7 @@ class TaskTimerWidget extends WidgetType {
 			startSpan.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
+				console.log("[TaskTimer] Start button clicked");
 				this.startTimer();
 			});
 		} else {
@@ -132,19 +137,44 @@ class TaskTimerWidget extends WidgetType {
 			// If no existing block ID, generate one and insert it
 			if (!taskId) {
 				const blockId = this.timerManager.generateBlockId(this.settings.blockRefPrefix);
-				taskId = `${this.filePath}#^${blockId}`;
 				
-				// Insert block reference into the task line
-				const editorInfo = this.state.field(editorInfoField);
-				if (editorInfo?.editor) {
+				// Get the active editor through the app
+				const activeView = (window as any).app?.workspace?.getActiveViewOfType((window as any).app?.viewRegistry?.getViewCreatorByType("markdown"));
+				const editor = activeView?.editor;
+				
+				console.log("[TaskTimer] Active view:", activeView);
+				console.log("[TaskTimer] Editor:", editor);
+				
+				if (editor) {
 					const line = this.state.doc.lineAt(this.lineFrom);
 					const lineText = line.text;
 					const updatedText = lineText.trimEnd() + ` ^${blockId}`;
 					
-					editorInfo.editor.replaceRange(updatedText,
-						{ line: line.number - 1, ch: 0 },
-						{ line: line.number - 1, ch: lineText.length }
-					);
+					console.log(`[TaskTimer] Inserting block ID at line ${line.number}: ^${blockId}`);
+					console.log("[TaskTimer] Original text:", lineText);
+					console.log("[TaskTimer] Updated text:", updatedText);
+					
+					try {
+						// Use Obsidian's Editor API
+						const lineNumber = line.number - 1;
+						editor.replaceRange(updatedText,
+							{ line: lineNumber, ch: 0 },
+							{ line: lineNumber, ch: lineText.length }
+						);
+						
+						// Update our local reference
+						this.existingBlockId = blockId;
+						taskId = `${this.filePath}#^${blockId}`;
+					} catch (err) {
+						console.error("[TaskTimer] Error replacing text:", err);
+						return;
+					}
+				} else {
+					console.error("[TaskTimer] No editor available to insert block ID");
+					// Try alternative approach
+					const editorInfo = this.state.field(editorInfoField);
+					console.log("[TaskTimer] EditorInfo from state:", editorInfo);
+					return;
 				}
 			}
 
@@ -152,6 +182,7 @@ class TaskTimerWidget extends WidgetType {
 			this.timerManager.startTimer(taskId);
 			this.startRealtimeUpdates();
 			this.updateTimerState();
+			this.refreshUI(); // Force UI refresh
 			console.log("[TaskTimer] Timer started successfully");
 		} catch (error) {
 			console.error("[TaskTimer] Error starting timer:", error);
@@ -437,11 +468,11 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 							file.path,
 							existingBlockId
 						),
-						side: -1,
+						side: -1, // Place before the line
 						block: true // This is now allowed in StateField
 					});
 					
-					// Add decoration at the start of the line
+					// Add decoration at the start of the line (this will appear above the task)
 					decorations.push(timerDeco.range(line.from));
 					console.log("[TaskTimer] Added timer decoration for line:", i);
 				}
