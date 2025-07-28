@@ -431,18 +431,27 @@ const taskTimerStateField = StateField.define<DecorationSet>({
  * Create task timer decorations for the current state
  */
 function createTaskTimerDecorations(state: EditorState): DecorationSet {
+	console.log("[TaskTimer] Creating decorations, timerConfig:", timerConfig);
+	
 	if (!timerConfig?.settings?.enabled) {
+		console.log("[TaskTimer] Timer not enabled or no config");
 		return Decoration.none;
 	}
 	
 	// Get editor info to access app and file information
 	const editorInfo = state.field(editorInfoField);
 	if (!editorInfo?.app) {
+		console.log("[TaskTimer] No editor info or app");
 		return Decoration.none;
 	}
 	
 	const file = editorInfo.app.workspace.getActiveFile();
-	if (!file) return Decoration.none;
+	if (!file) {
+		console.log("[TaskTimer] No active file");
+		return Decoration.none;
+	}
+	
+	console.log("[TaskTimer] Processing file:", file.path);
 	
 	const metadataDetector = new TaskTimerMetadataDetector(
 		editorInfo.app, 
@@ -451,12 +460,17 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 	);
 	
 	if (!metadataDetector.isTimerEnabledForFile(file)) {
+		console.log("[TaskTimer] Timer not enabled for file:", file.path);
 		return Decoration.none;
 	}
+	
+	console.log("[TaskTimer] Timer enabled for file, processing...");
 	
 	const timerManager = new TaskTimerManager(timerConfig.settings);
 	const decorations: Range<Decoration>[] = [];
 	const doc = state.doc;
+	
+	console.log("[TaskTimer] Document has", doc.lines, "lines");
 	
 	// Process all lines in the document
 	for (let i = 1; i <= doc.lines; i++) {
@@ -465,6 +479,8 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 		
 		// Check if this line contains a task
 		if (isTaskLine(lineText)) {
+			console.log("[TaskTimer] Found task line:", lineText.trim());
+			
 			// Use existing folding logic to check if this is a parent task
 			const range = calculateRangeForTransform(state, {
 				from: line.from,
@@ -476,6 +492,7 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 				range.to > line.to &&
 				hasSubTasks(doc.sliceString(range.from, range.to), lineText)
 			) {
+				console.log("[TaskTimer] Found parent task with subtasks");
 				// Extract existing block reference if present
 				const existingBlockId = extractBlockRef(lineText);
 				
@@ -496,10 +513,12 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 				
 				// Add decoration at the start of the line
 				decorations.push(timerDeco.range(line.from));
+				console.log("[TaskTimer] Added timer decoration for line:", i);
 			}
 		}
 	}
 	
+	console.log("[TaskTimer] Created", decorations.length, "timer decorations");
 	return Decoration.set(decorations, true);
 }
 
@@ -571,10 +590,11 @@ export function taskTimerExtension(
 	settings: TaskTimerSettings,
 	metadataCache: MetadataCache
 ) {
-	// Set global references for StateField access
-	globalApp = app;
-	globalSettings = settings;
-	globalMetadataCache = metadataCache;
+	// Set global configuration for StateField access
+	timerConfig = {
+		settings,
+		metadataCache
+	};
 	
 	return [taskTimerStateField];
 }
