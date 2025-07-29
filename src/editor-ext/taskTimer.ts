@@ -6,7 +6,7 @@ import {
 	ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
-import { EditorState, Range, StateField } from "@codemirror/state";
+import { EditorState, Range, StateField, StateEffect } from "@codemirror/state";
 import { TFile, App, MetadataCache, editorInfoField, editorEditorField } from "obsidian";
 import { TaskTimerSettings } from "../common/setting-definition";
 import { TaskTimerMetadataDetector } from "../utils/TaskTimerMetadataDetector";
@@ -38,7 +38,7 @@ class TaskTimerWidget extends WidgetType {
 		private readonly lineFrom: number,
 		private readonly lineTo: number,
 		private readonly filePath: string,
-		private readonly existingBlockId?: string
+		private existingBlockId?: string
 	) {
 		super();
 	}
@@ -91,7 +91,7 @@ class TaskTimerWidget extends WidgetType {
 			});
 		} else {
 			// Show elapsed time
-			const elapsedMs = Date.now() - this.timerState.startTime + (this.timerState.elapsed || 0);
+			const elapsedMs = Date.now() - this.timerState.startTime + this.timerState.totalPausedDuration;
 			const formattedTime = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
 			const timeSpan = this.dom.createSpan();
 			timeSpan.setText(`⏱ ${formattedTime} `);
@@ -175,10 +175,20 @@ class TaskTimerWidget extends WidgetType {
 						this.existingBlockId = blockId;
 						taskId = `${this.filePath}#^${blockId}`;
 						
-						// Force widget refresh after successful insertion
+						// Start the timer after inserting block ID
+						console.log(`[TaskTimer] Starting timer for newly created task: ${taskId}`);
+						this.timerManager.startTimer(taskId);
+						this.startRealtimeUpdates();
+						this.updateTimerState();
+						
+						// Force CodeMirror to recreate decorations with new block ID
 						setTimeout(() => {
-							this.updateTimerState();
-							this.refreshUI();
+							// Trigger a state update to recreate decorations
+							if (view) {
+								view.dispatch({
+									effects: StateEffect.appendConfig.of([])
+								});
+							}
 						}, 100);
 					} catch (err) {
 						console.error("[TaskTimer] Error dispatching change:", err);
@@ -203,6 +213,17 @@ class TaskTimerWidget extends WidgetType {
 							
 							this.existingBlockId = blockId;
 							taskId = `${this.filePath}#^${blockId}`;
+							
+							// Start timer for the fallback path as well
+							console.log(`[TaskTimer] Starting timer for newly created task (fallback): ${taskId}`);
+							this.timerManager.startTimer(taskId);
+							this.startRealtimeUpdates();
+							this.updateTimerState();
+							
+							// Force recreation through a timeout since we can't dispatch effects
+							setTimeout(() => {
+								this.refreshUI();
+							}, 100);
 						} catch (err) {
 							console.error("[TaskTimer] Fallback also failed:", err);
 							return;
@@ -311,9 +332,8 @@ class TaskTimerWidget extends WidgetType {
 				return;
 			}
 
-			// Calculate elapsed time
-			const elapsedMs = this.timerManager.completeTimer(taskId);
-			const formattedDuration = TaskTimerFormatter.formatDuration(elapsedMs, this.settings.timeFormat);
+			// Complete the timer and get the formatted duration
+			const formattedDuration = this.timerManager.completeTimer(taskId);
 
 			// Get EditorView to modify document
 			let view = this.state.field(editorEditorField, false);
@@ -444,13 +464,14 @@ const taskTimerStateField = StateField.define<DecorationSet>({
 	create(state: EditorState): DecorationSet {
 		return createTaskTimerDecorations(state);
 	},
-	update(decorations: DecorationSet, transaction): DecorationSet {
-		if (transaction.docChanged) {
+	update(decorations: DecorationSet, transaction: any): DecorationSet {
+		// Recreate decorations on doc changes or state effects
+		if (transaction.docChanged || transaction.effects.length > 0) {
 			return createTaskTimerDecorations(transaction.state);
 		}
 		return decorations;
 	},
-	provide: (field) => EditorView.decorations.from(field)
+	provide: (field: StateField<DecorationSet>) => EditorView.decorations.from(field)
 });
 
 /**
@@ -506,18 +527,30 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 		if (isTaskLine(lineText)) {
 			console.log("[TaskTimer] Found task line:", lineText.trim());
 			
-			// Check if next line exists and has greater indentation (simple check)
-			if (i < doc.lines) {
-				const nextLine = doc.line(i + 1);
-				const nextLineText = nextLine.text;
+			// Check if this task has any subtasks (not just immediate next line)
+			const currentIndent = lineText.match(/^(\s*)/)?.[1].length || 0;
+			let hasSubtasks = false;
+			
+			// Look ahead for subtasks with greater indentation
+			for (let j = i + 1; j <= doc.lines; j++) {
+				const checkLine = doc.line(j);
+				const checkLineText = checkLine.text;
+				const checkIndent = checkLineText.match(/^(\s*)/)?.[1].length || 0;
 				
-				// Simple indentation check
-				const currentIndent = lineText.match(/^(\s*)/)?.[1].length || 0;
-				const nextIndent = nextLineText.match(/^(\s*)/)?.[1].length || 0;
+				// If we hit a line with same or less indentation, stop checking
+				if (checkLineText.trim() && checkIndent <= currentIndent) {
+					break;
+				}
 				
-				// If next line has more indentation, this is a parent task
-				if (nextIndent > currentIndent && nextLineText.trim()) {
-					console.log("[TaskTimer] Found parent task with subtasks (next line indent:", nextIndent, "vs", currentIndent, ")");
+				// If we find a task line with greater indentation, this is a parent
+				if (checkIndent > currentIndent && isTaskLine(checkLineText)) {
+					hasSubtasks = true;
+					break;
+				}
+			}
+			
+			if (hasSubtasks) {
+					console.log("[TaskTimer] Found parent task with subtasks at line", i);
 					// Extract existing block reference if present
 					const existingBlockId = extractBlockRef(lineText);
 					
@@ -539,7 +572,6 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 					// Add decoration at the start of the line (this will appear above the task)
 					decorations.push(timerDeco.range(line.from));
 					console.log("[TaskTimer] Added timer decoration for line:", i);
-				}
 			}
 		}
 	}
@@ -567,7 +599,7 @@ function extractBlockRef(lineText: string): string | undefined {
  * Creates a StateField-based extension for proper block decorations
  */
 export function taskTimerExtension(
-	app: App,
+	_app: App,
 	settings: TaskTimerSettings,
 	metadataCache: MetadataCache
 ) {

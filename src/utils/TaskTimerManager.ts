@@ -28,12 +28,14 @@ export class TaskTimerManager {
 
 	/**
 	 * Generate a unique block reference ID
+	 * @param prefix Optional prefix to use (defaults to settings)
 	 * @returns Generated block ID
 	 */
-	private generateBlockId(): string {
+	public generateBlockId(prefix?: string): string {
+		const actualPrefix = prefix || this.settings.blockRefPrefix;
 		const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
 		const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-		return `${this.settings.blockRefPrefix}-${timestamp}-${random}`;
+		return `${actualPrefix}-${timestamp}-${random}`;
 	}
 
 	/**
