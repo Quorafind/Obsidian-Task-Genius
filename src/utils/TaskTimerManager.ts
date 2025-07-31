@@ -1,9 +1,34 @@
 import { TaskTimerSettings } from "../common/setting-definition";
 
 /**
+ * Time segment interface - represents a single work session
+ */
+export interface TimeSegment {
+	startTime: number;
+	endTime?: number; // undefined means still running
+	duration?: number; // cached duration for completed segments
+}
+
+/**
  * Timer state interface
  */
 export interface TimerState {
+	taskId: string;
+	filePath: string;
+	blockId: string;
+	segments: TimeSegment[]; // Array of time segments
+	status: 'idle' | 'running' | 'paused';
+	createdAt: number;
+	// Legacy fields for backward compatibility
+	legacyStartTime?: number;
+	legacyPausedTime?: number;
+	legacyTotalPausedDuration?: number;
+}
+
+/**
+ * Legacy timer state interface for migration
+ */
+export interface LegacyTimerState {
 	taskId: string;
 	filePath: string;
 	blockId: string;
@@ -79,13 +104,14 @@ export class TaskTimerManager {
 				return blockId;
 			}
 
-			// Create new timer
+			// Create new timer with initial segment
 			const timerState: TimerState = {
 				taskId,
 				filePath,
 				blockId,
-				startTime: now,
-				totalPausedDuration: 0,
+				segments: [{
+					startTime: now
+				}],
 				status: 'running',
 				createdAt: now
 			};
@@ -117,8 +143,16 @@ export class TaskTimerManager {
 			return;
 		}
 
+		const now = Date.now();
+		
+		// Close the current segment
+		const currentSegment = timerState.segments[timerState.segments.length - 1];
+		if (currentSegment && !currentSegment.endTime) {
+			currentSegment.endTime = now;
+			currentSegment.duration = now - currentSegment.startTime;
+		}
+
 		timerState.status = 'paused';
-		timerState.pausedTime = Date.now();
 
 		localStorage.setItem(taskId, JSON.stringify(timerState));
 	}
@@ -129,15 +163,18 @@ export class TaskTimerManager {
 	 */
 	resumeTimer(taskId: string): void {
 		const timerState = this.getTimerState(taskId);
-		if (!timerState || timerState.status !== 'paused' || !timerState.pausedTime) {
+		if (!timerState || timerState.status !== 'paused') {
 			return;
 		}
 
-		// Add paused duration to total
-		const pausedDuration = Date.now() - timerState.pausedTime;
-		timerState.totalPausedDuration += pausedDuration;
+		const now = Date.now();
+		
+		// Create a new segment for the resumed work
+		timerState.segments.push({
+			startTime: now
+		});
+		
 		timerState.status = 'running';
-		timerState.pausedTime = undefined;
 
 		localStorage.setItem(taskId, JSON.stringify(timerState));
 	}
@@ -152,10 +189,13 @@ export class TaskTimerManager {
 			return;
 		}
 
-		timerState.startTime = Date.now();
-		timerState.totalPausedDuration = 0;
+		const now = Date.now();
+		
+		// Clear all segments and start fresh
+		timerState.segments = [{
+			startTime: now
+		}];
 		timerState.status = 'running';
-		timerState.pausedTime = undefined;
 
 		localStorage.setItem(taskId, JSON.stringify(timerState));
 	}
@@ -175,24 +215,25 @@ export class TaskTimerManager {
 				return "";
 			}
 
-			const endTime = Date.now();
-			let totalDuration: number;
-
-			if (timerState.status === 'paused' && timerState.pausedTime) {
-				// If paused, calculate duration up to pause time
-				totalDuration = timerState.pausedTime - timerState.startTime - timerState.totalPausedDuration;
-				console.log(`[TaskTimerManager] Calculating paused timer duration: ${totalDuration}ms`);
-			} else {
-				// If running, calculate duration up to now
-				totalDuration = endTime - timerState.startTime - timerState.totalPausedDuration;
-				console.log(`[TaskTimerManager] Calculating running timer duration: ${totalDuration}ms`);
+			const now = Date.now();
+			
+			// Close the current segment if running
+			if (timerState.status === 'running') {
+				const currentSegment = timerState.segments[timerState.segments.length - 1];
+				if (currentSegment && !currentSegment.endTime) {
+					currentSegment.endTime = now;
+					currentSegment.duration = now - currentSegment.startTime;
+				}
 			}
+
+			// Calculate total duration from all segments
+			const totalDuration = this.calculateTotalDuration(timerState);
+			console.log(`[TaskTimerManager] Total duration from ${timerState.segments.length} segments: ${totalDuration}ms`);
 
 			// Validate duration
 			if (totalDuration < 0) {
 				console.error(`[TaskTimerManager] Invalid duration calculated: ${totalDuration}ms`);
-				console.error(`[TaskTimerManager] Timer state: start=${timerState.startTime}, pause=${timerState.pausedTime}, totalPaused=${timerState.totalPausedDuration}`);
-				totalDuration = 0;
+				return this.formatDuration(0);
 			}
 
 			// Remove from storage
@@ -227,7 +268,16 @@ export class TaskTimerManager {
 				return null;
 			}
 
-			const parsed = JSON.parse(stored) as TimerState;
+			const parsed = JSON.parse(stored);
+			
+			// Check if this is a legacy format that needs migration
+			if (this.isLegacyFormat(parsed)) {
+				console.log(`[TaskTimerManager] Migrating legacy timer state for ${taskId}`);
+				const migrated = this.migrateLegacyState(parsed as LegacyTimerState);
+				// Save migrated state
+				localStorage.setItem(taskId, JSON.stringify(migrated));
+				return migrated;
+			}
 			
 			// Validate the parsed state structure
 			if (!this.validateTimerState(parsed)) {
@@ -237,7 +287,7 @@ export class TaskTimerManager {
 				return null;
 			}
 			
-			return parsed;
+			return parsed as TimerState;
 		} catch (error) {
 			console.error(`[TaskTimerManager] Error retrieving timer state for ${taskId}:`, error);
 			// Clean up corrupted data
@@ -251,6 +301,57 @@ export class TaskTimerManager {
 	}
 
 	/**
+	 * Check if the state is in legacy format
+	 * @param state State to check
+	 * @returns true if legacy format
+	 */
+	private isLegacyFormat(state: any): boolean {
+		return (
+			state &&
+			typeof state.startTime === 'number' &&
+			!state.segments &&
+			typeof state.totalPausedDuration === 'number'
+		);
+	}
+
+	/**
+	 * Migrate legacy timer state to new format
+	 * @param legacy Legacy timer state
+	 * @returns Migrated timer state
+	 */
+	private migrateLegacyState(legacy: LegacyTimerState): TimerState {
+		const segments: TimeSegment[] = [];
+		
+		// Create segment from legacy data
+		if (legacy.status === 'running') {
+			// Running timer - create an open segment
+			segments.push({
+				startTime: legacy.startTime + legacy.totalPausedDuration
+			});
+		} else if (legacy.status === 'paused' && legacy.pausedTime) {
+			// Paused timer - create a closed segment
+			segments.push({
+				startTime: legacy.startTime + legacy.totalPausedDuration,
+				endTime: legacy.pausedTime,
+				duration: legacy.pausedTime - legacy.startTime - legacy.totalPausedDuration
+			});
+		}
+		
+		return {
+			taskId: legacy.taskId,
+			filePath: legacy.filePath,
+			blockId: legacy.blockId,
+			segments,
+			status: legacy.status,
+			createdAt: legacy.createdAt,
+			// Keep legacy fields for reference
+			legacyStartTime: legacy.startTime,
+			legacyPausedTime: legacy.pausedTime,
+			legacyTotalPausedDuration: legacy.totalPausedDuration
+		};
+	}
+
+	/**
 	 * Validate timer state structure
 	 * @param state Parsed timer state to validate
 	 * @returns true if valid, false otherwise
@@ -261,11 +362,9 @@ export class TaskTimerManager {
 			typeof state.taskId === 'string' &&
 			typeof state.filePath === 'string' &&
 			typeof state.blockId === 'string' &&
-			typeof state.startTime === 'number' &&
-			typeof state.totalPausedDuration === 'number' &&
+			Array.isArray(state.segments) &&
 			typeof state.createdAt === 'number' &&
-			['idle', 'running', 'paused'].includes(state.status) &&
-			(state.pausedTime === undefined || typeof state.pausedTime === 'number')
+			['idle', 'running', 'paused'].includes(state.status)
 		);
 	}
 
@@ -311,6 +410,32 @@ export class TaskTimerManager {
 	}
 
 	/**
+	 * Calculate total duration from all segments
+	 * @param timerState Timer state
+	 * @returns Total duration in milliseconds
+	 */
+	private calculateTotalDuration(timerState: TimerState): number {
+		const now = Date.now();
+		
+		return timerState.segments.reduce((total, segment) => {
+			let segmentDuration: number;
+			
+			if (segment.duration) {
+				// Use cached duration if available
+				segmentDuration = segment.duration;
+			} else if (segment.endTime) {
+				// Calculate duration for completed segment
+				segmentDuration = segment.endTime - segment.startTime;
+			} else {
+				// Calculate duration for running segment
+				segmentDuration = now - segment.startTime;
+			}
+			
+			return total + segmentDuration;
+		}, 0);
+	}
+
+	/**
 	 * Get current running time for a timer
 	 * @param taskId Timer task ID
 	 * @returns Current duration in milliseconds, or 0 if not found/running
@@ -321,15 +446,35 @@ export class TaskTimerManager {
 			return 0;
 		}
 
-		const now = Date.now();
-		
-		if (timerState.status === 'running') {
-			return now - timerState.startTime - timerState.totalPausedDuration;
-		} else if (timerState.status === 'paused' && timerState.pausedTime) {
-			return timerState.pausedTime - timerState.startTime - timerState.totalPausedDuration;
+		return this.calculateTotalDuration(timerState);
+	}
+
+	/**
+	 * Get the number of time segments (sessions) for a timer
+	 * @param taskId Timer task ID
+	 * @returns Number of segments
+	 */
+	getSegmentCount(taskId: string): number {
+		const timerState = this.getTimerState(taskId);
+		if (!timerState) {
+			return 0;
 		}
 
-		return 0;
+		return timerState.segments.length;
+	}
+
+	/**
+	 * Get all time segments for a timer
+	 * @param taskId Timer task ID
+	 * @returns Array of time segments
+	 */
+	getSegments(taskId: string): TimeSegment[] {
+		const timerState = this.getTimerState(taskId);
+		if (!timerState) {
+			return [];
+		}
+
+		return timerState.segments;
 	}
 
 	/**
@@ -355,8 +500,9 @@ export class TaskTimerManager {
 		template = template.replace("{ms}", duration.toString());
 
 		// Clean up zero values (remove 0hrs, 0mins if they are zero)
-		template = template.replace(/0hrs/g, "");
-		template = template.replace(/0mins/g, "");
+		// Use word boundaries to avoid matching 10hrs, 20mins etc.
+		template = template.replace(/\b0hrs\b/g, "");
+		template = template.replace(/\b0mins\b/g, "");
 		
 		// Clean up leading/trailing spaces and multiple spaces
 		template = template.replace(/\s+/g, " ").trim();

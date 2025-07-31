@@ -1,11 +1,23 @@
 /* Task Timer Widget Styles - Simple Text-Based */
 
 .task-timer-widget {
-	margin: 2px 0;
-	padding: 0;
+	display: block;
+	margin: 4px 0;
+	padding: 2px 0;
 	font-size: 0.9em;
 	color: var(--text-muted);
 	line-height: 1.4;
 }
 
-/* Remove all complex button styles - we're using text links now */
+/* Start button and action links */
+.task-timer-start,
+.task-timer-action {
+	cursor: pointer;
+	text-decoration: underline;
+	color: var(--text-accent);
+}
+
+.task-timer-start:hover,
+.task-timer-action:hover {
+	color: var(--text-accent-hover);
+}

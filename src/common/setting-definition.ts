@@ -1391,7 +1391,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 			folders: [],
 			tags: ["timer", "tracked"]
 		},
-		timeFormat: "{h}hrs{m}mins",
+		timeFormat: "{h}hrs {m}mins",
 		blockRefPrefix: "timer"
 	},
 

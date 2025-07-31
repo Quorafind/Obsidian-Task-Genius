@@ -10,6 +10,7 @@ import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
 import { getTasksAPI } from "../utils";
 import { priorityChangeAnnotation } from "./priorityPicker";
 import { parseTaskLine } from "../utils/taskUtil";
+
 /**
  * Creates an editor extension that cycles through task statuses when a user clicks on a task marker
  * @param app The Obsidian app instance
@@ -68,7 +69,7 @@ function isValidTaskMarkerReplacement(
 	// Check if user actively selected text before replacement
 	const startSelection = tr.startState.selection.main;
 	const hasUserSelection = startSelection && !startSelection.empty;
-	
+
 	// If user had a selection that covers the replacement range, this is intentional replacement
 	if (hasUserSelection && startSelection && fromA >= startSelection.from && toA <= startSelection.to) {
 		console.log(
@@ -78,13 +79,13 @@ function isValidTaskMarkerReplacement(
 	}
 
 	// Get valid task status marks from plugin settings
-	const { marks } = getTaskStatusConfig(plugin);
+	const {marks} = getTaskStatusConfig(plugin);
 	const validMarks = Object.values(marks);
-	
+
 	// Check if both the original and inserted characters are valid task status marks
 	const isOriginalValidMark = validMarks.includes(originalText) || originalText === ' ';
 	const isInsertedValidMark = validMarks.includes(insertedText) || insertedText === ' ';
-	
+
 	// If either character is not a valid task mark, this is likely manual input
 	if (!isOriginalValidMark || !isInsertedValidMark) {
 		return false;
@@ -93,7 +94,7 @@ function isValidTaskMarkerReplacement(
 	// Check if the replacement position is at a task marker location
 	const taskRegex = /^[\s|\t]*([-*+]|\d+\.)\s+\[(.)]/;
 	const match = newLineText.match(taskRegex);
-	
+
 	if (!match) {
 		return false;
 	}
@@ -173,9 +174,9 @@ export function findTaskStatusChanges(
 					change.text === "    " ||
 					(change.text === "" &&
 						(tr.startState.doc.sliceString(
-							change.fromA,
-							change.toA
-						) === "\t" ||
+								change.fromA,
+								change.toA
+							) === "\t" ||
 							tr.startState.doc.sliceString(
 								change.fromA,
 								change.toA
@@ -330,7 +331,7 @@ export function findTaskStatusChanges(
 						// Check if this is a replacement operation and validate if it's a valid task marker replacement
 						if (fromA !== toA) {
 							const originalText = tr.startState.doc.sliceString(fromA, toA);
-							
+
 							// Only perform validation if plugin is provided
 							if (plugin) {
 								const isValidReplacement = isValidTaskMarkerReplacement(
@@ -343,14 +344,14 @@ export function findTaskStatusChanges(
 									newLineText,
 									plugin
 								);
-								
+
 								if (!isValidReplacement) {
 									console.log(
 										`Detected invalid task marker replacement (fromA=${fromA}, toA=${toA}). User manually input '${insertedText}' (original: '${originalText}'), skipping automatic cycling.`
 									);
 									return; // Skip this change, don't add to taskChanges
 								}
-								
+
 								console.log(
 									`Detected valid task marker replacement (fromA=${fromA}, toA=${toA}). Original: '${originalText}' -> New: '${insertedText}', proceeding with automatic cycling.`
 								);
@@ -412,13 +413,13 @@ export function findTaskStatusChanges(
 						wasCompleteTask: wasCompleteTask,
 						tasksInfo: triggerByTasks
 							? {
-									isTaskChange: triggerByTasks,
-									originalFromA: fromA,
-									originalToA: toA,
-									originalFromB: fromB,
-									originalToB: toB,
-									originalInsertedText: insertedText,
-							  }
+								isTaskChange: triggerByTasks,
+								originalFromA: fromA,
+								originalToA: toA,
+								originalFromB: fromB,
+								originalToB: toB,
+								originalInsertedText: insertedText,
+							}
 							: null,
 					});
 				}
@@ -526,7 +527,7 @@ export function handleCycleCompleteStatusTransaction(
 	}
 
 	// Get the task cycle and marks from plugin settings
-	const { cycle, marks, excludeMarksFromCycle } = getTaskStatusConfig(plugin);
+	const {cycle, marks, excludeMarksFromCycle} = getTaskStatusConfig(plugin);
 	const remainingCycle = cycle.filter(
 		(state) => !excludeMarksFromCycle.includes(state)
 	);
@@ -660,7 +661,7 @@ export function handleCycleCompleteStatusTransaction(
 
 	// Process each task status change
 	for (const taskStatusInfo of taskStatusChanges) {
-		const { position, currentMark, wasCompleteTask, tasksInfo } =
+		const {position, currentMark, wasCompleteTask, tasksInfo} =
 			taskStatusInfo;
 
 		if (tasksInfo?.isTaskChange) {
@@ -729,10 +730,8 @@ export function handleCycleCompleteStatusTransaction(
 		// If so, we may choose to leave it as is rather than immediately cycling it
 		if (wasCompleteTask) {
 			// Find the corresponding status for this mark
-			let foundStatus = null;
-			for (const [status, mark] of Object.entries(marks)) {
+			for (const [_, mark] of Object.entries(marks)) {
 				if (mark === currentMark) {
-					foundStatus = status;
 					break;
 				}
 			}

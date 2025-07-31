@@ -115,15 +115,29 @@ export class TaskTimerExporter {
 			// Restore each timer
 			for (const timerData of backup.activeTimers) {
 				// Recreate timer state in localStorage
+				// Convert old format to new segments format
+				const segments = [];
+				if (timerData.startTime) {
+					segments.push({
+						startTime: timerData.startTime,
+						endTime: timerData.pausedTime,
+						duration: timerData.pausedTime ? 
+							timerData.pausedTime - timerData.startTime - (timerData.totalPausedDuration || 0) : 
+							undefined
+					});
+				}
+				
 				const restoredTimer: TimerState = {
 					taskId: timerData.taskId,
 					filePath: timerData.filePath,
 					blockId: timerData.blockId,
-					startTime: timerData.startTime,
-					pausedTime: timerData.pausedTime,
-					totalPausedDuration: timerData.totalPausedDuration || 0,
-					status: timerData.status,
-					createdAt: timerData.createdAt
+					segments: segments,
+					status: timerData.status as 'idle' | 'running' | 'paused',
+					createdAt: timerData.createdAt,
+					// Keep legacy fields for reference
+					legacyStartTime: timerData.startTime,
+					legacyPausedTime: timerData.pausedTime,
+					legacyTotalPausedDuration: timerData.totalPausedDuration || 0
 				};
 
 				localStorage.setItem(timerData.taskId, JSON.stringify(restoredTimer));
@@ -194,16 +208,20 @@ export class TaskTimerExporter {
 
 			const currentDuration = this.timerManager.getCurrentDuration(timer.taskId);
 			
+			// Get the first and last segments for export
+			const firstSegment = timer.segments[0];
+			const lastSegment = timer.segments[timer.segments.length - 1];
+			
 			exportTimers.push({
 				taskId: timer.taskId,
 				filePath: timer.filePath,
 				blockId: timer.blockId,
-				startTime: timer.startTime,
-				endTime: timer.status === 'idle' ? Date.now() : undefined,
+				startTime: firstSegment ? firstSegment.startTime : timer.createdAt,
+				endTime: lastSegment && lastSegment.endTime ? lastSegment.endTime : undefined,
 				duration: currentDuration,
 				status: timer.status,
 				createdAt: timer.createdAt,
-				totalPausedDuration: timer.totalPausedDuration
+				totalPausedDuration: timer.legacyTotalPausedDuration || 0
 			});
 		}
 

@@ -183,19 +183,19 @@ export class TaskTimerFormatter {
 	 */
 	private static cleanupZeroValues(formatted: string): string {
 		// Remove zero hours, minutes, seconds if they appear at the start
-		formatted = formatted.replace(/^0hrs?/i, '');
-		formatted = formatted.replace(/^0mins?/i, '');
-		formatted = formatted.replace(/^0secs?/i, '');
-		formatted = formatted.replace(/^0s/i, '');
+		formatted = formatted.replace(/^0hrs?\b/i, '');
+		formatted = formatted.replace(/^0mins?\b/i, '');
+		formatted = formatted.replace(/^0secs?\b/i, '');
+		formatted = formatted.replace(/^0s\b/i, '');
 
-		// Remove zero values that appear after spaces
-		formatted = formatted.replace(/\s+0hrs?/gi, '');
-		formatted = formatted.replace(/\s+0mins?/gi, '');
-		formatted = formatted.replace(/\s+0secs?/gi, '');
-		formatted = formatted.replace(/\s+0s/gi, '');
+		// Remove zero values that appear after spaces (use word boundaries)
+		formatted = formatted.replace(/\s+0hrs?\b/gi, '');
+		formatted = formatted.replace(/\s+0mins?\b/gi, '');
+		formatted = formatted.replace(/\s+0secs?\b/gi, '');
+		formatted = formatted.replace(/\s+0s\b/gi, '');
 
 		// Handle patterns like "0h 0m 15s" -> "15s"
-		formatted = formatted.replace(/0[hm]\s*/g, '');
+		formatted = formatted.replace(/\b0[hm]\b\s*/g, '');
 
 		return formatted;
 	}

@@ -1199,7 +1199,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			}
 
 			this.registerEditorExtension([
-				taskTimerExtension(this.app, this.settings.taskTimer, this.app.metadataCache),
+				taskTimerExtension(this),
 			]);
 		}
 
