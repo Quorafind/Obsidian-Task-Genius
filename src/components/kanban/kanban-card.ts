@@ -5,6 +5,7 @@ import TaskProgressBarPlugin from "../../index"; // Adjust path
 import { KanbanSpecificConfig } from "../../common/setting-definition";
 import { createTaskCheckbox } from "../task-view/details";
 import { getEffectiveProject } from "../../utils/taskUtil";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 export class KanbanCardComponent extends Component {
 	public element: HTMLElement;
@@ -49,7 +50,10 @@ export class KanbanCardComponent extends Component {
 		}
 		const metadata = this.task.metadata || {};
 		if (metadata.priority) {
-			this.element.classList.add(`priority-${metadata.priority}`);
+			const sanitizedPriority = sanitizePriorityForClass(metadata.priority);
+			if (sanitizedPriority) {
+				this.element.classList.add(`priority-${sanitizedPriority}`);
+			}
 		}
 
 		// --- Card Content ---
@@ -267,13 +271,12 @@ export class KanbanCardComponent extends Component {
 
 	private renderPriority() {
 		const metadata = this.task.metadata || {};
-		const priorityEl = this.metadataEl.createDiv({
-			cls: [
-				"task-priority",
-				`priority-${metadata.priority}`,
-				"clickable-metadata",
-			],
-		});
+		const sanitizedPriority = sanitizePriorityForClass(metadata.priority);
+		const classes = ["task-priority", "clickable-metadata"];
+		if (sanitizedPriority) {
+			classes.push(`priority-${sanitizedPriority}`);
+		}
+		const priorityEl = this.metadataEl.createDiv({ cls: classes });
 		priorityEl.textContent = `${"!".repeat(metadata.priority || 0)}`;
 		priorityEl.setAttribute("aria-label", `Priority ${metadata.priority}`);
 
@@ -341,12 +344,18 @@ export class KanbanCardComponent extends Component {
 			this.element.classList.toggle("task-completed", newTask.completed);
 		}
 		if (oldMetadata.priority !== newMetadata.priority) {
-			if (oldMetadata.priority)
-				this.element.classList.remove(
-					`priority-${oldMetadata.priority}`
-				);
-			if (newMetadata.priority)
-				this.element.classList.add(`priority-${newMetadata.priority}`);
+			if (oldMetadata.priority) {
+				const oldSanitized = sanitizePriorityForClass(oldMetadata.priority);
+				if (oldSanitized) {
+					this.element.classList.remove(`priority-${oldSanitized}`);
+				}
+			}
+			if (newMetadata.priority) {
+				const newSanitized = sanitizePriorityForClass(newMetadata.priority);
+				if (newSanitized) {
+					this.element.classList.add(`priority-${newSanitized}`);
+				}
+			}
 		}
 
 		// Re-render content and metadata if needed

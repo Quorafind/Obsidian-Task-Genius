@@ -520,6 +520,21 @@ export interface TimelineSidebarSettings {
 	quickInputShowQuickActions: boolean;
 }
 
+/** Task Timer Metadata Detection Settings */
+export interface TaskTimerMetadataDetection {
+	frontmatter: string;
+	folders: string[];
+	tags: string[];
+}
+
+/** Task Timer Settings */
+export interface TaskTimerSettings {
+	enabled: boolean;
+	metadataDetection: TaskTimerMetadataDetection;
+	timeFormat: string;
+	blockRefPrefix: string;
+}
+
 /** OnCompletion Settings */
 export interface OnCompletionSettings {
 	/** Whether onCompletion functionality is enabled */
@@ -685,6 +700,9 @@ export interface TaskProgressBarSettings {
 
 	// Time Parsing Settings
 	timeParsing: TimeParsingConfig;
+
+	// Task Timer Settings
+	taskTimer: TaskTimerSettings;
 
 	// Onboarding Settings
 	onboarding?: {
@@ -1363,6 +1381,18 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		removeOriginalText: true,
 		perLineProcessing: true,
 		realTimeReplacement: true,
+	},
+
+	// Task Timer Defaults
+	taskTimer: {
+		enabled: false,
+		metadataDetection: {
+			frontmatter: "task-timer",
+			folders: [],
+			tags: ["timer", "tracked"]
+		},
+		timeFormat: "{h}hrs {m}mins",
+		blockRefPrefix: "timer"
 	},
 
 	// Onboarding Defaults

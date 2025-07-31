@@ -10,6 +10,7 @@ import {
 import "../../styles/inline-editor.css";
 import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
 import { t } from "../../translations/helper";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 export interface InlineEditorOptions {
 	onTaskUpdate: (task: Task, updatedTask: Task) => Promise<void>;
@@ -1344,7 +1345,8 @@ export class InlineEditor extends Component {
 					targetEl.textContent = "!".repeat(
 						this.task.metadata.priority
 					);
-					targetEl.className = `task-priority priority-${this.task.metadata.priority}`;
+					const sanitizedPriority = sanitizePriorityForClass(this.task.metadata.priority);
+				targetEl.className = sanitizedPriority ? `task-priority priority-${sanitizedPriority}` : "task-priority";
 				}
 				break;
 			case "onCompletion":

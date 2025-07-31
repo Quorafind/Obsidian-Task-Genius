@@ -14,6 +14,7 @@ import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import { InlineEditor, InlineEditorOptions } from "./InlineEditor";
 import { InlineEditorManager } from "./InlineEditorManager";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 export class TaskTreeItemComponent extends Component {
 	public element: HTMLElement;
@@ -286,12 +287,12 @@ export class TaskTreeItemComponent extends Component {
 
 		// Priority indicator if available
 		if (this.task.metadata.priority) {
-			const priorityEl = createDiv({
-				cls: [
-					"task-priority",
-					`priority-${this.task.metadata.priority}`,
-				],
-			});
+			const sanitizedPriority = sanitizePriorityForClass(this.task.metadata.priority);
+			const classes = ["task-priority"];
+			if (sanitizedPriority) {
+				classes.push(`priority-${sanitizedPriority}`);
+			}
+			const priorityEl = createDiv({ cls: classes });
 
 			// Priority icon based on level
 			let icon = "•";
