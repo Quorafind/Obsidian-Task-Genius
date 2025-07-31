@@ -10,7 +10,8 @@
 		"e-t": "cross-env node scripts/extract-translations.cjs",
 		"g-l": "cross-env node scripts/generate-locale-files.cjs",
 		"test": "jest",
-		"test:watch": "jest --watch"
+		"test:watch": "jest --watch",
+		"prepare": "husky"
 	},
 	"keywords": [
 		"obsidian",
@@ -40,6 +41,7 @@
 		"cross-env": "^7.0.3",
 		"esbuild": "0.13.12",
 		"esbuild-plugin-inline-worker": "https://github.com/mitschabaude/esbuild-plugin-inline-worker",
+		"husky": "^9.1.7",
 		"jest": "^29.5.0",
 		"jest-environment-jsdom": "^29.5.0",
 		"monkey-around": "^3.0.0",
