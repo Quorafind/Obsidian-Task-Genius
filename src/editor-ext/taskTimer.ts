@@ -888,6 +888,23 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 
 	console.log("[TaskTimer] Document has", doc.lines, "lines");
 
+	// First pass: find the minimum indentation level among all tasks
+	let minIndentLevel = Infinity;
+	for (let i = 1; i <= doc.lines; i++) {
+		const line = doc.line(i);
+		const lineText = line.text;
+		
+		// Check if this line contains a task
+		if (isTaskLine(lineText)) {
+			const currentIndent = lineText.match(/^(\s*)/)?.[1].length || 0;
+			if (currentIndent < minIndentLevel) {
+				minIndentLevel = currentIndent;
+			}
+		}
+	}
+
+	console.log("[TaskTimer] Minimum indent level found:", minIndentLevel);
+
 	// Process all lines in the document
 	for (let i = 1; i <= doc.lines; i++) {
 		const line = doc.line(i);
@@ -897,29 +914,11 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 		if (isTaskLine(lineText)) {
 			console.log("[TaskTimer] Found task line:", lineText.trim());
 
-			// Check if this task has any subtasks (not just immediate next line)
+			// Check if this is a first-level task
 			const currentIndent = lineText.match(/^(\s*)/)?.[1].length || 0;
-			let hasSubtasks = false;
+			const isFirstLevel = currentIndent === minIndentLevel;
 
-			// Look ahead for subtasks with greater indentation
-			for (let j = i + 1; j <= doc.lines; j++) {
-				const checkLine = doc.line(j);
-				const checkLineText = checkLine.text;
-				const checkIndent = checkLineText.match(/^(\s*)/)?.[1].length || 0;
-
-				// If we hit a line with same or less indentation, stop checking
-				if (checkLineText.trim() && checkIndent <= currentIndent) {
-					break;
-				}
-
-				// If we find a task line with greater indentation, this is a parent
-				if (checkIndent > currentIndent && isTaskLine(checkLineText)) {
-					hasSubtasks = true;
-					break;
-				}
-			}
-
-			if (hasSubtasks) {
+			if (isFirstLevel) {
 				// Check task status - only skip completed tasks without existing timers
 				const taskStatusMatch = lineText.match(/^\s*[-*+]\s+\[([^\]]+)\]/);
 				if (taskStatusMatch) {
@@ -950,7 +949,7 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 					}
 				}
 
-				console.log("[TaskTimer] Found parent task with subtasks at line", i);
+				console.log("[TaskTimer] Found first-level task at line", i);
 				// Extract existing block reference if present
 				const existingBlockId = extractBlockRef(lineText);
 
@@ -972,7 +971,7 @@ function createTaskTimerDecorations(state: EditorState): DecorationSet {
 
 				// Add decoration at the start of the line (this will appear above the task)
 				decorations.push(timerDeco.range(line.from));
-				console.log("[TaskTimer] Added timer decoration for line:", i);
+				console.log("[TaskTimer] Added timer decoration for first-level task at line:", i);
 			}
 		}
 	}
