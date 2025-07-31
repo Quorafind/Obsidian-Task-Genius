@@ -4,6 +4,7 @@ import { Task } from "../../types/task";
 import { createTaskCheckbox } from "../task-view/details";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
 import { t } from "../../translations/helper";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 export class QuadrantCardComponent extends Component {
 	plugin: TaskProgressBarPlugin;
@@ -217,12 +218,12 @@ export class QuadrantCardComponent extends Component {
 					numericPriority = this.task.metadata.priority;
 				}
 
-				const priorityEl = el.createDiv({
-					cls: [
-						"tg-quadrant-card-priority",
-						`priority-${numericPriority}`,
-					],
-				});
+				const sanitizedPriority = sanitizePriorityForClass(numericPriority);
+				const classes = ["tg-quadrant-card-priority"];
+				if (sanitizedPriority) {
+					classes.push(`priority-${sanitizedPriority}`);
+				}
+				const priorityEl = el.createDiv({ cls: classes });
 
 				// 根据优先级数字显示不同数量的感叹号
 				let icon = "!".repeat(numericPriority);

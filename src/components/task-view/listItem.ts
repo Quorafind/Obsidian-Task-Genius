@@ -9,6 +9,7 @@ import TaskProgressBarPlugin from "../../index";
 import { TaskProgressBarSettings } from "../../common/setting-definition";
 import { InlineEditor, InlineEditorOptions } from "./InlineEditor";
 import { InlineEditorManager } from "./InlineEditorManager";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 export class TaskListItemComponent extends Component {
 	public element: HTMLElement;
@@ -227,9 +228,12 @@ export class TaskListItemComponent extends Component {
 				numericPriority = this.task.metadata.priority;
 			}
 
-			const priorityEl = createDiv({
-				cls: ["task-priority", `priority-${numericPriority}`],
-			});
+			const sanitizedPriority = sanitizePriorityForClass(numericPriority);
+			const classes = ["task-priority"];
+			if (sanitizedPriority) {
+				classes.push(`priority-${sanitizedPriority}`);
+			}
+			const priorityEl = createDiv({ cls: classes });
 
 			// Priority icon based on level
 			let icon = "•";
