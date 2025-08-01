@@ -78,9 +78,6 @@ export class StatusComponent extends Component {
 				this.registerDomEvent(interactiveElement, "click", (evt) => {
 					evt.stopPropagation();
 					evt.preventDefault();
-					if (status.text === this.getTaskStatus()) {
-						return;
-					}
 
 					const options = {
 						...this.task,
@@ -94,6 +91,15 @@ export class StatusComponent extends Component {
 
 					this.params.onTaskUpdate?.(this.task, options);
 					this.params.onTaskStatusSelected?.(status.text);
+					
+					// Update the current task status to reflect the change
+					this.task = { ...this.task, status: status.text };
+					
+					// Update the visual state
+					this.containerEl.querySelectorAll('.status-option').forEach(el => {
+						el.removeClass('current');
+					});
+					statusEl.addClass('current');
 				});
 			});
 

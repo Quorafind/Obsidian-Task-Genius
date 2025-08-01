@@ -143,15 +143,13 @@ const getTaskFromLine = (
 	lineNum: number
 ): Task | null => {
 	try {
-		// Try to use TaskParsingService from TaskManager if available and enhanced project is enabled
+		// Try to get the task from TaskManager's index first
 		if (plugin.taskManager && plugin.settings.projectConfig?.enableEnhancedProject) {
-			// Use TaskManager's parsing capability which includes TaskParsingService support
-			const tasks = plugin.taskManager['parseFileWithConfigurableParser'](filePath, line);
-			if (tasks.length > 0) {
-				const task = tasks[0];
-				// Override line number to match the expected behavior
-				task.line = lineNum;
-				return task;
+			// Try to find the task by ID in the existing index
+			const taskId = `${filePath}-L${lineNum}`;
+			const existingTask = plugin.taskManager['indexer'].getTaskById(taskId);
+			if (existingTask) {
+				return existingTask;
 			}
 		}
 
@@ -162,7 +160,15 @@ const getTaskFromLine = (
 			);
 		}
 
-		return taskParser.parseTask(line, filePath, lineNum);
+		const task = taskParser.parseTask(line, filePath, lineNum);
+		
+		// If we have a task and enhanced project is enabled, ensure the ID matches what TaskManager expects
+		if (task && plugin.taskManager && plugin.settings.projectConfig?.enableEnhancedProject) {
+			// Ensure the task ID matches the format used by TaskManager
+			task.id = `${filePath}-L${lineNum}`;
+		}
+		
+		return task;
 	} catch (error) {
 		console.error("Error parsing task:", error);
 		return null;
