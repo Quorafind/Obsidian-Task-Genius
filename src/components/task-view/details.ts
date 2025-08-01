@@ -435,15 +435,13 @@ export class TaskDetailsComponent extends Component {
 			cls: "date-input",
 		});
 		if (task.metadata.dueDate) {
-			// Use local date to avoid timezone issues
+			// Use UTC methods to avoid timezone issues
 			const date = new Date(task.metadata.dueDate);
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, "0");
-			const day = String(date.getDate()).padStart(2, "0");
+			const year = date.getUTCFullYear();
+			const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+			const day = String(date.getUTCDate()).padStart(2, "0");
 			dueDateInput.value = `${year}-${month}-${day}`;
-		}
-
-		// Start date
+		}		// Start date
 		const startDateField = this.createFormField(
 			this.editFormEl,
 			t("Start Date")
@@ -453,11 +451,11 @@ export class TaskDetailsComponent extends Component {
 			cls: "date-input",
 		});
 		if (task.metadata.startDate) {
-			// Use local date to avoid timezone issues
+			// Use UTC methods to avoid timezone issues
 			const date = new Date(task.metadata.startDate);
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, "0");
-			const day = String(date.getDate()).padStart(2, "0");
+			const year = date.getUTCFullYear();
+			const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+			const day = String(date.getUTCDate()).padStart(2, "0");
 			startDateInput.value = `${year}-${month}-${day}`;
 		}
 
@@ -471,11 +469,11 @@ export class TaskDetailsComponent extends Component {
 			cls: "date-input",
 		});
 		if (task.metadata.scheduledDate) {
-			// Use local date to avoid timezone issues
+			// Use UTC methods to avoid timezone issues
 			const date = new Date(task.metadata.scheduledDate);
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, "0");
-			const day = String(date.getDate()).padStart(2, "0");
+			const year = date.getUTCFullYear();
+			const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+			const day = String(date.getUTCDate()).padStart(2, "0");
 			scheduledDateInput.value = `${year}-${month}-${day}`;
 		}
 
@@ -489,11 +487,11 @@ export class TaskDetailsComponent extends Component {
 			cls: "date-input",
 		});
 		if (task.metadata.cancelledDate) {
-			// Use local date to avoid timezone issues
+			// Use UTC methods to avoid timezone issues
 			const date = new Date(task.metadata.cancelledDate);
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, "0");
-			const day = String(date.getDate()).padStart(2, "0");
+			const year = date.getUTCFullYear();
+			const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+			const day = String(date.getUTCDate()).padStart(2, "0");
 			cancelledDateInput.value = `${year}-${month}-${day}`;
 		}
 
@@ -550,9 +548,9 @@ export class TaskDetailsComponent extends Component {
 			// Parse dates and check if they've changed
 			const dueDateValue = dueDateInput.value;
 			if (dueDateValue) {
-				// Create date in local timezone to avoid timezone offset issues
+				// Create date at noon UTC to avoid timezone edge cases
 				const [year, month, day] = dueDateValue.split("-").map(Number);
-				const newDueDate = new Date(year, month - 1, day).getTime();
+				const newDueDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getTime();
 				// Only update if the date has changed or is different from the original
 				if (task.metadata.dueDate !== newDueDate) {
 					metadata.dueDate = newDueDate;
@@ -569,11 +567,11 @@ export class TaskDetailsComponent extends Component {
 
 			const startDateValue = startDateInput.value;
 			if (startDateValue) {
-				// Create date in local timezone to avoid timezone offset issues
+				// Create date at noon UTC to avoid timezone edge cases
 				const [year, month, day] = startDateValue
 					.split("-")
 					.map(Number);
-				const newStartDate = new Date(year, month - 1, day).getTime();
+				const newStartDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getTime();
 				// Only update if the date has changed or is different from the original
 				if (task.metadata.startDate !== newStartDate) {
 					metadata.startDate = newStartDate;
@@ -590,14 +588,12 @@ export class TaskDetailsComponent extends Component {
 
 			const scheduledDateValue = scheduledDateInput.value;
 			if (scheduledDateValue) {
-				// Create date in local timezone to avoid timezone offset issues
+				// Create date at noon UTC to avoid timezone edge cases
 				const [year, month, day] = scheduledDateValue
 					.split("-")
 					.map(Number);
 				const newScheduledDate = new Date(
-					year,
-					month - 1,
-					day
+					Date.UTC(year, month - 1, day, 12, 0, 0)
 				).getTime();
 				// Only update if the date has changed or is different from the original
 				if (task.metadata.scheduledDate !== newScheduledDate) {
@@ -615,14 +611,12 @@ export class TaskDetailsComponent extends Component {
 
 			const cancelledDateValue = cancelledDateInput.value;
 			if (cancelledDateValue) {
-				// Create date in local timezone to avoid timezone offset issues
+				// Create date at noon UTC to avoid timezone edge cases
 				const [year, month, day] = cancelledDateValue
 					.split("-")
 					.map(Number);
 				const newCancelledDate = new Date(
-					year,
-					month - 1,
-					day
+					Date.UTC(year, month - 1, day, 12, 0, 0)
 				).getTime();
 				// Only update if the date has changed or is different from the original
 				if (task.metadata.cancelledDate !== newCancelledDate) {
