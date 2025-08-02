@@ -68,6 +68,45 @@
 	text-overflow: ellipsis;
 }
 
+/* Dynamic content-metadata container */
+.task-content-metadata-container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--size-2-2);
+	transition: all 0.2s ease;
+}
+
+/* Single line content layout - horizontal */
+.task-content-metadata-container.single-line-content {
+	flex-direction: row;
+	align-items: center;
+}
+
+.task-content-metadata-container.single-line-content .task-item-content {
+	flex: 1;
+	min-width: 0; /* Allow content to shrink */
+}
+
+.task-content-metadata-container.single-line-content .task-item-metadata {
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+/* Multi-line content layout - vertical */
+.task-content-metadata-container.multi-line-content {
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.task-content-metadata-container.multi-line-content .task-item-content {
+	width: 100%;
+}
+
+.task-content-metadata-container.multi-line-content .task-item-metadata {
+	margin-top: var(--size-2-2);
+}
+
 .task-item-metadata {
 	display: flex;
 	align-items: center;

@@ -544,6 +544,21 @@ export function renderViewSettingsTab(
 		});
 
 	new Setting(containerEl)
+		.setName(t("Enable dynamic metadata positioning"))
+		.setDesc(
+			t(
+				"Intelligently position task metadata. When enabled, metadata appears on the same line as short tasks and below long tasks. When disabled, metadata always appears below the task content."
+			)
+		)
+		.addToggle((toggle) => {
+			toggle.setValue(settingTab.plugin.settings.enableDynamicMetadataPositioning);
+			toggle.onChange((value) => {
+				settingTab.plugin.settings.enableDynamicMetadataPositioning = value;
+				settingTab.applySettingsUpdate();
+			});
+		});
+
+	new Setting(containerEl)
 		.setName(t("Ignore all tasks behind heading"))
 		.setDesc(
 			t(

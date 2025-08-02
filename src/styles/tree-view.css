@@ -100,6 +100,45 @@
 	color: var(--text-muted);
 }
 
+/* Dynamic content-metadata container for tree view */
+.tree-task-item .task-content-metadata-container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--size-2-2);
+	transition: all 0.2s ease;
+}
+
+/* Single line content layout - horizontal */
+.tree-task-item .task-content-metadata-container.single-line-content {
+	flex-direction: row;
+	align-items: center;
+}
+
+.tree-task-item .task-content-metadata-container.single-line-content .task-item-content {
+	flex: 1;
+	min-width: 0; /* Allow content to shrink */
+}
+
+.tree-task-item .task-content-metadata-container.single-line-content .task-metadata {
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+/* Multi-line content layout - vertical */
+.tree-task-item .task-content-metadata-container.multi-line-content {
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.tree-task-item .task-content-metadata-container.multi-line-content .task-item-content {
+	width: 100%;
+}
+
+.tree-task-item .task-content-metadata-container.multi-line-content .task-metadata {
+	margin-top: 4px;
+}
+
 /* Task metadata */
 .task-metadata {
 	display: flex;
