@@ -1,6 +1,6 @@
 {
 	"name": "task-genius",
-	"version": "9.3.0",
+	"version": "9.4.0",
 	"description": "Comprehensive task management plugin for Obsidian with progress bars, task status cycling, and advanced task tracking features.",
 	"main": "main.js",
 	"scripts": {

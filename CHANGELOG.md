@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.4.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.3.0...9.4.0) (2025-08-09)
+
+### Features
+
+* **settings:** add configurable dynamic metadata positioning ([c034862](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/c034862d576490acae3e2d65e5a3908136ce164a))
+
+### Chores
+
+* **ci:** remove GitHub Actions release workflows ([9ea08c2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/9ea08c2509547b2060e2511ce786abaf2001bde7))
+* resolve conflict of styles. css ([6a25d44](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/6a25d4475effd544e29fe4f8590863b4b04994fd))
+* resolve conflict of styles. css ([14d2844](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/14d2844cbb873c61cd5accc38361cf21bcaa82e7))
+
 ## [9.3.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.2.2...9.3.0) (2025-08-09)
 
 ### Features
