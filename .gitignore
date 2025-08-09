@@ -29,9 +29,6 @@ styles.css
 
 package-lock.json
 
-# cursorrules
-.cursorrules
-
 # env
 .env
 

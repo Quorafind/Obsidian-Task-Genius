@@ -146,7 +146,8 @@ export class TaskView extends ItemView {
 			this.app.workspace.on(
 				"task-genius:task-cache-updated",
 				async () => {
-					// Skip view update if currently editing in details panel
+					// Only skip view update if currently editing content in details panel
+					// Always update view for status changes from external sources (e.g., editor)
 					const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
 					await this.loadTasks(false, skipViewUpdate);
 				}
@@ -1027,7 +1028,19 @@ export class TaskView extends ItemView {
 
 		this.app.saveLocalStorage("task-genius:view-mode", viewId);
 		this.updateHeaderDisplay();
-		this.handleTaskSelection(null);
+		
+		// Only clear task selection if we're changing views, not when refreshing the same view
+		// This preserves the details panel when updating task status
+		if (this.currentSelectedTaskId) {
+			// Re-select the current task to maintain details panel visibility
+			const currentTask = this.tasks.find(t => t.id === this.currentSelectedTaskId);
+			if (currentTask) {
+				this.detailsComponent.showTaskDetails(currentTask);
+			} else {
+				// Task no longer exists or is filtered out
+				this.handleTaskSelection(null);
+			}
+		}
 
 		if (this.leaf.tabHeaderInnerIconEl) {
 			setIcon(this.leaf.tabHeaderInnerIconEl, this.getIcon());
@@ -1087,19 +1100,21 @@ export class TaskView extends ItemView {
 							cls: "status-option",
 							text: status,
 						});
-						item.onClick(() => {
+						item.onClick(async () => {
 							console.log("status", status, mark);
-							if (!task.completed && mark.toLowerCase() === "x") {
-								task.metadata.completedDate = Date.now();
-							} else {
-								task.metadata.completedDate = undefined;
-							}
-							this.updateTask(task, {
+							const updatedTask = {
 								...task,
 								status: mark,
-								completed:
-									mark.toLowerCase() === "x" ? true : false,
-							});
+								completed: mark.toLowerCase() === "x" ? true : false,
+							};
+							
+							if (!task.completed && mark.toLowerCase() === "x") {
+								updatedTask.metadata.completedDate = Date.now();
+							} else if (task.completed && mark.toLowerCase() !== "x") {
+								updatedTask.metadata.completedDate = undefined;
+							}
+							
+							await this.updateTask(task, updatedTask);
 						});
 					});
 				}
@@ -1260,10 +1275,8 @@ export class TaskView extends ItemView {
 			}
 		}
 
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		await taskManager.updateTask(updatedTask);
+		// Use updateTask instead of directly calling taskManager to ensure view refresh
+		await this.updateTask(task, updatedTask);
 	}
 
 	private async handleTaskUpdate(originalTask: Task, updatedTask: Task) {
@@ -1313,11 +1326,15 @@ export class TaskView extends ItemView {
 			}
 
 			// 如果任务在当前视图中，立即更新视图
-			// Only switch view if not currently editing in details panel
-			if (!this.detailsComponent.isCurrentlyEditing()) {
+			// Only skip view update if currently editing in details panel AND it's not a status change
+			const isStatusChange = originalTask.status !== updatedTask.status || 
+				originalTask.completed !== updatedTask.completed;
+			
+			if (!this.detailsComponent.isCurrentlyEditing() || isStatusChange) {
+				// Always refresh view for status changes or when not editing
 				this.switchView(this.currentViewId);
 			} else {
-				// Update the task in the current view without re-rendering
+				// Update the task in the current view without re-rendering (only for content edits)
 				// Use setTasks to update the components with the modified task list
 				if (this.currentViewId === "inbox" || this.currentViewId === "projects") {
 					this.contentComponent.setTasks(this.tasks, this.tasks);
