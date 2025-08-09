@@ -1192,34 +1192,36 @@ export function determineNextStage(
 			nextStageId = currentStage.id;
 			nextSubStageId = currentSubStage.next;
 		} else {
-			// For cycle stages, if there's no explicit next substage, we need to determine behavior:
-			// 1. If there's only one substage, keep cycling the same substage
-			// 2. If there are multiple substages, cycle back to the first one
-			// 3. Only move to next main stage if explicitly configured via canProceedTo
+			// For cycle stages, if there's no explicit next substage:
+			// Check if we should proceed to next main stage (when canProceedTo is defined)
+			// Otherwise cycle back to the beginning
 
-			const subStageCount = currentStage.subStages
-				? currentStage.subStages.length
-				: 0;
-
-			if (subStageCount === 1) {
-				// Only one substage - keep cycling the same substage
-				nextStageId = currentStage.id;
-				nextSubStageId = currentSubStage.id;
-			} else if (subStageCount > 1) {
-				// Multiple substages - cycle back to the first one
-				nextStageId = currentStage.id;
-				nextSubStageId = currentStage.subStages![0].id;
-			} else if (
+			if (
 				currentStage.canProceedTo &&
 				currentStage.canProceedTo.length > 0
 			) {
-				// No substages but has canProceedTo - move to next main stage
+				// Move to next main stage when at the end of a cycle
 				nextStageId = currentStage.canProceedTo[0];
 				nextSubStageId = undefined;
 			} else {
-				// Fallback - stay in the same stage
-				nextStageId = currentStage.id;
-				nextSubStageId = undefined;
+				// No canProceedTo defined - cycle back
+				const subStageCount = currentStage.subStages
+					? currentStage.subStages.length
+					: 0;
+
+				if (subStageCount === 1) {
+					// Only one substage - keep cycling the same substage
+					nextStageId = currentStage.id;
+					nextSubStageId = currentSubStage.id;
+				} else if (subStageCount > 1) {
+					// Multiple substages - cycle back to the first one
+					nextStageId = currentStage.id;
+					nextSubStageId = currentStage.subStages![0].id;
+				} else {
+					// Fallback - stay in the same stage
+					nextStageId = currentStage.id;
+					nextSubStageId = undefined;
+				}
 			}
 		}
 	} else if (currentStage.type === "linear") {

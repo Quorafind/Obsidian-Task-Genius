@@ -6,6 +6,7 @@ import {
 	anySiblingWithStatus,
 	getParentTaskStatus,
 	hasAnyChildTasksAtLevel,
+	taskStatusChangeAnnotation,
 } from "../editor-ext/autoCompleteParent"; // Adjust the import path as necessary
 import { buildIndentString } from "../utils";
 import {
@@ -380,7 +381,7 @@ describe("handleParentTaskUpdateTransaction (Integration)", () => {
 		expect(parentChange.to).toBe(4);
 		expect(parentChange.insert).toBe("x");
 		expect(result.annotations).toEqual([
-			mockParentTaskStatusChangeAnnotation.of("autoCompleteParent.DONE"),
+			taskStatusChangeAnnotation.of("autoCompleteParent.DONE"),
 		]);
 	});
 

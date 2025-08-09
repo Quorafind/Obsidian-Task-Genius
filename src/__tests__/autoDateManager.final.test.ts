@@ -37,18 +37,13 @@ describe("autoDateManager - Final Verification", () => {
 			mockPlugin as TaskProgressBarPlugin
 		);
 		
-		// Use throw to see the output
-		throw new Error(`
-FINAL TEST DEBUG:
-- Line: ${lineText}
-- Cancelled date position: ${cancelledPos}
-- Text before cancelled: "${lineText.substring(0, cancelledPos)}"
-- Text after cancelled: "${lineText.substring(cancelledPos)}"
-- Completed date position: ${completedPos}
-- Block ref index: ${lineText.indexOf("^timer")}
-- 🛫 index: ${lineText.indexOf("🛫")}
-- 🛫 date end: ${lineText.indexOf("2025-04-20") + "2025-04-20".length}
-`);
+		// Verify positions are correct
+		// Cancelled date should be placed after the start date
+		const startDateEnd = lineText.indexOf("2025-04-20") + "2025-04-20".length;
+		expect(cancelledPos).toBe(startDateEnd);
+		
+		// Completed date should be at the same position for consistency
+		expect(completedPos).toBe(startDateEnd);
 		
 		// Simulate insertion
 		const cancelledDate = " ❌ 2025-07-31";

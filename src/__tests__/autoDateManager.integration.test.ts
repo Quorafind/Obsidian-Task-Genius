@@ -56,7 +56,7 @@ describe("autoDateManager - Integration Test", () => {
 				to: 4,
 				insert: "_",
 			},
-		});
+		}) as Transaction;
 		
 		console.log("Original:", originalLine);
 		console.log("Modified:", modifiedLine);

@@ -81,16 +81,18 @@ export class CanvasTaskUpdater {
 				updatedTask
 			);
 
+			if (!updateResult.success) {
+				return updateResult;
+			}
+
 			if (updatedTask.completed && !task.completed) {
-				updatedTask &&
+				// Only trigger event if workspace is available (not in test environment)
+				if (this.plugin.app?.workspace) {
 					this.plugin.app.workspace.trigger(
 						"task-genius:task-completed",
 						updatedTask
 					);
-			}
-
-			if (!updateResult.success) {
-				return updateResult;
+				}
 			}
 
 			// Write the updated Canvas content back to the file

@@ -209,7 +209,7 @@ export class MinimalQuickCaptureSuggest extends EditorSuggest<SuggestOption> {
 					ch: cursor.ch - 1 + suggestion.replacement.length,
 				};
 				editor.setCursor(newCursor);
-			} else {
+			} else if (view.state?.doc) {
 				// Use CodeMirror 6 changes API
 				const startOffset = view.state.doc.line(cursor.line + 1).from + cursor.ch - 1;
 				const endOffset = view.state.doc.line(cursor.line + 1).from + cursor.ch;
@@ -222,6 +222,16 @@ export class MinimalQuickCaptureSuggest extends EditorSuggest<SuggestOption> {
 					},
 					annotations: [Transaction.userEvent.of("input")],
 				});
+			} else {
+				// Fallback if view.state is not available
+				const startPos = { line: cursor.line, ch: cursor.ch - 1 };
+				const endPos = cursor;
+				editor.replaceRange(suggestion.replacement, startPos, endPos);
+				const newCursor = {
+					line: cursor.line,
+					ch: cursor.ch - 1 + suggestion.replacement.length,
+				};
+				editor.setCursor(newCursor);
 			}
 		}
 

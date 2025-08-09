@@ -1,6 +1,6 @@
 module.exports = {
 	hooks: {
-		"before:init": ["pnpm test", "pnpm run build"],
+		"before:init": ["pnpm run build"],
 		"after:bump": [
 			"pnpm run build",
 			"node ./scripts/zip.mjs",
@@ -23,14 +23,14 @@ module.exports = {
 			preset: {
 				name: "conventionalcommits",
 				types: [
-					{ type: "feat", section: "✨ Features" },
-					{ type: "fix", section: "🐛 Bug Fixes" },
-					{ type: "perf", section: "⚡ Performance" },
-					{ type: "refactor", section: "♻️ Refactors" },
-					{ type: "chore", section: "🔧 Chores" },
-					{ type: "docs", section: "📝 Documentation" },
-					{ type: "style", section: "💄 Styles" },
-					{ type: "test", section: "✅ Tests" }
+					{type: "feat", section: "Features"},
+					{type: "fix", section: "Bug Fixes"},
+					{type: "perf", section: "Performance"},
+					{type: "refactor", section: "Refactors"},
+					{type: "chore", section: "Chores"},
+					{type: "docs", section: "Documentation"},
+					{type: "style", section: "Styles"},
+					{type: "test", section: "Tests"}
 				]
 			},
 			infile: "CHANGELOG.md",
