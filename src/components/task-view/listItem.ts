@@ -24,6 +24,7 @@ export class TaskListItemComponent extends Component {
 	private markdownRenderer: MarkdownRendererComponent;
 	private containerEl: HTMLElement;
 	private contentEl: HTMLElement;
+	private contentMetadataContainer: HTMLElement;
 
 	private metadataEl: HTMLElement;
 
@@ -184,19 +185,22 @@ export class TaskListItemComponent extends Component {
 			cls: "task-item-container",
 		});
 
-		// Task content
-		this.contentEl = createDiv({
-			cls: "task-item-content",
+		// Create content-metadata container for dynamic layout
+		this.contentMetadataContainer = this.containerEl.createDiv({
+			cls: "task-content-metadata-container",
 		});
 
-		this.containerEl.appendChild(this.contentEl);
+		// Task content
+		this.contentEl = this.contentMetadataContainer.createDiv({
+			cls: "task-item-content",
+		});
 
 		// Make content clickable for editing
 		this.registerContentClickHandler();
 
 		this.renderMarkdown();
 
-		this.metadataEl = this.containerEl.createDiv({
+		this.metadataEl = this.contentMetadataContainer.createDiv({
 			cls: "task-item-metadata",
 		});
 
@@ -750,6 +754,35 @@ export class TaskListItemComponent extends Component {
 
 		// Re-register the click event for editing after rendering
 		this.registerContentClickHandler();
+
+		// Update layout mode after content is rendered
+		// Use requestAnimationFrame to ensure the content is fully rendered
+		requestAnimationFrame(() => {
+			this.updateLayoutMode();
+		});
+	}
+
+	/**
+	 * Detect content height and update layout mode
+	 */
+	private updateLayoutMode() {
+		if (!this.contentEl || !this.contentMetadataContainer) {
+			return;
+		}
+
+		// Get the line height of the content element
+		const computedStyle = window.getComputedStyle(this.contentEl);
+		const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize) * 1.4;
+		
+		// Get actual content height
+		const contentHeight = this.contentEl.scrollHeight;
+		
+		// Check if content is multi-line (with some tolerance)
+		const isMultiLine = contentHeight > lineHeight * 1.2;
+		
+		// Apply appropriate layout class using Obsidian's toggleClass method
+		this.contentMetadataContainer.toggleClass("multi-line-content", isMultiLine);
+		this.contentMetadataContainer.toggleClass("single-line-content", !isMultiLine);
 	}
 
 	/**
