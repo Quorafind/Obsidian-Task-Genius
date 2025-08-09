@@ -3,6 +3,7 @@ module.exports = {
 		"before:init": ["pnpm run build"],
 		"after:bump": [
 			"pnpm run build",
+			"node -e \"const fs=require('fs'); if(!fs.existsSync('dist')) fs.mkdirSync('dist'); ['main.js','manifest.json','styles.css'].forEach(f=>fs.copyFileSync(f,'dist/'+f))\"",
 			"node ./scripts/zip.mjs",
 			"git add .",
 		],
