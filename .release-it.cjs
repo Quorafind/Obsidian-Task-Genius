@@ -1,4 +1,7 @@
+require('dotenv').config();
+
 module.exports = {
+	interactive: true,
 	hooks: {
 		"before:init": ["node esbuild.config.mjs production"],
 		"after:bump": [

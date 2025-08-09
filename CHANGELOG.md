@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.3.1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.3.0...9.3.1) (2025-08-09)
+
 ## [9.3.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.2.2...9.3.0) (2025-08-09)
 
 ### Features
