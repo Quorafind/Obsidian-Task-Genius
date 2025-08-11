@@ -47,11 +47,12 @@
 	background: transparent !important;
 	color: var(--text-normal);
 	font-size: var(--font-ui-medium);
-	outline: none !important;
+	outline: none;
+}
+
+input.settings-search-input {
+	border: none !important;
 	box-shadow: none !important;
-	border-radius: 0;
-	appearance: none;
-	font-family: var(--font-interface);
 }
 
 .settings-search-input::placeholder {
@@ -217,11 +218,11 @@
 		max-height: 280px;
 		border-radius: var(--radius-s);
 	}
-	
+
 	.settings-search-result {
 		padding: var(--size-4-2) var(--size-4-2);
 	}
-	
+
 	.settings-search-result-name {
 		font-size: var(--font-ui-small);
 	}

@@ -48,8 +48,11 @@ export class SettingsSearchComponent {
 		// 创建搜索输入框
 		this.searchInputEl = searchInputContainer.createEl("input");
 		this.searchInputEl.type = "text";
-		this.searchInputEl.placeholder = t("Search settings...");
+		this.searchInputEl.placeholder = t("Search settings...") + " (Ctrl+K)";
 		this.searchInputEl.addClass("settings-search-input");
+		this.searchInputEl.setAttribute("aria-label", t("Search settings"));
+		this.searchInputEl.setAttribute("autocomplete", "off");
+		this.searchInputEl.setAttribute("spellcheck", "false");
 
 		// 创建清除按钮
 		const clearButton = searchInputContainer.createEl("button");
@@ -62,10 +65,13 @@ export class SettingsSearchComponent {
 		this.resultsContainerEl = searchContainer.createDiv();
 		this.resultsContainerEl.addClass("settings-search-results");
 		this.resultsContainerEl.style.display = "none";
+		this.resultsContainerEl.setAttribute("role", "listbox");
+		this.resultsContainerEl.setAttribute("aria-label", t("Search results"));
 
 		// 清除按钮点击事件
 		clearButton.addEventListener("click", () => {
 			this.clearSearch();
+			this.searchInputEl.focus();
 		});
 	}
 
@@ -119,11 +125,11 @@ export class SettingsSearchComponent {
 			clearButton.style.display = query.length > 0 ? "block" : "none";
 		}
 
-		// 防抖搜索
+		// 防抖搜索 - 减少延迟以提升响应速度
 		clearTimeout(this.debounceTimer);
 		this.debounceTimer = window.setTimeout(() => {
 			this.performSearch(query);
-		}, 150);
+		}, 100);
 	}
 
 	/**
@@ -138,13 +144,14 @@ export class SettingsSearchComponent {
 			return;
 		}
 
-		// 最少输入2个字符开始搜索
-		if (query.length < 2) {
+		// 最少输入1个字符开始搜索，提升响应性
+		if (query.length < 1) {
 			console.log(`[SettingsSearch] Query too short (${query.length} chars), skipping search`);
 			return;
 		}
 
-		this.currentResults = this.indexer.search(query, 8);
+		// 增加搜索结果数量，让用户有更多选择
+		this.currentResults = this.indexer.search(query, 12);
 		this.selectedIndex = -1;
 		
 		console.log(`[SettingsSearch] Found ${this.currentResults.length} results:`);
@@ -155,6 +162,10 @@ export class SettingsSearchComponent {
 		if (this.currentResults.length > 0) {
 			this.renderResults();
 			this.showResults();
+			// 自动选中第一个结果
+			if (this.selectedIndex === -1) {
+				this.setSelectedIndex(0);
+			}
 		} else {
 			this.renderNoResults();
 			this.showResults();
