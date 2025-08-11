@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.5.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.4.0...9.5.0) (2025-08-11)
+
+### Features
+
+* **settings:** add search functionality with fuzzy matching ([8a8dec0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/8a8dec0f1bfc96823d6c7cfca67a246f6e535648))
+
+### Bug Fixes
+
+* **settings:** improve search functionality and UI integration ([8feecd0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/8feecd0cafedeb736621d34b46aa7f8dddf2b259))
+
+### Refactors
+
+* **settings:** migrate SettingsSearchComponent to inherit Component class ([b9bc9ce](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b9bc9ce997570952c2867b1b262c56662824f2bd))
+
+### Chores
+
+* **conflict:** fix conflict between styles.css ([837c647](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/837c647c0de63b82674e40785e87d730748ae506))
+* resolve merge conflicts ([a57d5ba](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/a57d5bac2a51fcfc50da944f9688593c8af2e94e))
+* **style:** update input style in settings search container ([f7ec982](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f7ec9827cd7642e34b15f7b3b0e860d15460f8b9))
+
 ## [9.4.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.3.0...9.4.0) (2025-08-09)
 
 ### Features
