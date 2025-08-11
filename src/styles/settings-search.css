@@ -13,8 +13,7 @@
 	align-items: center;
 	background: var(--input-background);
 	border: var(--input-border-width) solid var(--background-modifier-border);
-	border-radius: var(--input-border-radius);
-	box-shadow: var(--input-shadow);
+	border-radius: var(--radius-s);
 	transition: all 0.15s ease-in-out;
 	min-height: var(--input-height);
 }
@@ -213,7 +212,7 @@ input.settings-search-input {
 	.settings-search-container {
 		margin-bottom: var(--size-4-3);
 	}
-	
+
 	.settings-search-results {
 		max-height: 280px;
 		border-radius: var(--radius-s);
@@ -226,7 +225,7 @@ input.settings-search-input {
 	.settings-search-result-name {
 		font-size: var(--font-ui-small);
 	}
-	
+
 	.settings-search-result-category {
 		font-size: var(--font-ui-smaller);
 		padding: var(--size-2-1) var(--size-2-1);

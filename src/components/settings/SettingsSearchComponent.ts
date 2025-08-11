@@ -1,4 +1,4 @@
-import { setIcon } from "obsidian";
+import { Component, setIcon } from "obsidian";
 import { SettingsIndexer } from "./SettingsIndexer";
 import { SearchResult } from "../../types/SettingsSearch";
 import { t } from "../../translations/helper";
@@ -7,23 +7,27 @@ import { TaskProgressBarSettingTab } from "../../setting";
 /**
  * 设置搜索组件
  * 提供设置项的搜索和导航功能
+ * 继承 Component 以获得自动的事件生命周期管理
  */
-export class SettingsSearchComponent {
+export class SettingsSearchComponent extends Component {
 	private settingTab: TaskProgressBarSettingTab;
 	private indexer: SettingsIndexer;
 	private containerEl: HTMLElement;
 	private searchInputEl: HTMLInputElement;
 	private resultsContainerEl: HTMLElement;
+	private clearButton: HTMLElement;
 	private currentResults: SearchResult[] = [];
-	private selectedIndex: number = -1;
-	private debounceTimer: number = 0;
-	private isVisible: boolean = false;
+	private selectedIndex = -1;
+	private debounceTimer = 0;
+	private isVisible = false;
+	private blurTimeoutId = 0;
 
 	constructor(settingTab: TaskProgressBarSettingTab, containerEl: HTMLElement) {
+		super();
 		this.settingTab = settingTab;
 		this.indexer = new SettingsIndexer();
 		this.containerEl = containerEl;
-		
+
 		this.createSearchUI();
 		this.setupEventListeners();
 	}
@@ -55,11 +59,11 @@ export class SettingsSearchComponent {
 		this.searchInputEl.setAttribute("spellcheck", "false");
 
 		// 创建清除按钮
-		const clearButton = searchInputContainer.createEl("button");
-		clearButton.addClass("settings-search-clear");
-		clearButton.setAttribute("aria-label", t("Clear search"));
-		setIcon(clearButton, "x");
-		clearButton.style.display = "none";
+		this.clearButton = searchInputContainer.createEl("button");
+		this.clearButton.addClass("settings-search-clear");
+		this.clearButton.setAttribute("aria-label", t("Clear search"));
+		setIcon(this.clearButton, "x");
+		this.clearButton.style.display = "none";
 
 		// 创建搜索结果容器
 		this.resultsContainerEl = searchContainer.createDiv();
@@ -67,40 +71,41 @@ export class SettingsSearchComponent {
 		this.resultsContainerEl.style.display = "none";
 		this.resultsContainerEl.setAttribute("role", "listbox");
 		this.resultsContainerEl.setAttribute("aria-label", t("Search results"));
-
-		// 清除按钮点击事件
-		clearButton.addEventListener("click", () => {
-			this.clearSearch();
-			this.searchInputEl.focus();
-		});
 	}
 
 	/**
 	 * 设置事件监听器
+	 * 使用 registerDomEvent 进行自动的生命周期管理
 	 */
 	private setupEventListeners(): void {
+		// 清除按钮点击事件
+		this.registerDomEvent(this.clearButton, "click", () => {
+			this.clearSearch();
+			this.searchInputEl.focus();
+		});
+
 		// 输入事件
-		this.searchInputEl.addEventListener("input", (e) => {
+		this.registerDomEvent(this.searchInputEl, "input", (e: Event) => {
 			const query = (e.target as HTMLInputElement).value;
 			this.handleSearchInput(query);
 		});
 
 		// 键盘事件
-		this.searchInputEl.addEventListener("keydown", (e) => {
+		this.registerDomEvent(this.searchInputEl, "keydown", (e: KeyboardEvent) => {
 			this.handleKeyDown(e);
 		});
 
 		// 焦点事件
-		this.searchInputEl.addEventListener("focus", () => {
+		this.registerDomEvent(this.searchInputEl, "focus", () => {
 			if (this.currentResults.length > 0) {
 				this.showResults();
 			}
 		});
 
 		// 失去焦点事件
-		this.searchInputEl.addEventListener("blur", (e) => {
+		this.registerDomEvent(this.searchInputEl, "blur", () => {
 			// 延迟隐藏，允许点击搜索结果
-			setTimeout(() => {
+			this.blurTimeoutId = window.setTimeout(() => {
 				if (!this.resultsContainerEl.contains(document.activeElement)) {
 					this.hideResults();
 				}
@@ -108,7 +113,7 @@ export class SettingsSearchComponent {
 		});
 
 		// 点击外部隐藏结果
-		document.addEventListener("click", (e) => {
+		this.registerDomEvent(document, "click", (e: MouseEvent) => {
 			if (!this.containerEl.contains(e.target as Node)) {
 				this.hideResults();
 			}
@@ -120,10 +125,7 @@ export class SettingsSearchComponent {
 	 */
 	private handleSearchInput(query: string): void {
 		// 更新清除按钮显示状态
-		const clearButton = this.containerEl.querySelector(".settings-search-clear") as HTMLElement;
-		if (clearButton) {
-			clearButton.style.display = query.length > 0 ? "block" : "none";
-		}
+		this.clearButton.style.display = query.length > 0 ? "block" : "none";
 
 		// 防抖搜索 - 减少延迟以提升响应速度
 		clearTimeout(this.debounceTimer);
@@ -137,7 +139,7 @@ export class SettingsSearchComponent {
 	 */
 	private performSearch(query: string): void {
 		console.log(`[SettingsSearch] Performing search for: "${query}"`);
-		
+
 		if (query.length === 0) {
 			console.log(`[SettingsSearch] Empty query, hiding results`);
 			this.hideResults();
@@ -153,12 +155,12 @@ export class SettingsSearchComponent {
 		// 增加搜索结果数量，让用户有更多选择
 		this.currentResults = this.indexer.search(query, 12);
 		this.selectedIndex = -1;
-		
+
 		console.log(`[SettingsSearch] Found ${this.currentResults.length} results:`);
 		this.currentResults.forEach((result, index) => {
 			console.log(`  ${index + 1}. ${result.item.name} (${result.matchType}, score: ${result.score})`);
 		});
-		
+
 		if (this.currentResults.length > 0) {
 			this.renderResults();
 			this.showResults();
@@ -191,7 +193,7 @@ export class SettingsSearchComponent {
 			// 所属分类和标签页
 			const metaEl = resultEl.createDiv();
 			metaEl.addClass("settings-search-result-meta");
-			
+
 			const categoryEl = metaEl.createSpan();
 			categoryEl.addClass("settings-search-result-category");
 			categoryEl.textContent = this.getCategoryDisplayName(result.item.category);
@@ -203,13 +205,13 @@ export class SettingsSearchComponent {
 				descEl.textContent = this.truncateText(result.item.description, 80);
 			}
 
-			// 点击事件
-			resultEl.addEventListener("click", () => {
+			// 使用 registerDomEvent 注册点击事件
+			this.registerDomEvent(resultEl, "click", () => {
 				this.selectResult(result);
 			});
 
-			// 鼠标悬停事件
-			resultEl.addEventListener("mouseenter", () => {
+			// 使用 registerDomEvent 注册鼠标悬停事件
+			this.registerDomEvent(resultEl, "mouseenter", () => {
 				this.setSelectedIndex(index);
 			});
 		});
@@ -220,7 +222,7 @@ export class SettingsSearchComponent {
 	 */
 	private renderNoResults(): void {
 		this.resultsContainerEl.empty();
-		
+
 		const noResultEl = this.resultsContainerEl.createDiv();
 		noResultEl.addClass("settings-search-no-result");
 		noResultEl.textContent = t("No settings found");
@@ -264,7 +266,7 @@ export class SettingsSearchComponent {
 	 */
 	private moveSelection(direction: number): void {
 		const newIndex = this.selectedIndex + direction;
-		
+
 		if (newIndex >= 0 && newIndex < this.currentResults.length) {
 			this.setSelectedIndex(newIndex);
 		}
@@ -287,7 +289,7 @@ export class SettingsSearchComponent {
 			const selectedEl = this.resultsContainerEl.querySelector(`[data-index="${index}"]`);
 			if (selectedEl) {
 				selectedEl.addClass("settings-search-result-selected");
-				selectedEl.scrollIntoView({ block: "nearest" });
+				selectedEl.scrollIntoView({block: "nearest"});
 			}
 		}
 	}
@@ -298,7 +300,7 @@ export class SettingsSearchComponent {
 	private selectResult(result: SearchResult): void {
 		// 跳转到对应的标签页和设置项
 		this.navigateToSetting(result.item.tabId, result.item.id);
-		
+
 		// 清除搜索
 		this.clearSearch();
 	}
@@ -309,11 +311,13 @@ export class SettingsSearchComponent {
 	private navigateToSetting(tabId: string, settingId: string): void {
 		// 切换到对应标签页
 		this.settingTab.switchToTab(tabId);
-		
+
 		// 延迟滚动到设置项（等待标签页切换完成）
-		setTimeout(() => {
+		// 使用 register 注册 timeout 以确保正确清理
+		const timeoutId = window.setTimeout(() => {
 			this.scrollToSetting(settingId);
 		}, 100);
+		this.register(() => clearTimeout(timeoutId));
 	}
 
 	/**
@@ -322,19 +326,20 @@ export class SettingsSearchComponent {
 	private scrollToSetting(settingId: string): void {
 		// 查找具有对应ID的设置项元素
 		const settingElement = this.containerEl.querySelector(`[data-setting-id="${settingId}"]`);
-		
+
 		if (settingElement) {
 			// 滚动到设置项
-			settingElement.scrollIntoView({ 
-				behavior: "smooth", 
-				block: "center" 
+			settingElement.scrollIntoView({
+				behavior: "smooth",
+				block: "center"
 			});
-			
+
 			// 添加临时高亮效果
 			settingElement.addClass("settings-search-highlight");
-			setTimeout(() => {
+			const timeoutId = window.setTimeout(() => {
 				settingElement.removeClass("settings-search-highlight");
 			}, 2000);
+			this.register(() => clearTimeout(timeoutId));
 		}
 	}
 
@@ -362,12 +367,9 @@ export class SettingsSearchComponent {
 		this.searchInputEl.value = "";
 		this.currentResults = [];
 		this.hideResults();
-		
+
 		// 隐藏清除按钮
-		const clearButton = this.containerEl.querySelector(".settings-search-clear") as HTMLElement;
-		if (clearButton) {
-			clearButton.style.display = "none";
-		}
+		this.clearButton.style.display = "none";
 	}
 
 	/**
@@ -384,7 +386,7 @@ export class SettingsSearchComponent {
 			advanced: t("Advanced"),
 			info: t("Information")
 		};
-		
+
 		return categoryNames[category] || category;
 	}
 
@@ -399,11 +401,24 @@ export class SettingsSearchComponent {
 	}
 
 	/**
-	 * 销毁组件
+	 * 重写 onunload 方法以进行清理
+	 * Component 会自动调用此方法
+	 */
+	onunload(): void {
+		// 清理定时器
+		clearTimeout(this.debounceTimer);
+		clearTimeout(this.blurTimeoutId);
+
+		// 清空容器
+		this.containerEl.empty();
+
+		// Component 基类会自动清理所有通过 registerDomEvent 注册的事件
+	}
+
+	/**
+	 * 销毁组件（为了向后兼容保留此方法）
 	 */
 	public destroy(): void {
-		clearTimeout(this.debounceTimer);
-		// 移除事件监听器等清理工作
-		this.containerEl.empty();
+		this.unload();
 	}
 }
