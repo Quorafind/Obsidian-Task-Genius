@@ -15,9 +15,10 @@ export function renderProgressSettingsTab(
 				"You can customize the progress bar behind the parent task(usually at the end of the task). You can also customize the progress bar for the task below the heading."
 			)
 		)
-		.setHeading();
+		.setHeading()
+		.settingEl.setAttribute("data-setting-id", "progress-bar-main");
 
-	new Setting(containerEl)
+	const progressDisplaySetting = new Setting(containerEl)
 		.setName(t("Progress display mode"))
 		.setDesc(t("Choose how to display task progress"))
 		.addDropdown((dropdown) =>
@@ -33,6 +34,7 @@ export function renderProgressSettingsTab(
 					settingTab.display();
 				})
 		);
+	progressDisplaySetting.settingEl.setAttribute("data-setting-id", "progress-display-mode");
 
 	// Only show these options if some form of progress bar is enabled
 	if (settingTab.plugin.settings.progressBarDisplayMode !== "none") {
