@@ -129,8 +129,12 @@ export const createMockText = (content: string): Text => {
 			content.slice(from, to)
 		),
 	};
-	// @ts-ignore - Add self-reference for Text methods if necessary
-	doc.doc = doc;
+	// Avoid circular reference that causes JSON serialization issues
+	// Use getter to lazily return self-reference only when needed
+	Object.defineProperty(doc, 'doc', {
+		get: function() { return this; },
+		enumerable: false // Don't include in JSON serialization
+	});
 	return doc as Text;
 };
 

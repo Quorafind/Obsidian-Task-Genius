@@ -164,6 +164,10 @@ describe('CanvasTaskUpdater', () => {
 
             const result = await updater.updateCanvasTask(originalTask, updatedTask);
 
+            if (!result.success) {
+                throw new Error(`Update failed with error: ${result.error}`);
+            }
+
             expect(result.success).toBe(true);
             expect(result.error).toBeUndefined();
 

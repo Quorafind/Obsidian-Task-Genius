@@ -520,6 +520,21 @@ export interface TimelineSidebarSettings {
 	quickInputShowQuickActions: boolean;
 }
 
+/** Task Timer Metadata Detection Settings */
+export interface TaskTimerMetadataDetection {
+	frontmatter: string;
+	folders: string[];
+	tags: string[];
+}
+
+/** Task Timer Settings */
+export interface TaskTimerSettings {
+	enabled: boolean;
+	metadataDetection: TaskTimerMetadataDetection;
+	timeFormat: string;
+	blockRefPrefix: string;
+}
+
 /** OnCompletion Settings */
 export interface OnCompletionSettings {
 	/** Whether onCompletion functionality is enabled */
@@ -643,6 +658,7 @@ export interface TaskProgressBarSettings {
 	// View Settings (Updated Structure)
 	enableView: boolean;
 	enableInlineEditor: boolean; // Enable inline editing in task views
+	enableDynamicMetadataPositioning: boolean; // Enable intelligent metadata positioning based on content length
 	defaultViewMode: "list" | "tree"; // Global default view mode for all views
 	viewConfiguration: ViewConfig[]; // Manages order, visibility, basic info, AND filter rules
 
@@ -685,6 +701,9 @@ export interface TaskProgressBarSettings {
 
 	// Time Parsing Settings
 	timeParsing: TimeParsingConfig;
+
+	// Task Timer Settings
+	taskTimer: TaskTimerSettings;
 
 	// Onboarding Settings
 	onboarding?: {
@@ -964,6 +983,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	// View Defaults (Updated Structure)
 	enableView: true,
 	enableInlineEditor: true, // Enable inline editing by default
+	enableDynamicMetadataPositioning: true, // Enable intelligent metadata positioning by default
 	defaultViewMode: "list", // Global default view mode for all views
 
 	// Global Filter Defaults
@@ -1363,6 +1383,18 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		removeOriginalText: true,
 		perLineProcessing: true,
 		realTimeReplacement: true,
+	},
+
+	// Task Timer Defaults
+	taskTimer: {
+		enabled: false,
+		metadataDetection: {
+			frontmatter: "task-timer",
+			folders: [],
+			tags: ["timer", "tracked"]
+		},
+		timeFormat: "{h}hrs {m}mins",
+		blockRefPrefix: "timer"
 	},
 
 	// Onboarding Defaults

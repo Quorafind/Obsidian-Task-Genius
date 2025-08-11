@@ -29,19 +29,15 @@ styles.css
 
 package-lock.json
 
-# cursorrules
-.cursorrules
-
 # env
 .env
 
 # translations
-scripts
 translation-templates
 ._data.json
-
-styles.css
 
 CLAUDE.md
 .kiro
 .claude
+
+dist

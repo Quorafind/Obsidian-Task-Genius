@@ -66,12 +66,10 @@ describe("ArchiveActionExecutor - Markdown Tasks", () => {
 		mockApp.vault.createFolder.mockReset();
 
 		// Mock the current date to ensure consistent test results
-		jest.spyOn(Date.prototype, "toISOString").mockReturnValue(
-			"2025-07-07T00:00:00.000Z"
-		);
-		jest.spyOn(Date.prototype, "getFullYear").mockReturnValue(2025);
-		jest.spyOn(Date.prototype, "getMonth").mockReturnValue(6); // July (0-indexed)
-		jest.spyOn(Date.prototype, "getDate").mockReturnValue(7);
+		// Mock Date methods globally
+		const mockDate = new Date("2025-07-07T00:00:00.000Z");
+		jest.spyOn(global, "Date").mockImplementation(() => mockDate as any);
+		Date.now = jest.fn(() => mockDate.getTime());
 	});
 
 	afterEach(() => {

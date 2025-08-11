@@ -55,6 +55,68 @@ const renamePlugin = {
 };
 
 const prod = process.argv[2] === "production";
+const outDir = prod ? "dist" : ".";
+
+// Ensure dist directory exists in production mode
+if (prod && !fs.existsSync("dist")) {
+	fs.mkdirSync("dist", { recursive: true });
+}
+
+// Update plugins to handle output directory
+const renamePluginWithDir = {
+	name: "rename-styles",
+	setup(build) {
+		build.onEnd(() => {
+			const { outfile } = build.initialOptions;
+			const outcss = outfile.replace(/\.js$/, ".css");
+			const fixcss = outfile.replace(/main\.js$/, "styles.css");
+			if (fs.existsSync(outcss)) {
+				console.log("Renaming", outcss, "to", fixcss);
+				fs.renameSync(outcss, fixcss);
+			}
+		});
+	},
+};
+
+// Update CSS settings plugin to handle output directory
+const cssSettingsPluginWithDir = {
+	name: "css-settings-plugin",
+	setup(build) {
+		build.onEnd(async (result) => {
+			// Path to the output CSS file
+			const cssOutfile = path.join(outDir, "styles.css");
+
+			// The settings comment to prepend
+			const settingsComment =
+				fs.readFileSync("src/styles/index.css", "utf8").split("*/")[0] +
+				"*/\n\n";
+
+			if (fs.existsSync(cssOutfile)) {
+				// Read the current content
+				const cssContent = fs.readFileSync(cssOutfile, "utf8");
+
+				// Check if the settings comment is already there
+				if (!cssContent.includes("/* @settings")) {
+					// Prepend the settings comment
+					fs.writeFileSync(cssOutfile, settingsComment + cssContent);
+				}
+			}
+		});
+	},
+};
+
+// Copy manifest to output directory in production
+const copyManifestPlugin = {
+	name: "copy-manifest",
+	setup(build) {
+		build.onEnd(() => {
+			if (prod) {
+				fs.copyFileSync("manifest.json", path.join(outDir, "manifest.json"));
+				console.log("Copied manifest.json to", outDir);
+			}
+		});
+	},
+};
 
 esbuild
 	.build({
@@ -65,9 +127,9 @@ esbuild
 		entryPoints: ["src/index.ts"],
 		plugins: [
 			inlineWorkerPlugin({ workerName: "Task Genius Indexer" }),
-
-			renamePlugin,
-			cssSettingsPlugin,
+			renamePluginWithDir,
+			cssSettingsPluginWithDir,
+			copyManifestPlugin,
 		],
 		bundle: true,
 		external: [
@@ -107,7 +169,7 @@ esbuild
 		logLevel: "info",
 		sourcemap: prod ? false : "inline",
 		treeShaking: true,
-		outfile: "main.js",
+		outfile: path.join(outDir, "main.js"),
 		pure: prod ? ["console.log"] : [],
 	})
 	.catch(() => process.exit(1));

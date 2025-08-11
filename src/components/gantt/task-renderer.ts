@@ -7,6 +7,7 @@ import {
 import { GanttTaskItem, PlacedGanttTaskItem, Timescale } from "./gantt"; // 添加PlacedGanttTaskItem导入
 import { Task } from "../../types/task";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
+import { sanitizePriorityForClass } from "../../utils/priorityUtils";
 
 // Constants from GanttComponent (consider moving to a shared config/constants file)
 const ROW_HEIGHT = 24;
@@ -142,13 +143,11 @@ export class TaskRendererComponent extends Component {
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
-			if (
-				task.metadata.priority &&
-				String(task.metadata.priority).trim()
-			) {
-				taskElement.classList.add(
-					`priority-${String(task.metadata.priority).trim()}`
-				);
+			if (task.metadata.priority) {
+				const sanitizedPriority = sanitizePriorityForClass(task.metadata.priority);
+				if (sanitizedPriority) {
+					taskElement.classList.add(`priority-${sanitizedPriority}`);
+				}
 			}
 
 			// Add text label to the right
@@ -225,13 +224,11 @@ export class TaskRendererComponent extends Component {
 			if (task.status && task.status.trim()) {
 				taskElement.classList.add(`status-${task.status.trim()}`);
 			}
-			if (
-				task.metadata.priority &&
-				String(task.metadata.priority).trim()
-			) {
-				taskElement.classList.add(
-					`priority-${String(task.metadata.priority).trim()}`
-				);
+			if (task.metadata.priority) {
+				const sanitizedPriority = sanitizePriorityForClass(task.metadata.priority);
+				if (sanitizedPriority) {
+					taskElement.classList.add(`priority-${sanitizedPriority}`);
+				}
 			}
 
 			// Add tooltip for bar
