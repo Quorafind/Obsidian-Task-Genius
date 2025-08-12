@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.6.2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.1...9.6.2) (2025-08-12)
+
+### Features
+
+* **settings:** enhance settings search with DOM-based indexing ([38859db](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/38859db6570a59bf3038823cde53008fda111316))
+
+### Refactors
+
+* **quadrant:** migrate event listeners to registerDomEvent ([3a0d380](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/3a0d38084c2b707543dc68755cc056f2c5203e45))
+
 ## [9.6.1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.0...9.6.1) (2025-08-12)
 
 ### Bug Fixes
