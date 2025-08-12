@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.6.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.5.0...9.6.0) (2025-08-12)
+
+### Features
+
+* **projects:** add hierarchical tree view for nested projects ([c2cb144](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/c2cb144e6bd878e5b612a4514a220fb49d92e347))
+
+### Refactors
+
+* **ui:** improve projects sidebar header button layout ([0de2fff](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/0de2fff32ad8626834ebc8d8efd3f39da2831f0d))
+
 ## [9.5.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.4.0...9.5.0) (2025-08-11)
 
 ### Features
