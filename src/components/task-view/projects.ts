@@ -8,11 +8,16 @@ import {
 import { Task } from "../../types/task";
 import { t } from "../../translations/helper";
 import "../../styles/project-view.css";
+import "../../styles/project-tree.css";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
 import { sortTasks } from "../../commands/sortTaskCommands";
 import { getEffectiveProject } from "../../utils/taskUtil";
 import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { ProjectTreeComponent } from "./ProjectTreeComponent";
+import { buildProjectTree } from "../../utils/projectTreeBuilder";
+import { TreeNode, ProjectNodeData } from "../../types/tree";
+import { filterTasksByProjectPaths } from "../../utils/projectFilter";
 
 interface SelectedProjects {
 	projects: string[];
@@ -45,6 +50,9 @@ export class ProjectsComponent extends Component {
 	private allProjectsMap: Map<string, Set<string>> = new Map();
 	private isTreeView: boolean = false;
 	private allTasksMap: Map<string, Task> = new Map();
+	private isProjectTreeView: boolean = false;
+	private projectTreeComponent?: ProjectTreeComponent;
+	private projectTree?: TreeNode<ProjectNodeData>;
 	constructor(
 		private parentEl: HTMLElement,
 		private app: App,
@@ -78,6 +86,10 @@ export class ProjectsComponent extends Component {
 
 		// Initialize view mode from saved state or global default
 		this.initializeViewMode();
+		
+		// Load project tree view preference from localStorage
+		const savedTreeView = localStorage.getItem('task-genius-project-tree-view');
+		this.isProjectTreeView = savedTreeView === 'true';
 
 		// Initialize the task renderer
 		this.taskRenderer = new TaskListRendererComponent(
@@ -144,6 +156,17 @@ export class ProjectsComponent extends Component {
 			text: t("Projects"),
 		});
 
+		// Add view toggle button for tree/list
+		const treeToggleBtn = headerEl.createDiv({
+			cls: "projects-tree-toggle-btn",
+		});
+		setIcon(treeToggleBtn, this.isProjectTreeView ? "git-branch" : "list");
+		treeToggleBtn.setAttribute("aria-label", t("Toggle tree/list view"));
+		
+		this.registerDomEvent(treeToggleBtn, "click", () => {
+			this.toggleProjectTreeView();
+		});
+		
 		// Add multi-select toggle button
 		const multiSelectBtn = headerEl.createDiv({
 			cls: "projects-multi-select-btn",
@@ -261,6 +284,12 @@ export class ProjectsComponent extends Component {
 			}
 		});
 
+		// Build project tree if in tree view
+		if (this.isProjectTreeView) {
+			const separator = this.plugin.settings.projectPathSeparator || "/";
+			this.projectTree = buildProjectTree(this.allProjectsMap, separator);
+		}
+
 		// Update projects count
 		this.countEl?.setText(`${this.allProjectsMap.size} projects`);
 	}
@@ -269,57 +298,100 @@ export class ProjectsComponent extends Component {
 		// Clear existing list
 		this.projectsListEl.empty();
 
-		// Sort projects alphabetically
-		const sortedProjects = Array.from(this.allProjectsMap.keys()).sort();
-
-		// Render each project
-		sortedProjects.forEach((project) => {
-			// Get task count for this project
-			const taskCount = this.allProjectsMap.get(project)?.size || 0;
-
-			// Create project item
-			const projectItem = this.projectsListEl.createDiv({
-				cls: "project-list-item",
-			});
-
-			// Project icon
-			const projectIconEl = projectItem.createDiv({
-				cls: "project-icon",
-			});
-			setIcon(projectIconEl, "folder");
-
-			// Project name
-			const projectNameEl = projectItem.createDiv({
-				cls: "project-name",
-			});
-			projectNameEl.setText(project);
-
-			// Task count badge
-			const countEl = projectItem.createDiv({
-				cls: "project-count",
-			});
-			countEl.setText(taskCount.toString());
-
-			// Store project name as data attribute
-			projectItem.dataset.project = project;
-
-			// Check if this project is already selected
-			if (this.selectedProjects.projects.includes(project)) {
-				projectItem.classList.add("selected");
+		if (this.isProjectTreeView && this.projectTree) {
+			// Render as tree
+			if (this.projectTreeComponent) {
+				this.projectTreeComponent.unload();
 			}
+			
+			this.projectTreeComponent = new ProjectTreeComponent(
+				this.projectsListEl,
+				this.app,
+				this.plugin
+			);
+			
+			// Set up event handlers
+			this.projectTreeComponent.onNodeSelected = (selectedNodes: Set<string>, tasks: Task[]) => {
+				this.selectedProjects.projects = Array.from(selectedNodes);
+				this.updateSelectedTasks();
+			};
+			
+			this.projectTreeComponent.onMultiSelectToggled = (isMultiSelect: boolean) => {
+				this.selectedProjects.isMultiSelect = isMultiSelect;
+				if (!isMultiSelect && this.selectedProjects.projects.length === 0) {
+					this.taskRenderer.renderTasks(
+						[],
+						this.isTreeView,
+						this.allTasksMap,
+						t("Select a project to see related tasks")
+					);
+					this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
+				}
+			};
+			this.projectTreeComponent.load();
+			// Set the tree that was already built
+			if (this.projectTree) {
+				this.projectTreeComponent.setTree(this.projectTree, this.allTasks);
+			}
+		} else {
+			// Render as flat list
+			if (this.projectTreeComponent) {
+				this.projectTreeComponent.unload();
+				this.projectTreeComponent = undefined;
+			}
+			
+			// Sort projects alphabetically
+			const sortedProjects = Array.from(this.allProjectsMap.keys()).sort();
 
-			// Add click handler
-			this.registerDomEvent(projectItem, "click", (e) => {
-				this.handleProjectSelection(project, e.ctrlKey || e.metaKey);
-			});
-		});
+			// Render each project
+			sortedProjects.forEach((project) => {
+				// Get task count for this project
+				const taskCount = this.allProjectsMap.get(project)?.size || 0;
 
-		// Add empty state if no projects
-		if (sortedProjects.length === 0) {
-			const emptyEl = this.projectsListEl.createDiv({
-				cls: "projects-empty-state",
+				// Create project item
+				const projectItem = this.projectsListEl.createDiv({
+					cls: "project-list-item",
+				});
+
+				// Project icon
+				const projectIconEl = projectItem.createDiv({
+					cls: "project-icon",
+				});
+				setIcon(projectIconEl, "folder");
+
+				// Project name
+				const projectNameEl = projectItem.createDiv({
+					cls: "project-name",
+				});
+				projectNameEl.setText(project);
+
+				// Task count badge
+				const countEl = projectItem.createDiv({
+					cls: "project-count",
+				});
+				countEl.setText(taskCount.toString());
+
+				// Store project name as data attribute
+				projectItem.dataset.project = project;
+
+				// Check if this project is already selected
+				if (this.selectedProjects.projects.includes(project)) {
+					projectItem.classList.add("selected");
+				}
+
+				// Add click handler
+				this.registerDomEvent(projectItem, "click", (e) => {
+					this.handleProjectSelection(project, e.ctrlKey || e.metaKey);
+				});
 			});
-			emptyEl.setText(t("No projects found"));
+
+			// Add empty state if no projects
+			if (sortedProjects.length === 0) {
+				const emptyEl = this.projectsListEl.createDiv({
+					cls: "projects-empty-state",
+				});
+				emptyEl.setText(t("No projects found"));
+			}
 		}
 	}
 
@@ -394,6 +466,11 @@ export class ProjectsComponent extends Component {
 				this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 			}
 		}
+		
+		// Update tree component if it exists
+		if (this.projectTreeComponent) {
+			this.projectTreeComponent.setMultiSelectMode(this.selectedProjects.isMultiSelect);
+		}
 	}
 
 	/**
@@ -440,21 +517,30 @@ export class ProjectsComponent extends Component {
 			return;
 		}
 
-		// Get tasks from all selected projects (OR logic)
-		const resultTaskIds = new Set<string>();
+		// Use the project filter utility for inclusive filtering in tree view
+		if (this.isProjectTreeView) {
+			this.filteredTasks = filterTasksByProjectPaths(
+				this.allTasks,
+				this.selectedProjects.projects,
+				this.plugin.settings.projectPathSeparator || "/"
+			);
+		} else {
+			// Get tasks from all selected projects (OR logic)
+			const resultTaskIds = new Set<string>();
 
-		// Union all task sets from selected projects
-		this.selectedProjects.projects.forEach((project) => {
-			const taskIds = this.allProjectsMap.get(project);
-			if (taskIds) {
-				taskIds.forEach((id) => resultTaskIds.add(id));
-			}
-		});
+			// Union all task sets from selected projects
+			this.selectedProjects.projects.forEach((project) => {
+				const taskIds = this.allProjectsMap.get(project);
+				if (taskIds) {
+					taskIds.forEach((id) => resultTaskIds.add(id));
+				}
+			});
 
-		// Convert task IDs to actual task objects
-		this.filteredTasks = this.allTasks.filter((task) =>
-			resultTaskIds.has(task.id)
-		);
+			// Convert task IDs to actual task objects
+			this.filteredTasks = this.allTasks.filter((task) =>
+				resultTaskIds.has(task.id)
+			);
+		}
 
 		const viewConfig = this.plugin.settings.viewConfiguration.find(
 			(view) => view.id === "projects"
@@ -572,7 +658,34 @@ export class ProjectsComponent extends Component {
 		}
 	}
 
+	private toggleProjectTreeView() {
+		this.isProjectTreeView = !this.isProjectTreeView;
+		
+		// Update button icon
+		const treeToggleBtn = this.leftColumnEl.querySelector(
+			".projects-tree-toggle-btn"
+		) as HTMLElement;
+		if (treeToggleBtn) {
+			setIcon(treeToggleBtn, this.isProjectTreeView ? "git-branch" : "list");
+		}
+		
+		// Save preference to localStorage for now
+		localStorage.setItem('task-genius-project-tree-view', this.isProjectTreeView.toString());
+		
+		// Rebuild project index and re-render
+		this.buildProjectsIndex();
+		this.renderProjectsList();
+		
+		// Update selected tasks if any projects are selected
+		if (this.selectedProjects.projects.length > 0) {
+			this.updateSelectedTasks();
+		}
+	}
+	
 	onunload() {
+		if (this.projectTreeComponent) {
+			this.projectTreeComponent.unload();
+		}
 		this.containerEl.empty();
 		this.containerEl.remove();
 	}

@@ -3,12 +3,21 @@ import { Task } from "../../types/task";
 import { t } from "../../translations/helper";
 import "../../styles/project-view.css";
 import "../../styles/view-two-column-base.css";
+import "../../styles/project-tree.css";
 import TaskProgressBarPlugin from "../../index";
 import { TwoColumnViewBase, TwoColumnViewConfig } from "./TwoColumnViewBase";
+import { ProjectTreeComponent } from "./ProjectTreeComponent";
+import { TreeNode, ProjectNodeData } from "../../types/tree";
+import { buildProjectTreeFromTasks, findNodeByPath } from "../../utils/projectTreeBuilder";
+import { filterTasksByProjectPaths } from "../../utils/projectFilter";
+import { getEffectiveProject } from "../../utils/taskUtil";
 
 export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	// 特定于项目视图的状态
 	private allProjectsMap: Map<string, Set<string>> = new Map(); // 项目 -> 任务ID集合
+	private projectTree: TreeNode<ProjectNodeData> | null = null; // 项目树结构
+	private projectTreeComponent: ProjectTreeComponent | null = null; // 树组件
+	private viewMode: 'list' | 'tree' = 'list'; // 视图模式
 
 	constructor(
 		parentEl: HTMLElement,
@@ -36,19 +45,25 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		// 清除现有索引
 		this.allProjectsMap.clear();
 
-		// 为每个任务的项目建立索引
+		// 为每个任务的项目建立索引，使用 getEffectiveProject 统一获取项目名
 		this.allTasks.forEach((task) => {
-			if (task.metadata.project) {
-				if (!this.allProjectsMap.has(task.metadata.project)) {
-					this.allProjectsMap.set(task.metadata.project, new Set());
+			const projectName = getEffectiveProject(task);
+			if (projectName) {
+				if (!this.allProjectsMap.has(projectName)) {
+					this.allProjectsMap.set(projectName, new Set());
 				}
-				this.allProjectsMap.get(task.metadata.project)?.add(task.id);
+				this.allProjectsMap.get(projectName)?.add(task.id);
 			}
 		});
 
+		// 构建项目树结构
+		const separator = this.plugin.settings.projectPathSeparator || "/";
+		this.projectTree = buildProjectTreeFromTasks(this.allTasks, separator);
+
 		// 更新项目计数
 		if (this.countEl) {
-			this.countEl.setText(`${this.allProjectsMap.size} projects`);
+			const projectCount = this.projectTree ? this.projectTree.children.length : this.allProjectsMap.size;
+			this.countEl.setText(`${projectCount} projects`);
 		}
 	}
 
@@ -59,6 +74,20 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		// 清空现有列表
 		this.itemsListEl.empty();
 
+		// 根据视图模式渲染
+		if (this.viewMode === 'tree' && this.projectTree) {
+			// 渲染树状视图
+			this.renderTreeView();
+		} else {
+			// 渲染列表视图
+			this.renderListView();
+		}
+	}
+
+	/**
+	 * 渲染列表视图
+	 */
+	private renderListView(): void {
 		// 按字母排序项目
 		const sortedProjects = Array.from(this.allProjectsMap.keys()).sort();
 
@@ -114,6 +143,88 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	}
 
 	/**
+	 * 渲染树状视图
+	 */
+	private renderTreeView(): void {
+		// 清理旧的树组件
+		if (this.projectTreeComponent) {
+			this.removeChild(this.projectTreeComponent);
+			this.projectTreeComponent = null;
+		}
+
+		// 创建新的树组件
+		this.projectTreeComponent = new ProjectTreeComponent(
+			this.itemsListEl,
+			this.app,
+			this.plugin
+		);
+
+		// 设置事件处理
+		this.projectTreeComponent.onNodeSelected = (selectedPaths, tasks) => {
+			// 更新选中的项目
+			this.selectedItems.items = Array.from(selectedPaths);
+			this.filteredTasks = tasks;
+			this.renderTaskList();
+		};
+
+		this.projectTreeComponent.onMultiSelectToggled = (isMultiSelect) => {
+			this.selectedItems.isMultiSelect = isMultiSelect;
+		};
+
+		// 加载组件
+		this.addChild(this.projectTreeComponent);
+		
+		// 构建树
+		this.projectTreeComponent.buildTree(this.allTasks);
+		
+		// 恢复之前的选择
+		if (this.selectedItems.items.length > 0) {
+			this.projectTreeComponent.setSelectedPaths(new Set(this.selectedItems.items));
+		}
+	}
+
+	/**
+	 * 切换视图模式
+	 */
+	public toggleViewMode(): void {
+		this.viewMode = this.viewMode === 'list' ? 'tree' : 'list';
+		
+		// 重新渲染列表
+		this.renderItemsList();
+		
+		// 保存用户偏好
+		this.saveViewModePreference();
+	}
+
+	/**
+	 * 保存视图模式偏好
+	 */
+	private saveViewModePreference(): void {
+		try {
+			localStorage.setItem(
+				'task-progress-bar-project-view-mode',
+				this.viewMode
+			);
+		} catch (error) {
+			console.warn('Failed to save view mode preference:', error);
+		}
+	}
+
+	/**
+	 * 加载视图模式偏好
+	 */
+	private loadViewModePreference(): void {
+		try {
+			const savedMode = localStorage.getItem('task-progress-bar-project-view-mode');
+			if (savedMode === 'tree' || savedMode === 'list') {
+				this.viewMode = savedMode;
+			}
+		} catch (error) {
+			console.warn('Failed to load view mode preference:', error);
+		}
+	}
+
+	/**
 	 * 更新基于所选项目的任务
 	 */
 	protected updateSelectedTasks(): void {
@@ -123,21 +234,33 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 			return;
 		}
 
-		// 获取来自所有选中项目的任务（OR逻辑）
-		const resultTaskIds = new Set<string>();
+		// 根据视图模式使用不同的筛选逻辑
+		if (this.viewMode === 'tree' && this.projectTree) {
+			// 树状模式：使用包含式筛选（选父含子）
+			const separator = this.plugin.settings.projectPathSeparator || "/";
+			this.filteredTasks = filterTasksByProjectPaths(
+				this.allTasks,
+				this.selectedItems.items,
+				separator
+			);
+		} else {
+			// 列表模式：保持原有逻辑
+			// 获取来自所有选中项目的任务（OR逻辑）
+			const resultTaskIds = new Set<string>();
 
-		// 合并所有选中项目的任务ID集
-		this.selectedItems.items.forEach((project) => {
-			const taskIds = this.allProjectsMap.get(project);
-			if (taskIds) {
-				taskIds.forEach((id) => resultTaskIds.add(id));
-			}
-		});
+			// 合并所有选中项目的任务ID集
+			this.selectedItems.items.forEach((project) => {
+				const taskIds = this.allProjectsMap.get(project);
+				if (taskIds) {
+					taskIds.forEach((id) => resultTaskIds.add(id));
+				}
+			});
 
-		// 将任务ID转换为实际任务对象
-		this.filteredTasks = this.allTasks.filter((task) =>
-			resultTaskIds.has(task.id)
-		);
+			// 将任务ID转换为实际任务对象
+			this.filteredTasks = this.allTasks.filter((task) =>
+				resultTaskIds.has(task.id)
+			);
+		}
 
 		// 按优先级和截止日期排序
 		this.filteredTasks.sort((a, b) => {
@@ -161,6 +284,51 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 
 		// 更新任务列表
 		this.renderTaskList();
+	}
+
+	/**
+	 * 重写 onload 以加载视图模式偏好
+	 */
+	onload(): void {
+		// 加载视图模式偏好
+		this.loadViewModePreference();
+		
+		// 调用父类的 onload
+		super.onload();
+		
+		// 在 onload 完成后添加视图切换按钮
+		this.addViewToggleButton();
+	}
+
+	/**
+	 * 添加视图切换按钮
+	 */
+	private addViewToggleButton(): void {
+		// 确保 leftHeaderEl 存在
+		if (this.leftHeaderEl) {
+			// 查找多选按钮
+			const multiSelectBtn = this.leftHeaderEl.querySelector('.projects-multi-select-btn');
+			
+			// 创建视图切换按钮
+			const viewToggleBtn = this.leftHeaderEl.createDiv({
+				cls: 'projects-view-toggle-btn'
+			});
+			
+			// 如果找到多选按钮，将视图切换按钮插入到它后面
+			if (multiSelectBtn && multiSelectBtn.parentNode) {
+				multiSelectBtn.parentNode.insertBefore(viewToggleBtn, multiSelectBtn.nextSibling);
+			}
+			
+			setIcon(viewToggleBtn, this.viewMode === 'tree' ? 'git-branch' : 'list');
+			viewToggleBtn.setAttribute('aria-label', t('Toggle tree/list view'));
+			viewToggleBtn.setAttribute('title', t('Toggle tree/list view'));
+			
+			this.registerDomEvent(viewToggleBtn, 'click', () => {
+				this.toggleViewMode();
+				// 更新按钮图标
+				setIcon(viewToggleBtn, this.viewMode === 'tree' ? 'git-branch' : 'list');
+			});
+		}
 	}
 
 	/**

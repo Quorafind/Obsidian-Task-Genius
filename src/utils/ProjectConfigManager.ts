@@ -209,6 +209,26 @@ export class ProjectConfigManager {
 	}
 
 	/**
+	 * Normalize a project path to use consistent separators
+	 * @param path The path to normalize
+	 * @returns Normalized path with forward slashes
+	 */
+	public normalizeProjectPath(path: string): string {
+		if (!path) return "";
+		
+		// Replace backslashes with forward slashes
+		let normalized = path.replace(/\\/g, "/");
+		
+		// Remove duplicate slashes
+		normalized = normalized.replace(/\/+/g, "/");
+		
+		// Remove leading and trailing slashes
+		normalized = normalized.replace(/^\/|\/$/g, "");
+		
+		return normalized;
+	}
+
+	/**
 	 * Determine tgProject for a task based on various sources
 	 */
 	async determineTgProject(filePath: string): Promise<TgProject | undefined> {
@@ -223,9 +243,11 @@ export class ProjectConfigManager {
 
 			// Simple path matching - could be enhanced with glob patterns
 			if (this.matchesPathPattern(filePath, mapping.pathPattern)) {
+				// Normalize the project name to support nested paths
+				const normalizedName = this.normalizeProjectPath(mapping.projectName);
 				return {
 					type: "path",
-					name: mapping.projectName,
+					name: normalizedName,
 					source: mapping.pathPattern,
 					readonly: true,
 				};
@@ -274,9 +296,11 @@ export class ProjectConfigManager {
 		if (this.defaultProjectNaming.enabled) {
 			const defaultProject = this.generateDefaultProjectName(filePath);
 			if (defaultProject) {
+				// Normalize default project name as well
+				const normalizedName = this.normalizeProjectPath(defaultProject);
 				return {
 					type: "default",
-					name: defaultProject,
+					name: normalizedName,
 					source: this.defaultProjectNaming.strategy,
 					readonly: true,
 				};
@@ -641,9 +665,25 @@ export class ProjectConfigManager {
 				return fileName;
 			}
 			case "foldername": {
-				const pathParts = filePath.split("/");
-				// Get the parent folder name
+				const normalizedPath = filePath.replace(/\\/g, "/");
+				const pathParts = normalizedPath.split("/");
+				
+				// For path-based projects, build nested structure from folder path
+				// e.g., "Projects/Web/Frontend/file.md" -> "Web/Frontend"
 				if (pathParts.length > 1) {
+					// Find if path contains a common project root folder
+					const projectRootIndex = pathParts.findIndex(part => 
+						part.toLowerCase() === "projects" || 
+						part.toLowerCase() === "project"
+					);
+					
+					if (projectRootIndex >= 0 && projectRootIndex < pathParts.length - 2) {
+						// Build project path from folders after the project root
+						const projectParts = pathParts.slice(projectRootIndex + 1, pathParts.length - 1);
+						return projectParts.join("/");
+					}
+					
+					// Fallback to just parent folder name if no project root found
 					return pathParts[pathParts.length - 2] || "";
 				}
 				return "";

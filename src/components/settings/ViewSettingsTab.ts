@@ -80,6 +80,81 @@ export function renderViewSettingsTab(
 				});
 		});
 
+	// Project Tree View Settings
+	new Setting(containerEl)
+		.setName(t("Project Tree View Settings"))
+		.setDesc(t("Configure how projects are displayed in tree view."))
+		.setHeading();
+
+	new Setting(containerEl)
+		.setName(t("Default project view mode"))
+		.setDesc(
+			t(
+				"Choose whether to display projects as a flat list or hierarchical tree by default."
+			)
+		)
+		.addDropdown((dropdown) => {
+			dropdown
+				.addOption("list", t("List View"))
+				.addOption("tree", t("Tree View"))
+				.setValue(settingTab.plugin.settings.projectViewDefaultMode)
+				.onChange((value) => {
+					settingTab.plugin.settings.projectViewDefaultMode = value as
+						| "list"
+						| "tree";
+					settingTab.applySettingsUpdate();
+				});
+		});
+
+	new Setting(containerEl)
+		.setName(t("Auto-expand project tree"))
+		.setDesc(
+			t(
+				"Automatically expand all project nodes when opening the project view in tree mode."
+			)
+		)
+		.addToggle((toggle) => {
+			toggle
+				.setValue(settingTab.plugin.settings.projectTreeAutoExpand)
+				.onChange((value) => {
+					settingTab.plugin.settings.projectTreeAutoExpand = value;
+					settingTab.applySettingsUpdate();
+				});
+		});
+
+	new Setting(containerEl)
+		.setName(t("Show empty project folders"))
+		.setDesc(
+			t(
+				"Display project folders even if they don't contain any tasks."
+			)
+		)
+		.addToggle((toggle) => {
+			toggle
+				.setValue(settingTab.plugin.settings.projectTreeShowEmptyFolders)
+				.onChange((value) => {
+					settingTab.plugin.settings.projectTreeShowEmptyFolders = value;
+					settingTab.applySettingsUpdate();
+				});
+		});
+
+	new Setting(containerEl)
+		.setName(t("Project path separator"))
+		.setDesc(
+			t(
+				"Character used to separate project hierarchy levels (e.g., '/' in 'Project/SubProject')."
+			)
+		)
+		.addText((text) => {
+			text
+				.setPlaceholder("/")
+				.setValue(settingTab.plugin.settings.projectPathSeparator)
+				.onChange((value) => {
+					settingTab.plugin.settings.projectPathSeparator = value || "/";
+					settingTab.applySettingsUpdate();
+				});
+		});
+
 	// Task Parser Configuration Section
 	new Setting(containerEl)
 		.setName(t("Task Parser Configuration"))

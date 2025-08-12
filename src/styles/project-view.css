@@ -69,7 +69,7 @@
 .projects-sidebar-list {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--size-4-2);
+	padding: 0 var(--size-4-2);
 }
 
 .project-list-item {

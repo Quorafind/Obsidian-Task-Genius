@@ -1,0 +1,274 @@
+/**
+ * Project Tree View Styles
+ */
+
+:root {
+	/* Default tree indentation size per level */
+	--tree-indent-size: 1.5rem;
+	/* Guide line color */
+	--tree-guide-color: var(--background-modifier-border);
+}
+
+/* Container */
+.project-tree-container {
+	height: 100%;
+	overflow: auto;
+}
+
+.project-tree {
+	padding: 0.5rem 0;
+}
+
+/* Tree Item Base */
+.project-tree-item {
+	position: relative;
+	user-select: none;
+	--tree-level: 0; /* Default level, will be overridden by inline style */
+}
+
+.project-tree-item-content {
+	display: flex;
+	align-items: center;
+	padding: 0.25rem 0.5rem;
+	padding-left: calc(calc(var(--tree-level) - 1) * var(--tree-indent-size));
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	transition: background-color 0.15s ease;
+	position: relative;
+}
+
+.project-tree-item-content:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Selected State */
+.project-tree-item.is-selected > .project-tree-item-content {
+	background-color: var(--background-modifier-active-hover);
+}
+
+/* Toggle Button */
+.project-tree-item-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	flex-shrink: 0;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: transform 0.15s ease;
+}
+
+.project-tree-item-toggle:hover {
+	color: var(--text-normal);
+}
+
+.project-tree-item-toggle svg {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+
+.project-tree-item-toggle-spacer {
+	width: 1.5rem;
+	flex-shrink: 0;
+}
+
+/* Icon */
+.project-tree-item-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin-right: 0.5rem;
+	flex-shrink: 0;
+	color: var(--text-muted);
+}
+
+.project-tree-item-icon svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* Content Wrapper */
+.project-tree-item-content-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex: 1;
+	min-width: 0;
+	gap: 0.5rem;
+}
+
+/* Project Name */
+.project-tree-item-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-ui-small);
+}
+
+/* Task Counts */
+.project-tree-item-counts {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.project-tree-item-count-direct,
+.project-tree-item-count-total {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.25rem;
+	height: 1.25rem;
+	padding: 0 0.25rem;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+}
+
+.project-tree-item-count-direct {
+	background-color: var(--background-modifier-active);
+	color: var(--text-normal);
+}
+
+.project-tree-item-count-total {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+/* Children Container */
+.project-tree-children {
+	position: relative;
+}
+
+/* Tree guide lines (optional) */
+.project-tree-item[data-level]:not([data-level="0"]) > .project-tree-item-content::before {
+	content: '';
+	position: absolute;
+	left: calc(0.5rem + (var(--tree-level) - 1) * var(--tree-indent-size) + 0.75rem);
+	top: 0;
+	bottom: 0;
+	width: 1px;
+	background: var(--tree-guide-color);
+	opacity: 0.3;
+}
+
+.project-tree-item-children {
+	overflow: hidden;
+	transition: max-height 0.2s ease;
+}
+
+.project-tree-item-children:not(.is-expanded) {
+	max-height: 0;
+}
+
+/* Empty State */
+.project-tree-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+/* View Toggle Button */
+.projects-view-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: all 0.15s ease;
+}
+
+.projects-view-toggle-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.projects-view-toggle-btn svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* Multi-select Mode Indicator */
+.project-tree-container.multi-select-mode .project-tree-item-content {
+	position: relative;
+}
+
+.project-tree-container.multi-select-mode .project-tree-item-content::before {
+	content: '';
+	position: absolute;
+	left: 0.25rem;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 0.875rem;
+	height: 0.875rem;
+	border: 1px solid var(--background-modifier-border-hover);
+	border-radius: var(--radius-s);
+}
+
+.project-tree-container.multi-select-mode .project-tree-item.is-selected .project-tree-item-content::before {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+.project-tree-container.multi-select-mode .project-tree-item.is-selected .project-tree-item-content::after {
+	content: '✓';
+	position: absolute;
+	left: 0.25rem;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 0.875rem;
+	height: 0.875rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-on-accent);
+	font-size: 0.625rem;
+	font-weight: bold;
+}
+
+/* Dark Theme Adjustments */
+.theme-dark .project-tree-item-count-direct {
+	background-color: var(--background-modifier-active-hover);
+}
+
+.theme-dark .project-tree-item-count-total {
+	background-color: var(--background-modifier-border-hover);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+	.project-tree-item-content {
+		padding: 0.375rem 0.5rem;
+	}
+
+	.project-tree-item-name {
+		font-size: var(--font-ui-smaller);
+	}
+}
+
+/* Animation for tree expansion */
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-0.5rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.project-tree-item-children > .project-tree-item {
+	animation: slideDown 0.15s ease;
+}

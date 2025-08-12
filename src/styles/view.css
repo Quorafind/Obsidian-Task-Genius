@@ -114,7 +114,7 @@
 
 /* Project Tree */
 .task-genius-view .project-tree {
-	padding: 10px 0;
+	padding: var(--size-2-2) 0;
 	transition: opacity 0.3s ease;
 }
 
@@ -405,12 +405,12 @@
 }
 
 .mod-left-split
-	.workspace-tab-header-status-container:has(.task-genius-action-btn) {
+.workspace-tab-header-status-container:has(.task-genius-action-btn) {
 	display: none;
 }
 
 .mod-right-split
-	.workspace-tab-header-status-container:has(.task-genius-action-btn) {
+.workspace-tab-header-status-container:has(.task-genius-action-btn) {
 	display: none;
 }
 

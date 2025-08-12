@@ -586,6 +586,12 @@ export interface TaskProgressBarSettings {
 	hideProgressBarMetadata: string;
 	showProgressBarBasedOnHeading: string;
 
+	// Project Tree View Settings
+	projectViewDefaultMode: 'list' | 'tree';
+	projectTreeAutoExpand: boolean;
+	projectTreeShowEmptyFolders: boolean;
+	projectPathSeparator: string;
+
 	// File Metadata Inheritance Settings
 	fileMetadataInheritance: FileMetadataInheritanceConfig;
 
@@ -741,6 +747,12 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	hideProgressBarFolders: "",
 	hideProgressBarMetadata: "hide-progress-bar",
 	showProgressBarBasedOnHeading: "",
+
+	// Project Tree View Settings Defaults
+	projectViewDefaultMode: 'list',
+	projectTreeAutoExpand: false,
+	projectTreeShowEmptyFolders: false,
+	projectPathSeparator: '/',
 
 	// Checkbox Status Defaults
 	autoCompleteParent: false,
