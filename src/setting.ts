@@ -383,6 +383,12 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		}
 		section.setAttribute("data-tab-id", tabId);
 
+		// Attach category for search indexer
+		const tabInfo = this.tabs.find((t) => t.id === tabId);
+		if (tabInfo?.category) {
+			section.setAttribute("data-category", tabInfo.category);
+		}
+
 		// Create header
 		if (tabId !== "general") {
 			const headerEl = section.createDiv();

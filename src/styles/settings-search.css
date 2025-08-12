@@ -179,7 +179,7 @@ input.settings-search-input {
 
 /* 设置项高亮效果 */
 .settings-search-highlight {
-	background: var(--background-modifier-success) !important;
+	background: var(--background-secondary) !important;
 	border-radius: var(--radius-s);
 	transition: background-color 0.6s ease-out;
 	animation: settings-search-pulse 0.6s ease-out;
@@ -191,11 +191,11 @@ input.settings-search-input {
 		transform: scale(1);
 	}
 	50% {
-		background: var(--background-modifier-success);
+		background: var(--background-secondary);
 		transform: scale(1.01);
 	}
 	100% {
-		background: var(--background-modifier-success);
+		background: var(--background-secondary);
 		transform: scale(1);
 	}
 }

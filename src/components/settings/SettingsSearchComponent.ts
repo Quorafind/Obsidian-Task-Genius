@@ -25,7 +25,7 @@ export class SettingsSearchComponent extends Component {
 	constructor(settingTab: TaskProgressBarSettingTab, containerEl: HTMLElement) {
 		super();
 		this.settingTab = settingTab;
-		this.indexer = new SettingsIndexer();
+		this.indexer = new SettingsIndexer(containerEl);
 		this.containerEl = containerEl;
 
 		this.createSearchUI();
