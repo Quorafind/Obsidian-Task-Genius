@@ -20,8 +20,8 @@
 	max-width: 300px;
 	display: flex;
 	flex-direction: column;
-	border-right: 1px solid var(--background-modifier-border);
 	overflow: hidden;
+	border-right: 1px solid var(--background-modifier-border)
 }
 
 .is-phone .projects-left-column {
@@ -49,8 +49,23 @@
 	font-size: 14px;
 }
 
+.projects-sidebar-header-btn-group {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+
+	gap: var(--size-4-2);
+}
+
 .multi-select-mode .projects-multi-select-btn {
 	color: var(--color-accent);
+}
+
+.projects-tree-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .projects-multi-select-btn {

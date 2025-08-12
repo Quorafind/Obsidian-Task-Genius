@@ -53,6 +53,7 @@ export class ProjectsComponent extends Component {
 	private isProjectTreeView: boolean = false;
 	private projectTreeComponent?: ProjectTreeComponent;
 	private projectTree?: TreeNode<ProjectNodeData>;
+
 	constructor(
 		private parentEl: HTMLElement,
 		private app: App,
@@ -86,7 +87,7 @@ export class ProjectsComponent extends Component {
 
 		// Initialize view mode from saved state or global default
 		this.initializeViewMode();
-		
+
 		// Load project tree view preference from localStorage
 		const savedTreeView = localStorage.getItem('task-genius-project-tree-view');
 		this.isProjectTreeView = savedTreeView === 'true';
@@ -156,19 +157,23 @@ export class ProjectsComponent extends Component {
 			text: t("Projects"),
 		});
 
+		const headerButtons = headerEl.createDiv({
+			cls: "projects-sidebar-header-btn-group"
+		});
+
 		// Add view toggle button for tree/list
-		const treeToggleBtn = headerEl.createDiv({
+		const treeToggleBtn = headerButtons.createDiv({
 			cls: "projects-tree-toggle-btn",
 		});
 		setIcon(treeToggleBtn, this.isProjectTreeView ? "git-branch" : "list");
 		treeToggleBtn.setAttribute("aria-label", t("Toggle tree/list view"));
-		
+
 		this.registerDomEvent(treeToggleBtn, "click", () => {
 			this.toggleProjectTreeView();
 		});
-		
+
 		// Add multi-select toggle button
-		const multiSelectBtn = headerEl.createDiv({
+		const multiSelectBtn = headerButtons.createDiv({
 			cls: "projects-multi-select-btn",
 		});
 		setIcon(multiSelectBtn, "list-plus");
@@ -303,19 +308,19 @@ export class ProjectsComponent extends Component {
 			if (this.projectTreeComponent) {
 				this.projectTreeComponent.unload();
 			}
-			
+
 			this.projectTreeComponent = new ProjectTreeComponent(
 				this.projectsListEl,
 				this.app,
 				this.plugin
 			);
-			
+
 			// Set up event handlers
 			this.projectTreeComponent.onNodeSelected = (selectedNodes: Set<string>, tasks: Task[]) => {
 				this.selectedProjects.projects = Array.from(selectedNodes);
 				this.updateSelectedTasks();
 			};
-			
+
 			this.projectTreeComponent.onMultiSelectToggled = (isMultiSelect: boolean) => {
 				this.selectedProjects.isMultiSelect = isMultiSelect;
 				if (!isMultiSelect && this.selectedProjects.projects.length === 0) {
@@ -339,7 +344,7 @@ export class ProjectsComponent extends Component {
 				this.projectTreeComponent.unload();
 				this.projectTreeComponent = undefined;
 			}
-			
+
 			// Sort projects alphabetically
 			const sortedProjects = Array.from(this.allProjectsMap.keys()).sort();
 
@@ -466,7 +471,7 @@ export class ProjectsComponent extends Component {
 				this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 			}
 		}
-		
+
 		// Update tree component if it exists
 		if (this.projectTreeComponent) {
 			this.projectTreeComponent.setMultiSelectMode(this.selectedProjects.isMultiSelect);
@@ -660,7 +665,7 @@ export class ProjectsComponent extends Component {
 
 	private toggleProjectTreeView() {
 		this.isProjectTreeView = !this.isProjectTreeView;
-		
+
 		// Update button icon
 		const treeToggleBtn = this.leftColumnEl.querySelector(
 			".projects-tree-toggle-btn"
@@ -668,20 +673,20 @@ export class ProjectsComponent extends Component {
 		if (treeToggleBtn) {
 			setIcon(treeToggleBtn, this.isProjectTreeView ? "git-branch" : "list");
 		}
-		
+
 		// Save preference to localStorage for now
 		localStorage.setItem('task-genius-project-tree-view', this.isProjectTreeView.toString());
-		
+
 		// Rebuild project index and re-render
 		this.buildProjectsIndex();
 		this.renderProjectsList();
-		
+
 		// Update selected tasks if any projects are selected
 		if (this.selectedProjects.projects.length > 0) {
 			this.updateSelectedTasks();
 		}
 	}
-	
+
 	onunload() {
 		if (this.projectTreeComponent) {
 			this.projectTreeComponent.unload();
