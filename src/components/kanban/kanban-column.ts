@@ -63,11 +63,12 @@ export class KanbanColumnComponent extends Component {
 			type: "checkbox",
 		});
 
-		checkbox.dataset.task =
+		const mark =
 			this.plugin.settings.taskStatusMarks[this.statusName] || " ";
-		if (this.plugin.settings.taskStatusMarks[this.statusName] !== " ") {
-			checkbox.checked = true;
-		}
+		checkbox.dataset.task = mark;
+		// Only show the header checkbox as checked for the Completed column
+		const completedChars = (this.plugin.settings.taskStatuses?.completed || "x|X").split("|");
+		checkbox.checked = completedChars.includes(mark);
 
 		this.registerDomEvent(checkbox, "click", (event) => {
 			event.stopPropagation();
