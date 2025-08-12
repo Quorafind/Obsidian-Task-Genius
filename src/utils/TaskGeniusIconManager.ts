@@ -124,9 +124,14 @@ export class TaskGeniusIconManager extends Component {
 			const svgIcon = getStatusIcon(config.status);
 			const fillColor = this.extractFillColor(svgIcon);
 			const encodedSvg = this.encodeSvgForCSS(svgIcon);
-
+			const requireChecked = config.status === "completed"; // Only completed should use :checked
 			for (const char of config.chars) {
-				css += this.generateCSSRuleForChar(char, encodedSvg, fillColor);
+				css += this.generateCSSRuleForChar(
+					char,
+					encodedSvg,
+					fillColor,
+					requireChecked
+				);
 			}
 		}
 
@@ -256,14 +261,51 @@ export class TaskGeniusIconManager extends Component {
 	private generateCSSRuleForChar(
 		char: string,
 		encodedSvg: string,
-		fillColor: string
+		fillColor: string,
+		requireChecked: boolean = true
 	): string {
 		// Escape special characters for CSS selector
 		const escapedChar = this.escapeCSSSelector(char);
 		const isSpace = char === " ";
 
-		if (!isSpace) {
+		// If we don't require :checked (e.g., planned/inProgress), always show the icon via :after
+		if (!requireChecked || isSpace) {
 			return `
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox],
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox],
+.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox] {
+    border: none;
+}
+
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox],
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox],
+.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox] {
+	--checkbox-color: ${fillColor};
+	--checkbox-color-hover: ${fillColor};
+
+	background-color: unset;
+	border: none;
+}
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox]:after,
+.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox]:after,
+.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox]:after {
+    content: "";
+    top: -1px;
+    inset-inline-start: -1px;
+    position: absolute;
+    width: var(--checkbox-size);
+    height: var(--checkbox-size);
+    display: block;
+	-webkit-mask-position: 52% 52%;
+    -webkit-mask-repeat: no-repeat;
+	-webkit-mask-image: url("${encodedSvg}");
+	-webkit-mask-size: 100%;
+	background-color: ${fillColor};
+}
+			`;
+		}
+		// Default: require :checked to show the icon (completed)
+		return `
 .${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox],
 .${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox],
 .${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox] {
@@ -286,42 +328,7 @@ export class TaskGeniusIconManager extends Component {
 	-webkit-mask-size: 100%;
 	background-color: ${fillColor};
 }
-			`;
-		} else {
-			return `
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox],
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox],
-.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox] {
-    border: none;
-}
-
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox],
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox],
-.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox] {
-	--checkbox-color: ${fillColor};
-	--checkbox-color-hover: ${fillColor};
-
-	background-color: unset;
-	border: none;
-} 
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > input[type=checkbox]:after,
-.${this.BODY_CLASS} [data-task="${escapedChar}"] > p > input[type=checkbox]:after,
-.${this.BODY_CLASS} [data-task="${escapedChar}"][type=checkbox]:after {
-    content: "";
-    top: -1px;
-    inset-inline-start: -1px;
-    position: absolute;
-    width: var(--checkbox-size);
-    height: var(--checkbox-size);
-    display: block;
-	-webkit-mask-position: 52% 52%;
-    -webkit-mask-repeat: no-repeat;
-	-webkit-mask-image: url("${encodedSvg}");
-	-webkit-mask-size: 100%;
-		background-color: ${fillColor};
-}
-			`;
-		}
+		`;
 	}
 
 	/**
