@@ -283,6 +283,7 @@ function compareTasks<
 		filePath?: string;
 		line?: number;
 		lineNumber?: number;
+		metadata?: Record<string, any>;
 	}
 >(
 	taskA: T,
@@ -290,6 +291,14 @@ function compareTasks<
 	criteria: SortCriterion[],
 	statusOrder: { [key: string]: number }
 ): number {
+	// Helper to read field from top-level or metadata fallback
+	const getField = (obj: any, field: string) => {
+		if (obj == null) return undefined;
+		const top = obj[field];
+		if (top !== undefined && top !== null) return top;
+		return obj.metadata ? obj.metadata[field] : undefined;
+	};
+
 	// 初始化Collator用于文本排序优化
 	const sortCollator = new Intl.Collator(undefined, {
 		usage: "sort",
@@ -302,8 +311,8 @@ function compareTasks<
 		status: (a: T, b: T, order: "asc" | "desc") => {
 			// Status comparison logic (relies on statusOrder having numbers)
 			// 使用calculatedStatus优先，如果没有则使用status
-			const statusA = a.calculatedStatus || a.status || "";
-			const statusB = b.calculatedStatus || b.status || "";
+			const statusA = (a as any).calculatedStatus || (a as any).status || "";
+			const statusB = (b as any).calculatedStatus || (b as any).status || "";
 
 			const valA = statusOrder[statusA] ?? 1000; // Assign a high number for unknown statuses
 			const valB = statusOrder[statusB] ?? 1000;
@@ -322,8 +331,8 @@ function compareTasks<
 
 		completed: (a: T, b: T, order: "asc" | "desc") => {
 			// Completed status comparison
-			const aCompleted = a.completed || false;
-			const bCompleted = b.completed || false;
+			const aCompleted = !!(a as any).completed;
+			const bCompleted = !!(b as any).completed;
 
 			if (aCompleted === bCompleted) {
 				return 0; // Both have same completion status
@@ -337,12 +346,10 @@ function compareTasks<
 
 		priority: (a: T, b: T, order: "asc" | "desc") => {
 			// Priority comparison: higher number means higher priority (1=Lowest, 5=Highest)
-			const valA = a.priority; // Use undefined/null directly
-			const valB = b.priority;
-			const aHasPriority =
-				valA !== undefined && valA !== null && valA > 0;
-			const bHasPriority =
-				valB !== undefined && valB !== null && valB > 0;
+			const valA = getField(a, "priority");
+			const valB = getField(b, "priority");
+			const aHasPriority = valA !== undefined && valA !== null && valA > 0;
+			const bHasPriority = valB !== undefined && valB !== null && valB > 0;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!aHasPriority && !bHasPriority) {
@@ -357,7 +364,7 @@ function compareTasks<
 				// Both have numeric priorities - simple numeric comparison
 				// For asc: 1, 2, 3, 4, 5 (Low to High)
 				// For desc: 5, 4, 3, 2, 1 (High to Low)
-				const comparison = valA - valB;
+				const comparison = (valA as number) - (valB as number);
 				return order === "asc" ? comparison : -comparison;
 			}
 		},
@@ -385,8 +392,8 @@ function compareTasks<
 		content: (a: T, b: T, order: "asc" | "desc") => {
 			// 使用Collator进行更智能的文本比较，代替简单的localeCompare
 			// 首先检查content是否存在
-			const contentA = a.content?.trim() || null;
-			const contentB = b.content?.trim() || null;
+			const contentA = (a as any).content?.trim() || null;
+			const contentB = (b as any).content?.trim() || null;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!contentA && !contentB) return 0;
@@ -399,13 +406,15 @@ function compareTasks<
 
 		tags: (a: T, b: T, order: "asc" | "desc") => {
 			// Sort by tags - convert array to string for comparison
+			const tagsAVal = getField(a, "tags");
+			const tagsBVal = getField(b, "tags");
 			const tagsA =
-				Array.isArray((a as any).tags) && (a as any).tags.length > 0
-					? (a as any).tags.join(", ")
+				Array.isArray(tagsAVal) && tagsAVal.length > 0
+					? (tagsAVal as string[]).join(", ")
 					: null;
 			const tagsB =
-				Array.isArray((b as any).tags) && (b as any).tags.length > 0
-					? (b as any).tags.join(", ")
+				Array.isArray(tagsBVal) && tagsBVal.length > 0
+					? (tagsBVal as string[]).join(", ")
 					: null;
 
 			// Handle null/empty values - empty values should always go to the end
@@ -418,8 +427,10 @@ function compareTasks<
 		},
 
 		project: (a: T, b: T, order: "asc" | "desc") => {
-			const projectA = (a as any).project?.trim() || null;
-			const projectB = (b as any).project?.trim() || null;
+			const projectA = (getField(a, "project") as string | undefined)
+				?.trim() || null;
+			const projectB = (getField(b, "project") as string | undefined)
+				?.trim() || null;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!projectA && !projectB) return 0;
@@ -431,8 +442,10 @@ function compareTasks<
 		},
 
 		context: (a: T, b: T, order: "asc" | "desc") => {
-			const contextA = (a as any).context?.trim() || null;
-			const contextB = (b as any).context?.trim() || null;
+			const contextA = (getField(a, "context") as string | undefined)
+				?.trim() || null;
+			const contextB = (getField(b, "context") as string | undefined)
+				?.trim() || null;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!contextA && !contextB) return 0;
@@ -444,8 +457,10 @@ function compareTasks<
 		},
 
 		recurrence: (a: T, b: T, order: "asc" | "desc") => {
-			const recurrenceA = (a as any).recurrence?.trim() || null;
-			const recurrenceB = (b as any).recurrence?.trim() || null;
+			const recurrenceA = (getField(a, "recurrence") as string | undefined)
+				?.trim() || null;
+			const recurrenceB = (getField(b, "recurrence") as string | undefined)
+				?.trim() || null;
 
 			// Handle null/empty values - empty values should always go to the end
 			if (!recurrenceA && !recurrenceB) return 0;
@@ -470,7 +485,7 @@ function compareTasks<
 		},
 
 		lineNumber: (a: T, b: T, order: "asc" | "desc") => {
-			return (a.line || 0) - (b.line || 0);
+			return ((a as any).line || 0) - ((b as any).line || 0);
 		},
 	};
 
@@ -486,8 +501,8 @@ function compareTasks<
 		b: T,
 		order: "asc" | "desc"
 	): number {
-		const valA = (a as any)[field]; // Use type assertion for new fields
-		const valB = (b as any)[field];
+		const valA = getField(a, field);
+		const valB = getField(b, field);
 		const aHasDate = valA !== undefined && valA !== null;
 		const bHasDate = valB !== undefined && valB !== null;
 
@@ -543,13 +558,15 @@ function compareTasks<
 
 	// Maintain original relative order if all criteria are equal
 	// 检查是否有lineNumber属性
-	if (taskA.line !== undefined && taskB.line !== undefined) {
-		return taskA.line - taskB.line;
+	if ((taskA as any).line !== undefined && (taskB as any).line !== undefined) {
+		return ((taskA as any).line as number) - ((taskB as any).line as number);
 	} else if (
-		taskA.lineNumber !== undefined &&
-		taskB.lineNumber !== undefined
+		(taskA as any).lineNumber !== undefined &&
+		(taskB as any).lineNumber !== undefined
 	) {
-		return taskA.lineNumber - taskB.lineNumber;
+		return (
+			(taskA as any).lineNumber as number
+		) - ((taskB as any).lineNumber as number);
 	}
 	return 0;
 }
