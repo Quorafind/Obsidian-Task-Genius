@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.6.3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.2...9.6.3) (2025-08-13)
+
+### Bug Fixes
+
+* **table:** resolve sorting issues for metadata-based task properties ([eab936e](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/eab936ed575115e6522091ec1de164ec0119fe8e))
+
 ## [9.6.2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.1...9.6.2) (2025-08-12)
 
 ### Features
