@@ -8,6 +8,37 @@
 	gap: var(--size-4-2);
 }
 
+/* Quick Capture Actions */
+.quick-capture-actions {
+	display: flex;
+	gap: var(--size-2-1);
+	margin-left: auto;
+	align-items: center;
+}
+
+.quick-capture-actions .quick-action-button {
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-s);
+	padding: var(--size-2-1);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.quick-capture-actions .quick-action-button:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.quick-capture-actions .quick-action-button.active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
 /* Minimal Quick Capture Modal */
 .quick-capture-modal.minimal {
 	max-width: 600px;
@@ -138,6 +169,7 @@
 	font-weight: bold;
 	color: var(--text-normal);
 	padding: var(--size-2-1) var(--size-4-2);
+	flex-wrap: nowrap;
 }
 
 .quick-capture-title {
@@ -156,11 +188,20 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	padding: 2px 4px;
+	transition: background-color 0.2s ease;
+}
+
+.quick-capture-target:hover {
+	background-color: var(--background-modifier-hover);
 }
 
 .quick-capture-target:focus {
-	/* box-shadow: 0 0 0 2px var(--background-modifier-border-focus); */
-	outline: none;
+	background-color: var(--background-modifier-hover);
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -1px;
+	overflow: visible;
+	text-overflow: initial;
 }
 
 .quick-capture-hint {

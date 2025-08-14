@@ -200,6 +200,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// Minimal quick capture suggest
 	minimalQuickCaptureSuggest: MinimalQuickCaptureSuggest;
+	
+	// Regular quick capture suggest
+	quickCaptureSuggest: any;
 
 	// Global suggest manager
 	globalSuggestManager: SuggestManager;

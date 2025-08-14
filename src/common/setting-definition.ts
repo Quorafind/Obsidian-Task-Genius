@@ -287,6 +287,9 @@ export interface QuickCaptureSettings {
 		folder: string; // Folder path for daily notes
 		template: string; // Template file path for daily notes
 	};
+	// Task prefix settings
+	autoAddTaskPrefix?: boolean; // Whether to auto-add task prefix
+	taskPrefix?: string; // The prefix to add (e.g., "- [ ]")
 	// Minimal mode settings
 	enableMinimalMode: boolean;
 	minimalModeSettings: {

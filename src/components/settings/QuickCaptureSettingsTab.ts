@@ -219,6 +219,44 @@ export function renderQuickCaptureSettingsTab(
 					settingTab.applySettingsUpdate();
 				})
 		);
+	
+	// Task prefix setting
+	new Setting(containerEl)
+		.setName(t("Auto-add task prefix"))
+		.setDesc(t("Automatically add task checkbox prefix to captured content"))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(
+					settingTab.plugin.settings.quickCapture.autoAddTaskPrefix ?? true
+				)
+				.onChange(async (value) => {
+					settingTab.plugin.settings.quickCapture.autoAddTaskPrefix =
+						value;
+					settingTab.applySettingsUpdate();
+					// Refresh to show/hide the prefix format field
+					setTimeout(() => {
+						settingTab.display();
+					}, 100);
+				})
+		);
+	
+	// Custom task prefix
+	if (settingTab.plugin.settings.quickCapture.autoAddTaskPrefix) {
+		new Setting(containerEl)
+			.setName(t("Task prefix format"))
+			.setDesc(t("The prefix to add before captured content (e.g., '- [ ]' for task, '- ' for list item)"))
+			.addText((text) =>
+				text
+					.setValue(
+						settingTab.plugin.settings.quickCapture.taskPrefix || "- [ ]"
+					)
+					.onChange(async (value) => {
+						settingTab.plugin.settings.quickCapture.taskPrefix =
+							value || "- [ ]";
+						settingTab.applySettingsUpdate();
+					})
+			);
+	}
 
 	// Minimal mode settings
 	new Setting(containerEl).setName(t("Minimal Mode")).setHeading();

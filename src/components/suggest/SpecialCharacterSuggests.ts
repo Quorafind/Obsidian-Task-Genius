@@ -12,7 +12,7 @@ export function createPrioritySuggestOptions(): SuggestOption[] {
 			id: "priority-highest",
 			label: t("Highest Priority"),
 			icon: "arrow-up",
-			description: t("🔺 Highest priority task"),
+			description: "",
 			replacement: "",
 			trigger: "!",
 			action: (editor: Editor, cursor: EditorPosition) => {
@@ -31,7 +31,7 @@ export function createPrioritySuggestOptions(): SuggestOption[] {
 			id: "priority-high",
 			label: t("High Priority"),
 			icon: "arrow-up",
-			description: t("⏫ High priority task"),
+			description: "",
 			replacement: "",
 			trigger: "!",
 			action: (editor: Editor, cursor: EditorPosition) => {
@@ -50,7 +50,7 @@ export function createPrioritySuggestOptions(): SuggestOption[] {
 			id: "priority-medium",
 			label: t("Medium Priority"),
 			icon: "minus",
-			description: t("🔼 Medium priority task"),
+			description: "",
 			replacement: "",
 			trigger: "!",
 			action: (editor: Editor, cursor: EditorPosition) => {
@@ -69,7 +69,7 @@ export function createPrioritySuggestOptions(): SuggestOption[] {
 			id: "priority-low",
 			label: t("Low Priority"),
 			icon: "arrow-down",
-			description: t("🔽 Low priority task"),
+			description: "",
 			replacement: "",
 			trigger: "!",
 			action: (editor: Editor, cursor: EditorPosition) => {
@@ -88,7 +88,7 @@ export function createPrioritySuggestOptions(): SuggestOption[] {
 			id: "priority-lowest",
 			label: t("Lowest Priority"),
 			icon: "arrow-down",
-			description: t("⏬ Lowest priority task"),
+			description: "",
 			replacement: "",
 			trigger: "!",
 			action: (editor: Editor, cursor: EditorPosition) => {

@@ -10,6 +10,9 @@ import {
 	getFrontMatterInfo,
 	editorInfoField,
 	moment,
+	Menu,
+	setIcon,
+	EditorPosition,
 } from "obsidian";
 import { StateField, StateEffect, Facet } from "@codemirror/state";
 import { EditorView, showPanel, ViewUpdate, Panel } from "@codemirror/view";
@@ -22,6 +25,7 @@ import { saveCapture, processDateTemplates } from "../utils/fileUtils";
 import { t } from "../translations/helper";
 import "../styles/quick-capture.css";
 import { FileSuggest } from "../components/AutoComplete";
+import { QuickCaptureSuggest } from "./QuickCaptureSuggest";
 
 /**
  * Sanitize filename by replacing unsafe characters with safe alternatives
@@ -94,6 +98,17 @@ export interface QuickCaptureOptions {
 		folder: string;
 		template: string;
 	};
+	// Task prefix settings
+	autoAddTaskPrefix?: boolean;
+	taskPrefix?: string;
+}
+
+// Task metadata for quick capture
+interface TaskMetadata {
+	dueDate?: Date;
+	scheduledDate?: Date;
+	priority?: number;
+	tags?: string[];
 }
 
 const handleCancel = (view: EditorView, app: App) => {
@@ -120,14 +135,61 @@ const handleSubmit = async (
 	app: App,
 	markdownEditor: EmbeddableMarkdownEditor | null,
 	options: QuickCaptureOptions,
-	selectedTargetPath: string
+	selectedTargetPath: string,
+	taskMetadata?: TaskMetadata
 ) => {
 	if (!markdownEditor) return;
 
-	const content = markdownEditor.value.trim();
+	let content = markdownEditor.value.trim();
 	if (!content) {
 		new Notice(t("Nothing to capture"));
 		return;
+	}
+
+	// Add metadata to content if present
+	if (taskMetadata) {
+		const metadata: string[] = [];
+		
+		// Add date metadata
+		if (taskMetadata.dueDate) {
+			metadata.push(`📅 ${moment(taskMetadata.dueDate).format("YYYY-MM-DD")}`);
+		}
+		
+		// Add priority metadata
+		if (taskMetadata.priority) {
+			const priorityIcons = ["⏬", "🔽", "🔼", "⏫", "🔺"];
+			metadata.push(priorityIcons[taskMetadata.priority - 1]);
+		}
+		
+		// Add tags
+		if (taskMetadata.tags && taskMetadata.tags.length > 0) {
+			metadata.push(...taskMetadata.tags.map(tag => `#${tag}`));
+		}
+		
+		// Append metadata to content
+		if (metadata.length > 0) {
+			content = `${content} ${metadata.join(" ")}`;
+		}
+	}
+	
+	// Add task prefix if enabled
+	if (options.autoAddTaskPrefix !== false) { // Default to true
+		const prefix = options.taskPrefix || "- [ ]";
+		// Check if content doesn't already start with a task or list prefix
+		const taskPrefixes = ["- [ ]", "- [x]", "- [X]", "- [/]", "- [-]", "- [>]", "- ", "* ", "+ "];
+		const hasPrefix = taskPrefixes.some(p => content.trimStart().startsWith(p));
+		
+		if (!hasPrefix) {
+			// Handle multi-line content
+			const lines = content.split("\n");
+			content = lines.map(line => {
+				// Only add prefix to non-empty lines
+				if (line.trim()) {
+					return `${prefix} ${line.trim()}`;
+				}
+				return line;
+			}).join("\n");
+		}
 	}
 
 	try {
@@ -189,9 +251,22 @@ export const quickCaptureOptions = Facet.define<
 				folder: "",
 				template: "",
 			},
+			autoAddTaskPrefix: values.find((v) => v.autoAddTaskPrefix !== undefined)
+				?.autoAddTaskPrefix ?? true,
+			taskPrefix: values.find((v) => v.taskPrefix)?.taskPrefix ?? "- [ ]",
 		};
 	},
 });
+
+// Helper function to show menu at specified coordinates
+function showMenuAtCoords(menu: Menu, x: number, y: number): void {
+	menu.showAtMouseEvent(
+		new MouseEvent("click", {
+			clientX: x,
+			clientY: y,
+		})
+	);
+}
 
 // Create the quick capture panel
 function createQuickCapturePanel(view: EditorView): Panel {
@@ -205,13 +280,15 @@ function createQuickCapturePanel(view: EditorView): Panel {
 	// Determine target file path based on target type
 	let selectedTargetPath: string;
 	if (options.targetType === "daily-note" && options.dailyNoteSettings) {
-		const dateStr = moment().format(options.dailyNoteSettings.format);
-		// For daily notes, the format might include path separators (e.g., YYYY-MM/YYYY-MM-DD)
-		// We need to preserve the path structure and only sanitize the final filename
-		const pathWithDate = options.dailyNoteSettings.folder
-			? `${options.dailyNoteSettings.folder}/${dateStr}.md`
-			: `${dateStr}.md`;
-		selectedTargetPath = sanitizeFilePath(pathWithDate);
+		const dateStr = moment().format(options.dailyNoteSettings.format || "YYYY-MM-DD");
+		// Build the daily note path correctly
+		let dailyNotePath = dateStr + ".md";
+		if (options.dailyNoteSettings.folder && options.dailyNoteSettings.folder.trim() !== "") {
+			// Remove trailing slash if present
+			const folder = options.dailyNoteSettings.folder.replace(/\/$/, "");
+			dailyNotePath = `${folder}/${dateStr}.md`;
+		}
+		selectedTargetPath = dailyNotePath;
 	} else {
 		selectedTargetPath = options.targetFile || "Quick Capture.md";
 	}
@@ -227,22 +304,78 @@ function createQuickCapturePanel(view: EditorView): Panel {
 		text: t("Capture to"),
 	});
 
-	// Create the target file element (contenteditable)
+	// Create the target file element (always editable)
 	const targetFileEl = headerContainer.createEl("div", {
 		cls: "quick-capture-target",
 		attr: {
-			contenteditable: options.targetType === "fixed" ? "true" : "false",
+			contenteditable: "true",
 			spellcheck: "false",
 		},
 		text: selectedTargetPath,
 	});
 
-	// Handle manual edits to the target element (only for fixed files)
-	if (options.targetType === "fixed") {
-		targetFileEl.addEventListener("blur", () => {
-			selectedTargetPath = targetFileEl.textContent || selectedTargetPath;
-		});
-	}
+	// Handle manual edits to the target element
+	// Track input events for real-time updates
+	targetFileEl.addEventListener("input", () => {
+		selectedTargetPath = targetFileEl.textContent || "";
+	});
+	
+	// Also handle blur for when user clicks away
+	targetFileEl.addEventListener("blur", () => {
+		const newPath = targetFileEl.textContent?.trim();
+		if (newPath) {
+			selectedTargetPath = newPath;
+			// Ensure .md extension if not present
+			if (!selectedTargetPath.endsWith(".md")) {
+				selectedTargetPath += ".md";
+				targetFileEl.textContent = selectedTargetPath;
+			}
+		} else {
+			// If empty, restore to default
+			selectedTargetPath = options.targetFile || "Quick Capture.md";
+			targetFileEl.textContent = selectedTargetPath;
+		}
+	});
+	
+	// Handle Enter key to confirm edit (will set up after editor is created)
+
+	// Quick action buttons container - add directly to header
+	const quickActionsContainer = headerContainer.createEl("div", {
+		cls: "quick-capture-actions",
+	});
+
+	// Task metadata state
+	let taskMetadata: TaskMetadata = {};
+
+	// Date button
+	const dateButton = quickActionsContainer.createEl("button", {
+		cls: ["quick-action-button", "clickable-icon"],
+		attr: { "aria-label": t("Set date") },
+	});
+	setIcon(dateButton, "calendar");
+
+	// Priority button  
+	const priorityButton = quickActionsContainer.createEl("button", {
+		cls: ["quick-action-button", "clickable-icon"],
+		attr: { "aria-label": t("Set priority") },
+	});
+	setIcon(priorityButton, "zap");
+
+	// Tags button
+	const tagsButton = quickActionsContainer.createEl("button", {
+		cls: ["quick-action-button", "clickable-icon"],
+		attr: { "aria-label": t("Add tags") },
+	});
+	setIcon(tagsButton, "tag");
+
+	// Helper function to update button state
+	const updateButtonState = (button: HTMLButtonElement, isActive: boolean) => {
+		if (isActive) {
+			button.addClass("active");
+		} else {
+			button.removeClass("active");
+		}
+	};
 
 	const editorDiv = dom.createEl("div", {
 		cls: "quick-capture-editor",
@@ -263,7 +396,8 @@ function createQuickCapturePanel(view: EditorView): Panel {
 						app,
 						markdownEditor,
 						options,
-						selectedTargetPath
+						selectedTargetPath,
+						taskMetadata
 					);
 					return true;
 				}
@@ -289,6 +423,39 @@ function createQuickCapturePanel(view: EditorView): Panel {
 
 		// Focus the editor when it's created
 		markdownEditor?.editor?.focus();
+		
+		// Now set up the Enter key handler for target field
+		targetFileEl.addEventListener("keydown", (e: KeyboardEvent) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				targetFileEl.blur();
+				// Focus back to editor
+				markdownEditor?.editor?.focus();
+			}
+		});
+
+		// Activate the suggest system for this editor
+		const plugin = view.state.facet(pluginFacet);
+		if (plugin.quickCaptureSuggest && markdownEditor?.editor) {
+			plugin.quickCaptureSuggest.setQuickCaptureContext(
+				true,
+				taskMetadata,
+				updateButtonState,
+				{
+					dateButton,
+					priorityButton,
+					tagsButton
+				},
+				(newPath: string) => {
+					// Update the selected target path
+					selectedTargetPath = newPath;
+					// Update the display
+					if (targetFileEl) {
+						targetFileEl.textContent = newPath;
+					}
+				}
+			);
+		}
 
 		markdownEditor.scope.register(["Alt"], "c", (e: KeyboardEvent) => {
 			e.preventDefault();
@@ -316,6 +483,25 @@ function createQuickCapturePanel(view: EditorView): Panel {
 				return true;
 			});
 		}
+
+		// Register keyboard shortcuts for quick actions
+		markdownEditor.scope.register(["Alt"], "d", (e: KeyboardEvent) => {
+			e.preventDefault();
+			dateButton.click();
+			return true;
+		});
+
+		markdownEditor.scope.register(["Alt"], "p", (e: KeyboardEvent) => {
+			e.preventDefault();
+			priorityButton.click();
+			return true;
+		});
+
+		markdownEditor.scope.register(["Alt"], "t", (e: KeyboardEvent) => {
+			e.preventDefault();
+			tagsButton.click();
+			return true;
+		});
 	}, 10); // Small delay to ensure the DOM is ready
 
 	// Button container for actions
@@ -351,6 +537,131 @@ function createQuickCapturePanel(view: EditorView): Panel {
 		});
 	}
 
+	// Date button click handler
+	dateButton.addEventListener("click", () => {
+		const quickDates = [
+			{ label: t("Today"), date: moment().toDate() },
+			{ label: t("Tomorrow"), date: moment().add(1, "day").toDate() },
+			{ label: t("Next week"), date: moment().add(1, "week").toDate() },
+			{ label: t("Next month"), date: moment().add(1, "month").toDate() },
+		];
+
+		const menu = new Menu();
+
+		quickDates.forEach((quickDate) => {
+			menu.addItem((item) => {
+				item.setTitle(quickDate.label);
+				item.setIcon("calendar");
+				item.onClick(() => {
+					taskMetadata.dueDate = quickDate.date;
+					updateButtonState(dateButton, true);
+					// Focus back to editor
+					markdownEditor?.editor?.focus();
+				});
+			});
+		});
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Clear date"));
+			item.setIcon("x");
+			item.onClick(() => {
+				delete taskMetadata.dueDate;
+				updateButtonState(dateButton, false);
+				markdownEditor?.editor?.focus();
+			});
+		});
+
+		const rect = dateButton.getBoundingClientRect();
+		showMenuAtCoords(menu, rect.left, rect.bottom + 5);
+	});
+
+	// Priority button click handler
+	priorityButton.addEventListener("click", () => {
+		const priorities = [
+			{ level: 5, label: t("Highest"), icon: "🔺" },
+			{ level: 4, label: t("High"), icon: "⏫" },
+			{ level: 3, label: t("Medium"), icon: "🔼" },
+			{ level: 2, label: t("Low"), icon: "🔽" },
+			{ level: 1, label: t("Lowest"), icon: "⏬" },
+		];
+
+		const menu = new Menu();
+
+		priorities.forEach((priority) => {
+			menu.addItem((item) => {
+				item.setTitle(`${priority.icon} ${priority.label}`);
+				item.onClick(() => {
+					taskMetadata.priority = priority.level;
+					updateButtonState(priorityButton, true);
+					markdownEditor?.editor?.focus();
+				});
+			});
+		});
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Clear priority"));
+			item.setIcon("x");
+			item.onClick(() => {
+				delete taskMetadata.priority;
+				updateButtonState(priorityButton, false);
+				markdownEditor?.editor?.focus();
+			});
+		});
+
+		const rect = priorityButton.getBoundingClientRect();
+		showMenuAtCoords(menu, rect.left, rect.bottom + 5);
+	});
+
+	// Tags button click handler
+	tagsButton.addEventListener("click", () => {
+		const menu = new Menu();
+		
+		// Add common tags as quick options
+		const commonTags = ["important", "urgent", "todo", "review", "idea", "question"];
+		
+		commonTags.forEach((tag) => {
+			const isActive = taskMetadata.tags?.includes(tag);
+			menu.addItem((item) => {
+				item.setTitle(isActive ? `✓ #${tag}` : `#${tag}`);
+				item.setIcon("tag");
+				item.onClick(() => {
+					if (!taskMetadata.tags) {
+						taskMetadata.tags = [];
+					}
+					if (isActive) {
+						// Remove tag
+						taskMetadata.tags = taskMetadata.tags.filter(t => t !== tag);
+						if (taskMetadata.tags.length === 0) {
+							delete taskMetadata.tags;
+							updateButtonState(tagsButton, false);
+						}
+					} else {
+						// Add tag
+						taskMetadata.tags.push(tag);
+						updateButtonState(tagsButton, true);
+					}
+					markdownEditor?.editor?.focus();
+				});
+			});
+		});
+		
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Clear all tags"));
+			item.setIcon("x");
+			item.onClick(() => {
+				delete taskMetadata.tags;
+				updateButtonState(tagsButton, false);
+				markdownEditor?.editor?.focus();
+			});
+		});
+		
+		const rect = tagsButton.getBoundingClientRect();
+		showMenuAtCoords(menu, rect.left, rect.bottom + 5);
+	});
+
 	return {
 		dom,
 		top: false,
@@ -360,6 +671,12 @@ function createQuickCapturePanel(view: EditorView): Panel {
 		},
 		// Destroy method gets called when the panel is removed
 		destroy: () => {
+			// Deactivate the suggest system
+			const plugin = view.state.facet(pluginFacet);
+			if (plugin.quickCaptureSuggest) {
+				plugin.quickCaptureSuggest.setQuickCaptureContext(false);
+			}
+			
 			markdownEditor?.destroy();
 			markdownEditor = null;
 		},
@@ -380,6 +697,12 @@ export const pluginFacet = Facet.define<
 
 // Create the extension to enable quick capture in an editor
 export function quickCaptureExtension(app: App, plugin: TaskProgressBarPlugin) {
+	// Create and register the suggest system
+	if (!plugin.quickCaptureSuggest) {
+		plugin.quickCaptureSuggest = new QuickCaptureSuggest(app, plugin);
+		plugin.registerEditorSuggest(plugin.quickCaptureSuggest);
+	}
+	
 	return [
 		quickCaptureState,
 		quickCaptureOptions.of({
@@ -398,6 +721,10 @@ export function quickCaptureExtension(app: App, plugin: TaskProgressBarPlugin) {
 				folder: "",
 				template: "",
 			},
+			autoAddTaskPrefix:
+				plugin.settings.quickCapture?.autoAddTaskPrefix ?? true,
+			taskPrefix:
+				plugin.settings.quickCapture?.taskPrefix ?? "- [ ]",
 		}),
 		appFacet.of(app),
 		pluginFacet.of(plugin),
