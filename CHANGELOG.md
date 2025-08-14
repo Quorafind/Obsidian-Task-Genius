@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.6.4](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.3...9.6.4) (2025-08-14)
+
+### Refactors
+
+* **editor:** extend suggest system to quick capture panel ([45c62a3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/45c62a3430ec0a2df4388bef16e2b8ae52c2ccce))
+
 ## [9.6.3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.2...9.6.3) (2025-08-13)
 
 ### Bug Fixes
