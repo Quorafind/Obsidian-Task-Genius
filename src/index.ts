@@ -373,7 +373,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			this.addChild(this.taskGeniusIconManager);
 
 			// Initialize MCP Server Manager (desktop only)
-			if (Platform.isDesktopApp) {
+			if (Platform.isDesktopApp && this.settings.mcpIntegration?.enabled) {
 				this.mcpServerManager = new McpServerManager(this);
 				this.mcpServerManager.initialize();
 			}
