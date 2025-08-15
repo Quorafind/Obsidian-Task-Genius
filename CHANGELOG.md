@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.4...9.7.0) (2025-08-15)
+
+### Features
+
+* **mcp:** add MCP server integration for external tool connections ([2b685db](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2b685db09798e123963351014cbb49a33bfdaf9a))
+* **security:** add confirmation dialogs for MCP server security settings ([b2efd27](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b2efd277b2adb1154249ce7f86d3d6c969e20a52))
+
+### Bug Fixes
+
+* **mcp:** only initialize MCP server when explicitly enabled ([4dcfaa9](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/4dcfaa93f3465f80134375408d7bdd8abc07fd2a))
+
+### Chores
+
+* **dependency:** remove unused files in package.json ([f472229](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f472229354e8a8a8c53730f06977076d2462c131))
+* remove conflict from styles.css ([220a761](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/220a7612a30e93869d37e7176eaf930e28dfb34d))
+
 ## [9.6.4](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.3...9.6.4) (2025-08-14)
 
 ### Refactors
