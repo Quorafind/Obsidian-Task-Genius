@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.3...9.6.4) (2025-08-15)
+
+### Features
+
+* **mcp:** add MCP server integration for external tool connections ([2b685db](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2b685db09798e123963351014cbb49a33bfdaf9a))
+* **security:** add confirmation dialogs for MCP server security settings ([b2efd27](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b2efd277b2adb1154249ce7f86d3d6c969e20a52))
+
+### Bug Fixes
+
+* **mcp:** only initialize MCP server when explicitly enabled ([4dcfaa9](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/4dcfaa93f3465f80134375408d7bdd8abc07fd2a))
+* **mcp:** resolve CORS and requestUrl compatibility issues ([6ef0b6b](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/6ef0b6b38560c9c2b8ed5f0bdef5dd01b7f972c2))
+* **mcp:** update MCP integration settings and server implementation ([cc26dba](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/cc26dba12dd6f0299e8a813dbd607237e20bfc3f))
+
+### Chores
+
+* **dependency:** remove unused files in package.json ([f472229](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f472229354e8a8a8c53730f06977076d2462c131))
+* **release:** bump version to 9.7.0 ([5e3b8b6](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/5e3b8b6aa510e0e5e61c795544d42fce1bd75be1))
+* **release:** bump version to 9.7.0 ([b081262](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b081262e9c6887da68095d87ab37559a532e3dbf))
+* remove conflict from styles.css ([220a761](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/220a7612a30e93869d37e7176eaf930e28dfb34d))
+## [9.6.4](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.3...9.6.4) (2025-08-14)
+
+### Refactors
+
+* **editor:** extend suggest system to quick capture panel ([45c62a3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/45c62a3430ec0a2df4388bef16e2b8ae52c2ccce))
+
+### Chores
+
+* **release:** bump version to 9.6.4 ([68123c1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/68123c196b084ea6fce6c5394d912b7b02d59856))
+
 ## [9.7.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.4...9.7.0) (2025-08-15)
 
 ### Features
