@@ -1,8 +1,10 @@
-import { App, ButtonComponent, Modal } from "obsidian";
+import { App, ButtonComponent, Modal, MarkdownRenderer } from "obsidian";
 import TaskProgressBarPlugin from "../index";
 import "../styles/modal.css";
 
 export class ConfirmModal extends Modal {
+	private plugin: TaskProgressBarPlugin;
+
 	constructor(
 		plugin: TaskProgressBarPlugin,
 		public params: {
@@ -14,11 +16,26 @@ export class ConfirmModal extends Modal {
 		}
 	) {
 		super(plugin.app);
+		this.plugin = plugin;
 	}
 
-	onOpen() {
+	async onOpen() {
 		this.titleEl.setText(this.params.title);
-		this.contentEl.setText(this.params.message);
+
+		// Check if message contains newlines to determine if Markdown rendering is needed
+		if (this.params.message.includes('\n')) {
+			// Use MarkdownRenderer for multi-line content
+			await MarkdownRenderer.render(
+				this.plugin.app,
+				this.params.message,
+				this.contentEl,
+				'',
+				this.plugin
+			);
+		} else {
+			// Use setText for single-line content
+			this.contentEl.setText(this.params.message);
+		}
 
 		const buttonsContainer = this.contentEl.createEl("div", {
 			cls: "confirm-modal-buttons",

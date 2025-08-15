@@ -2,11 +2,12 @@
  * MCP Integration Settings Tab Component
  */
 
-import { Setting, Notice, Platform, setIcon, request, requestUrl } from "obsidian";
+import { Setting, Notice, Platform, setIcon, requestUrl } from "obsidian";
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import { McpServerManager } from "../../mcp/McpServerManager";
 import { AuthMiddleware } from "../../mcp/auth/AuthMiddleware";
+import { ConfirmModal } from "../ConfirmModal";
 import "../../styles/mcp-integration.css";
 
 function createConfigBlock(
@@ -64,7 +65,7 @@ export function renderMcpIntegrationSettingsTab(
 		| undefined;
 
 	// Server Status Section
-	containerEl.createEl("h3", { text: t("MCP Server Status") });
+	containerEl.createEl("h3", {text: t("MCP Server Status")});
 
 	const statusContainer = containerEl.createDiv("mcp-status-container");
 	updateServerStatus(statusContainer, mcpManager);
@@ -77,30 +78,63 @@ export function renderMcpIntegrationSettingsTab(
 			toggle
 				.setValue(plugin.settings.mcpIntegration?.enabled || false)
 				.onChange(async (value) => {
-					if (!plugin.settings.mcpIntegration) {
-						plugin.settings.mcpIntegration = {
-							enabled: value,
-							port: 7777,
-							host: "127.0.0.1",
-							authToken: AuthMiddleware.generateToken(),
-							enableCors: true,
-							logLevel: "info",
-						};
+					// Show confirmation dialog when enabling MCP
+					if (value) {
+						const modal = new ConfirmModal(plugin, {
+							title: t("Enable MCP Server"),
+							message: t("WARNING: Enabling the MCP server will allow external AI tools and applications to access and modify your task data. This includes:\n\n• Reading all tasks and their details\n• Creating new tasks\n• Updating existing tasks\n• Deleting tasks\n• Accessing task metadata and properties\n\nOnly enable this if you trust the applications that will connect to the MCP server. Make sure to keep your authentication token secure.\n\nDo you want to continue?"),
+							confirmText: t("Enable MCP Server"),
+							cancelText: t("Cancel"),
+							onConfirm: async (confirmed) => {
+								if (confirmed) {
+									// User confirmed, proceed with enabling
+									if (!plugin.settings.mcpIntegration) {
+										plugin.settings.mcpIntegration = {
+											enabled: true,
+											port: 7777,
+											host: "127.0.0.1",
+											authToken: AuthMiddleware.generateToken(),
+											enableCors: true,
+											logLevel: "info",
+										};
+									} else {
+										plugin.settings.mcpIntegration.enabled = true;
+									}
+
+									await plugin.saveSettings();
+
+									if (mcpManager) {
+										await mcpManager.updateConfig({enabled: true});
+										updateServerStatus(statusContainer, mcpManager);
+									}
+
+									toggle.setValue(true);
+									new Notice(t("MCP Server enabled. Keep your authentication token secure!"));
+								} else {
+									// User cancelled, revert toggle
+									toggle.setValue(false);
+								}
+							}
+						});
+						modal.open();
 					} else {
-						plugin.settings.mcpIntegration.enabled = value;
-					}
+						// Disabling doesn't need confirmation
+						if (plugin.settings.mcpIntegration) {
+							plugin.settings.mcpIntegration.enabled = false;
+						}
 
-					await plugin.saveSettings();
+						await plugin.saveSettings();
 
-					if (mcpManager) {
-						await mcpManager.updateConfig({ enabled: value });
-						updateServerStatus(statusContainer, mcpManager);
+						if (mcpManager) {
+							await mcpManager.updateConfig({enabled: false});
+							updateServerStatus(statusContainer, mcpManager);
+						}
 					}
 				});
 		});
 
 	// Server Configuration
-	containerEl.createEl("h3", { text: t("Server Configuration") });
+	containerEl.createEl("h3", {text: t("Server Configuration")});
 
 	// Host Setting
 	new Setting(containerEl)
@@ -113,11 +147,33 @@ export function renderMcpIntegrationSettingsTab(
 				.setValue(plugin.settings.mcpIntegration?.host || "127.0.0.1")
 				.onChange(async (value) => {
 					if (!plugin.settings.mcpIntegration) return;
-					plugin.settings.mcpIntegration.host = value;
-					applySettingsUpdate();
-					
-					if (value === "0.0.0.0") {
-						new Notice(t("Warning: Server will be accessible from external networks. Ensure your firewall is properly configured."));
+
+					// If switching to 0.0.0.0, show confirmation dialog
+					if (value === "0.0.0.0" && plugin.settings.mcpIntegration.host !== "0.0.0.0") {
+						const modal = new ConfirmModal(plugin, {
+							title: t("Security Warning"),
+							message: t("⚠️ **WARNING**: Switching to 0.0.0.0 will make the MCP server accessible from external networks.\n\nThis could expose your Obsidian data to:\n- Other devices on your local network\n- Potentially the internet if your firewall is misconfigured\n\n**Only proceed if you:**\n- Understand the security implications\n- Have properly configured your firewall\n- Need external access for legitimate reasons\n\nAre you sure you want to continue?"),
+							confirmText: t("Yes, I understand the risks"),
+							cancelText: t("Cancel"),
+							onConfirm: async (confirmed) => {
+								if (confirmed) {
+									if (plugin.settings.mcpIntegration) {
+										plugin.settings.mcpIntegration.host = value;
+										applySettingsUpdate();
+									}
+									new Notice(t("Host changed to 0.0.0.0. Server is now accessible from external networks."));
+								} else {
+									// Revert dropdown to previous value
+									dropdown.setValue(plugin.settings.mcpIntegration?.host || "127.0.0.1");
+								}
+							}
+
+						});
+						modal.open();
+					} else {
+						// Direct update for switching to 127.0.0.1 or no change
+						plugin.settings.mcpIntegration.host = value;
+						applySettingsUpdate();
 					}
 				});
 		});
@@ -141,7 +197,7 @@ export function renderMcpIntegrationSettingsTab(
 		});
 
 	// Authentication Section
-	containerEl.createEl("h3", { text: t("Authentication") });
+	containerEl.createEl("h3", {text: t("Authentication")});
 
 	// Auth Token Display
 	const authTokenSetting = new Setting(containerEl)
@@ -192,7 +248,7 @@ export function renderMcpIntegrationSettingsTab(
 	});
 
 	// Advanced Settings
-	containerEl.createEl("h3", { text: t("Advanced Settings") });
+	containerEl.createEl("h3", {text: t("Advanced Settings")});
 
 	// CORS Setting
 	new Setting(containerEl)
@@ -227,7 +283,7 @@ export function renderMcpIntegrationSettingsTab(
 		});
 
 	// Server Actions
-	containerEl.createEl("h3", { text: t("Server Actions") });
+	containerEl.createEl("h3", {text: t("Server Actions")});
 
 	const actionsContainer = containerEl.createDiv("mcp-actions-container");
 
@@ -241,13 +297,13 @@ export function renderMcpIntegrationSettingsTab(
 				.onClick(async () => {
 					button.setDisabled(true);
 					button.setButtonText(t("Testing..."));
-					
+
 					try {
 						console.log("[MCP Test] Starting connection test...");
 						console.log("[MCP Test] Server URL:", serverUrl);
 						console.log("[MCP Test] Auth Token:", authToken);
 						console.log("[MCP Test] App ID:", appId);
-						
+
 						// Test 1: Basic connectivity
 						console.log("[MCP Test] Test 1: Basic connectivity...");
 						const healthRes = await requestUrl(`http://${plugin.settings.mcpIntegration?.host || "127.0.0.1"}:${plugin.settings.mcpIntegration?.port || 7777}/health`)
@@ -255,12 +311,12 @@ export function renderMcpIntegrationSettingsTab(
 								console.error("[MCP Test] Health check failed:", err);
 								throw new Error(`Cannot reach server: ${err.message}`);
 							});
-						
+
 						if (!healthRes || !healthRes.status) {
 							throw new Error(`Health check failed`);
 						}
 						console.log("[MCP Test] Health check passed");
-						
+
 						// Test 2: MCP initialize with Method B (combined bearer)
 						console.log("[MCP Test] Test 2: MCP initialize with Method B...");
 						const initRes = await fetch(serverUrl, {
@@ -271,35 +327,35 @@ export function renderMcpIntegrationSettingsTab(
 								"Accept": "application/json, text/event-stream",
 								"MCP-Protocol-Version": "2025-06-18",
 							},
-							body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" })
+							body: JSON.stringify({jsonrpc: "2.0", id: 1, method: "initialize"})
 						}).catch(err => {
 							throw new Error(`Initialize failed: ${err.message}`);
 						});
-						
+
 						if (!initRes.ok) {
 							const errorBody = await initRes.text();
 							throw new Error(`Initialize failed with status ${initRes.status}: ${errorBody}`);
 						}
-						
+
 						const initJson = await initRes.json();
 						console.log("[MCP Test] Initialize response:", initJson);
-						
+
 						if (initJson.error) {
 							throw new Error(`MCP error: ${initJson.error.message}`);
 						}
-						
-						const sessionId = initRes.headers.get("mcp-session-id") || 
-						                  initRes.headers.get("Mcp-Session-Id") || 
-						                  initJson?.sessionId || 
-						                  initJson?.result?.sessionId;
-						
+
+						const sessionId = initRes.headers.get("mcp-session-id") ||
+							initRes.headers.get("Mcp-Session-Id") ||
+							initJson?.sessionId ||
+							initJson?.result?.sessionId;
+
 						if (!sessionId) {
 							console.error("[MCP Test] No session ID in response");
 							throw new Error("No session ID returned");
 						}
-						
+
 						console.log("[MCP Test] Got session ID:", sessionId);
-						
+
 						// Test 3: Tools list
 						console.log("[MCP Test] Test 3: Listing tools...");
 						const toolsRes = await fetch(serverUrl, {
@@ -311,19 +367,19 @@ export function renderMcpIntegrationSettingsTab(
 								"Accept": "application/json, text/event-stream",
 								"MCP-Protocol-Version": "2025-06-18",
 							},
-							body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" })
+							body: JSON.stringify({jsonrpc: "2.0", id: 2, method: "tools/list"})
 						});
-						
+
 						const toolsJson = await toolsRes.json();
 						console.log("[MCP Test] Tools response:", toolsJson);
-						
+
 						if (toolsJson.error) {
 							throw new Error(`Tools list error: ${toolsJson.error.message}`);
 						}
-						
+
 						new Notice(t("Connection test successful! MCP server is working."));
 						console.log("[MCP Test] All tests passed!");
-						
+
 					} catch (error: any) {
 						console.error("[MCP Test] Test failed:", error);
 						new Notice(t("Connection test failed: ") + error.message);
@@ -370,7 +426,7 @@ export function renderMcpIntegrationSettingsTab(
 						// Probe a small range for availability by attempting to update (manager validates)
 						for (let i = 0; i < 50; i++) {
 							try {
-								await mcpManager.updateConfig({ port: candidate });
+								await mcpManager.updateConfig({port: candidate});
 								found = true;
 								break;
 							} catch {
@@ -390,17 +446,17 @@ export function renderMcpIntegrationSettingsTab(
 		});
 
 	// Client Configuration
-	containerEl.createEl("h3", { text: t("Client Configuration") });
+	containerEl.createEl("h3", {text: t("Client Configuration")});
 
 	const configContainer = containerEl.createDiv("mcp-config-container");
 
 	// Authentication Method Toggle
 	let useMethodB = true; // Default to Method B
-	
+
 	// Forward declare update functions
 	let updateClientConfigs: () => void;
 	let updateExamples: () => void;
-	
+
 	const authMethodSetting = new Setting(configContainer)
 		.setName(t("Authentication Method"))
 		.setDesc(t("Choose the authentication method for client configurations"))
@@ -438,20 +494,20 @@ export function renderMcpIntegrationSettingsTab(
 	const authList = authMethodsContainer.createEl("ul", {
 		cls: "mcp-auth-list",
 	});
-	
+
 	// Method A
 	const methodAItem = authList.createEl("li");
-	methodAItem.createEl("strong", { text: "Method A (Custom Header):" });
+	methodAItem.createEl("strong", {text: "Method A (Custom Header):"});
 	methodAItem.appendText(" ");
-	methodAItem.createEl("code", { text: `mcp-app-id: ${appId}` });
+	methodAItem.createEl("code", {text: `mcp-app-id: ${appId}`});
 	methodAItem.appendText(" + ");
-	methodAItem.createEl("code", { text: `Authorization: Bearer ${authToken}` });
-	
+	methodAItem.createEl("code", {text: `Authorization: Bearer ${authToken}`});
+
 	// Method B
 	const methodBItem = authList.createEl("li");
-	methodBItem.createEl("strong", { text: "Method B (Combined Bearer):" });
+	methodBItem.createEl("strong", {text: "Method B (Combined Bearer):"});
 	methodBItem.appendText(" ");
-	methodBItem.createEl("code", { text: `Authorization: Bearer ${authToken}+${appId}` });
+	methodBItem.createEl("code", {text: `Authorization: Bearer ${authToken}+${appId}`});
 
 	// Container for client configs that will be updated dynamically
 	const clientConfigsContainer = configContainer.createDiv("mcp-client-configs-container");
@@ -713,7 +769,7 @@ export function renderMcpIntegrationSettingsTab(
 	updateClientConfigs();
 
 	// API Documentation
-	containerEl.createEl("h3", { text: t("API Documentation") });
+	containerEl.createEl("h3", {text: t("API Documentation")});
 
 	const docsContainer = containerEl.createDiv("mcp-docs-container");
 
@@ -773,15 +829,15 @@ export function renderMcpIntegrationSettingsTab(
 					"Accept": "application/json, text/event-stream",
 					"MCP-Protocol-Version": "2025-06-18",
 				},
-				body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" })
+				body: JSON.stringify({jsonrpc: "2.0", id: 1, method: "initialize"})
 			});
-			
+
 			const initJson = await initRes.json().catch(() => ({}));
-			
+
 			// Session ID should be in the Mcp-Session-Id header according to spec
-			const sessionId = initRes.headers.get("Mcp-Session-Id") || 
-			                  initRes.headers.get("mcp-session-id");  // Fallback for case variations
-			
+			const sessionId = initRes.headers.get("Mcp-Session-Id") ||
+				initRes.headers.get("mcp-session-id");  // Fallback for case variations
+
 			if (!sessionId) {
 				throw new Error("No session id returned");
 			}
@@ -796,9 +852,9 @@ export function renderMcpIntegrationSettingsTab(
 					"Accept": "application/json, text/event-stream",
 					"MCP-Protocol-Version": "2025-06-18",
 				},
-				body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" })
+				body: JSON.stringify({jsonrpc: "2.0", id: 2, method: "tools/list"})
 			});
-			
+
 			const listJson = await listRes.json().catch(() => ({}));
 			const tools = listJson?.result?.tools || [];
 
@@ -813,7 +869,7 @@ export function renderMcpIntegrationSettingsTab(
 				const toolHeader = toolCard.createDiv("mcp-tool-header");
 				const iconEl = toolHeader.createDiv("mcp-tool-icon");
 				setIcon(iconEl, "wrench");
-				toolHeader.createEl("code", { text: tool.name, cls: "mcp-tool-name" });
+				toolHeader.createEl("code", {text: tool.name, cls: "mcp-tool-name"});
 				const toolDesc = toolCard.createDiv("mcp-tool-desc");
 				toolDesc.setText(tool.description || "");
 			});
@@ -821,6 +877,7 @@ export function renderMcpIntegrationSettingsTab(
 			toolsInfo.setText(t("Failed to load tools. Is the MCP server running?") as string);
 		}
 	}
+
 	// Fire and forget; UI remains responsive
 	renderDynamicTools();
 
@@ -832,13 +889,13 @@ export function renderMcpIntegrationSettingsTab(
 	});
 
 	const exampleContainer = exampleSection.createDiv("mcp-example-container");
-	
+
 	// Function to update examples based on selected authentication method
 	updateExamples = () => {
 		exampleContainer.empty();
 		renderExamples();
 	};
-	
+
 	const renderExamples = () => {
 		// Tab buttons for different examples
 		const tabContainer = exampleContainer.createDiv("mcp-example-tabs");
@@ -860,9 +917,9 @@ export function renderMcpIntegrationSettingsTab(
 
 		// cURL example
 		const curlExample = exampleCodeContainer.createDiv("mcp-example-block active");
-		curlExample.createEl("div", { text: "1) Initialize", cls: "mcp-example-subtitle" });
-		const curlPreInit = curlExample.createEl("pre", { cls: "mcp-example-code" });
-		
+		curlExample.createEl("div", {text: "1) Initialize", cls: "mcp-example-subtitle"});
+		const curlPreInit = curlExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			curlPreInit.createEl("code", {
 				text: `curl -i -X POST ${endpointUrl} \\
@@ -879,10 +936,10 @@ export function renderMcpIntegrationSettingsTab(
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}'`
 			});
 		}
-		
-		curlExample.createEl("div", { text: "2) Call tool with session id", cls: "mcp-example-subtitle" });
-		const curlPreCall = curlExample.createEl("pre", { cls: "mcp-example-code" });
-		
+
+		curlExample.createEl("div", {text: "2) Call tool with session id", cls: "mcp-example-subtitle"});
+		const curlPreCall = curlExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			curlPreCall.createEl("code", {
 				text: `curl -X POST ${endpointUrl} \\
@@ -904,9 +961,9 @@ export function renderMcpIntegrationSettingsTab(
 
 		// JavaScript example (Init + Call)
 		const jsExample = exampleCodeContainer.createDiv("mcp-example-block");
-		jsExample.createEl("div", { text: "1) Initialize", cls: "mcp-example-subtitle" });
-		const jsPreInit = jsExample.createEl("pre", { cls: "mcp-example-code" });
-		
+		jsExample.createEl("div", {text: "1) Initialize", cls: "mcp-example-subtitle"});
+		const jsPreInit = jsExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			jsPreInit.createEl("code", {
 				text: `const initRes = await fetch('${endpointUrl}', {\n  method: 'POST',\n  headers: {\n    'Authorization': '${bearerWithAppId}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })\n});\nconst sessionId = initRes.headers.get('mcp-session-id');`
@@ -916,10 +973,10 @@ export function renderMcpIntegrationSettingsTab(
 				text: `const initRes = await fetch('${endpointUrl}', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer ${authToken}',\n    'mcp-app-id': '${appId}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' })\n});\nconst sessionId = initRes.headers.get('mcp-session-id');`
 			});
 		}
-		
-		jsExample.createEl("div", { text: "2) Call tool with session id", cls: "mcp-example-subtitle" });
-		const jsPreCall = jsExample.createEl("pre", { cls: "mcp-example-code" });
-		
+
+		jsExample.createEl("div", {text: "2) Call tool with session id", cls: "mcp-example-subtitle"});
+		const jsPreCall = jsExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			jsPreCall.createEl("code", {
 				text: `const callRes = await fetch('${endpointUrl}', {\n  method: 'POST',\n  headers: {\n    'Authorization': '${bearerWithAppId}',\n    'mcp-session-id': sessionId,\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    jsonrpc: '2.0',\n    id: 2,\n    method: 'tools/call',\n    params: { name: 'query_tasks', arguments: { filter: { completed: false, priority: 5 }, limit: 10 } }\n  })\n});\nconsole.log(await callRes.json());`
@@ -932,9 +989,9 @@ export function renderMcpIntegrationSettingsTab(
 
 		// Python example (Init + Call)
 		const pythonExample = exampleCodeContainer.createDiv("mcp-example-block");
-		pythonExample.createEl("div", { text: "1) Initialize", cls: "mcp-example-subtitle" });
-		const pythonPreInit = pythonExample.createEl("pre", { cls: "mcp-example-code" });
-		
+		pythonExample.createEl("div", {text: "1) Initialize", cls: "mcp-example-subtitle"});
+		const pythonPreInit = pythonExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			pythonPreInit.createEl("code", {
 				text: `import requests
@@ -969,10 +1026,10 @@ session_id = init_res.headers.get('mcp-session-id')
 print(f"Session ID: {session_id}")`,
 			});
 		}
-		
-		pythonExample.createEl("div", { text: "2) Call tool with session id", cls: "mcp-example-subtitle" });
-		const pythonPreCall = pythonExample.createEl("pre", { cls: "mcp-example-code" });
-		
+
+		pythonExample.createEl("div", {text: "2) Call tool with session id", cls: "mcp-example-subtitle"});
+		const pythonPreCall = pythonExample.createEl("pre", {cls: "mcp-example-code"});
+
 		if (useMethodB) {
 			pythonPreCall.createEl("code", {
 				text: `# Call tool
@@ -1045,7 +1102,7 @@ print(call_res.json())`,
 			codeBlocks.forEach((preBlock) => {
 				const codeElement = preBlock.querySelector("code");
 				if (!codeElement) return;
-				
+
 				const copyBtn = preBlock.createEl("button", {
 					text: t("Copy"),
 					cls: "mcp-example-copy-btn",
@@ -1063,7 +1120,7 @@ print(call_res.json())`,
 			});
 		});
 	};
-	
+
 	// Initial render of examples
 	renderExamples();
 }
