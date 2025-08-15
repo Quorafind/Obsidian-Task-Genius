@@ -203,7 +203,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// Minimal quick capture suggest
 	minimalQuickCaptureSuggest: MinimalQuickCaptureSuggest;
-	
+
 	// Regular quick capture suggest
 	quickCaptureSuggest: any;
 
@@ -373,7 +373,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			this.addChild(this.taskGeniusIconManager);
 
 			// Initialize MCP Server Manager (desktop only)
-			if (Platform.isDesktopApp && this.settings.mcpIntegration?.enabled) {
+			if (Platform.isDesktopApp) {
 				this.mcpServerManager = new McpServerManager(this);
 				this.mcpServerManager.initialize();
 			}
@@ -1055,9 +1055,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 						}
 
 						const jsonData = this.taskTimerExporter.exportToJSON(true);
-						
+
 						// Create a blob and download link
-						const blob = new Blob([jsonData], { type: 'application/json' });
+						const blob = new Blob([jsonData], {type: 'application/json'});
 						const url = URL.createObjectURL(blob);
 						const a = document.createElement('a');
 						a.href = url;
@@ -1084,7 +1084,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						const input = document.createElement('input');
 						input.type = 'file';
 						input.accept = '.json';
-						
+
 						input.onchange = async (e) => {
 							const file = (e.target as HTMLInputElement).files?.[0];
 							if (!file) return;
@@ -1092,7 +1092,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							try {
 								const text = await file.text();
 								const success = this.taskTimerExporter.importFromJSON(text);
-								
+
 								if (success) {
 									new Notice("Timer data imported successfully");
 								} else {
@@ -1124,9 +1124,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 						}
 
 						const yamlData = this.taskTimerExporter.exportToYAML(true);
-						
+
 						// Create a blob and download link
-						const blob = new Blob([yamlData], { type: 'text/yaml' });
+						const blob = new Blob([yamlData], {type: 'text/yaml'});
 						const url = URL.createObjectURL(blob);
 						const a = document.createElement('a');
 						a.href = url;
@@ -1150,9 +1150,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: async () => {
 					try {
 						const backupData = this.taskTimerExporter.createBackup();
-						
+
 						// Create a blob and download link
-						const blob = new Blob([backupData], { type: 'application/json' });
+						const blob = new Blob([backupData], {type: 'application/json'});
 						const url = URL.createObjectURL(blob);
 						const a = document.createElement('a');
 						a.href = url;
@@ -1176,11 +1176,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: () => {
 					try {
 						const stats = this.taskTimerExporter.getExportStats();
-						
+
 						let message = `Task Timer Statistics:\n`;
 						message += `Active timers: ${stats.activeTimers}\n`;
 						message += `Total duration: ${Math.round(stats.totalDuration / 60000)} minutes\n`;
-						
+
 						if (stats.oldestTimer) {
 							message += `Oldest timer: ${stats.oldestTimer}\n`;
 						}
@@ -1219,12 +1219,12 @@ export default class TaskProgressBarPlugin extends Plugin {
 		}
 
 		this.settings.taskGutter.enableTaskGutter &&
-			this.registerEditorExtension([taskGutterExtension(this.app, this)]);
+		this.registerEditorExtension([taskGutterExtension(this.app, this)]);
 		this.settings.enableTaskStatusSwitcher &&
-			this.settings.enableCustomTaskMarks &&
-			this.registerEditorExtension([
-				taskStatusSwitcherExtension(this.app, this),
-			]);
+		this.settings.enableCustomTaskMarks &&
+		this.registerEditorExtension([
+			taskStatusSwitcherExtension(this.app, this),
+		]);
 
 		// Add priority picker extension
 		if (this.settings.enablePriorityPicker) {
@@ -1312,9 +1312,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 			// For existing users with changes, let the view handle the async detection
 			// For new users, show onboarding directly
-			if ((isFirstInstall && shouldShowOnboarding) || 
+			if ((isFirstInstall && shouldShowOnboarding) ||
 				(!isFirstInstall && shouldShowOnboarding && this.settingsChangeDetector.hasUserMadeChanges())) {
-				
+
 				// Small delay to ensure UI is ready
 				setTimeout(() => {
 					this.openOnboardingView();
@@ -1329,11 +1329,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 	 * Open the onboarding view in a new leaf
 	 */
 	async openOnboardingView(): Promise<void> {
-		const { workspace } = this.app;
+		const {workspace} = this.app;
 
 		// Check if onboarding view is already open
 		const existingLeaf = workspace.getLeavesOfType(ONBOARDING_VIEW_TYPE)[0];
-		
+
 		if (existingLeaf) {
 			workspace.revealLeaf(existingLeaf);
 			return;
@@ -1341,7 +1341,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Create a new leaf in the main area and open the onboarding view
 		const leaf = workspace.getLeaf("tab");
-		await leaf.setViewState({ type: ONBOARDING_VIEW_TYPE });
+		await leaf.setViewState({type: ONBOARDING_VIEW_TYPE});
 		workspace.revealLeaf(leaf);
 	}
 
@@ -1401,7 +1401,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				(v) => v.id === defaultView.id
 			);
 			if (!existingView) {
-				this.settings.viewConfiguration.push({ ...defaultView });
+				this.settings.viewConfiguration.push({...defaultView});
 			}
 		});
 
@@ -1411,7 +1411,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// Helper method to set priority at cursor position
 
 	async activateTaskView() {
-		const { workspace } = this.app;
+		const {workspace} = this.app;
 
 		// Check if view is already open
 		const existingLeaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
@@ -1424,12 +1424,12 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Otherwise, create a new leaf in the right split and open the view
 		const leaf = workspace.getLeaf("tab");
-		await leaf.setViewState({ type: TASK_VIEW_TYPE });
+		await leaf.setViewState({type: TASK_VIEW_TYPE});
 		workspace.revealLeaf(leaf);
 	}
 
 	async activateTimelineSidebarView() {
-		const { workspace } = this.app;
+		const {workspace} = this.app;
 
 		// Check if view is already open
 		const existingLeaf = workspace.getLeavesOfType(
@@ -1445,7 +1445,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Open in the right sidebar
 		const leaf = workspace.getRightLeaf(false);
 		if (leaf) {
-			await leaf.setViewState({ type: TIMELINE_SIDEBAR_VIEW_TYPE });
+			await leaf.setViewState({type: TIMELINE_SIDEBAR_VIEW_TYPE});
 			workspace.revealLeaf(leaf);
 		}
 	}
@@ -1654,7 +1654,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 function setPriorityAtCursor(editor: Editor, priority: string) {
 	const cursor = editor.getCursor();
 	const line = editor.getLine(cursor.line);
-	const lineStart = editor.posToOffset({ line: cursor.line, ch: 0 });
+	const lineStart = editor.posToOffset({line: cursor.line, ch: 0});
 
 	// Check if this line has a task
 	const taskRegex =
@@ -1701,7 +1701,7 @@ function setPriorityAtCursor(editor: Editor, priority: string) {
 function removePriorityAtCursor(editor: Editor) {
 	const cursor = editor.getCursor();
 	const line = editor.getLine(cursor.line);
-	const lineStart = editor.posToOffset({ line: cursor.line, ch: 0 });
+	const lineStart = editor.posToOffset({line: cursor.line, ch: 0});
 
 	// Check if this line has a task with priority
 	const priorityRegex = /(?:🔺|⏫|🔼|🔽|⏬️|\[#[A-C]\])/;
