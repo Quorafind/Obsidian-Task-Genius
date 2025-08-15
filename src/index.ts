@@ -8,6 +8,7 @@ import {
 	Menu,
 	addIcon,
 	requireApiVersion,
+	Platform,
 } from "obsidian";
 import { taskProgressBarExtension } from "./editor-ext/progressBarWidget";
 import { taskTimerExtension } from "./editor-ext/taskTimer";
@@ -81,6 +82,7 @@ import "./styles/view-config.css";
 import "./styles/task-status.css";
 import "./styles/quadrant/quadrant.css";
 import "./styles/onboarding.css";
+import "./styles/universal-suggest.css";
 import { TaskSpecificView } from "./pages/TaskSpecificView";
 import { TASK_SPECIFIC_VIEW_TYPE } from "./pages/TaskSpecificView";
 import {
@@ -105,6 +107,7 @@ import { SettingsChangeDetector } from "./utils/SettingsChangeDetector";
 import { OnboardingView, ONBOARDING_VIEW_TYPE } from "./components/onboarding/OnboardingView";
 import { TaskTimerExporter } from "./utils/TaskTimerExporter";
 import { TaskTimerManager } from "./utils/TaskTimerManager";
+import { McpServerManager } from "./mcp/McpServerManager";
 
 class TaskProgressBarPopover extends HoverPopover {
 	plugin: TaskProgressBarPlugin;
@@ -225,6 +228,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// Task Genius Icon manager instance
 	taskGeniusIconManager: TaskGeniusIconManager;
+
+	// MCP Server manager instance (desktop only)
+	mcpServerManager?: McpServerManager;
 
 	async onload() {
 		await this.loadSettings();
@@ -365,6 +371,12 @@ export default class TaskProgressBarPlugin extends Plugin {
 			// Initialize Task Genius Icon Manager
 			this.taskGeniusIconManager = new TaskGeniusIconManager(this);
 			this.addChild(this.taskGeniusIconManager);
+
+			// Initialize MCP Server Manager (desktop only)
+			if (Platform.isDesktopApp) {
+				this.mcpServerManager = new McpServerManager(this);
+				this.mcpServerManager.initialize();
+			}
 
 			// Check and show onboarding for first-time users
 			this.checkAndShowOnboarding();
@@ -1278,6 +1290,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Clean up task manager when plugin is unloaded
 		if (this.taskManager) {
 			this.taskManager.onunload();
+		}
+
+		// Clean up MCP server manager (desktop only)
+		if (this.mcpServerManager) {
+			this.mcpServerManager.cleanup();
 		}
 
 		// Task Genius Icon Manager cleanup is handled automatically by Component system

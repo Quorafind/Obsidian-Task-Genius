@@ -568,6 +568,16 @@ export interface FileFilterSettings {
 	rules: FileFilterRule[];
 }
 
+/** MCP Server Configuration */
+export interface McpServerConfig {
+	enabled: boolean;
+	port: number;
+	host: string;
+	authToken: string;
+	enableCors: boolean;
+	logLevel: "debug" | "info" | "warn" | "error";
+}
+
 /** Define the main settings structure */
 export interface TaskProgressBarSettings {
 	// General Settings (Example)
@@ -713,6 +723,9 @@ export interface TaskProgressBarSettings {
 
 	// Task Timer Settings
 	taskTimer: TaskTimerSettings;
+
+	// MCP Integration Settings
+	mcpIntegration?: McpServerConfig;
 
 	// Onboarding Settings
 	onboarding?: {

@@ -556,12 +556,17 @@ export class MarkdownTaskParser {
 				break;
 			}
 
-			// Check for space followed by # (tag) - this handles cases without file extensions
+			// Check for whitespace followed by # (tag) or @ (context), or direct #/@ without preceding space
 			if (
-				char === " " &&
+				/\s/.test(char) &&
 				i + 1 < valuePart.length &&
-				valuePart[i + 1] === "#"
+				(valuePart[i + 1] === "#" || valuePart[i + 1] === "@")
 			) {
+				valueEnd = i;
+				break;
+			}
+			// Also stop if we encounter # or @ directly (no whitespace)
+			if (char === "#" || char === "@") {
 				valueEnd = i;
 				break;
 			}
@@ -582,6 +587,18 @@ export class MarkdownTaskParser {
 			// For priority emojis, use specific values based on the emoji
 			metadataValue =
 				value || this.getDefaultEmojiValue(earliestEmoji.emoji);
+		}
+
+		// Sanitize date-like emoji values to avoid trailing context (e.g., "2025-08-15 @work")
+		if (
+			["dueDate", "startDate", "scheduledDate", "completedDate", "createdDate", "cancelledDate"].includes(
+				earliestEmoji.key as string
+			) && typeof metadataValue === "string"
+		) {
+			const m = metadataValue.match(/\d{4}-\d{2}-\d{2}/);
+			if (m) {
+				metadataValue = m[0];
+			}
 		}
 
 		const newPos =

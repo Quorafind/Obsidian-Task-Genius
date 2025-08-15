@@ -4,6 +4,7 @@ import {
 	setIcon,
 	ButtonComponent,
 	Setting,
+	Platform,
 } from "obsidian";
 import TaskProgressBarPlugin from ".";
 
@@ -32,6 +33,7 @@ import {
 import { renderFileFilterSettingsTab } from "./components/settings/FileFilterSettingsTab";
 import { renderTimeParsingSettingsTab } from "./components/settings/TimeParsingSettingsTab";
 import { SettingsSearchComponent } from "./components/settings/SettingsSearchComponent";
+import { renderMcpIntegrationSettingsTab } from "./components/settings/McpIntegrationSettingsTab";
 
 export class TaskProgressBarSettingTab extends PluginSettingTab {
 	plugin: TaskProgressBarPlugin;
@@ -161,6 +163,12 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			category: "integration",
 		},
 		{
+			id: "mcp-integration",
+			name: t("MCP Integration"),
+			icon: "network",
+			category: "integration",
+		},
+		{
 			id: "beta-test",
 			name: t("Beta Features"),
 			icon: "flask-conical",
@@ -234,6 +242,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Group tabs by category
 		this.tabs.forEach((tab) => {
+			// Skip MCP tab on non-desktop platforms
+			if (tab.id === "mcp-integration" && !Platform.isDesktopApp) {
+				return;
+			}
 			const category = tab.category || "core";
 			if (categories[category as keyof typeof categories]) {
 				categories[category as keyof typeof categories].tabs.push(tab);
@@ -495,6 +507,12 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		const icsSection = this.createTabSection("ics-integration");
 		this.displayIcsSettings(icsSection);
 
+		// MCP Integration Tab (only on desktop)
+		if (Platform.isDesktopApp) {
+			const mcpSection = this.createTabSection("mcp-integration");
+			this.displayMcpSettings(mcpSection);
+		}
+
 		// Beta Test Tab
 		const betaTestSection = this.createTabSection("beta-test");
 		this.displayBetaTestSettings(betaTestSection);
@@ -571,6 +589,14 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			}
 		);
 		icsSettingsComponent.display();
+	}
+
+	private displayMcpSettings(containerEl: HTMLElement): void {
+		renderMcpIntegrationSettingsTab(
+			containerEl,
+			this.plugin,
+			() => this.applySettingsUpdate()
+		);
 	}
 
 	private displayAboutSettings(containerEl: HTMLElement): void {

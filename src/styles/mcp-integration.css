@@ -1,0 +1,577 @@
+/* MCP Integration Settings Styles */
+
+/* Status Container */
+.mcp-status-container {
+    padding: 16px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.mcp-status {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mcp-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.mcp-status-indicator.running .status-dot {
+    color: var(--background-modifier-success);
+    font-size: 1.2em;
+    animation: pulse 2s infinite;
+}
+
+.mcp-status-indicator.stopped .status-dot {
+    color: var(--text-muted);
+    font-size: 1.2em;
+}
+
+.mcp-status-details {
+    display: flex;
+    gap: 24px;
+    font-size: 0.9em;
+    color: var(--text-muted);
+    padding-left: 30px;
+}
+
+/* Client Configuration */
+.mcp-config-container {
+    margin-bottom: 30px;
+}
+
+.mcp-client-section {
+    margin-bottom: 16px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mcp-client-header {
+    cursor: pointer;
+    padding: 12px 16px;
+    background: var(--background-secondary);
+    border-radius: 0;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.mcp-client-header:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* Arrow icon for collapsible sections */
+.mcp-arrow {
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+
+.mcp-arrow svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+}
+
+.mcp-arrow.expanded {
+    transform: rotate(90deg);
+}
+
+.mcp-client-name {
+    font-weight: 500;
+    color: var(--text-normal);
+}
+
+.mcp-client-content {
+    padding: 16px !important;
+    background: var(--background-primary);
+    display: none;
+}
+
+.mcp-client-content.expanded {
+    display: block;
+}
+
+.mcp-config-block {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.mcp-config-code {
+    position: relative;
+    padding: 16px 60px 16px 16px !important;
+    background: var(--code-background);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    margin-bottom: 0;
+    font-size: 0.85em;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 300px;
+    font-family: var(--font-monospace);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-bg);
+}
+
+.mcp-config-code code {
+    color: var(--code-normal);
+    font-family: var(--font-monospace);
+    white-space: pre;
+    display: block;
+}
+
+.mcp-config-code::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.mcp-config-code::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+}
+
+.mcp-config-code::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-bg);
+    border-radius: 4px;
+}
+
+.mcp-config-code::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-active-thumb-bg);
+}
+
+/* Copy Buttons */
+.mcp-copy-btn {
+    position: absolute !important;
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+    font-size: 0.8em;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    z-index: 10;
+}
+
+.mcp-copy-btn:hover {
+    background: var(--interactive-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mcp-copy-btn.copied {
+    animation: copySuccess 0.3s ease;
+    background: var(--background-modifier-success) !important;
+}
+
+/* Authentication Methods List */
+.mcp-auth-methods {
+    margin: 15px 0;
+    padding: 15px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.mcp-auth-list {
+    margin: 10px 0 0 20px;
+    line-height: 1.8;
+}
+
+.mcp-auth-list li {
+    margin: 8px 0;
+    color: var(--text-normal);
+}
+
+.mcp-auth-list code {
+    background: var(--code-background);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    color: var(--code-normal);
+}
+
+/* Token Input */
+.mcp-token-input {
+    font-family: monospace;
+    width: 300px;
+    margin-right: 10px;
+}
+
+/* API Documentation */
+.mcp-docs-container {
+    margin-top: 20px;
+}
+
+.mcp-docs-section {
+    margin-bottom: 30px;
+}
+
+.mcp-docs-subtitle {
+    font-size: 1em;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-normal);
+}
+
+/* Endpoint Box */
+.mcp-endpoint-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.mcp-endpoint-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mcp-endpoint-label {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.mcp-endpoint-url {
+    font-family: var(--font-monospace);
+    padding: 6px 10px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-accent);
+    user-select: text;
+}
+
+.mcp-copy-endpoint-btn {
+    padding: 6px 12px;
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mcp-copy-endpoint-btn:hover {
+    background: var(--interactive-hover);
+}
+
+.mcp-copy-endpoint-btn.copied {
+    animation: copySuccess 0.3s ease;
+    background: var(--background-modifier-success) !important;
+}
+
+/* Tools Grid */
+.mcp-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.mcp-tool-card {
+    position: relative;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-primary) 100%);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.mcp-tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--interactive-accent) 0%, var(--text-accent) 100%);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.mcp-tool-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: var(--interactive-accent);
+}
+
+.mcp-tool-card:hover::before {
+    transform: scaleX(1);
+}
+
+.mcp-tool-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.mcp-tool-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--interactive-accent);
+    opacity: 0.9;
+}
+
+.mcp-tool-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+}
+
+.mcp-tool-name {
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-accent);
+    background: var(--background-modifier-box);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+.mcp-tool-desc {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    line-height: 1.5;
+    padding-left: 28px;
+}
+
+/* Example Container */
+.mcp-example-container {
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-top: 16px;
+}
+
+/* Example Tabs */
+.mcp-example-tabs {
+    display: flex;
+    gap: 0;
+    background: linear-gradient(180deg, var(--background-secondary) 0%, var(--background-modifier-box) 100%);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 0;
+}
+
+.mcp-example-tab {
+    flex: 1;
+    padding: 14px 20px;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9em;
+    font-weight: 500;
+    position: relative;
+    text-align: center;
+    box-shadow: none !important;
+}
+
+.mcp-example-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 80%;
+    height: 3px;
+    background: var(--interactive-accent);
+    transition: transform 0.3s ease;
+    border-radius: 3px 3px 0 0;
+}
+
+.mcp-example-tab:hover {
+    background: rgba(var(--interactive-accent-rgb), 0.05);
+    color: var(--text-normal);
+}
+
+.mcp-example-tab.active {
+    background: rgba(var(--interactive-accent-rgb), 0.1);
+    color: var(--interactive-accent);
+    font-weight: 600;
+}
+
+.mcp-example-tab.active::after {
+    transform: translateX(-50%) scaleX(1);
+}
+
+/* Example Code */
+.mcp-example-code-container {
+    position: relative;
+    background: var(--code-background);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.mcp-example-block {
+    display: none;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+}
+
+.mcp-example-block.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mcp-example-code {
+    margin: 0;
+    padding: 24px 80px 24px 24px;
+    background: linear-gradient(135deg, var(--code-background) 0%, rgba(var(--background-primary-rgb), 0.5) 100%);
+    font-size: 0.85em;
+    line-height: 1.7;
+    overflow-x: auto;
+    max-height: 500px;
+    font-family: var(--font-monospace);
+    border: none;
+    position: relative;
+}
+
+.mcp-example-code::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--background-modifier-border), transparent);
+}
+
+.mcp-example-code code {
+    color: var(--code-normal);
+    font-family: var(--font-monospace);
+    white-space: pre;
+    display: block;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.mcp-example-copy-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.mcp-example-copy-btn:hover {
+    background: var(--interactive-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb), 0.4);
+}
+
+.mcp-example-copy-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.mcp-example-copy-btn.copied {
+    animation: copySuccess 0.4s ease;
+    background: var(--background-modifier-success) !important;
+    box-shadow: 0 2px 8px rgba(var(--interactive-success-rgb), 0.3);
+}
+
+/* Animations */
+@keyframes copySuccess {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Smooth transitions for all interactive elements */
+.mcp-client-header,
+.mcp-example-tab,
+.mcp-tool-card,
+button {
+    transition: all 0.2s ease;
+}
+
+/* Code syntax colors for better readability */
+.mcp-config-code .json-key {
+    color: var(--text-accent);
+}
+
+.mcp-config-code .json-string {
+    color: var(--text-success);
+}
+
+.mcp-config-code .json-number {
+    color: var(--text-warning);
+}
+
+.mcp-config-code .json-boolean {
+    color: var(--text-error);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .mcp-tools-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mcp-status-details {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+.mcp-example-subtitle {
+    padding-left: var(--size-4-4);
+}
