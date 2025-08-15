@@ -612,8 +612,8 @@ export class McpServer {
 				if (this.config.enableCors) {
 					res.setHeader("Access-Control-Allow-Origin", "*");
 					res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-					// Allow both canonical and lowercase header spellings for robustness
-					res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, authorization, Mcp-Session-Id, mcp-session-id, Mcp-App-Id, mcp-app-id");
+					// Allow both canonical and lowercase header spellings for robustness, including MCP-Protocol-Version
+					res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, authorization, Mcp-Session-Id, mcp-session-id, Mcp-App-Id, mcp-app-id, MCP-Protocol-Version, mcp-protocol-version, Accept");
 					res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 				}
 

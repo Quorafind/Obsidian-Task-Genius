@@ -306,20 +306,23 @@ export function renderMcpIntegrationSettingsTab(
 
 						// Test 1: Basic connectivity
 						console.log("[MCP Test] Test 1: Basic connectivity...");
-						const healthRes = await requestUrl(`http://${plugin.settings.mcpIntegration?.host || "127.0.0.1"}:${plugin.settings.mcpIntegration?.port || 7777}/health`)
-							.catch(err => {
-								console.error("[MCP Test] Health check failed:", err);
-								throw new Error(`Cannot reach server: ${err.message}`);
-							});
+						const healthRes = await requestUrl({
+							url: `http://${plugin.settings.mcpIntegration?.host || "127.0.0.1"}:${plugin.settings.mcpIntegration?.port || 7777}/health`,
+							method: "GET"
+						}).catch(err => {
+							console.error("[MCP Test] Health check failed:", err);
+							throw new Error(`Cannot reach server: ${err.message}`);
+						});
 
-						if (!healthRes || !healthRes.status) {
+						if (!healthRes || healthRes.status !== 200) {
 							throw new Error(`Health check failed`);
 						}
 						console.log("[MCP Test] Health check passed");
 
 						// Test 2: MCP initialize with Method B (combined bearer)
 						console.log("[MCP Test] Test 2: MCP initialize with Method B...");
-						const initRes = await fetch(serverUrl, {
+						const initRes = await requestUrl({
+							url: serverUrl,
 							method: "POST",
 							headers: {
 								"Authorization": bearerWithAppId,
@@ -332,20 +335,23 @@ export function renderMcpIntegrationSettingsTab(
 							throw new Error(`Initialize failed: ${err.message}`);
 						});
 
-						if (!initRes.ok) {
-							const errorBody = await initRes.text();
+						if (initRes.status !== 200) {
+							const errorBody = initRes.text;
 							throw new Error(`Initialize failed with status ${initRes.status}: ${errorBody}`);
 						}
 
-						const initJson = await initRes.json();
+						// Obsidian's requestUrl returns json directly
+						const initJson = initRes.json;
 						console.log("[MCP Test] Initialize response:", initJson);
+						console.log("[MCP Test] Headers:", initRes.headers);
 
 						if (initJson.error) {
 							throw new Error(`MCP error: ${initJson.error.message}`);
 						}
 
-						const sessionId = initRes.headers.get("mcp-session-id") ||
-							initRes.headers.get("Mcp-Session-Id") ||
+						// Obsidian's requestUrl returns headers with lowercase keys
+						const sessionId = initRes.headers["mcp-session-id"] ||
+							initRes.headers["Mcp-Session-Id"] ||
 							initJson?.sessionId ||
 							initJson?.result?.sessionId;
 
@@ -358,7 +364,8 @@ export function renderMcpIntegrationSettingsTab(
 
 						// Test 3: Tools list
 						console.log("[MCP Test] Test 3: Listing tools...");
-						const toolsRes = await fetch(serverUrl, {
+						const toolsRes = await requestUrl({
+							url: serverUrl,
 							method: "POST",
 							headers: {
 								"Authorization": bearerWithAppId,
@@ -370,7 +377,8 @@ export function renderMcpIntegrationSettingsTab(
 							body: JSON.stringify({jsonrpc: "2.0", id: 2, method: "tools/list"})
 						});
 
-						const toolsJson = await toolsRes.json();
+						// Obsidian's requestUrl returns json directly
+						const toolsJson = toolsRes.json;
 						console.log("[MCP Test] Tools response:", toolsJson);
 
 						if (toolsJson.error) {
@@ -821,7 +829,8 @@ export function renderMcpIntegrationSettingsTab(
 	async function renderDynamicTools() {
 		try {
 			// Step 1: initialize to get session id
-			const initRes = await fetch(serverUrl, {
+			const initRes = await requestUrl({
+				url: serverUrl,
 				method: "POST",
 				headers: {
 					"Authorization": `${bearerWithAppId}`,
@@ -832,18 +841,18 @@ export function renderMcpIntegrationSettingsTab(
 				body: JSON.stringify({jsonrpc: "2.0", id: 1, method: "initialize"})
 			});
 
-			const initJson = await initRes.json().catch(() => ({}));
-
 			// Session ID should be in the Mcp-Session-Id header according to spec
-			const sessionId = initRes.headers.get("Mcp-Session-Id") ||
-				initRes.headers.get("mcp-session-id");  // Fallback for case variations
+			// Obsidian's requestUrl returns headers with lowercase keys
+			const sessionId = initRes.headers["mcp-session-id"] ||
+				initRes.headers["Mcp-Session-Id"];  // Fallback for case variations
 
 			if (!sessionId) {
 				throw new Error("No session id returned");
 			}
 
 			// Step 2: list tools
-			const listRes = await fetch(serverUrl, {
+			const listRes = await requestUrl({
+				url: serverUrl,
 				method: "POST",
 				headers: {
 					"Authorization": `${bearerWithAppId}`,
@@ -855,8 +864,9 @@ export function renderMcpIntegrationSettingsTab(
 				body: JSON.stringify({jsonrpc: "2.0", id: 2, method: "tools/list"})
 			});
 
-			const listJson = await listRes.json().catch(() => ({}));
-			const tools = listJson?.result?.tools || [];
+			console.log("MCP tools", listRes);
+
+			const tools = listRes?.json.result?.tools || [];
 
 			toolsInfo.setText("");
 			if (!tools.length) {
@@ -874,6 +884,7 @@ export function renderMcpIntegrationSettingsTab(
 				toolDesc.setText(tool.description || "");
 			});
 		} catch (e: any) {
+			console.error("[MCP Tools] Failed to load tools:", e);
 			toolsInfo.setText(t("Failed to load tools. Is the MCP server running?") as string);
 		}
 	}
