@@ -740,7 +740,82 @@ export function renderMcpIntegrationSettingsTab(
 			};
 
 			// Add configuration content
-			if (client.config) {
+			if (client.name === "Cursor") {
+				// Add one-click install for Cursor
+				const cursorInstallSection = content.createDiv("mcp-cursor-install-section");
+				cursorInstallSection.createEl("h4", {
+					text: t("Quick Install"),
+					cls: "mcp-docs-subtitle",
+				});
+
+				// Generate Cursor deeplink configuration
+				const cursorConfig = {
+					url: serverUrl,
+					headers: {
+						Authorization: bearerWithAppId
+					}
+				};
+
+				// Base64 encode the configuration
+				const encodedConfig = btoa(JSON.stringify(cursorConfig));
+				const cursorDeeplink = `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(toolName)}&config=${encodedConfig}`;
+
+				// Create install button container
+				const installContainer = cursorInstallSection.createDiv("mcp-cursor-install-container");
+				
+				// Add description
+				installContainer.createEl("p", {
+					text: t("Click the button below to automatically add this MCP server to Cursor:"),
+					cls: "mcp-cursor-install-desc"
+				});
+
+				// Create install button with official Cursor SVG (dark mode style)
+				const installLink = installContainer.createEl("a", {
+					href: cursorDeeplink,
+					cls: "mcp-cursor-install-link"
+				});
+
+				const installBtn = installLink.createEl("img", {
+					attr: {
+						src: "https://cursor.com/deeplink/mcp-install-dark.svg",
+						alt: `Add ${toolName} MCP server to Cursor`,
+						height: "32"
+					}
+				});
+
+				// Additional buttons container
+				const additionalButtons = installContainer.createDiv("mcp-cursor-additional-buttons");
+
+				// Copy deeplink button
+				const copyDeeplinkBtn = additionalButtons.createEl("button", {
+					text: t("Copy Install Link"),
+					cls: "mcp-cursor-copy-deeplink-btn"
+				});
+
+				copyDeeplinkBtn.onclick = async () => {
+					await navigator.clipboard.writeText(cursorDeeplink);
+					copyDeeplinkBtn.setText(t("Copied!"));
+					copyDeeplinkBtn.addClass("copied");
+					setTimeout(() => {
+						copyDeeplinkBtn.setText(t("Copy Install Link"));
+						copyDeeplinkBtn.removeClass("copied");
+					}, 2000);
+				};
+
+				// Add separator
+				content.createEl("hr", {
+					cls: "mcp-section-separator"
+				});
+
+				// Add manual configuration section
+				content.createEl("h4", {
+					text: t("Manual Configuration"),
+					cls: "mcp-docs-subtitle",
+				});
+				
+				// Show the configuration JSON
+				createConfigBlock(content, client.config, `${client.name} configuration`);
+			} else if (client.config) {
 				createConfigBlock(content, client.config, `${client.name} configuration`);
 			} else if (client.commandLine) {
 				// Special handling for command line configs

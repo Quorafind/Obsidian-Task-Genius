@@ -575,3 +575,114 @@ button {
 .mcp-example-subtitle {
     padding-left: var(--size-4-4);
 }
+
+/* Cursor One-Click Install Section */
+.mcp-cursor-install-section {
+	margin-bottom: 20px;
+}
+
+.mcp-cursor-install-container {
+	margin-top: 12px;
+}
+
+.mcp-cursor-install-desc {
+	color: var(--text-muted);
+	margin-bottom: 12px;
+	font-size: 14px;
+}
+
+.mcp-cursor-install-link {
+	display: inline-block;
+	margin-bottom: 16px;
+	transition: transform 0.2s ease;
+}
+
+.mcp-cursor-install-link:hover {
+	transform: scale(1.05);
+}
+
+.mcp-cursor-additional-buttons {
+	margin-top: 12px;
+	display: flex;
+	gap: 10px;
+}
+
+
+.mcp-cursor-copy-deeplink-btn {
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	padding: 8px 16px;
+	border-radius: 4px;
+	font-size: 14px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.mcp-cursor-copy-deeplink-btn:hover {
+	background: var(--interactive-hover);
+}
+
+.mcp-cursor-copy-deeplink-btn.copied {
+	background: var(--interactive-success);
+	color: white;
+}
+
+.mcp-cursor-debug-container {
+	margin-top: 20px;
+}
+
+.mcp-cursor-debug-toggle {
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.mcp-cursor-debug-toggle:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.mcp-cursor-debug-content {
+	margin-top: 12px;
+	padding: 12px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+}
+
+.mcp-cursor-debug-label {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-bottom: 8px;
+	margin-top: 12px;
+}
+
+.mcp-cursor-debug-label:first-child {
+	margin-top: 0;
+}
+
+.mcp-cursor-debug-code {
+	background: var(--code-background);
+	padding: 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	overflow-x: auto;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.mcp-cursor-debug-code code {
+	color: var(--code-normal);
+	word-break: break-all;
+}
+
+.mcp-section-separator {
+	margin: 24px 0;
+	border: none;
+	border-top: 1px solid var(--background-modifier-border);
+}

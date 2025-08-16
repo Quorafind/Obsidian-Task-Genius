@@ -57,6 +57,87 @@ export class McpServer {
 	}
 
 	/**
+	 * Get prompt definitions
+	 */
+	private getPrompts(): any[] {
+		return [
+			{
+				name: "daily_review",
+				title: "Daily Task Review",
+				description: "Review today's tasks and plan for tomorrow",
+				arguments: [
+					{
+						name: "includeCompleted",
+						description: "Include completed tasks in the review",
+						required: false,
+					},
+				],
+			},
+			{
+				name: "weekly_planning",
+				title: "Weekly Planning",
+				description: "Plan tasks for the upcoming week",
+				arguments: [
+					{
+						name: "weekOffset",
+						description: "Week offset from current week (0 for this week, 1 for next week)",
+						required: false,
+					},
+				],
+			},
+			{
+				name: "project_overview",
+				title: "Project Overview",
+				description: "Get an overview of all projects and their task counts",
+				arguments: [],
+			},
+			{
+				name: "overdue_tasks",
+				title: "Overdue Tasks Summary",
+				description: "List all overdue tasks organized by priority",
+				arguments: [
+					{
+						name: "daysOverdue",
+						description: "Minimum days overdue to include",
+						required: false,
+					},
+				],
+			},
+			{
+				name: "task_search",
+				title: "Advanced Task Search",
+				description: "Search for tasks with specific criteria",
+				arguments: [
+					{
+						name: "query",
+						description: "Search query text",
+						required: true,
+					},
+					{
+						name: "project",
+						description: "Filter by project name",
+						required: false,
+					},
+					{
+						name: "priority",
+						description: "Filter by priority (1-5)",
+						required: false,
+					},
+				],
+			},
+		];
+	}
+
+	/**
+	 * Get resource definitions
+	 */
+	private getResources(): any[] {
+		// Return empty array for now - could be expanded to provide
+		// vault statistics, task metrics, etc.
+		return [];
+	}
+
+	/**
 	 * Get tool definitions
 	 */
 	private getTools(): any[] {
@@ -380,6 +461,107 @@ export class McpServer {
 	}
 
 	/**
+	 * Build prompt messages based on prompt name and arguments
+	 */
+	private buildPromptMessages(promptName: string, args: any): any[] {
+		const messages = [];
+		
+		switch (promptName) {
+			case "daily_review":
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `Please help me review my tasks for today. ${args?.includeCompleted ? 'Include completed tasks in the review.' : 'Focus on pending tasks only.'} Provide a summary of:
+1. What tasks are due today
+2. What tasks are overdue
+3. High priority items that need attention
+4. Suggested next actions`
+					}
+				});
+				break;
+				
+			case "weekly_planning":
+				const weekOffset = args?.weekOffset || 0;
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `Help me plan my tasks for ${weekOffset === 0 ? 'this week' : `week +${weekOffset}`}. Please:
+1. List all tasks scheduled for the week
+2. Identify any conflicts or overloaded days
+3. Suggest task prioritization
+4. Recommend which tasks could be rescheduled if needed`
+					}
+				});
+				break;
+				
+			case "project_overview":
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `Provide a comprehensive overview of all my projects including:
+1. List of all active projects
+2. Task count per project (pending vs completed)
+3. Projects with upcoming deadlines
+4. Projects that may need more attention
+5. Overall project health assessment`
+					}
+				});
+				break;
+				
+			case "overdue_tasks":
+				const daysOverdue = args?.daysOverdue || 0;
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `Show me all overdue tasks ${daysOverdue > 0 ? `that are at least ${daysOverdue} days overdue` : ''}. Please:
+1. Group them by priority level
+2. Highlight the most critical overdue items
+3. Suggest which tasks to tackle first
+4. Identify any tasks that might need to be rescheduled or cancelled`
+					}
+				});
+				break;
+				
+			case "task_search":
+				const query = args?.query || "";
+				const project = args?.project;
+				const priority = args?.priority;
+				
+				let searchPrompt = `Search for tasks matching: "${query}"`;
+				if (project) searchPrompt += ` in project "${project}"`;
+				if (priority) searchPrompt += ` with priority ${priority}`;
+				
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `${searchPrompt}. Please:
+1. List all matching tasks with their details
+2. Group them by relevance or category
+3. Highlight the most important matches
+4. Provide a summary of the search results`
+					}
+				});
+				break;
+				
+			default:
+				messages.push({
+					role: "user",
+					content: {
+						type: "text",
+						text: `Execute the ${promptName} prompt with the provided arguments.`
+					}
+				});
+		}
+		
+		return messages;
+	}
+
+	/**
 	 * Execute a tool
 	 */
 	private async executeTool(toolName: string, args: any): Promise<any> {
@@ -550,6 +732,59 @@ export class McpServer {
 						id,
 						result: {
 							tools: this.getTools(),
+						},
+					};
+
+				case "prompts/list":
+					return {
+						jsonrpc: "2.0",
+						id,
+						result: {
+							prompts: this.getPrompts(),
+						},
+					};
+
+				case "prompts/get":
+					const promptName = params?.name;
+					const prompts = this.getPrompts();
+					const prompt = prompts.find(p => p.name === promptName);
+					if (!prompt) {
+						return {
+							jsonrpc: "2.0",
+							id,
+							error: {
+								code: -32602,
+								message: `Prompt not found: ${promptName}`,
+							},
+						};
+					}
+					return {
+						jsonrpc: "2.0",
+						id,
+						result: {
+							...prompt,
+							// Build the prompt template based on the prompt name
+							messages: this.buildPromptMessages(promptName, params?.arguments),
+						},
+					};
+
+				case "resources/list":
+					return {
+						jsonrpc: "2.0",
+						id,
+						result: {
+							resources: this.getResources(),
+						},
+					};
+
+				case "resources/read":
+					// Return error for now since we don't have resources
+					return {
+						jsonrpc: "2.0",
+						id,
+						error: {
+							code: -32602,
+							message: "No resources available",
 						},
 					};
 
