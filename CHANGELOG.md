@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.1...9.7.2) (2025-08-16)
+
+### Bug Fixes
+
+* filter out abandoned/cancelled tasks in timeline sidebar ([01f6ce6](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/01f6ce600d9339beffa5c2f43cabae66ddfca883)), closes [#374](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/issues/374)
+
 ## [9.7.1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.0...9.7.1) (2025-08-16)
 
 ### Refactors
