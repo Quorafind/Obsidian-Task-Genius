@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.0...9.7.1) (2025-08-16)
+
+### Refactors
+
+* **date-parsing:** migrate to date-fns and add custom date format support ([8dff8d1](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/8dff8d1b861761ad1e82d49c54218fcebf51f054))
+
+### Chores
+
+* **i18n:** add onboarding and setup wizard translations ([dc98350](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/dc98350f30cd5c19ba5f92c039b4660d3887c44e))
+
 ## [9.7.0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.6.3...9.6.4) (2025-08-15)
 
 ### Features
