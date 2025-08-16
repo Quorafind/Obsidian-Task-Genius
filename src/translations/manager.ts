@@ -96,9 +96,7 @@ class TranslationManager {
 		if (locale in SUPPORTED_LOCALES) {
 			this.currentLocale = locale;
 		} else {
-			console.warn(
-				`Unsupported locale: ${locale}, falling back to English`
-			);
+			// Silently fall back to English for unsupported locales
 			this.currentLocale = "en";
 		}
 	}
@@ -128,10 +126,7 @@ class TranslationManager {
 
 		// If still not found, use fallback
 		if (!result) {
-			console.warn(
-				`Missing translation for key: ${key} in locale: ${this.currentLocale}`
-			);
-
+			// Silently fall back to English translation
 			// Try exact match in fallback
 			result = this.getNestedValue(this.fallbackTranslation, key);
 
