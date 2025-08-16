@@ -26,6 +26,7 @@ export class MarkdownTaskParser {
 	private currentHeadingLevel?: number;
 	private fileMetadata?: Record<string, any>; // Store file frontmatter metadata
 	private projectConfigCache?: Record<string, any>; // Cache for project config files
+	private customDateFormats?: string[]; // Store custom date formats from settings
 
 	// Date parsing cache to improve performance for large-scale parsing
 	private static dateCache = new Map<string, number | undefined>();
@@ -33,6 +34,8 @@ export class MarkdownTaskParser {
 
 	constructor(config: TaskParserConfig) {
 		this.config = config;
+		// Extract custom date formats if available
+		this.customDateFormats = config.customDateFormats;
 	}
 
 	// Public alias for extractMetadataAndTags
@@ -1111,13 +1114,14 @@ export class MarkdownTaskParser {
 		if (!dateStr) return undefined;
 
 		// Check cache first to avoid repeated date parsing
-		const cachedDate = MarkdownTaskParser.dateCache.get(dateStr);
+		const cacheKey = `${dateStr}_${(this.customDateFormats || []).join(',')}`;
+		const cachedDate = MarkdownTaskParser.dateCache.get(cacheKey);
 		if (cachedDate !== undefined) {
 			return cachedDate;
 		}
 
-		// Parse date and cache the result
-		const date = parseLocalDate(dateStr);
+		// Parse date with custom formats and cache the result
+		const date = parseLocalDate(dateStr, this.customDateFormats);
 
 		// Implement cache size limit to prevent memory issues
 		if (
@@ -1131,7 +1135,7 @@ export class MarkdownTaskParser {
 			}
 		}
 
-		MarkdownTaskParser.dateCache.set(dateStr, date);
+		MarkdownTaskParser.dateCache.set(cacheKey, date);
 		return date;
 	}
 

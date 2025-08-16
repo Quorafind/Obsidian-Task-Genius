@@ -94,6 +94,11 @@ export const getConfig = (
 
 		// File Metadata Inheritance
 		fileMetadataInheritance: plugin?.settings?.fileMetadataInheritance,
+		
+		// Custom date formats for parsing
+		customDateFormats: plugin?.settings?.enableCustomDateFormats 
+			? plugin?.settings?.customDateFormats 
+			: undefined,
 	};
 
 	return config;

@@ -52,6 +52,8 @@ export interface WorkerPoolOptions {
 		focusHeading: string;
 		fileParsingConfig?: FileParsingConfiguration;
 		fileMetadataInheritance?: FileMetadataInheritanceConfig;
+		enableCustomDateFormats?: boolean;
+		customDateFormats?: string[];
 	};
 }
 

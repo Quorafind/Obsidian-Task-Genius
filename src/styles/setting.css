@@ -1339,3 +1339,160 @@
 	font-style: italic;
 	margin-top: 4px;
 }
+
+/* Date format configuration styles */
+.task-genius-date-formats-container {
+	margin-top: 15px;
+	padding: 15px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.task-genius-formats-header {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-size: 1.1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.task-genius-format-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 15px;
+}
+
+.task-genius-format-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	background-color: var(--background-primary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	transition: all 0.2s ease;
+}
+
+.task-genius-format-item:hover {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-genius-format-input {
+	flex: 1;
+	padding: 6px 10px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: 0.95em;
+	transition: border-color 0.2s ease;
+}
+
+.task-genius-format-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.task-genius-format-input::placeholder {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+.task-genius-format-delete-btn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--background-modifier-error);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: 4px;
+	font-size: 20px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.task-genius-format-delete-btn:hover {
+	background-color: var(--background-modifier-error-hover);
+	transform: scale(1.1);
+}
+
+.task-genius-add-format-btn {
+	padding: 10px 16px;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: 6px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	align-self: flex-start;
+	margin-top: 5px;
+}
+
+.task-genius-add-format-btn:hover {
+	background-color: var(--interactive-accent-hover);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	transform: translateY(-1px);
+}
+
+.task-genius-add-format-btn:active {
+	transform: translateY(0);
+}
+
+/* Date format examples section */
+.task-genius-date-examples {
+	margin-top: 20px;
+	padding: 15px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.task-genius-examples-header {
+	margin-top: 0;
+	margin-bottom: 12px;
+	font-size: 1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.task-genius-date-examples-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+
+.task-genius-date-examples-table th,
+.task-genius-date-examples-table td {
+	padding: 8px 12px;
+	text-align: left;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.task-genius-date-examples-table th {
+	background-color: var(--background-secondary-alt);
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.task-genius-date-examples-table td {
+	background-color: var(--background-primary);
+	font-family: var(--font-monospace);
+}
+
+.task-genius-date-examples-table tr:nth-child(even) td {
+	background-color: var(--background-primary-alt);
+}
+
+.task-genius-date-examples-table tr:hover td {
+	background-color: var(--background-modifier-hover);
+}

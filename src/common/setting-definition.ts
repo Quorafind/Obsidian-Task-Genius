@@ -630,6 +630,10 @@ export interface TaskProgressBarSettings {
 	enablePriorityPicker: boolean;
 	enablePriorityKeyboardShortcuts: boolean;
 	enableDatePicker: boolean;
+	
+	// Date Parsing Settings
+	customDateFormats: string[];
+	enableCustomDateFormats: boolean;
 	recurrenceDateBase: "due" | "scheduled" | "current"; // Base date for calculating next recurrence
 
 	// Task Filter Settings
@@ -1425,6 +1429,10 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		blockRefPrefix: "timer"
 	},
 
+	// Custom Date Format Defaults
+	enableCustomDateFormats: false,
+	customDateFormats: [],
+	
 	// Onboarding Defaults
 	onboarding: {
 		completed: false,

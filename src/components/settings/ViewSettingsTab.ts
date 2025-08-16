@@ -161,6 +161,154 @@ export function renderViewSettingsTab(
 		.setDesc(t("Configure how task metadata is parsed and recognized."))
 		.setHeading();
 
+	// Date Format Configuration
+	new Setting(containerEl)
+		.setName(t("Enable custom date formats"))
+		.setDesc(
+			t(
+				"Enable custom date format patterns for parsing dates. When enabled, the parser will try your custom formats before falling back to default formats."
+			)
+		)
+		.addToggle((toggle) => {
+			toggle
+				.setValue(settingTab.plugin.settings.enableCustomDateFormats ?? false)
+				.onChange((value) => {
+					settingTab.plugin.settings.enableCustomDateFormats = value;
+					settingTab.applySettingsUpdate();
+					settingTab.display(); // Refresh to show/hide custom formats settings
+				});
+		});
+
+	if (settingTab.plugin.settings.enableCustomDateFormats) {
+		// Container for custom date formats
+		const dateFormatsContainer = containerEl.createDiv({
+			cls: "task-genius-date-formats-container",
+		});
+		
+		// Header with description
+		dateFormatsContainer.createEl("h3", {
+			text: t("Custom date formats"),
+			cls: "task-genius-formats-header"
+		});
+		
+		dateFormatsContainer.createEl("p", {
+			text: t("Add custom date format patterns. Date patterns: yyyy (4-digit year), yy (2-digit year), MM (2-digit month), M (1-2 digit month), dd (2-digit day), d (1-2 digit day), MMM (short month name), MMMM (full month name). Time patterns: HH (2-digit hour), mm (2-digit minute), ss (2-digit second). Use single quotes for literals (e.g., 'T' for ISO format)."),
+			cls: "setting-item-description"
+		});
+		
+		// Container for format list
+		const formatListContainer = dateFormatsContainer.createDiv({
+			cls: "task-genius-format-list",
+		});
+		
+		// Function to render the format list
+		const renderFormatList = () => {
+			formatListContainer.empty();
+			
+			const formats = settingTab.plugin.settings.customDateFormats ?? [];
+			
+			// Render existing formats
+			formats.forEach((format, index) => {
+				const formatItem = formatListContainer.createDiv({
+					cls: "task-genius-format-item",
+				});
+				
+				// Format input
+				const formatInput = formatItem.createEl("input", {
+					type: "text",
+					value: format,
+					cls: "task-genius-format-input",
+					placeholder: t("Enter date format (e.g., yyyy-MM-dd or yyyyMMdd_HHmmss)"),
+				});
+				
+				formatInput.addEventListener("input", (e) => {
+					const target = e.target as HTMLInputElement;
+					settingTab.plugin.settings.customDateFormats![index] = target.value.trim();
+					settingTab.applySettingsUpdate();
+				});
+				
+				// Delete button
+				const deleteBtn = formatItem.createEl("button", {
+					cls: "task-genius-format-delete-btn",
+					text: "×",
+					attr: {
+						"aria-label": t("Delete format"),
+						"title": t("Delete this format"),
+					}
+				});
+				
+				deleteBtn.addEventListener("click", () => {
+					settingTab.plugin.settings.customDateFormats!.splice(index, 1);
+					settingTab.applySettingsUpdate();
+					renderFormatList();
+				});
+			});
+			
+			// Add new format button
+			const addFormatBtn = formatListContainer.createEl("button", {
+				cls: "task-genius-add-format-btn",
+				text: t("+ Add Date Format"),
+			});
+			
+			addFormatBtn.addEventListener("click", () => {
+				if (!settingTab.plugin.settings.customDateFormats) {
+					settingTab.plugin.settings.customDateFormats = [];
+				}
+				settingTab.plugin.settings.customDateFormats.push("");
+				settingTab.applySettingsUpdate();
+				renderFormatList();
+				
+				// Focus on the new input
+				const inputs = formatListContainer.querySelectorAll(".task-genius-format-input");
+				const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+				if (lastInput) {
+					lastInput.focus();
+				}
+			});
+		};
+		
+		// Initial render
+		renderFormatList();
+		
+		// Add example dates section
+		const examplesContainer = containerEl.createDiv({
+			cls: "task-genius-date-examples",
+		});
+		
+		examplesContainer.createEl("h4", {
+			text: t("Format Examples:"),
+			cls: "task-genius-examples-header"
+		});
+		
+		const exampleFormats = [
+			{ format: "yyyy-MM-dd", example: "2025-08-16" },
+			{ format: "dd/MM/yyyy", example: "16/08/2025" },
+			{ format: "MM-dd-yyyy", example: "08-16-2025" },
+			{ format: "yyyy.MM.dd", example: "2025.08.16" },
+			{ format: "yyyyMMdd", example: "20250816" },
+			{ format: "yyyyMMdd_HHmmss", example: "20250816_144403" },
+			{ format: "yyyyMMddHHmmss", example: "20250816144403" },
+			{ format: "yyyy-MM-dd'T'HH:mm", example: "2025-08-16T14:44" },
+			{ format: "dd MMM yyyy", example: "16 Aug 2025" },
+			{ format: "MMM dd, yyyy", example: "Aug 16, 2025" },
+			{ format: "yyyy年MM月dd日", example: "2025年08月16日" },
+		];
+		
+		const table = examplesContainer.createEl("table", {
+			cls: "task-genius-date-examples-table",
+		});
+		
+		const headerRow = table.createEl("tr");
+		headerRow.createEl("th", { text: t("Format Pattern") });
+		headerRow.createEl("th", { text: t("Example") });
+		
+		exampleFormats.forEach(({ format, example }) => {
+			const row = table.createEl("tr");
+			row.createEl("td", { text: format });
+			row.createEl("td", { text: example });
+		});
+	}
+
 	// Get current metadata format to show appropriate settings
 	const isDataviewFormat =
 		settingTab.plugin.settings.preferMetadataFormat === "dataview";

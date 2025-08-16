@@ -179,6 +179,10 @@ export type TaskWorkerSettings = {
 	projectTagPrefix?: Record<MetadataFormat, string>;
 	contextTagPrefix?: Record<MetadataFormat, string>;
 	areaTagPrefix?: Record<MetadataFormat, string>;
+	
+	// Custom date format settings
+	enableCustomDateFormats?: boolean;
+	customDateFormats?: string[];
 
 	// Enhanced project configuration (basic config for fallback)
 	projectConfig?: {

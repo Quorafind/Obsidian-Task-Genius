@@ -18,6 +18,7 @@ import { getConfig } from "../../common/task-parser-config";
 import { FileMetadataTaskParser } from "./FileMetadataTaskParser";
 import { CanvasParser } from "../parsing/CanvasParser";
 import { SupportedFileType } from "../fileTypeUtils";
+import { TgProject } from "../../types/task";
 
 /**
  * Enhanced task parsing using configurable parser
@@ -46,7 +47,7 @@ function parseTasksWithConfigurableParser(
 		// Enhanced parsing: use pre-computed data if available
 		let enhancedFileMetadata = fileMetadata;
 		let projectConfigData: Record<string, any> | undefined;
-		let tgProject: import("../../types/task").TgProject | undefined;
+		let tgProject: TgProject | undefined;
 
 		// Only process enhanced project data if enhanced project is enabled
 		if (

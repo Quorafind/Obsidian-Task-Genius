@@ -1,76 +1,111 @@
+import {
+	format,
+	isToday,
+	isTomorrow,
+	isThisYear,
+	parse,
+	parseISO,
+	isValid,
+	startOfDay,
+} from "date-fns";
+import { enUS } from "date-fns/locale";
+
 /**
  * Format a date in a human-readable format
  * @param date Date to format
  * @returns Formatted date string
  */
 export function formatDate(date: Date): string {
-	const now = new Date();
-	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const tomorrow = new Date(today);
-	tomorrow.setDate(tomorrow.getDate() + 1);
-
-	// Check if date is today or tomorrow
-	if (date.getTime() === today.getTime()) {
+	if (isToday(date)) {
 		return "Today";
-	} else if (date.getTime() === tomorrow.getTime()) {
+	} else if (isTomorrow(date)) {
 		return "Tomorrow";
 	}
 
 	// Format as Month Day, Year for other dates
-	const options: Intl.DateTimeFormatOptions = {
-		month: "short",
-		day: "numeric",
-	};
-
-	// Only add year if it's not the current year
-	if (date.getFullYear() !== now.getFullYear()) {
-		options.year = "numeric";
+	if (isThisYear(date)) {
+		return format(date, "MMM d");
+	} else {
+		return format(date, "MMM d, yyyy");
 	}
-
-	return date.toLocaleDateString(undefined, options);
 }
 
 /**
- * Parse a date string in the format YYYY-MM-DD
+ * Parse a date string in various formats
  * @param dateString Date string to parse
+ * @param customFormats Optional array of custom date format patterns to try
  * @returns Parsed date as a number or undefined if invalid
  */
-export function parseLocalDate(dateString: string): number | undefined {
+export function parseLocalDate(
+	dateString: string,
+	customFormats?: string[]
+): number | undefined {
 	if (!dateString) return undefined;
-	// Basic regex check for YYYY-MM-DD format
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-		console.warn(`Worker: Invalid date format encountered: ${dateString}`);
+
+	// Trim whitespace
+	dateString = dateString.trim();
+
+	// Skip template strings
+	if (dateString.includes("{{") || dateString.includes("}}")) {
 		return undefined;
 	}
-	const parts = dateString.split("-");
-	if (parts.length === 3) {
-		const year = parseInt(parts[0], 10);
-		const month = parseInt(parts[1], 10); // 1-based month
-		const day = parseInt(parts[2], 10);
-		// Validate date parts
-		if (
-			!isNaN(year) &&
-			!isNaN(month) &&
-			month >= 1 &&
-			month <= 12 &&
-			!isNaN(day) &&
-			day >= 1 &&
-			day <= 31
-		) {
-			// Use local time to create date object
-			const date = new Date(year, month - 1, day);
-			// Check if constructed date is valid (e.g., handle 2/30 case)
-			if (
-				date.getFullYear() === year &&
-				date.getMonth() === month - 1 &&
-				date.getDate() === day
-			) {
-				date.setHours(0, 0, 0, 0); // Standardize time part for date comparison
-				return date.getTime();
+
+	// Define default format patterns to try with date-fns
+	const defaultFormats = [
+		"yyyy-MM-dd", // ISO format
+		"yyyy/MM/dd", // YYYY/MM/DD
+		"dd-MM-yyyy", // DD-MM-YYYY
+		"dd/MM/yyyy", // DD/MM/YYYY
+		"MM-dd-yyyy", // MM-DD-YYYY
+		"MM/dd/yyyy", // MM/DD/YYYY
+		"yyyy.MM.dd", // YYYY.MM.DD
+		"dd.MM.yyyy", // DD.MM.YYYY
+		"yyyy年M月d日", // Chinese/Japanese format
+		"MMM d, yyyy", // MMM DD, YYYY (e.g., Jan 15, 2025)
+		"MMM dd, yyyy", // MMM DD, YYYY with leading zero
+		"d MMM yyyy", // DD MMM YYYY (e.g., 15 Jan 2025)
+		"dd MMM yyyy", // DD MMM YYYY with leading zero
+		"yyyyMMddHHmmss",
+		"yyyyMMdd_HHmmss",
+	];
+
+	// Combine custom formats with default formats
+	const allFormats = customFormats
+		? [...customFormats, ...defaultFormats]
+		: defaultFormats;
+
+	// Try each format with date-fns parse
+	for (const formatString of allFormats) {
+		try {
+			const parsedDate = parse(dateString, formatString, new Date(), {
+				locale: enUS,
+			});
+
+			// Check if the parsed date is valid
+			if (isValid(parsedDate)) {
+				// Set to start of day to match original behavior
+				const normalizedDate = startOfDay(parsedDate);
+				return normalizedDate.getTime();
 			}
+		} catch (e) {
+			// Silently continue to next format
+			continue;
 		}
 	}
-	console.warn(`Worker: Invalid date values after parsing: ${dateString}`);
+
+	// Try parseISO as a fallback for ISO strings
+	try {
+		const isoDate = parseISO(dateString);
+		if (isValid(isoDate)) {
+			const normalizedDate = startOfDay(isoDate);
+			return normalizedDate.getTime();
+		}
+	} catch (e) {
+		// Silently continue
+	}
+
+	// If all parsing attempts fail, log a warning
+	console.warn(`Worker: Could not parse date: ${dateString}`);
 	return undefined;
 }
 
@@ -83,8 +118,8 @@ export function parseLocalDate(dateString: string): number | undefined {
 export function getTodayLocalDateString(): string {
 	const today = new Date();
 	const year = today.getFullYear();
-	const month = String(today.getMonth() + 1).padStart(2, '0');
-	const day = String(today.getDate()).padStart(2, '0');
+	const month = String(today.getMonth() + 1).padStart(2, "0");
+	const day = String(today.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
 }
 
@@ -97,8 +132,8 @@ export function getTodayLocalDateString(): string {
  */
 export function getLocalDateString(date: Date): string {
 	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, '0');
-	const day = String(date.getDate()).padStart(2, '0');
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
 }
 

@@ -25,6 +25,7 @@ export interface TaskParserConfig {
 	emojiMapping: Record<string, string>; // Emoji to metadata key mapping, e.g. "📅" -> "due"
 	metadataParseMode: MetadataParseMode; // Metadata parsing mode
 	specialTagPrefixes: Record<string, string>; // Special tag prefix mapping, e.g. "project" -> "project"
+	customDateFormats?: string[]; // Custom date format patterns for parsing dates
 
 	// File Metadata Inheritance
 	fileMetadataInheritance?: {
