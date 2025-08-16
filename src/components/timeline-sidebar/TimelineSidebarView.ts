@@ -289,9 +289,16 @@ export class TimelineSidebarView extends ItemView {
 		// Filter tasks based on showCompletedTasks setting
 		const shouldShowCompletedTasks =
 			this.plugin.settings.timelineSidebar.showCompletedTasks;
+		
+		// Get abandoned status markers to filter out
+		const abandonedStatuses = this.plugin.settings.taskStatuses.abandoned.split("|");
+		
 		const filteredTasks = shouldShowCompletedTasks
 			? allTasks
-			: allTasks.filter((task) => !task.completed);
+			: allTasks.filter((task) => {
+				// Filter out completed tasks AND abandoned/cancelled tasks
+				return !task.completed && !abandonedStatuses.includes(task.status);
+			});
 
 		// Filter out ICS badge events from timeline
 		// ICS badge events should only appear as badges in calendar views, not as individual timeline events

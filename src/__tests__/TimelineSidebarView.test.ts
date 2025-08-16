@@ -75,6 +75,7 @@ const mockPlugin = {
 		taskStatuses: {
 			completed: 'x',
 			notStarted: ' ',
+			abandoned: '-',
 		},
 		quickCapture: {
 			targetType: 'file',
@@ -296,6 +297,85 @@ describe('TimelineSidebarView Date Deduplication', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0].type).toBe('start');
 			});
+		});
+	});
+
+	describe('loadEvents - Abandoned Tasks Filtering', () => {
+		it('should filter out abandoned tasks when showCompletedTasks is false', () => {
+			// Create mock tasks with different statuses
+			const mockTasks = [
+				createMockTask('task-1', 'Active task', { dueDate: new Date('2025-01-15').getTime() }),
+				{ ...createMockTask('task-2', 'Completed task', { dueDate: new Date('2025-01-15').getTime() }), completed: true, status: 'x' },
+				{ ...createMockTask('task-3', 'Abandoned task', { dueDate: new Date('2025-01-15').getTime() }), status: '-' },
+				{ ...createMockTask('task-4', 'In progress task', { dueDate: new Date('2025-01-15').getTime() }), status: '/' },
+			];
+
+			// Configure plugin to not show completed tasks
+			mockPlugin.settings.timelineSidebar.showCompletedTasks = false;
+			mockPlugin.taskManager.getAllTasks.mockReturnValue(mockTasks);
+
+			// Create a new view instance and call loadEvents
+			const view = new TimelineSidebarView(mockLeaf as any, mockPlugin as any);
+			(view as any).loadEvents();
+
+			// Check that only active and in-progress tasks are included
+			const events = (view as any).events;
+			expect(events).toHaveLength(2);
+			expect(events.map((e: any) => e.task?.content)).toEqual(
+				expect.arrayContaining(['Active task', 'In progress task'])
+			);
+			expect(events.map((e: any) => e.task?.content)).not.toContain('Completed task');
+			expect(events.map((e: any) => e.task?.content)).not.toContain('Abandoned task');
+		});
+
+		it('should show all tasks including abandoned when showCompletedTasks is true', () => {
+			// Create mock tasks with different statuses
+			const mockTasks = [
+				createMockTask('task-1', 'Active task', { dueDate: new Date('2025-01-15').getTime() }),
+				{ ...createMockTask('task-2', 'Completed task', { dueDate: new Date('2025-01-15').getTime() }), completed: true, status: 'x' },
+				{ ...createMockTask('task-3', 'Abandoned task', { dueDate: new Date('2025-01-15').getTime() }), status: '-' },
+			];
+
+			// Configure plugin to show completed tasks
+			mockPlugin.settings.timelineSidebar.showCompletedTasks = true;
+			mockPlugin.taskManager.getAllTasks.mockReturnValue(mockTasks);
+
+			// Create a new view instance and call loadEvents
+			const view = new TimelineSidebarView(mockLeaf as any, mockPlugin as any);
+			(view as any).loadEvents();
+
+			// Check that all tasks are included
+			const events = (view as any).events;
+			expect(events).toHaveLength(3);
+			expect(events.map((e: any) => e.task?.content)).toEqual(
+				expect.arrayContaining(['Active task', 'Completed task', 'Abandoned task'])
+			);
+		});
+
+		it('should handle multiple abandoned status markers', () => {
+			// Set multiple abandoned status markers
+			mockPlugin.settings.taskStatuses.abandoned = '-|_|>';
+			
+			// Create mock tasks with different abandoned statuses
+			const mockTasks = [
+				createMockTask('task-1', 'Active task', { dueDate: new Date('2025-01-15').getTime() }),
+				{ ...createMockTask('task-2', 'Abandoned with dash', { dueDate: new Date('2025-01-15').getTime() }), status: '-' },
+				{ ...createMockTask('task-3', 'Abandoned with underscore', { dueDate: new Date('2025-01-15').getTime() }), status: '_' },
+				{ ...createMockTask('task-4', 'Abandoned with arrow', { dueDate: new Date('2025-01-15').getTime() }), status: '>' },
+			];
+
+			// Configure plugin to not show completed tasks
+			mockPlugin.settings.timelineSidebar.showCompletedTasks = false;
+			mockPlugin.taskManager.getAllTasks.mockReturnValue(mockTasks);
+
+			// Create a new view instance and call loadEvents
+			const view = new TimelineSidebarView(mockLeaf as any, mockPlugin as any);
+			(view as any).loadEvents();
+
+			// Check that only the active task is included
+			const events = (view as any).events;
+			expect(events).toHaveLength(1);
+			expect(events[0].task?.content).toBe('Active task');
 		});
 	});
 });
