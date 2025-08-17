@@ -49,6 +49,12 @@ export interface TaskParsingServiceOptions {
 		};
 		metadataConfigEnabled?: boolean;
 		configFileEnabled?: boolean;
+		detectionMethods?: Array<{
+			type: "metadata" | "tag" | "link";
+			propertyKey: string;
+			linkFilter?: string;
+			enabled: boolean;
+		}>;
 	};
 }
 

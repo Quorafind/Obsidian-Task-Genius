@@ -430,12 +430,28 @@ export interface FileMetadataInheritanceConfig {
 	inheritFromFrontmatterForSubtasks: boolean;
 }
 
+/** Project detection method configuration */
+export interface ProjectDetectionMethod {
+	/** Type of detection method */
+	type: "metadata" | "tag" | "link";
+	/** For metadata: the property key (e.g., "project")
+	 *  For tag: the tag name (e.g., "project") 
+	 *  For link: the property key that contains links (e.g., "kind", "category") */
+	propertyKey: string;
+	/** For link type: optional filter for link values (e.g., only links containing "Project") */
+	linkFilter?: string;
+	/** Whether this method is enabled */
+	enabled: boolean;
+}
+
 /** Project metadata configuration */
 export interface ProjectMetadataConfig {
-	/** Metadata key to use for project name */
+	/** Metadata key to use for project name (legacy, kept for backward compatibility) */
 	metadataKey: string;
 	/** Whether this config is enabled */
 	enabled: boolean;
+	/** Custom detection methods for identifying project files */
+	detectionMethods?: ProjectDetectionMethod[];
 }
 
 /** Project configuration file settings */
@@ -976,6 +992,24 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		metadataConfig: {
 			metadataKey: "project",
 			enabled: false,
+			detectionMethods: [
+				{
+					type: "metadata",
+					propertyKey: "project",
+					enabled: false
+				},
+				{
+					type: "tag",
+					propertyKey: "project",
+					enabled: false
+				},
+				{
+					type: "link",
+					propertyKey: "category",
+					linkFilter: "",
+					enabled: false
+				}
+			]
 		},
 		configFile: {
 			fileName: "project.md",

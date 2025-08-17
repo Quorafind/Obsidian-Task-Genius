@@ -263,6 +263,9 @@ export class TaskManager extends Component {
 							.enabled,
 					configFileEnabled:
 						this.plugin.settings.projectConfig.configFile.enabled,
+					detectionMethods:
+						this.plugin.settings.projectConfig.metadataConfig
+							.detectionMethods || [],
 				},
 			};
 
@@ -333,7 +336,8 @@ export class TaskManager extends Component {
 	public updateFileParsingConfiguration(): void {
 		if (this.workerManager) {
 			this.workerManager.setFileParsingConfig(
-				this.plugin.settings.fileParsingConfig
+				this.plugin.settings.fileParsingConfig,
+				this.plugin.settings.projectConfig?.metadataConfig?.detectionMethods
 			);
 		}
 

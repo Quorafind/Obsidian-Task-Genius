@@ -194,9 +194,15 @@ export type TaskWorkerSettings = {
 		}>;
 		metadataConfig: {
 			metadataKey: string;
-			inheritFromFrontmatter: boolean;
-			inheritFromFrontmatterForSubtasks: boolean;
+			inheritFromFrontmatter?: boolean;
+			inheritFromFrontmatterForSubtasks?: boolean;
 			enabled: boolean;
+			detectionMethods?: Array<{
+				type: "metadata" | "tag" | "link";
+				propertyKey: string;
+				linkFilter?: string;
+				enabled: boolean;
+			}>;
 		};
 		configFile: {
 			fileName: string;

@@ -191,12 +191,12 @@ export class TaskWorkerManager extends Component {
 	/**
 	 * Set file parsing configuration
 	 */
-	public setFileParsingConfig(config: FileParsingConfiguration): void {
+	public setFileParsingConfig(config: FileParsingConfiguration, projectDetectionMethods?: any[]): void {
 		if (
 			config.enableFileMetadataParsing ||
 			config.enableTagBasedTaskParsing
 		) {
-			this.fileMetadataParser = new FileMetadataTaskParser(config);
+			this.fileMetadataParser = new FileMetadataTaskParser(config, projectDetectionMethods);
 		} else {
 			this.fileMetadataParser = undefined;
 		}

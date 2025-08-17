@@ -331,7 +331,8 @@ function processFile(
 		) {
 			try {
 				const fileMetadataParser = new FileMetadataTaskParser(
-					settings.fileParsingConfig
+					settings.fileParsingConfig,
+					settings.projectConfig?.metadataConfig?.detectionMethods
 				);
 
 				const fileMetadataResult = fileMetadataParser.parseFileForTasks(

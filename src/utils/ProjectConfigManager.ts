@@ -7,6 +7,7 @@
 
 import { TFile, TFolder, Vault, MetadataCache, CachedMetadata } from "obsidian";
 import { TgProject } from "../types/task";
+import { ProjectDetectionMethod } from "../common/setting-definition";
 
 export interface ProjectConfigData {
 	project?: string;
@@ -42,6 +43,7 @@ export interface ProjectConfigManagerOptions {
 	enhancedProjectEnabled?: boolean; // Optional flag to control feature availability
 	metadataConfigEnabled?: boolean; // Whether metadata-based detection is enabled
 	configFileEnabled?: boolean; // Whether config file-based detection is enabled
+	detectionMethods?: ProjectDetectionMethod[]; // Custom detection methods
 }
 
 export class ProjectConfigManager {
@@ -60,6 +62,7 @@ export class ProjectConfigManager {
 	private enhancedProjectEnabled: boolean;
 	private metadataConfigEnabled: boolean;
 	private configFileEnabled: boolean;
+	private detectionMethods: ProjectDetectionMethod[];
 
 	// Cache for project configurations
 	private configCache = new Map<string, ProjectConfigData>();
@@ -89,6 +92,7 @@ export class ProjectConfigManager {
 		this.enhancedProjectEnabled = options.enhancedProjectEnabled ?? true; // Default to enabled for backward compatibility
 		this.metadataConfigEnabled = options.metadataConfigEnabled ?? false;
 		this.configFileEnabled = options.configFileEnabled ?? false;
+		this.detectionMethods = options.detectionMethods || [];
 	}
 
 	/**
@@ -254,7 +258,151 @@ export class ProjectConfigManager {
 			}
 		}
 
-		// 2. Check file metadata (frontmatter) - only if metadata detection is enabled
+		// 2. Check custom detection methods
+		if (this.detectionMethods && this.detectionMethods.length > 0) {
+			const file = this.vault.getFileByPath(filePath);
+			if (file && file instanceof TFile) {
+				const fileCache = this.metadataCache.getFileCache(file);
+				const fileMetadata = this.getFileMetadata(filePath);
+				
+				for (const method of this.detectionMethods) {
+					if (!method.enabled) continue;
+					
+					switch (method.type) {
+						case "metadata":
+							// Check if the specified metadata property exists
+							if (fileMetadata && fileMetadata[method.propertyKey]) {
+								return {
+									type: "metadata",
+									name: String(fileMetadata[method.propertyKey]),
+									source: method.propertyKey,
+									readonly: true,
+								};
+							}
+							break;
+							
+						case "tag":
+							// Check if file has the specified tag
+							if (fileCache?.tags) {
+								const targetTag = method.propertyKey.startsWith("#") 
+									? method.propertyKey 
+									: `#${method.propertyKey}`;
+								
+								const hasTag = fileCache.tags.some(tagCache => 
+									tagCache.tag === targetTag
+								);
+								
+								if (hasTag) {
+									// First try to use title or name from frontmatter as project name
+									if (fileMetadata?.title) {
+										return {
+											type: "metadata",
+											name: String(fileMetadata.title),
+											source: "title (via tag)",
+											readonly: true,
+										};
+									}
+									if (fileMetadata?.name) {
+										return {
+											type: "metadata",
+											name: String(fileMetadata.name),
+											source: "name (via tag)",
+											readonly: true,
+										};
+									}
+									// Fallback: use the file name (without extension)
+									const fileName = filePath.split('/').pop() || filePath;
+									const nameWithoutExt = fileName.replace(/\.md$/i, '');
+									return {
+										type: "metadata",
+										name: nameWithoutExt,
+										source: `tag:${targetTag}`,
+										readonly: true,
+									};
+								}
+							}
+							break;
+							
+						case "link":
+							// Check all links in the file
+							if (fileCache?.links) {
+								for (const linkCache of fileCache.links) {
+									const linkedNote = linkCache.link;
+									
+									// If there's a filter, check if the link matches
+									if (method.linkFilter) {
+										if (linkedNote.includes(method.linkFilter)) {
+											// First try to use title or name from frontmatter as project name
+											if (fileMetadata?.title) {
+												return {
+													type: "metadata",
+													name: String(fileMetadata.title),
+													source: "title (via link)",
+													readonly: true,
+												};
+											}
+											if (fileMetadata?.name) {
+												return {
+													type: "metadata",
+													name: String(fileMetadata.name),
+													source: "name (via link)",
+													readonly: true,
+												};
+											}
+											// Fallback: use the file name (without extension)
+											const fileName = filePath.split('/').pop() || filePath;
+											const nameWithoutExt = fileName.replace(/\.md$/i, '');
+											return {
+												type: "metadata",
+												name: nameWithoutExt,
+												source: `link:${linkedNote}`,
+												readonly: true,
+											};
+										}
+									} else if (method.propertyKey) {
+										// If a property key is specified, only check links in that metadata field
+										if (fileMetadata && fileMetadata[method.propertyKey]) {
+											const propValue = String(fileMetadata[method.propertyKey]);
+											// Check if this link is mentioned in the property
+											if (propValue.includes(`[[${linkedNote}]]`)) {
+												// First try to use title or name from frontmatter as project name
+												if (fileMetadata?.title) {
+													return {
+														type: "metadata",
+														name: String(fileMetadata.title),
+														source: "title (via link)",
+														readonly: true,
+													};
+												}
+												if (fileMetadata?.name) {
+													return {
+														type: "metadata",
+														name: String(fileMetadata.name),
+														source: "name (via link)",
+														readonly: true,
+													};
+												}
+												// Fallback: use the file name (without extension)
+												const fileName = filePath.split('/').pop() || filePath;
+												const nameWithoutExt = fileName.replace(/\.md$/i, '');
+												return {
+													type: "metadata",
+													name: nameWithoutExt,
+													source: `link:${linkedNote}`,
+													readonly: true,
+												};
+											}
+										}
+									}
+								}
+							}
+							break;
+					}
+				}
+			}
+		}
+
+		// 3. Check file metadata (frontmatter) - only if metadata detection is enabled
 		if (this.metadataConfigEnabled) {
 			const fileMetadata = this.getFileMetadata(filePath);
 			if (fileMetadata && fileMetadata[this.metadataKey]) {

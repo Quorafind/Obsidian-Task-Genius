@@ -5,7 +5,7 @@
 
 import { TFile, CachedMetadata } from "obsidian";
 import { StandardFileTaskMetadata, Task } from "../../types/task";
-import { FileParsingConfiguration } from "../../common/setting-definition";
+import { FileParsingConfiguration, ProjectDetectionMethod } from "../../common/setting-definition";
 
 export interface FileTaskParsingResult {
 	tasks: Task[];
@@ -14,9 +14,11 @@ export interface FileTaskParsingResult {
 
 export class FileMetadataTaskParser {
 	private config: FileParsingConfiguration;
+	private projectDetectionMethods?: ProjectDetectionMethod[];
 
-	constructor(config: FileParsingConfiguration) {
+	constructor(config: FileParsingConfiguration, projectDetectionMethods?: ProjectDetectionMethod[]) {
 		this.config = config;
+		this.projectDetectionMethods = projectDetectionMethods;
 	}
 
 	/**
@@ -39,7 +41,8 @@ export class FileMetadataTaskParser {
 				const metadataTasks = this.parseMetadataTasks(
 					filePath,
 					fileCache.frontmatter,
-					fileContent
+					fileContent,
+					fileCache
 				);
 				tasks.push(...metadataTasks.tasks);
 				errors.push(...metadataTasks.errors);
@@ -51,7 +54,8 @@ export class FileMetadataTaskParser {
 					filePath,
 					fileCache.tags,
 					fileCache.frontmatter,
-					fileContent
+					fileContent,
+					fileCache
 				);
 				tasks.push(...tagTasks.tasks);
 				errors.push(...tagTasks.errors);
@@ -69,7 +73,8 @@ export class FileMetadataTaskParser {
 	private parseMetadataTasks(
 		filePath: string,
 		frontmatter: Record<string, any>,
-		fileContent: string
+		fileContent: string,
+		fileCache?: CachedMetadata
 	): FileTaskParsingResult {
 		const tasks: Task[] = [];
 		const errors: string[] = [];
@@ -82,7 +87,8 @@ export class FileMetadataTaskParser {
 						fieldName,
 						frontmatter[fieldName],
 						frontmatter,
-						fileContent
+						fileContent,
+						fileCache
 					);
 					if (task) {
 						tasks.push(task);
@@ -105,7 +111,8 @@ export class FileMetadataTaskParser {
 		filePath: string,
 		tags: Array<{ tag: string; position: any }>,
 		frontmatter: Record<string, any> | undefined,
-		fileContent: string
+		fileContent: string,
+		fileCache?: CachedMetadata
 	): FileTaskParsingResult {
 		const tasks: Task[] = [];
 		const errors: string[] = [];
@@ -124,7 +131,8 @@ export class FileMetadataTaskParser {
 						filePath,
 						normalizedTargetTag,
 						frontmatter,
-						fileContent
+						fileContent,
+						fileCache
 					);
 					if (task) {
 						tasks.push(task);
@@ -148,7 +156,8 @@ export class FileMetadataTaskParser {
 		fieldName: string,
 		fieldValue: any,
 		frontmatter: Record<string, any>,
-		fileContent: string
+		fileContent: string,
+		fileCache?: CachedMetadata
 	): Task | null {
 		// Get task content from specified metadata field or filename
 		const taskContent = this.getTaskContent(frontmatter, filePath);
@@ -162,9 +171,11 @@ export class FileMetadataTaskParser {
 
 		// Extract additional metadata
 		const metadata = this.extractTaskMetadata(
+			filePath,
 			frontmatter,
 			fieldName,
-			fieldValue
+			fieldValue,
+			fileCache
 		);
 
 		console.log("metadata", metadata);
@@ -199,7 +210,8 @@ export class FileMetadataTaskParser {
 		filePath: string,
 		tag: string,
 		frontmatter: Record<string, any> | undefined,
-		fileContent: string
+		fileContent: string,
+		fileCache?: CachedMetadata
 	): Task | null {
 		// Get task content from specified metadata field or filename
 		const taskContent = this.getTaskContent(frontmatter, filePath);
@@ -213,9 +225,11 @@ export class FileMetadataTaskParser {
 
 		// Extract additional metadata
 		const metadata = this.extractTaskMetadata(
+			filePath,
 			frontmatter || {},
 			"tag",
-			tag
+			tag,
+			fileCache
 		);
 
 		const task: Task = {
@@ -296,9 +310,11 @@ export class FileMetadataTaskParser {
 	 * Extract task metadata from frontmatter
 	 */
 	private extractTaskMetadata(
+		filePath: string,
 		frontmatter: Record<string, any>,
 		sourceField: string,
-		sourceValue: any
+		sourceValue: any,
+		fileCache?: CachedMetadata
 	): Record<string, any> {
 		const metadata: Record<string, any> = {};
 
@@ -315,7 +331,13 @@ export class FileMetadataTaskParser {
 		if (frontmatter.priority) {
 			metadata.priority = this.parsePriority(frontmatter.priority);
 		}
-		if (frontmatter.project) {
+		// Try custom project detection methods first
+		// Note: Pass fileCache to detect from tags and links
+		const detectedProject = this.detectProjectFromFile(filePath, frontmatter, fileCache);
+		if (detectedProject) {
+			metadata.project = detectedProject;
+		} else if (frontmatter.project) {
+			// Fallback to legacy project field
 			metadata.project = String(frontmatter.project);
 		}
 		if (frontmatter.context) {
@@ -331,6 +353,117 @@ export class FileMetadataTaskParser {
 		}
 
 		return metadata;
+	}
+
+	/**
+	 * Detect project from file using custom detection methods
+	 */
+	private detectProjectFromFile(
+		filePath: string,
+		frontmatter: Record<string, any>,
+		fileCache?: CachedMetadata
+	): string | undefined {
+		if (!this.projectDetectionMethods || this.projectDetectionMethods.length === 0) {
+			return undefined;
+		}
+
+		for (const method of this.projectDetectionMethods) {
+			if (!method.enabled) continue;
+
+			switch (method.type) {
+				case "metadata":
+					// Check if the specified metadata property exists in frontmatter
+					if (frontmatter[method.propertyKey]) {
+						return String(frontmatter[method.propertyKey]);
+					}
+					break;
+
+				case "tag":
+					// Check if file has the specified tag in content (using CachedMetadata.tags)
+					if (fileCache?.tags) {
+						const targetTag = method.propertyKey.startsWith("#") 
+							? method.propertyKey 
+							: `#${method.propertyKey}`;
+						
+						// Check if any tag in the file matches our target
+						const hasTag = fileCache.tags.some(tagCache => 
+							tagCache.tag === targetTag
+						);
+						
+						if (hasTag) {
+							// First try to use title or name from frontmatter as project name
+							if (frontmatter.title) {
+								return String(frontmatter.title);
+							}
+							if (frontmatter.name) {
+								return String(frontmatter.name);
+							}
+							// Fallback: use the file name (without extension)
+							const fileName = filePath.split('/').pop() || filePath;
+							return fileName.replace(/\.md$/i, '');
+						}
+					}
+					break;
+
+				case "link":
+					// Check all links in the file (using CachedMetadata.links)
+					if (fileCache?.links) {
+						// Look for links that match our filter
+						for (const linkCache of fileCache.links) {
+							const linkedNote = linkCache.link;
+							
+							// If there's a filter, check if the link matches
+							if (method.linkFilter) {
+								if (linkedNote.includes(method.linkFilter)) {
+									// First try to use title or name from frontmatter as project name
+									if (frontmatter.title) {
+										return String(frontmatter.title);
+									}
+									if (frontmatter.name) {
+										return String(frontmatter.name);
+									}
+									// Fallback: use the file name (without extension)
+									const fileName = filePath.split('/').pop() || filePath;
+									return fileName.replace(/\.md$/i, '');
+								}
+							} else if (method.propertyKey) {
+								// If a property key is specified, only check links in that metadata field
+								if (frontmatter[method.propertyKey]) {
+									const propValue = String(frontmatter[method.propertyKey]);
+									// Check if this link is mentioned in the property
+									if (propValue.includes(`[[${linkedNote}]]`)) {
+										// First try to use title or name from frontmatter as project name
+										if (frontmatter.title) {
+											return String(frontmatter.title);
+										}
+										if (frontmatter.name) {
+											return String(frontmatter.name);
+										}
+										// Fallback: use the file name (without extension)
+										const fileName = filePath.split('/').pop() || filePath;
+										return fileName.replace(/\.md$/i, '');
+									}
+								}
+							} else {
+								// No filter and no specific property, use first link as project
+								// First try to use title or name from frontmatter as project name
+								if (frontmatter.title) {
+									return String(frontmatter.title);
+								}
+								if (frontmatter.name) {
+									return String(frontmatter.name);
+								}
+								// Fallback: use the file name (without extension)
+								const fileName = filePath.split('/').pop() || filePath;
+								return fileName.replace(/\.md$/i, '');
+							}
+						}
+					}
+					break;
+			}
+		}
+
+		return undefined;
 	}
 
 	/**

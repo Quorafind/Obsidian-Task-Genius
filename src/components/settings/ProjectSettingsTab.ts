@@ -289,6 +289,118 @@ export function renderProjectSettingsTab(
 					});
 			});
 
+		// Custom Project Detection Methods
+		new Setting(containerEl)
+			.setName(t("Custom Project Detection Methods"))
+			.setDesc(t("Configure additional methods to detect project files"))
+			.setHeading();
+
+		const detectionMethodsContainer = containerEl.createDiv({
+			cls: "project-detection-methods-container",
+		});
+
+		const refreshDetectionMethods = () => {
+			detectionMethodsContainer.empty();
+
+			// Ensure detectionMethods exists
+			if (!settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods) {
+				if (settingTab.plugin.settings.projectConfig?.metadataConfig) {
+					settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods = [];
+				}
+			}
+
+			const methods = settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods || [];
+
+			methods.forEach((method, index) => {
+				const methodDiv = detectionMethodsContainer.createDiv({
+					cls: "project-detection-method",
+				});
+
+				new Setting(methodDiv)
+					.setName(`${t("Method")} ${index + 1}`)
+					.addDropdown((dropdown) => {
+						dropdown
+							.addOption("metadata", t("Metadata Property"))
+							.addOption("tag", t("Tag"))
+							.addOption("link", t("Linked Note"))
+							.setValue(method.type)
+							.onChange(async (value) => {
+								method.type = value as "metadata" | "tag" | "link";
+								await settingTab.plugin.saveSettings();
+								refreshDetectionMethods();
+							});
+					})
+					.addText((text) => {
+						const placeholder = 
+							method.type === "metadata" ? "project" :
+							method.type === "tag" ? "project" :
+							"category";
+						text.setPlaceholder(placeholder)
+							.setValue(method.propertyKey)
+							.onChange(async (value) => {
+								method.propertyKey = value;
+								await settingTab.plugin.saveSettings();
+							});
+					})
+					.addToggle((toggle) => {
+						toggle
+							.setValue(method.enabled)
+							.onChange(async (value) => {
+								method.enabled = value;
+								await settingTab.plugin.saveSettings();
+							});
+					})
+					.addButton((button) => {
+						button
+							.setIcon("trash")
+							.setTooltip(t("Remove"))
+							.onClick(async () => {
+								methods.splice(index, 1);
+								await settingTab.plugin.saveSettings();
+								refreshDetectionMethods();
+							});
+					});
+
+				// Add link filter field for link type
+				if (method.type === "link") {
+					new Setting(methodDiv)
+						.setName(t("Link Filter"))
+						.setDesc(t("Optional: Only match links containing this text"))
+						.addText((text) => {
+							text.setPlaceholder("Projects/")
+								.setValue(method.linkFilter || "")
+								.onChange(async (value) => {
+									method.linkFilter = value;
+									await settingTab.plugin.saveSettings();
+								});
+						});
+				}
+			});
+
+			// Add new method button
+			new Setting(detectionMethodsContainer)
+				.addButton((button) => {
+					button
+						.setButtonText(t("Add Detection Method"))
+						.setCta()
+						.onClick(async () => {
+							if (!settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods) {
+								if (settingTab.plugin.settings.projectConfig?.metadataConfig) {
+									settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods = [];
+								}
+							}
+							settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods?.push({
+								type: "metadata",
+								propertyKey: "",
+								enabled: false,
+							});
+							await settingTab.plugin.saveSettings();
+							refreshDetectionMethods();
+						});
+				});
+		};
+
+		refreshDetectionMethods();
 
 		// Project config file settings
 		new Setting(containerEl)
