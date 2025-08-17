@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.2...9.7.3) (2025-08-17)
+
 ## [9.7.2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.1...9.7.2) (2025-08-16)
 
 ### Bug Fixes
