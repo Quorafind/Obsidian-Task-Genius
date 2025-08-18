@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ## [9.7.5](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.4...9.7.5) (2025-08-18)
 
+### Bug Fixes
+
+* **mcp:** correct Accept header validation logic ([81e7b68](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/81e7b68ea46d306b429ef8c11165bfa0ff565dad))
+
+### Chores
+
+* remove dist folder in repo ([b4bdc85](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b4bdc858d2caba4b77649037fc288d8a21a4d1a0))
+* remove dist folder in repo ([b92371c](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b92371c0880311bcda4e1ee64c7e5787006c6605))
+* update version in repos ([023674a](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/023674af9c4dd063a1798ffd806c0867a94b3bb5))
+
+## [9.7.5](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.4...9.7.5) (2025-08-18)
+
 ### Chores
 
 * remove dist folder in repo ([b92371c](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b92371c0880311bcda4e1ee64c7e5787006c6605))
