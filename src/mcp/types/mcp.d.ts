@@ -94,6 +94,23 @@ export interface QueryByDateArgs {
 	limit?: number;
 }
 
+export interface BatchCreateTasksArgs {
+	tasks: Array<{
+		content: string;
+		filePath?: string;
+		project?: string;
+		context?: string;
+		priority?: number;
+		dueDate?: string;
+		startDate?: string;
+		tags?: string[];
+		parent?: string;
+		completed?: boolean;
+		completedDate?: string;
+	}>;
+	defaultFilePath?: string;
+}
+
 export interface McpServerStatus {
 	running: boolean;
 	port?: number;
