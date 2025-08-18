@@ -457,6 +457,39 @@ export class McpServer {
 					required: ["query"],
 				},
 			},
+			{
+				name: "batch_create_tasks",
+				title: "Batch Create Tasks",
+				description: "Create multiple tasks at once with optional default file path",
+				inputSchema: {
+					type: "object",
+					properties: {
+						tasks: {
+							type: "array",
+							items: {
+								type: "object",
+								properties: {
+									content: { type: "string", description: "Task content text" },
+									filePath: { type: "string", description: "Target markdown file path (overrides defaultFilePath)" },
+									project: { type: "string", description: "Project name to append as +project" },
+									context: { type: "string", description: "Context name to append as @context" },
+									priority: { type: "number", minimum: 1, maximum: 5, description: "1-5 priority; adds ! markers" },
+									dueDate: { type: "string", description: "Due date YYYY-MM-DD (adds 📅 marker)" },
+									startDate: { type: "string", description: "Start date YYYY-MM-DD (adds 🛫 marker)" },
+									tags: { type: "array", items: { type: "string" }, description: "Array of tags (without #)" },
+									parent: { type: "string", description: "Parent task ID to create a subtask under" },
+									completed: { type: "boolean", description: "Whether the task is already completed (for recording purposes)" },
+									completedDate: { type: "string", description: "Completion date YYYY-MM-DD (only used when completed is true)" },
+								},
+								required: ["content"],
+							},
+							description: "Array of tasks to create",
+						},
+						defaultFilePath: { type: "string", description: "Default file path for all tasks (can be overridden per task)" },
+					},
+					required: ["tasks"],
+				},
+			},
 		];
 	}
 
@@ -633,6 +666,9 @@ export class McpServer {
 					break;
 				case "search_tasks":
 					result = await this.taskBridge.searchTasks(args);
+					break;
+				case "batch_create_tasks":
+					result = await this.taskBridge.batchCreateTasks(args);
 					break;
 				case "add_project_quick_capture":
 					result = await this.taskBridge.addProjectTaskToQuickCapture(args);

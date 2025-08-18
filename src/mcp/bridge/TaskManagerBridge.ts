@@ -13,6 +13,7 @@ import {
 	BatchCreateSubtasksArgs,
 	SearchTasksArgs,
 	QueryByDateArgs,
+	BatchCreateTasksArgs,
 } from "../types/mcp";
 import { moment, TFile } from "obsidian";
 import TaskProgressBarPlugin from "../../index";
@@ -176,21 +177,42 @@ export class TaskManagerBridge {
 		} else {
 			// Append task to existing file (or insert as subtask)
 			const content = await vault.read(file);
-			const newContent = args.parent
-				? this.insertSubtask(content, args.parent, taskContent)
-				: (content ? content + "\n" : "") + taskContent;
+			let insertedLine = -1;
+			let newContent = "";
+			
+			if (args.parent) {
+				const result = await this.insertSubtask(content, args.parent, taskContent);
+				newContent = result.content;
+				insertedLine = result.insertedLine;
+			} else {
+				newContent = (content ? content + "\n" : "") + taskContent;
+				const lines = newContent.split("\n");
+				insertedLine = lines.length - 1;
+			}
+			
 			await vault.modify(file, newContent);
 		}
 
 		await this.taskManager.indexFile(file);
 
-			const tasks = this.taskManager.getTasksForFile(file.path);
-			const created = tasks[tasks.length - 1];
-			if (!created) {
-				return { success: false, message: "Task created but could not be indexed or found" };
-			}
-			return { success: true, task: created };
+		const tasks = this.taskManager.getTasksForFile(file.path);
+		
+		// Find the task at the inserted line
+		let created: Task | undefined;
+		if (args.parent && insertedLine >= 0) {
+			// For subtasks, find by line number (1-based in task IDs)
+			const expectedId = `${file.path}-L${insertedLine + 1}`;
+			created = tasks.find(t => t.id === expectedId);
+		} else {
+			// For regular tasks appended to end, use the last task
+			created = tasks[tasks.length - 1];
 		}
+		
+		if (!created) {
+			return { success: false, message: "Task created but could not be indexed or found" };
+		}
+		return { success: true, task: created };
+	}
 
 
 	/** Create a task in today's daily note, creating the note if needed */
@@ -258,8 +280,12 @@ export class TaskManagerBridge {
 		const file = dailyNoteFile;
 		const current = await app.vault.read(file);
 		let newContent = current;
+		let insertedLine = -1;
+		
 		if (args.parent) {
-			newContent = this.insertSubtask(current, args.parent, taskContent);
+			const result = await this.insertSubtask(current, args.parent, taskContent);
+			newContent = result.content;
+			insertedLine = result.insertedLine;
 		} else {
 			// Use heading from Quick Capture settings if available
 			const fallbackHeading = this.plugin.settings.quickCapture?.targetHeading?.trim();
@@ -458,38 +484,49 @@ export class TaskManagerBridge {
 		}
 	}
 
-	private insertSubtask(
+	private async insertSubtask(
 		content: string,
 		parentTaskId: string,
 		subtaskContent: string
-	): string {
-		const lines = content.split("\n");
-		const parentTask = this.findTaskLineById(lines, parentTaskId);
+	): Promise<{ content: string; insertedLine: number }> {
+		// Get the parent task from TaskManager to find its line number
+		const parentTask = await this.taskManager.getTaskById(parentTaskId);
+		if (!parentTask) {
+			// If parent not found, append to end
+			const lines = content.split("\n");
+			lines.push(subtaskContent.trim());
+			return { content: lines.join("\n"), insertedLine: lines.length - 1 };
+		}
 
-		if (parentTask) {
-			const indent = this.getIndent(lines[parentTask.line]);
+		const lines = content.split("\n");
+		// Line in task is 1-based, array is 0-based
+		const parentLineIndex = parentTask.line - 1;
+		
+		if (parentLineIndex >= 0 && parentLineIndex < lines.length) {
+			const indent = this.getIndent(lines[parentLineIndex]);
 			const subtaskIndent = indent + "\t";
 			lines.splice(
-				parentTask.line + 1,
+				parentLineIndex + 1,
 				0,
 				subtaskIndent + subtaskContent.trim()
 			);
+			return { content: lines.join("\n"), insertedLine: parentLineIndex + 1 };
 		}
 
-		return lines.join("\n");
+		// Fallback: append to end
+		lines.push(subtaskContent.trim());
+		return { content: lines.join("\n"), insertedLine: lines.length - 1 };
 	}
 
-	private findTaskLineById(
-		lines: string[],
+	private async findTaskLineById(
 		taskId: string
-	): { line: number } | null {
-		for (let i = 0; i < lines.length; i++) {
-			if (lines[i].includes(taskId)) {
-				return { line: i };
-			}
-		}
-		return null;
-
+	): Promise<{ line: number } | null> {
+		// Get the task from TaskManager
+		const task = await this.taskManager.getTaskById(taskId);
+		if (!task) return null;
+		
+		// Task line is 1-based, return 0-based index for array operations
+		return { line: task.line - 1 };
 	}
 
 	/** Add a project-tagged task into Quick Capture target (fixed or daily-note) */
@@ -766,5 +803,37 @@ export class TaskManagerBridge {
 	private getIndent(line: string): string {
 		const match = line.match(/^(\s*)/);
 		return match ? match[1] : "";
+	}
+
+	/** Batch create multiple tasks */
+	async batchCreateTasks(args: BatchCreateTasksArgs): Promise<{ success: boolean; created: number; errors: string[] }> {
+		const results = {
+			success: true,
+			created: 0,
+			errors: [] as string[]
+		};
+
+		for (let i = 0; i < args.tasks.length; i++) {
+			const task = args.tasks[i];
+			try {
+				// Use defaultFilePath if task doesn't specify filePath
+				const taskArgs: CreateTaskArgs = {
+					...task,
+					filePath: task.filePath || args.defaultFilePath
+				};
+				
+				const result = await this.createTask(taskArgs);
+				if (result.success) {
+					results.created++;
+				} else {
+					results.errors.push(`Task ${i + 1}: ${result.message || 'Failed to create'}`);
+				}
+			} catch (error: any) {
+				results.success = false;
+				results.errors.push(`Task ${i + 1}: ${error.message}`);
+			}
+		}
+
+		return results;
 	}
 }
