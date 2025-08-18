@@ -897,13 +897,13 @@ export class McpServer {
 					
 					// Validate Accept header for POST requests
 					const acceptHeader = req.headers.accept as string;
-					if (!acceptHeader || !acceptHeader.includes("application/json") || !acceptHeader.includes("text/event-stream")) {
+					if (!acceptHeader || !acceptHeader.includes("application/json")) {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
 								error: "Bad Request",
-								message: "Accept header must include both application/json and text/event-stream",
+								message: "Accept header must include application/json for POST requests",
 							})
 						);
 						return;
