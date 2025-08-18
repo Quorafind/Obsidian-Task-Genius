@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.4](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.3...9.7.4) (2025-08-18)
+
+### Bug Fixes
+
+* **mcp:** ensure protocol compliance and consistent tag formatting ([cdeb1fc](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/cdeb1fcea400e76ba7b2b07aa91fb644506e5f7e))
+
+### Refactors
+
+* reorganize architecture and add dataflow foundation ([7afc7a2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/7afc7a2e7b0f30ee0e5e916255cf5f6ba33760b1))
+
 ## [9.7.3](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.2...9.7.3) (2025-08-17)
 
 ## [9.7.2](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.1...9.7.2) (2025-08-16)
