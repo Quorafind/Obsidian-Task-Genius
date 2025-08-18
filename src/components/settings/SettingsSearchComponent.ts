@@ -38,36 +38,36 @@ export class SettingsSearchComponent extends Component {
 	private createSearchUI(): void {
 		// 创建搜索容器
 		const searchContainer = this.containerEl.createDiv();
-		searchContainer.addClass("settings-search-container");
+		searchContainer.addClass("tg-settings-search-container");
 
 		// 创建搜索输入框容器
 		const searchInputContainer = searchContainer.createDiv();
-		searchInputContainer.addClass("settings-search-input-container");
+		searchInputContainer.addClass("tg-settings-search-input-container");
 
 		// 创建搜索图标
 		const searchIcon = searchInputContainer.createSpan();
-		searchIcon.addClass("settings-search-icon");
+		searchIcon.addClass("tg-settings-search-icon");
 		setIcon(searchIcon, "search");
 
 		// 创建搜索输入框
 		this.searchInputEl = searchInputContainer.createEl("input");
 		this.searchInputEl.type = "text";
 		this.searchInputEl.placeholder = t("Search settings...") + " (Ctrl+K)";
-		this.searchInputEl.addClass("settings-search-input");
+		this.searchInputEl.addClass("tg-settings-search-input");
 		this.searchInputEl.setAttribute("aria-label", t("Search settings"));
 		this.searchInputEl.setAttribute("autocomplete", "off");
 		this.searchInputEl.setAttribute("spellcheck", "false");
 
 		// 创建清除按钮
 		this.clearButton = searchInputContainer.createEl("button");
-		this.clearButton.addClass("settings-search-clear");
+		this.clearButton.addClass("tg-settings-search-clear");
 		this.clearButton.setAttribute("aria-label", t("Clear search"));
 		setIcon(this.clearButton, "x");
 		this.clearButton.style.display = "none";
 
 		// 创建搜索结果容器
 		this.resultsContainerEl = searchContainer.createDiv();
-		this.resultsContainerEl.addClass("settings-search-results");
+		this.resultsContainerEl.addClass("tg-settings-search-results");
 		this.resultsContainerEl.style.display = "none";
 		this.resultsContainerEl.setAttribute("role", "listbox");
 		this.resultsContainerEl.setAttribute("aria-label", t("Search results"));
@@ -182,26 +182,26 @@ export class SettingsSearchComponent extends Component {
 
 		this.currentResults.forEach((result, index) => {
 			const resultEl = this.resultsContainerEl.createDiv();
-			resultEl.addClass("settings-search-result");
+			resultEl.addClass("tg-settings-search-result");
 			resultEl.setAttribute("data-index", index.toString());
 
 			// 设置项名称
 			const nameEl = resultEl.createDiv();
-			nameEl.addClass("settings-search-result-name");
+			nameEl.addClass("tg-settings-search-result-name");
 			nameEl.textContent = result.item.name;
 
 			// 所属分类和标签页
 			const metaEl = resultEl.createDiv();
-			metaEl.addClass("settings-search-result-meta");
+			metaEl.addClass("tg-settings-search-result-meta");
 
 			const categoryEl = metaEl.createSpan();
-			categoryEl.addClass("settings-search-result-category");
+			categoryEl.addClass("tg-settings-search-result-category");
 			categoryEl.textContent = this.getCategoryDisplayName(result.item.category);
 
 			// 描述（如果有）
 			if (result.item.description && result.matchType === 'description') {
 				const descEl = resultEl.createDiv();
-				descEl.addClass("settings-search-result-desc");
+				descEl.addClass("tg-settings-search-result-desc");
 				descEl.textContent = this.truncateText(result.item.description, 80);
 			}
 
@@ -224,7 +224,7 @@ export class SettingsSearchComponent extends Component {
 		this.resultsContainerEl.empty();
 
 		const noResultEl = this.resultsContainerEl.createDiv();
-		noResultEl.addClass("settings-search-no-result");
+		noResultEl.addClass("tg-settings-search-no-result");
 		noResultEl.textContent = t("No settings found");
 	}
 
@@ -277,9 +277,9 @@ export class SettingsSearchComponent extends Component {
 	 */
 	private setSelectedIndex(index: number): void {
 		// 移除之前的选中状态
-		const previousSelected = this.resultsContainerEl.querySelector(".settings-search-result-selected");
+		const previousSelected = this.resultsContainerEl.querySelector(".tg-settings-search-result-selected");
 		if (previousSelected) {
-			previousSelected.removeClass("settings-search-result-selected");
+			previousSelected.removeClass("tg-settings-search-result-selected");
 		}
 
 		this.selectedIndex = index;
@@ -288,7 +288,7 @@ export class SettingsSearchComponent extends Component {
 		if (index >= 0) {
 			const selectedEl = this.resultsContainerEl.querySelector(`[data-index="${index}"]`);
 			if (selectedEl) {
-				selectedEl.addClass("settings-search-result-selected");
+				selectedEl.addClass("tg-settings-search-result-selected");
 				selectedEl.scrollIntoView({block: "nearest"});
 			}
 		}
@@ -335,9 +335,9 @@ export class SettingsSearchComponent extends Component {
 			});
 
 			// 添加临时高亮效果
-			settingElement.addClass("settings-search-highlight");
+			settingElement.addClass("tg-settings-search-highlight");
 			const timeoutId = window.setTimeout(() => {
-				settingElement.removeClass("settings-search-highlight");
+				settingElement.removeClass("tg-settings-search-highlight");
 			}, 2000);
 			this.register(() => clearTimeout(timeoutId));
 		}

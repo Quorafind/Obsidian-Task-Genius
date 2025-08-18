@@ -1,13 +1,13 @@
 /* Settings Search Component Styles */
 
 /* 搜索容器 */
-.settings-search-container {
+.tg-settings-search-container {
 	margin-bottom: var(--size-4-4);
 	position: relative;
 }
 
 /* 搜索输入框容器 - 使用 Obsidian 标准输入框样式 */
-.settings-search-input-container {
+.tg-settings-search-input-container {
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -18,13 +18,13 @@
 	min-height: var(--input-height);
 }
 
-.settings-search-input-container:focus-within {
+.tg-settings-search-input-container:focus-within {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
 }
 
 /* 搜索图标 */
-.settings-search-icon {
+.tg-settings-search-icon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -33,13 +33,13 @@
 	flex-shrink: 0;
 }
 
-.settings-search-icon svg {
+.tg-settings-search-icon svg {
 	width: var(--icon-s);
 	height: var(--icon-s);
 }
 
 /* 搜索输入框 - 重置 Obsidian 默认样式 */
-.settings-search-input {
+.tg-settings-search-input {
 	flex: 1;
 	padding: var(--size-2-2) var(--size-2-1);
 	border: none !important;
@@ -49,18 +49,18 @@
 	outline: none;
 }
 
-input.settings-search-input {
+input.tg-settings-search-input {
 	border: none !important;
 	box-shadow: none !important;
 }
 
-.settings-search-input::placeholder {
+.tg-settings-search-input::placeholder {
 	color: var(--text-muted);
 	opacity: 0.7;
 }
 
 /* 清除按钮 - 使用 Obsidian 按钮样式 */
-.settings-search-clear {
+.tg-settings-search-clear {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -78,22 +78,22 @@ input.settings-search-input {
 	height: var(--clickable-icon-size);
 }
 
-.settings-search-clear:hover {
+.tg-settings-search-clear:hover {
 	background: var(--background-modifier-hover) !important;
 	color: var(--text-normal);
 }
 
-.settings-search-clear:active {
+.tg-settings-search-clear:active {
 	background: var(--background-modifier-active) !important;
 }
 
-.settings-search-clear svg {
+.tg-settings-search-clear svg {
 	width: var(--icon-xs);
 	height: var(--icon-xs);
 }
 
 /* 搜索结果容器 - 使用 Obsidian 弹出菜单样式 */
-.settings-search-results {
+.tg-settings-search-results {
 	position: absolute;
 	top: calc(100% + var(--size-2-1));
 	left: 0;
@@ -109,7 +109,7 @@ input.settings-search-input {
 }
 
 /* 搜索结果项 - 使用 Obsidian 菜单项样式 */
-.settings-search-result {
+.tg-settings-search-result {
 	display: flex;
 	flex-direction: column;
 	padding: var(--size-4-2) var(--size-4-3);
@@ -119,21 +119,21 @@ input.settings-search-input {
 	position: relative;
 }
 
-.settings-search-result:last-child {
+.tg-settings-search-result:last-child {
 	border-bottom: none;
 }
 
-.settings-search-result:hover,
-.settings-search-result-selected {
+.tg-settings-search-result:hover,
+.tg-settings-search-result-selected {
 	background: var(--background-modifier-hover);
 }
 
-.settings-search-result:active {
+.tg-settings-search-result:active {
 	background: var(--background-modifier-active);
 }
 
 /* 搜索结果名称 */
-.settings-search-result-name {
+.tg-settings-search-result-name {
 	font-weight: var(--font-weight-medium);
 	color: var(--text-normal);
 	margin-bottom: var(--size-2-1);
@@ -142,14 +142,14 @@ input.settings-search-input {
 }
 
 /* 搜索结果元信息 */
-.settings-search-result-meta {
+.tg-settings-search-result-meta {
 	display: flex;
 	align-items: center;
 	gap: var(--size-2-2);
 	margin-bottom: var(--size-2-1);
 }
 
-.settings-search-result-category {
+.tg-settings-search-result-category {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	background: var(--background-modifier-border);
@@ -161,7 +161,7 @@ input.settings-search-input {
 }
 
 /* 搜索结果描述 */
-.settings-search-result-desc {
+.tg-settings-search-result-desc {
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 	line-height: var(--line-height-normal);
@@ -169,7 +169,7 @@ input.settings-search-input {
 }
 
 /* 无结果状态 */
-.settings-search-no-result {
+.tg-settings-search-no-result {
 	padding: var(--size-4-4) var(--size-4-3);
 	text-align: center;
 	color: var(--text-muted);
@@ -178,14 +178,14 @@ input.settings-search-input {
 }
 
 /* 设置项高亮效果 */
-.settings-search-highlight {
+.tg-settings-search-highlight {
 	background: var(--background-secondary) !important;
 	border-radius: var(--radius-s);
 	transition: background-color 0.6s ease-out;
-	animation: settings-search-pulse 0.6s ease-out;
+	animation: tg-settings-search-pulse 0.6s ease-out;
 }
 
-@keyframes settings-search-pulse {
+@keyframes tg-settings-search-pulse {
 	0% {
 		background: var(--interactive-accent);
 		transform: scale(1);
@@ -201,7 +201,7 @@ input.settings-search-input {
 }
 
 /* 键盘导航指示器 */
-.settings-search-result-selected {
+.tg-settings-search-result-selected {
 	background: var(--background-modifier-hover) !important;
 	outline: var(--border-width) solid var(--interactive-accent);
 	outline-offset: -1px;
@@ -209,57 +209,57 @@ input.settings-search-input {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-	.settings-search-container {
+	.tg-settings-search-container {
 		margin-bottom: var(--size-4-3);
 	}
 
-	.settings-search-results {
+	.tg-settings-search-results {
 		max-height: 280px;
 		border-radius: var(--radius-s);
 	}
 
-	.settings-search-result {
+	.tg-settings-search-result {
 		padding: var(--size-4-2) var(--size-4-2);
 	}
 
-	.settings-search-result-name {
+	.tg-settings-search-result-name {
 		font-size: var(--font-ui-small);
 	}
 
-	.settings-search-result-category {
+	.tg-settings-search-result-category {
 		font-size: var(--font-ui-smaller);
 		padding: var(--size-2-1) var(--size-2-1);
 	}
 }
 
 /* 滚动条样式 - 使用 Obsidian 标准滚动条 */
-.settings-search-results {
+.tg-settings-search-results {
 	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar-thumb-bg) transparent;
 }
 
-.settings-search-results::-webkit-scrollbar {
+.tg-settings-search-results::-webkit-scrollbar {
 	width: var(--scrollbar-thin-width);
 }
 
-.settings-search-results::-webkit-scrollbar-track {
+.tg-settings-search-results::-webkit-scrollbar-track {
 	background: transparent;
 }
 
-.settings-search-results::-webkit-scrollbar-thumb {
+.tg-settings-search-results::-webkit-scrollbar-thumb {
 	background: var(--scrollbar-thumb-bg);
 	border-radius: var(--scrollbar-thin-thumb-radius);
 	border: 2px solid transparent;
 	background-clip: content-box;
 }
 
-.settings-search-results::-webkit-scrollbar-thumb:hover {
+.tg-settings-search-results::-webkit-scrollbar-thumb:hover {
 	background: var(--scrollbar-thumb-bg-hover);
 	background-clip: content-box;
 }
 
 /* 确保搜索框在设置页面中的正确定位 */
-.task-genius-settings .settings-search-container {
+.task-genius-settings .tg-settings-search-container {
 	order: -1; /* 确保搜索框显示在最前面 */
 	margin-top: 0;
 	margin-bottom: var(--size-4-4);
@@ -271,31 +271,31 @@ input.settings-search-input {
 }
 
 /* 修复可能的 z-index 问题 */
-.settings-search-results {
+.tg-settings-search-results {
 	z-index: var(--layer-popover, 200);
 }
 
 /* 确保输入框聚焦时的样式正确 */
-.settings-search-input:focus {
+.tg-settings-search-input:focus {
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
 }
 
 /* 搜索图标的交互状态 */
-.settings-search-icon {
+.tg-settings-search-icon {
 	transition: color 0.15s ease-in-out;
 }
 
-.settings-search-input-container:focus-within .settings-search-icon {
+.tg-settings-search-input-container:focus-within .tg-settings-search-icon {
 	color: var(--interactive-accent);
 }
 
 /* 清除按钮的图标样式 */
-.settings-search-clear {
+.tg-settings-search-clear {
 	opacity: 0.8;
 }
 
-.settings-search-clear:hover {
+.tg-settings-search-clear:hover {
 	opacity: 1;
 }
