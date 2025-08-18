@@ -4,18 +4,29 @@
  */
 
 import { QueryAPI } from "../../dataflow/api/QueryAPI";
+import { WriteAPI } from "../../dataflow/api/WriteAPI";
 import TaskProgressBarPlugin from "../../index";
 import { Task } from "../../types/task";
 import { moment } from "obsidian";
+import {
+  UpdateTaskArgs,
+  DeleteTaskArgs,
+  CreateTaskArgs,
+  BatchUpdateTextArgs,
+  BatchCreateSubtasksArgs,
+} from "../types/mcp";
 
 export class DataflowBridge {
 	private queryAPI: QueryAPI;
+	private writeAPI: WriteAPI;
 
 	constructor(
 		private plugin: TaskProgressBarPlugin,
-		queryAPI: QueryAPI
+		queryAPI: QueryAPI,
+		writeAPI: WriteAPI
 	) {
 		this.queryAPI = queryAPI;
+		this.writeAPI = writeAPI;
 	}
 
 	/**
@@ -303,47 +314,46 @@ export class DataflowBridge {
 		}
 	}
 
-	// Note: Write operations (create, update, delete) are not implemented
-	// as they should go through the Orchestrator, not the QueryAPI
-	// These would need separate implementation if MCP write support is needed
+	// Write operations using WriteAPI
 
-	async createTask(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async createTask(args: CreateTaskArgs): Promise<any> {
+		return this.writeAPI.createTask(args);
 	}
 
-	async updateTask(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async updateTask(args: UpdateTaskArgs): Promise<any> {
+		return this.writeAPI.updateTask(args);
 	}
 
-	async deleteTask(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async deleteTask(args: DeleteTaskArgs): Promise<any> {
+		return this.writeAPI.deleteTask(args);
 	}
 
-	async updateTaskStatus(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async updateTaskStatus(args: { taskId: string; status?: string; completed?: boolean }): Promise<any> {
+		return this.writeAPI.updateTaskStatus(args);
 	}
 
-	async batchUpdateTaskStatus(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async batchUpdateTaskStatus(args: { taskIds: string[]; status?: string; completed?: boolean }): Promise<any> {
+		return this.writeAPI.batchUpdateTaskStatus(args);
 	}
 
-	async postponeTasks(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async postponeTasks(args: { taskIds: string[]; newDate: string }): Promise<any> {
+		return this.writeAPI.postponeTasks(args);
 	}
 
-	async batchUpdateText(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async batchUpdateText(args: BatchUpdateTextArgs): Promise<any> {
+		return this.writeAPI.batchUpdateText(args);
 	}
 
-	async batchCreateSubtasks(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async batchCreateSubtasks(args: BatchCreateSubtasksArgs): Promise<any> {
+		return this.writeAPI.batchCreateSubtasks(args);
 	}
 
-	async createTaskInDailyNote(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+	async createTaskInDailyNote(args: CreateTaskArgs & { heading?: string }): Promise<any> {
+		return this.writeAPI.createTaskInDailyNote(args);
 	}
 
-	async addProjectTaskToQuickCapture(): Promise<{ error: string }> {
-		return { error: "Write operations not yet supported in dataflow mode" };
+
+async addProjectTaskToQuickCapture(args: { content: string; project: string; tags?: string[]; priority?: number; dueDate?: string; startDate?: string; context?: string; heading?: string; completed?: boolean; completedDate?: string; }): Promise<any> {
+		return this.writeAPI.addProjectTaskToQuickCapture(args);
 	}
 }
