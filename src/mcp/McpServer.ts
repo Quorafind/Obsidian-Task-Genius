@@ -880,7 +880,7 @@ export class McpServer {
 				}
 
 				// MCP endpoint (also handle root path for compatibility)
-				if ((pathname === "/mcp" || pathname === "/") && req.method === "POST") {
+				if ((pathname === "/mcp") && req.method === "POST") {
 					// Validate Origin header for security (DNS rebinding protection)
 					const origin = req.headers.origin as string;
 					if (origin && !this.isOriginAllowed(origin)) {
