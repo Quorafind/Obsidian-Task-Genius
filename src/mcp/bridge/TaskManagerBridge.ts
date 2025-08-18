@@ -298,12 +298,25 @@ export class TaskManagerBridge {
 				}
 			} else {
 				newContent = current ? `${current}\n${taskContent}` : taskContent;
+				const lines = newContent.split("\n");
+				insertedLine = lines.length - 1;
 			}
 		}
 		await app.vault.modify(file, newContent);
 		await this.taskManager.indexFile(file);
 		const tasks = this.taskManager.getTasksForFile(file.path);
-		const created = tasks[tasks.length - 1];
+		
+		// Find the task at the inserted line
+		let created: Task | undefined;
+		if (args.parent && insertedLine >= 0) {
+			// For subtasks, find by line number (1-based in task IDs)
+			const expectedId = `${file.path}-L${insertedLine + 1}`;
+			created = tasks.find(t => t.id === expectedId);
+		} else {
+			// For regular tasks, use the last task
+			created = tasks[tasks.length - 1];
+		}
+		
 		if (!created) throw new Error("Task created in daily note but not found after indexing");
 		return created;
 	}
@@ -557,6 +570,14 @@ export class TaskManagerBridge {
 		} else {
 			filePath = processDateTemplates(qc.targetFile || "Quick Capture.md");
 		}
+		// Get tasks before adding new one (for comparison)
+		const file = this.plugin.app.vault.getFileByPath(filePath) as TFile | null;
+		let tasksBeforeCount = 0;
+		if (file) {
+			await this.taskManager.indexFile(file);
+			tasksBeforeCount = this.taskManager.getTasksForFile(file.path).length;
+		}
+		
 		// Persist using shared saver (creates folders/files as needed, handles heading)
 		await saveCapture(this.plugin.app, line, {
 			targetFile: qc.targetFile,
@@ -565,12 +586,17 @@ export class TaskManagerBridge {
 			targetHeading: args.heading || qc.targetHeading,
 			dailyNoteSettings: qc.dailyNoteSettings,
 		});
+		
 		// Try to index and return the created task
-		const file = this.plugin.app.vault.getFileByPath(filePath) as TFile | null;
-		if (file) {
-			await this.taskManager.indexFile(file);
-			const tasks = this.taskManager.getTasksForFile(file.path);
-			return { filePath, task: tasks[tasks.length-1] };
+		const updatedFile = this.plugin.app.vault.getFileByPath(filePath) as TFile | null;
+		if (updatedFile) {
+			await this.taskManager.indexFile(updatedFile);
+			const tasks = this.taskManager.getTasksForFile(updatedFile.path);
+			// Find the newly added task (should be the one that wasn't there before)
+			if (tasks.length > tasksBeforeCount) {
+				// Return the last new task added
+				return { filePath, task: tasks[tasks.length - 1] };
+			}
 		}
 		return { filePath };
 	}
@@ -697,13 +723,13 @@ export class TaskManagerBridge {
 
 	/** Update a single task status or completion */
 	async updateTaskStatus(args: { taskId: string; status?: string; completed?: boolean }): Promise<Task | null> {
-		const task = this.taskManager.getTaskById(args.taskId);
+		const task = await this.taskManager.getTaskById(args.taskId);
 		if (!task) return null;
 		const updated: Task = { ...task } as Task;
 		if (args.status !== undefined) (updated as any).status = args.status;
 		if (args.completed !== undefined) updated.completed = args.completed;
 		await this.taskManager.updateTask(updated);
-		return this.taskManager.getTaskById(args.taskId) || null;
+		return await this.taskManager.getTaskById(args.taskId) || null;
 	}
 
 	/** Batch update task statuses */
