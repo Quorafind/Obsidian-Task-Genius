@@ -143,17 +143,36 @@ export class TaskView extends ItemView {
 		});
 
 		// 1. 首先注册事件监听器，确保不会错过任何更新
-		this.registerEvent(
-			this.app.workspace.on(
-				"task-genius:task-cache-updated",
-				async () => {
-					// Only skip view update if currently editing content in details panel
-					// Always update view for status changes from external sources (e.g., editor)
+		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+			// Dataflow: 订阅统一事件
+			const { on, Events } = await import("../dataflow/events/Events");
+			this.registerEvent(
+				on(this.app, Events.CACHE_READY, async () => {
+					// 冷启动就绪，从快照加载
+					await this.loadTasksFast(true);
+				})
+			);
+			this.registerEvent(
+				on(this.app, Events.TASK_CACHE_UPDATED, async () => {
+					// 任务缓存更新，增量刷新
 					const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
 					await this.loadTasks(false, skipViewUpdate);
-				}
-			)
-		);
+				})
+			);
+		} else {
+			// Legacy: 兼容旧事件
+			this.registerEvent(
+				this.app.workspace.on(
+					"task-genius:task-cache-updated",
+					async () => {
+						// Only skip view update if currently editing content in details panel
+						// Always update view for status changes from external sources (e.g., editor)
+						const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
+						await this.loadTasks(false, skipViewUpdate);
+					}
+				)
+			);
+		}
 
 		// 监听过滤器变更事件
 		this.registerEvent(
