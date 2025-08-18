@@ -16,8 +16,8 @@ import {
 	IndexerResult,
 	ParseTasksCommand,
 	TaskParseResult,
-} from "./TaskIndexWorkerMessage";
-import { FileMetadataTaskParser } from "./FileMetadataTaskParser";
+} from "../../utils/workers/TaskIndexWorkerMessage";
+import { FileMetadataTaskParser } from "../../utils/workers/FileMetadataTaskParser";
 import {
 	FileParsingConfiguration,
 	FileMetadataInheritanceConfig,
@@ -26,7 +26,7 @@ import {
 // Import worker and utilities
 // @ts-ignore Ignore type error for worker import
 import TaskWorker from "./TaskIndex.worker";
-import { Deferred, deferred } from "./deferred";
+import { Deferred, deferred } from "../../utils/workers/deferred";
 
 // Using similar queue structure as importer.ts
 import { Queue } from "@datastructures-js/queue";
@@ -976,7 +976,7 @@ export class TaskWorkerManager extends Component {
 	 * Set enhanced project data for worker processing
 	 */
 	public setEnhancedProjectData(
-		enhancedProjectData: import("./TaskIndexWorkerMessage").EnhancedProjectData
+		enhancedProjectData: import("../../utils/workers/TaskIndexWorkerMessage").EnhancedProjectData
 	): void {
 		// Update the settings with enhanced project data
 		if (this.options.settings) {

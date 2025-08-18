@@ -2,16 +2,16 @@
  * Canvas file parser for extracting tasks from Obsidian Canvas files
  */
 
-import { Task, CanvasTaskMetadata } from "../../../utils/../types/task";
+import { Task, CanvasTaskMetadata } from "../../types/task";
 import {
 	CanvasData,
 	CanvasTextData,
 	ParsedCanvasContent,
 	CanvasParsingOptions,
 	AllCanvasNodeData,
-} from "../../../utils/../types/canvas";
-import { MarkdownTaskParser } from "../../../utils/workers/ConfigurableTaskParser";
-import { TaskParserConfig } from "../../../utils/../types/TaskParserConfig";
+} from "../../types/canvas";
+import { MarkdownTaskParser } from "./ConfigurableTaskParser";
+import { TaskParserConfig } from "../../types/TaskParserConfig";
 
 /**
  * Default options for canvas parsing

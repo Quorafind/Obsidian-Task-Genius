@@ -191,14 +191,15 @@ export class Repository {
    * Get a task by ID
    */
   async byId(id: string): Promise<Task | null> {
-    return this.indexer.getTaskById(id);
+    return this.indexer.getTaskById(id) || null;
   }
 
   /**
    * Query tasks with filter and sorting
    */
   async query(filter?: TaskFilter, sorting?: SortingCriteria[]): Promise<Task[]> {
-    return this.indexer.queryTasks(filter, sorting);
+    const filters = filter ? [filter] : [];
+    return this.indexer.queryTasks(filters, sorting);
   }
 
   /**

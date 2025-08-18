@@ -5,7 +5,7 @@
  * This worker processes project mappings, path patterns, and metadata transformations.
  */
 
-import { WorkerMessage, ProjectDataMessage, ProjectDataResponse, WorkerResponse } from './TaskIndexWorkerMessage';
+import { WorkerMessage, ProjectDataMessage, ProjectDataResponse, WorkerResponse } from '../../utils/workers/TaskIndexWorkerMessage';
 
 // Interfaces for project data processing
 interface ProjectMapping {

@@ -4,21 +4,20 @@
  */
 
 import { FileStats } from "obsidian";
-import { Task } from "../../types/task";
+import { Task, TgProject } from "../../types/task";
 import {
 	IndexerCommand,
 	TaskParseResult,
 	ErrorResult,
 	BatchIndexResult,
 	TaskWorkerSettings,
-} from "./TaskIndexWorkerMessage";
+} from "../../utils/workers/TaskIndexWorkerMessage";
 import { parse } from "date-fns/parse";
-import { MarkdownTaskParser } from "./ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../core/ConfigurableTaskParser";
 import { getConfig } from "../../common/task-parser-config";
-import { FileMetadataTaskParser } from "./FileMetadataTaskParser";
-import { CanvasParser } from "../parsing/CanvasParser";
-import { SupportedFileType } from "../fileTypeUtils";
-import { TgProject } from "../../types/task";
+import { FileMetadataTaskParser } from "../../utils/workers/FileMetadataTaskParser";
+import { CanvasParser } from "../core/CanvasParser";
+import { SupportedFileType } from "../../utils/fileTypeUtils";
 
 /**
  * Enhanced task parsing using configurable parser

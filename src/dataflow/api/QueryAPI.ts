@@ -141,7 +141,7 @@ export class QueryAPI {
     total: number;
     byProject: Record<string, number>;
     byTag: Record<string, number>;
-    byStatus: Record<boolean, number>;
+    byStatus: Record<string, number>;
   }> {
     const summary = await this.repository.getSummary();
     
@@ -156,9 +156,9 @@ export class QueryAPI {
       byTag[key] = value;
     }
     
-    const byStatus: Record<boolean, number> = {};
+    const byStatus: Record<string, number> = {};
     for (const [key, value] of summary.byStatus) {
-      byStatus[key] = value;
+      byStatus[String(key)] = value;
     }
     
     return {

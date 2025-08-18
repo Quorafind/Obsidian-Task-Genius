@@ -1,6 +1,6 @@
 import { FileMetadataTaskParser } from "../../utils/workers/FileMetadataTaskParser";
 import type { Task } from "../../types/task";
-import type TaskGeniusPlugin from "../../main";
+import type TaskGeniusPlugin from "../../index";
 
 /**
  * Parse file-level tasks from frontmatter and tags
@@ -10,13 +10,14 @@ export async function parseFileMeta(
   plugin: TaskGeniusPlugin,
   filePath: string
 ): Promise<Task[]> {
-  const file = plugin.app.vault.getAbstractFileByPath(filePath);
-  if (!file) return [];
-  
+  const af = plugin.app.vault.getAbstractFileByPath(filePath);
+  if (!af) return [];
+  const file = af as any; // Narrow for test/runtime
+
   const fileCache = plugin.app.metadataCache.getFileCache(file);
   if (!fileCache) return [];
-  
-  const fileContent = await plugin.app.vault.cachedRead(file);
+
+  const fileContent = await plugin.app.vault.cachedRead(file as any);
   
   // Create parser with project detection disabled (pass undefined for detection methods)
   const parser = new FileMetadataTaskParser(

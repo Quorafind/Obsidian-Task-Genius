@@ -14,12 +14,12 @@
  */
 
 import { Vault, MetadataCache } from "obsidian";
-import { MarkdownTaskParser } from "./workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import {
 	ProjectConfigManager,
 	ProjectConfigManagerOptions,
 } from "./ProjectConfigManager";
-import { ProjectDataWorkerManager } from "./ProjectDataWorkerManager";
+import { ProjectDataWorkerManager } from "../dataflow/workers/ProjectDataWorkerManager";
 import { TaskParserConfig, EnhancedTask } from "../types/TaskParserConfig";
 import { Task, TgProject } from "../types/task";
 

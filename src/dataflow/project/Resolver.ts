@@ -106,7 +106,7 @@ export class Resolver {
   /**
    * Clear cache for specific files
    */
-  clearCache(filePaths?: string[]): void {
+  clearCache(filePaths?: string): void {
     this.projectDataCache.clearCache(filePaths);
   }
 

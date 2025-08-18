@@ -159,8 +159,8 @@ export class Augmentor {
 
     for (const field of arrayFields) {
       const taskArray = Array.isArray(metadata[field]) ? metadata[field] : [];
-      const fileArray = Array.isArray(ctx.fileMeta?.[field]) ? ctx.fileMeta[field] : [];
-      const projectArray = Array.isArray(ctx.projectMeta?.[field]) ? ctx.projectMeta[field] : [];
+      const fileArray = ctx.fileMeta && Array.isArray((ctx.fileMeta as any)[field]) ? (ctx.fileMeta as any)[field] : [];
+      const projectArray = ctx.projectMeta && Array.isArray((ctx.projectMeta as any)[field]) ? (ctx.projectMeta as any)[field] : [];
 
       let mergedArray: any[];
 

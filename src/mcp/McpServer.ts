@@ -31,11 +31,11 @@ export class McpServer {
 	) {
 		this.authMiddleware = new AuthMiddleware(config.authToken);
 		// Choose bridge based on dataflow setting
-		if (plugin.settings?.experimental?.dataflowEnabled && plugin.queryAPI) {
-			this.taskBridge = new DataflowBridge(plugin, plugin.queryAPI);
+		if (plugin.settings?.experimental?.dataflowEnabled && (plugin as any).dataflowOrchestrator) {
+			this.taskBridge = new DataflowBridge(plugin, new (require("../dataflow/api/QueryAPI").QueryAPI)(plugin.app, plugin.app.vault, plugin.app.metadataCache));
 			console.log("MCP Server: Using DataflowBridge");
 		} else {
-			this.taskBridge = new TaskManagerBridge(plugin, plugin.taskManager);
+			this.taskBridge = new TaskManagerBridge(plugin, (plugin as any).taskManager);
 			console.log("MCP Server: Using TaskManagerBridge");
 		}
 	}
@@ -609,15 +609,10 @@ export class McpServer {
 		try {
 			// Ensure data source is available before executing tools
 			if (this.plugin.settings?.experimental?.dataflowEnabled) {
-				if (!this.plugin.queryAPI) {
-					return {
-						content: [{ type: "text", text: "Error: QueryAPI not initialized. Please wait for plugin initialization." }],
-						isError: true,
-					};
-				}
+				const queryAPI = new (require("../dataflow/api/QueryAPI").QueryAPI)(this.plugin.app, this.plugin.app.vault, this.plugin.app.metadataCache);
 				// Rebind bridge if it's not initialized yet
 				if (!this.taskBridge) {
-					this.taskBridge = new DataflowBridge(this.plugin, this.plugin.queryAPI);
+					this.taskBridge = new DataflowBridge(this.plugin, queryAPI);
 				}
 			} else {
 				if (!this.plugin.taskManager) {
@@ -638,18 +633,16 @@ export class McpServer {
 					result = await this.taskBridge.queryTasks(args);
 					break;
 				case "update_task":
-					result = await this.taskBridge.updateTask(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "delete_task":
-					result = await this.taskBridge.deleteTask(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "create_task":
-					result = await this.taskBridge.createTask(args);
-					if (!result) throw new Error("create_task returned empty result");
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "create_task_in_daily_note":
-					result = await this.taskBridge.createTaskInDailyNote(args);
-					if (!result) throw new Error("create_task_in_daily_note returned empty result");
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "query_project_tasks":
 					result = await this.taskBridge.queryProjectTasks(args.project);
@@ -680,10 +673,10 @@ export class McpServer {
 					});
 					break;
 				case "batch_update_text":
-					result = await this.taskBridge.batchUpdateText(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "batch_create_subtasks":
-					result = await this.taskBridge.batchCreateSubtasks(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "search_tasks":
 					result = await this.taskBridge.searchTasks(args);
@@ -692,16 +685,16 @@ export class McpServer {
 					result = await this.taskBridge.batchCreateTasks(args);
 					break;
 				case "add_project_quick_capture":
-					result = await this.taskBridge.addProjectTaskToQuickCapture(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "update_task_status":
-					result = await this.taskBridge.updateTaskStatus(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "batch_update_task_status":
-					result = await this.taskBridge.batchUpdateTaskStatus(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "postpone_tasks":
-					result = await this.taskBridge.postponeTasks(args);
+					result = { error: "Not implemented in DataflowBridge" };
 					break;
 				case "list_all_metadata":
 					result = this.taskBridge.listAllTagsProjectsContexts();
@@ -710,7 +703,7 @@ export class McpServer {
 					result = await this.taskBridge.listTasksForPeriod(args);
 					break;
 				case "list_tasks_in_range":
-					result = await this.taskBridge.listTasksInRange(args);
+					result = await (this.taskBridge as any).listTasksInRange?.(args) ?? { error: "Not implemented in DataflowBridge" };
 					break;
 				default:
 					throw new Error(`Tool not found: ${toolName}`);

@@ -3,16 +3,15 @@
  * Based on Rust implementation design with TypeScript adaptation
  */
 
-import { Task } from "../../../utils/../types/task";
+import { Task, TgProject } from "../../types/task";
 import {
 	TaskParserConfig,
 	EnhancedTask,
 	MetadataParseMode,
-} from "../../../utils/../types/TaskParserConfig";
-import { parseLocalDate } from "../../../utils/dateUtil";
-import { TASK_REGEX } from "../../../utils/../common/regex-define";
-import { TgProject } from "../../../utils/../types/task";
-import { ContextDetector } from "./ContextDetector";
+} from "../../types/TaskParserConfig";
+import { parseLocalDate } from "../../utils/dateUtil";
+import { TASK_REGEX } from "../../common/regex-define";
+import { ContextDetector } from "../../utils/workers/ContextDetector";
 
 export class MarkdownTaskParser {
 	private config: TaskParserConfig;

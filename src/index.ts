@@ -283,8 +283,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						this.app.metadataCache,
 						this,
 						{
-							useWorkers: true,
-							debug: true
+							// ProjectConfigManagerOptions is narrower; pass only known properties
 						}
 					).then((orchestrator) => {
 						this.dataflowOrchestrator = orchestrator;

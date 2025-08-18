@@ -1,4 +1,4 @@
-import type { App, TFile, Vault, MetadataCache } from "obsidian";
+import { App, TFile, Vault, MetadataCache } from "obsidian";
 import type { Task } from "../types/task";
 import type { ProjectConfigManagerOptions } from "../utils/ProjectConfigManager";
 
@@ -10,8 +10,8 @@ import { Storage } from "./persistence/Storage";
 import { Events, emit, Seq } from "./events/Events";
 import { WorkerOrchestrator } from "./workers/WorkerOrchestrator";
 import { ObsidianSource } from "./sources/ObsidianSource";
-import { TaskWorkerManager } from "../utils/workers/TaskWorkerManager";
-import { ProjectDataWorkerManager } from "../utils/ProjectDataWorkerManager";
+import { TaskWorkerManager } from "./workers/TaskWorkerManager";
+import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
 
 // Parser imports
 import { parseMarkdown } from "./parsers/MarkdownEntry";
@@ -117,8 +117,8 @@ export class DataflowOrchestrator {
         // Parse the file
         rawTasks = await this.parseFile(file);
         
-        // Store raw tasks
-        await this.storage.storeRaw(filePath, rawTasks);
+        // Store raw tasks with file content for hash
+        await this.storage.storeRaw(filePath, rawTasks, fileContent);
       }
       
       // Step 2: Get project data (can be parallelized)

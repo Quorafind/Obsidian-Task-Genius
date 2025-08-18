@@ -8,11 +8,11 @@
 import { App, Component, MetadataCache, TFile, Vault } from "obsidian";
 import { Task, TaskFilter, SortingCriteria, TaskCache } from "../types/task";
 import { TaskIndexer } from "./import/TaskIndexer";
-import { TaskWorkerManager } from "./workers/TaskWorkerManager";
+import { TaskWorkerManager } from "../dataflow/workers/TaskWorkerManager";
 import { LocalStorageCache } from "./persister";
 import TaskProgressBarPlugin from "../index";
 import { RRule, RRuleSet, rrulestr } from "rrule";
-import { MarkdownTaskParser } from "./workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 import {
 	getEffectiveProject,
@@ -30,7 +30,7 @@ import {
 	SupportedFileType,
 } from "./fileTypeUtils";
 import { FileFilterManager } from "./FileFilterManager";
-import { CanvasParser } from "./parsing/CanvasParser";
+import { CanvasParser } from "../dataflow/core/CanvasParser";
 import { CanvasTaskUpdater } from "./parsing/CanvasTaskUpdater";
 import { FileMetadataTaskUpdater } from "./workers/FileMetadataTaskUpdater";
 import { RebuildProgressManager } from "./RebuildProgressManager";

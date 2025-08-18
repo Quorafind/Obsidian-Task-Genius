@@ -48,11 +48,10 @@ export class DataflowBridge {
 				}
 
 				if (project) {
-					tasks = tasks.filter(t => 
-						t.project === project || 
-						t.tgProject === project ||
-						t.metadata?.project === project
-					);
+					tasks = tasks.filter(t => {
+						const p = t.metadata?.project || (t.metadata as any)?.tgProject?.name;
+						return p === project;
+					});
 				}
 
 				if (tags && tags.length > 0) {
@@ -156,7 +155,7 @@ export class DataflowBridge {
 	 * Query tasks by date range
 	 */
 	async queryByDate(params: {
-		dateType: "due" | "start" | "scheduled" | "completed";
+		dateType: "due" | "start" | "scheduled";
 		from?: string;
 		to?: string;
 		limit?: number;
@@ -202,8 +201,8 @@ export class DataflowBridge {
 							if (tags.some(tag => tag.toLowerCase().includes(query))) return true;
 							break;
 						case "project":
-							if (task.project?.toLowerCase().includes(query) ||
-								task.tgProject?.toLowerCase().includes(query)) return true;
+							const p = task.metadata?.project || (task.metadata as any)?.tgProject?.name;
+							if (p?.toLowerCase().includes(query)) return true;
 							break;
 						case "context":
 							if (task.metadata?.context?.toLowerCase().includes(query)) return true;
@@ -245,7 +244,7 @@ export class DataflowBridge {
 	async listTasksForPeriod(params: {
 		period: "day" | "month" | "year";
 		date: string;
-		dateType?: "due" | "start" | "scheduled" | "completed";
+		dateType?: "due" | "start" | "scheduled";
 		limit?: number;
 	}): Promise<{ tasks: Task[] }> {
 		try {
@@ -287,7 +286,7 @@ export class DataflowBridge {
 	async listTasksInRange(params: {
 		from: string;
 		to: string;
-		dateType?: "due" | "start" | "scheduled" | "completed";
+		dateType?: "due" | "start" | "scheduled";
 		limit?: number;
 	}): Promise<{ tasks: Task[] }> {
 		try {

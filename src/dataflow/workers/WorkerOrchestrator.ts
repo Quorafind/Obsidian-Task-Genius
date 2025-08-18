@@ -1,8 +1,8 @@
 import type { TFile } from "obsidian";
 import type { Task } from "../../types/task";
 import type { CachedProjectData } from "../../utils/ProjectDataCache";
-import { TaskWorkerManager, DEFAULT_WORKER_OPTIONS } from "../../dataflow/workers/TaskWorkerManager";
-import { ProjectDataWorkerManager } from "../../utils/ProjectDataWorkerManager";
+import { TaskWorkerManager, DEFAULT_WORKER_OPTIONS } from "./TaskWorkerManager";
+import { ProjectDataWorkerManager } from "./ProjectDataWorkerManager";
 
 /**
  * WorkerOrchestrator - Unified task and project worker management

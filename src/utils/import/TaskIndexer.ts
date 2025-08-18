@@ -219,6 +219,35 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 		await this.initialize();
 	}
 
+	// ---- Minimal adapter methods expected by Repository ----
+	public async restoreFromSnapshot(cache: TaskCache): Promise<void> {
+		this.setCache(cache);
+	}
+	public async getTotalTaskCount(): Promise<number> {
+		return this.taskCache.tasks.size;
+	}
+	public async getAllTasks(): Promise<Task[]> {
+		return Array.from(this.taskCache.tasks.values());
+	}
+	public async getTaskIdsByProject(project: string): Promise<Set<string>> {
+		return this.taskCache.projects.get(project) || new Set();
+	}
+	public async getTaskIdsByTag(tag: string): Promise<Set<string>> {
+		return this.taskCache.tags.get(tag) || new Set();
+	}
+	public async getTaskIdsByCompletionStatus(completed: boolean): Promise<Set<string>> {
+		return this.taskCache.completed.get(completed) || new Set();
+	}
+	public async getIndexSnapshot(): Promise<TaskCache> {
+		return this.getCache();
+	}
+	public async clearIndex(): Promise<void> {
+		this.resetCache();
+	}
+	public async removeTasksFromFile(filePath: string): Promise<void> {
+		this.removeFileFromIndex(filePath);
+	}
+
 	/**
 	 * Index a single file using external parsing
 	 * @deprecated Use updateIndexWithTasks with external parsing instead
@@ -282,6 +311,7 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 	/**
 	 * Remove a file from the index
 	 */
+
 	private removeFileFromIndex(file: TFile | string): void {
 		const filePath = typeof file === "string" ? file : file.path;
 		const taskIds = this.taskCache.files.get(filePath);

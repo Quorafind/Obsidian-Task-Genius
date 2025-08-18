@@ -4,9 +4,11 @@ import { getConfig } from "../../common/task-parser-config";
 import TaskProgressBarPlugin from "../../index";
 
 // This entry requires plugin to provide config like original code did
-export async function parseCanvas(content: string, filePath: string, plugin: TaskProgressBarPlugin): Promise<Task[]> {
+export async function parseCanvas(plugin: TaskProgressBarPlugin, file: { path: string }, content?: string): Promise<Task[]> {
   const config = getConfig(plugin.settings.preferMetadataFormat, plugin);
   const parser = new CanvasParser(config);
-  return parser.parseCanvasFile(content, filePath);
+  const filePath = file.path;
+  const text = content ?? await plugin.app.vault.cachedRead(file as any);
+  return parser.parseCanvasFile(text, filePath);
 }
 

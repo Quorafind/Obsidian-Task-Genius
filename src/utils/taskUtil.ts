@@ -27,7 +27,7 @@ import {
 	ANY_DATAVIEW_FIELD_REGEX,
 	EMOJI_TAG_REGEX,
 } from "../common/regex-define";
-import { MarkdownTaskParser } from "./workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 
 /**

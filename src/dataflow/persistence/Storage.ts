@@ -99,7 +99,7 @@ export class Storage {
       
       // Check version compatibility
       if (!this.isVersionValid(cached.data)) {
-        await this.cache.clearFile(Keys.raw(path));
+        await this.cache.removeFile(Keys.raw(path));
         return null;
       }
       
@@ -113,9 +113,9 @@ export class Storage {
   /**
    * Store raw tasks for a file
    */
-  async storeRaw(path: string, tasks: Task[]): Promise<void> {
+  async storeRaw(path: string, tasks: Task[], fileContent?: string): Promise<void> {
     const record: RawRecord = {
-      hash: this.generateHash(tasks),
+      hash: this.generateHash(fileContent || tasks),
       time: Date.now(),
       version: this.currentVersion,
       schema: this.schemaVersion,
@@ -150,7 +150,7 @@ export class Storage {
       
       // Check version compatibility
       if (!this.isVersionValid(cached.data)) {
-        await this.cache.clearFile(Keys.project(path));
+        await this.cache.removeFile(Keys.project(path));
         return null;
       }
       
@@ -186,7 +186,7 @@ export class Storage {
       
       // Check version compatibility
       if (!this.isVersionValid(cached.data)) {
-        await this.cache.clearFile(Keys.augmented(path));
+        await this.cache.removeFile(Keys.augmented(path));
         return null;
       }
       
@@ -217,12 +217,12 @@ export class Storage {
    */
   async loadConsolidated(): Promise<ConsolidatedRecord | null> {
     try {
-      const cached = await this.cache.loadFile<ConsolidatedRecord>(Keys.consolidated());
+      const cached = await this.cache.loadConsolidatedCache<ConsolidatedRecord>('taskIndex');
       if (!cached || !cached.data) return null;
       
       // Check version compatibility
       if (!this.isVersionValid(cached.data)) {
-        await this.cache.clearFile(Keys.consolidated());
+        await this.cache.removeFile(Keys.consolidated());
         return null;
       }
       
@@ -244,7 +244,7 @@ export class Storage {
       data: taskCache,
     };
     
-    await this.cache.storeFile(Keys.consolidated(), record);
+    await this.cache.storeConsolidatedCache('taskIndex', record);
   }
 
   /**
@@ -252,9 +252,9 @@ export class Storage {
    */
   async clearFile(path: string): Promise<void> {
     await Promise.all([
-      this.cache.clearFile(Keys.raw(path)),
-      this.cache.clearFile(Keys.project(path)),
-      this.cache.clearFile(Keys.augmented(path)),
+      this.cache.removeFile(Keys.raw(path)),
+      this.cache.removeFile(Keys.project(path)),
+      this.cache.removeFile(Keys.augmented(path)),
     ]);
   }
 
@@ -269,14 +269,22 @@ export class Storage {
    * Clear storage for a specific namespace
    */
   async clearNamespace(namespace: "raw" | "project" | "augmented" | "consolidated"): Promise<void> {
-    // Get all keys and filter by namespace
-    const allKeys = await this.cache.getKeys();
-    const prefix = namespace === "consolidated" ? Keys.consolidated() : `tasks.${namespace}:`;
+    // Get all file paths and filter by namespace
+    const allFiles = await this.cache.allFiles();
     
-    const keysToDelete = allKeys.filter(key => key.startsWith(prefix));
+    // Map namespace to prefix patterns
+    const prefixMap = {
+      raw: 'tasks.raw:',
+      project: 'project.data:',
+      augmented: 'tasks.augmented:',
+      consolidated: 'consolidated:'
+    };
     
-    for (const key of keysToDelete) {
-      await this.cache.clearFile(key);
+    const prefix = prefixMap[namespace];
+    const filesToDelete = allFiles.filter(file => file.startsWith(prefix));
+    
+    for (const file of filesToDelete) {
+      await this.cache.removeFile(file);
     }
   }
 
@@ -322,7 +330,7 @@ export class Storage {
     totalKeys: number;
     byNamespace: Record<string, number>;
   }> {
-    const allKeys = await this.cache.getKeys();
+    const allFiles = await this.cache.allFiles();
     
     const byNamespace: Record<string, number> = {
       raw: 0,
@@ -332,16 +340,16 @@ export class Storage {
       meta: 0,
     };
     
-    for (const key of allKeys) {
-      if (key.startsWith("tasks.raw:")) byNamespace.raw++;
-      else if (key.startsWith("project.data:")) byNamespace.project++;
-      else if (key.startsWith("tasks.augmented:")) byNamespace.augmented++;
-      else if (key.startsWith("consolidated:")) byNamespace.consolidated++;
-      else if (key.startsWith("meta:")) byNamespace.meta++;
+    for (const file of allFiles) {
+      if (file.startsWith("tasks.raw:")) byNamespace.raw++;
+      else if (file.startsWith("project.data:")) byNamespace.project++;
+      else if (file.startsWith("tasks.augmented:")) byNamespace.augmented++;
+      else if (file.startsWith("consolidated:")) byNamespace.consolidated++;
+      else if (file.startsWith("meta:")) byNamespace.meta++;
     }
     
     return {
-      totalKeys: allKeys.length,
+      totalKeys: allFiles.length,
       byNamespace,
     };
   }
