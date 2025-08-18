@@ -938,20 +938,22 @@ export class McpServer {
 						return;
 					}
 
-					// Validate client app identity to avoid cross-vault confusion
+					// Optional client app identity validation (for cross-vault protection)
+					// Only validate if client provides an app ID - don't require it
 					const expectedAppId = this.plugin.app.appId;
 					const headerAppId = (req.headers["mcp-app-id"] as string) || "";
 					const bearerAppId = this.authMiddleware.getClientAppId(req);
 					const clientAppId = headerAppId || bearerAppId || "";
-					
-					if (!clientAppId || clientAppId !== expectedAppId) {
+
+					// Only validate if client explicitly provides an app ID
+					if (clientAppId && clientAppId !== expectedAppId) {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
 								error: "InvalidClient",
-								message: "Missing or invalid client app id. Include header: mcp-app-id: <plugin.app.appId> or Authorization: Bearer <token>+<appId>.",
-								details: { expectedAppId, received: clientAppId || null, source: headerAppId ? "header" : (bearerAppId ? "authorization" : "none") }
+								message: `Client app ID mismatch. Expected: ${expectedAppId}, received: ${clientAppId}`,
+								details: { expectedAppId, received: clientAppId, source: headerAppId ? "header" : "authorization" }
 							})
 						);
 						return;
