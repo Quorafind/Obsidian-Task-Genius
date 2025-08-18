@@ -110,6 +110,7 @@ import { TaskTimerManager } from "./utils/TaskTimerManager";
 import { McpServerManager } from "./mcp/McpServerManager";
 import { createDataflow, isDataflowEnabled } from "./dataflow/createDataflow";
 import type { DataflowOrchestrator } from "./dataflow/Orchestrator";
+import { WriteAPI } from "./dataflow/api/WriteAPI";
 
 class TaskProgressBarPopover extends HoverPopover {
 	plugin: TaskProgressBarPlugin;
@@ -194,6 +195,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// Dataflow orchestrator instance (experimental)
 	dataflowOrchestrator?: DataflowOrchestrator;
+	
+	// Write API for dataflow architecture
+	writeAPI?: WriteAPI;
 
 	rewardManager: RewardManager;
 
@@ -309,6 +313,31 @@ export default class TaskProgressBarPlugin extends Plugin {
 			);
 
 			this.addChild(this.taskManager);
+			
+			// Initialize WriteAPI if dataflow is enabled
+			if (this.settings?.experimental?.dataflowEnabled) {
+				const getTaskById = (id: string) => {
+					// Try dataflow first, fallback to taskManager
+					if (this.dataflowOrchestrator) {
+						try {
+							const QueryAPI = require("./dataflow/api/QueryAPI").QueryAPI;
+							const queryAPI = new QueryAPI(this.app, this.app.vault, this.app.metadataCache);
+							return queryAPI.getRepository().getTaskById(id);
+						} catch (e) {
+							console.warn("Failed to get task from dataflow, falling back to taskManager", e);
+						}
+					}
+					return this.taskManager.getTaskById(id);
+				};
+				
+				this.writeAPI = new WriteAPI(
+					this.app,
+					this.app.vault,
+					this.app.metadataCache,
+					this,
+					getTaskById
+				);
+			}
 		}
 
 		if (this.settings.rewards.enableRewards) {

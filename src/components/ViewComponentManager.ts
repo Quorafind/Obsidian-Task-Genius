@@ -122,8 +122,16 @@ class ViewComponentFactory {
 							onTaskCompleted: handlers.onTaskCompleted,
 							onTaskContextMenu: handlers.onTaskContextMenu,
 							onTaskUpdated: async (task: Task) => {
-								// Handle task updates through the plugin's task manager
-								if (plugin.taskManager) {
+								// Handle task updates through WriteAPI if dataflow is enabled
+								if (plugin.settings?.experimental?.dataflowEnabled && plugin.writeAPI) {
+									const result = await plugin.writeAPI.updateTask({
+										taskId: task.id,
+										updates: task
+									});
+									if (!result.success) {
+										console.error("Failed to update task:", result.error);
+									}
+								} else if (plugin.taskManager) {
 									await plugin.taskManager.updateTask(task);
 								}
 							},
@@ -144,7 +152,16 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onTaskContextMenu: handlers.onTaskContextMenu,
 						onTaskUpdated: async (task: Task) => {
-							if (plugin.taskManager) {
+							// Handle task updates through WriteAPI if dataflow is enabled
+							if (plugin.settings?.experimental?.dataflowEnabled && plugin.writeAPI) {
+								const result = await plugin.writeAPI.updateTask({
+									taskId: task.id,
+									updates: task
+								});
+								if (!result.success) {
+									console.error("Failed to update task:", result.error);
+								}
+							} else if (plugin.taskManager) {
 								await plugin.taskManager.updateTask(task);
 							}
 						},

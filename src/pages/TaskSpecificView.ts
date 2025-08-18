@@ -1146,7 +1146,18 @@ export class TaskSpecificView extends ItemView {
 		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
-		await taskManager.updateTask(updatedTask);
+		// Use WriteAPI if dataflow is enabled
+		if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
+			const result = await this.plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
+			if (!result.success) {
+				throw new Error(result.error || "Failed to update task");
+			}
+		} else {
+			await taskManager.updateTask(updatedTask);
+		}
 		// Task cache listener will trigger loadTasks -> triggerViewUpdate
 	}
 
@@ -1165,7 +1176,18 @@ export class TaskSpecificView extends ItemView {
 		);
 
 		try {
-			await taskManager.updateTask(updatedTask);
+			// Use WriteAPI if dataflow is enabled
+			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
+				const result = await this.plugin.writeAPI.updateTask({
+					taskId: updatedTask.id,
+					updates: updatedTask
+				});
+				if (!result.success) {
+					throw new Error(result.error || "Failed to update task");
+				}
+			} else {
+				await taskManager.updateTask(updatedTask);
+			}
 		} catch (error) {
 			console.error("Failed to update task:", error);
 			// You might want to show a notice to the user here
@@ -1182,7 +1204,18 @@ export class TaskSpecificView extends ItemView {
 			throw new Error("Task manager not available");
 		}
 		try {
-			await taskManager.updateTask(updatedTask);
+			// Use WriteAPI if dataflow is enabled
+			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
+				const result = await this.plugin.writeAPI.updateTask({
+					taskId: updatedTask.id,
+					updates: updatedTask
+				});
+				if (!result.success) {
+					throw new Error(result.error || "Failed to update task");
+				}
+			} else {
+				await taskManager.updateTask(updatedTask);
+			}
 			console.log(`Task ${updatedTask.id} updated successfully.`);
 
 			// Update task in local list immediately for responsiveness

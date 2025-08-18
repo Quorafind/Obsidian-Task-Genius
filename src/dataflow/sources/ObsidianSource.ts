@@ -1,5 +1,5 @@
 import type { App, TFile, Vault, MetadataCache, EventRef } from "obsidian";
-import { Events, emit } from "../events/Events";
+import { Events, emit, on } from "../events/Events";
 
 /**
  * ObsidianSource - Independent event source management
@@ -31,6 +31,9 @@ export class ObsidianSource {
   // Event filtering
   private readonly IGNORED_EXTENSIONS = new Set(['.tmp', '.swp', '.log']);
   private readonly RELEVANT_EXTENSIONS = new Set(['md', 'canvas']);
+  
+  // Skip modification tracking for WriteAPI operations
+  private skipNextModify = new Set<string>();
 
   constructor(app: App, vault: Vault, metadataCache: MetadataCache) {
     this.app = app;
@@ -43,6 +46,15 @@ export class ObsidianSource {
    */
   initialize(): void {
     console.log('ObsidianSource: Initializing event subscriptions');
+    
+    // Listen for WriteAPI operations to skip their modifications
+    this.eventRefs.push(
+      on(this.app, Events.WRITE_OPERATION_START, ({ path }) => {
+        this.skipNextModify.add(path);
+        // Auto cleanup after 5 seconds to prevent memory leaks
+        setTimeout(() => this.skipNextModify.delete(path), 5000);
+      })
+    );
     
     // File system events
     this.eventRefs.push(
@@ -84,6 +96,13 @@ export class ObsidianSource {
    */
   private onFileModify(file: TFile): void {
     if (!this.isRelevantFile(file)) {
+      return;
+    }
+    
+    // Skip if this modification is from WriteAPI
+    if (this.skipNextModify.has(file.path)) {
+      this.skipNextModify.delete(file.path);
+      console.log(`ObsidianSource: Skipping modify event for ${file.path} (WriteAPI operation)`);
       return;
     }
     

@@ -17,6 +17,7 @@ import {
 	getDailyNoteSettings,
 } from "obsidian-daily-notes-interface";
 import { saveCapture, processDateTemplates } from "../../utils/fileUtils";
+import { Events, emit } from "../events/Events";
 
 /**
  * Arguments for creating a task
@@ -133,7 +134,11 @@ export class WriteAPI {
 			}
 
 			lines[task.line] = taskLine;
+			
+			// Notify about write operation
+			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 			await this.vault.modify(file, lines.join("\n"));
+			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 
 			return { success: true };
 		} catch (error) {
@@ -204,7 +209,11 @@ export class WriteAPI {
 			}
 
 			lines[originalTask.line] = taskLine;
+			
+			// Notify about write operation
+			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 			await this.vault.modify(file, lines.join("\n"));
+			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 
 			return { success: true };
 		} catch (error) {
@@ -267,7 +276,11 @@ export class WriteAPI {
 				const newContent = args.parent
 					? this.insertSubtask(content, args.parent, taskContent)
 					: (content ? content + "\n" : "") + taskContent;
+				
+				// Notify about write operation
+				emit(this.app, Events.WRITE_OPERATION_START, { path: file.path });
 				await this.vault.modify(file, newContent);
+				emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path });
 			}
 
 			return { success: true };
@@ -297,7 +310,11 @@ export class WriteAPI {
 
 			if (task.line >= 0 && task.line < lines.length) {
 				lines.splice(task.line, 1);
+				
+				// Notify about write operation
+				emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 				await this.vault.modify(file, lines.join("\n"));
+				emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 				return { success: true };
 			}
 
@@ -521,7 +538,10 @@ export class WriteAPI {
 				}
 			}
 
+			// Notify about write operation
+			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path });
 			await this.vault.modify(file, newContent);
+			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path });
 			return { success: true };
 		} catch (error) {
 			console.error("WriteAPI: Error creating task in daily note:", error);
