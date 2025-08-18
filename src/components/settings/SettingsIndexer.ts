@@ -1,6 +1,10 @@
 import { prepareFuzzySearch } from "obsidian";
-import { SETTINGS_METADATA } from "../../data/settings-metadata";
-import { SettingsSearchIndex, SettingSearchItem, SearchResult } from "../../types/SettingsSearch";
+import { SETTINGS_METADATA } from "../../common/settings-metadata";
+import {
+	SettingsSearchIndex,
+	SettingSearchItem,
+	SearchResult,
+} from "../../types/SettingsSearch";
 import { t } from "../../translations/helper";
 
 /**
@@ -11,7 +15,6 @@ export class SettingsIndexer {
 	private index: SettingsSearchIndex;
 	private isInitialized: boolean = false;
 	private rootEl: HTMLElement | null = null;
-
 
 	constructor(rootEl?: HTMLElement | null) {
 		this.index = {
@@ -39,12 +42,13 @@ export class SettingsIndexer {
 
 		const endTime = performance.now();
 		console.log(
-			`[SettingsIndexer] Index built in ${(endTime - startTime).toFixed(2)}ms with ${this.index.items.length} items`
+			`[SettingsIndexer] Index built in ${(endTime - startTime).toFixed(
+				2
+			)}ms with ${this.index.items.length} items`
 		);
 
 		this.isInitialized = true;
 	}
-
 
 	/**
 	 * 从静态 SETTINGS_METADATA 构建索引（回退）
@@ -54,7 +58,9 @@ export class SettingsIndexer {
 			const translatedItem: SettingSearchItem = {
 				...item,
 				name: t(item.translationKey),
-				description: item.descriptionKey ? t(item.descriptionKey) : item.description,
+				description: item.descriptionKey
+					? t(item.descriptionKey)
+					: item.description,
 			};
 			this.addItemToIndex(translatedItem);
 		}
@@ -65,17 +71,24 @@ export class SettingsIndexer {
 	 */
 	private buildIndexFromDOM(root: HTMLElement): void {
 		// 查找所有设置 section
-		const sectionEls = Array.from(root.querySelectorAll<HTMLElement>(".settings-tab-section"));
+		const sectionEls = Array.from(
+			root.querySelectorAll<HTMLElement>(".settings-tab-section")
+		);
 		const seenIds = new Set<string>();
 
 		sectionEls.forEach((section) => {
 			const tabId = section.getAttribute("data-tab-id") || "general";
 			const category = section.getAttribute("data-category") || "core";
 
-			const settingItems = Array.from(section.querySelectorAll<HTMLElement>(".setting-item"));
+			const settingItems = Array.from(
+				section.querySelectorAll<HTMLElement>(".setting-item")
+			);
 			settingItems.forEach((el, idx) => {
-				const nameEl = el.querySelector<HTMLElement>(".setting-item-name");
-				const descEl = el.querySelector<HTMLElement>(".setting-item-description");
+				const nameEl =
+					el.querySelector<HTMLElement>(".setting-item-name");
+				const descEl = el.querySelector<HTMLElement>(
+					".setting-item-description"
+				);
 				const name = (nameEl?.textContent || "").trim();
 				const description = (descEl?.textContent || "").trim();
 
@@ -142,9 +155,7 @@ export class SettingsIndexer {
 			.filter(Boolean);
 		// 去重并限制数量，优先较长的词
 		const uniq = Array.from(new Set(tokens));
-		return uniq
-			.sort((a, b) => b.length - a.length)
-			.slice(0, 12);
+		return uniq.sort((a, b) => b.length - a.length).slice(0, 12);
 	}
 
 	/**
@@ -192,8 +203,12 @@ export class SettingsIndexer {
 			if (nameMatch) {
 				results.push({
 					item,
-					score: this.calculateScore(normalizedQuery, item.name, 'name'),
-					matchType: 'name'
+					score: this.calculateScore(
+						normalizedQuery,
+						item.name,
+						"name"
+					),
+					matchType: "name",
 				});
 				seenIds.add(item.id);
 			}
@@ -207,8 +222,12 @@ export class SettingsIndexer {
 			if (descMatch) {
 				results.push({
 					item,
-					score: this.calculateScore(normalizedQuery, item.description, 'description'),
-					matchType: 'description'
+					score: this.calculateScore(
+						normalizedQuery,
+						item.description,
+						"description"
+					),
+					matchType: "description",
 				});
 				seenIds.add(item.id);
 			}
@@ -223,8 +242,12 @@ export class SettingsIndexer {
 				if (keywordMatch) {
 					results.push({
 						item,
-						score: this.calculateScore(normalizedQuery, keyword, 'keyword'),
-						matchType: 'keyword'
+						score: this.calculateScore(
+							normalizedQuery,
+							keyword,
+							"keyword"
+						),
+						matchType: "keyword",
 					});
 					seenIds.add(item.id);
 					break; // 只需要一个关键词匹配即可
@@ -233,9 +256,7 @@ export class SettingsIndexer {
 		}
 
 		// 按分数排序并限制结果数量
-		return results
-			.sort((a, b) => b.score - a.score)
-			.slice(0, maxResults);
+		return results.sort((a, b) => b.score - a.score).slice(0, maxResults);
 	}
 
 	/**
@@ -245,7 +266,11 @@ export class SettingsIndexer {
 	 * @param matchType 匹配类型
 	 * @returns 匹配分数
 	 */
-	private calculateScore(query: string, target: string, matchType: 'name' | 'description' | 'keyword'): number {
+	private calculateScore(
+		query: string,
+		target: string,
+		matchType: "name" | "description" | "keyword"
+	): number {
 		const lowerTarget = target.toLowerCase();
 		const lowerQuery = query.toLowerCase();
 
@@ -255,7 +280,7 @@ export class SettingsIndexer {
 		const baseScores = {
 			name: 100,
 			description: 60,
-			keyword: 80
+			keyword: 80,
 		};
 		score += baseScores[matchType];
 
@@ -299,7 +324,7 @@ export class SettingsIndexer {
 			this.initialize();
 		}
 
-		return this.index.items.find(item => item.id === itemId);
+		return this.index.items.find((item) => item.id === itemId);
 	}
 
 	/**
@@ -318,7 +343,11 @@ export class SettingsIndexer {
 	 * 获取索引统计信息
 	 * @returns 索引统计
 	 */
-	public getStats(): { itemCount: number; tabCount: number; keywordCount: number } {
+	public getStats(): {
+		itemCount: number;
+		tabCount: number;
+		keywordCount: number;
+	} {
 		if (!this.isInitialized) {
 			this.initialize();
 		}
@@ -326,7 +355,7 @@ export class SettingsIndexer {
 		return {
 			itemCount: this.index.items.length,
 			tabCount: this.index.tabMap.size,
-			keywordCount: this.index.keywordMap.size
+			keywordCount: this.index.keywordMap.size,
 		};
 	}
 }

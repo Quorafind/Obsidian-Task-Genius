@@ -41,3 +41,4 @@ CLAUDE.md
 .claude
 
 dist
+dist/*

@@ -10,15 +10,15 @@ const mockPrepareFuzzySearch = jest.fn((query: string) => {
 const mockT = jest.fn((key: string) => key);
 
 jest.mock("obsidian", () => ({
-	prepareFuzzySearch: mockPrepareFuzzySearch
+	prepareFuzzySearch: mockPrepareFuzzySearch,
 }));
 
 jest.mock("../translations/helper", () => ({
-	t: mockT
+	t: mockT,
 }));
 
 import { SettingsIndexer } from "../components/settings/SettingsIndexer";
-import { SETTINGS_METADATA } from "../data/settings-metadata";
+import { SETTINGS_METADATA } from "../common/settings-metadata";
 
 describe("Settings Search Tests", () => {
 	let indexer: SettingsIndexer;
@@ -45,7 +45,9 @@ describe("Settings Search Tests", () => {
 		});
 
 		test("should have progress bar settings", () => {
-			const progressBarMain = SETTINGS_METADATA.find(item => item.id === "progress-bar-main");
+			const progressBarMain = SETTINGS_METADATA.find(
+				(item) => item.id === "progress-bar-main"
+			);
 			expect(progressBarMain).toBeDefined();
 			expect(progressBarMain?.name).toBe("Progress bar");
 			expect(progressBarMain?.tabId).toBe("progress-bar");
@@ -53,7 +55,9 @@ describe("Settings Search Tests", () => {
 		});
 
 		test("should have enable task filter setting", () => {
-			const taskFilter = SETTINGS_METADATA.find(item => item.id === "enable-task-filter");
+			const taskFilter = SETTINGS_METADATA.find(
+				(item) => item.id === "enable-task-filter"
+			);
 			expect(taskFilter).toBeDefined();
 			expect(taskFilter?.name).toBe("Enable Task Filter");
 			expect(taskFilter?.tabId).toBe("task-filter");
@@ -63,7 +67,7 @@ describe("Settings Search Tests", () => {
 	describe("SettingsIndexer", () => {
 		test("should initialize correctly", () => {
 			expect(indexer).toBeDefined();
-			
+
 			// Should not be initialized yet
 			const stats = indexer.getStats();
 			expect(stats.itemCount).toBeGreaterThan(0);
@@ -76,30 +80,40 @@ describe("Settings Search Tests", () => {
 
 		test("should search by name", () => {
 			const results = indexer.search("progress");
-			
+
 			console.log("Search results for 'progress':", results.length);
-			results.forEach(result => {
-				console.log(`- ${result.item.name} (${result.matchType}, score: ${result.score})`);
+			results.forEach((result) => {
+				console.log(
+					`- ${result.item.name} (${result.matchType}, score: ${result.score})`
+				);
 			});
 
 			expect(results.length).toBeGreaterThan(0);
-			
+
 			// Should find progress bar settings
-			const progressResult = results.find(result => 
-				result.item.id === "progress-bar-main" || 
-				result.item.name.toLowerCase().includes("progress")
+			const progressResult = results.find(
+				(result) =>
+					result.item.id === "progress-bar-main" ||
+					result.item.name.toLowerCase().includes("progress")
 			);
 			expect(progressResult).toBeDefined();
 		});
 
 		test("should search by description", () => {
 			const results = indexer.search("toggle");
-			
+
 			console.log("Search results for 'toggle':", results.length);
-			results.forEach(result => {
-				console.log(`- ${result.item.name} (${result.matchType}, score: ${result.score})`);
+			results.forEach((result) => {
+				console.log(
+					`- ${result.item.name} (${result.matchType}, score: ${result.score})`
+				);
 				if (result.item.description) {
-					console.log(`  Description: ${result.item.description.substring(0, 100)}...`);
+					console.log(
+						`  Description: ${result.item.description.substring(
+							0,
+							100
+						)}...`
+					);
 				}
 			});
 
@@ -108,10 +122,12 @@ describe("Settings Search Tests", () => {
 
 		test("should search by keywords", () => {
 			const results = indexer.search("checkbox");
-			
+
 			console.log("Search results for 'checkbox':", results.length);
-			results.forEach(result => {
-				console.log(`- ${result.item.name} (${result.matchType}, score: ${result.score})`);
+			results.forEach((result) => {
+				console.log(
+					`- ${result.item.name} (${result.matchType}, score: ${result.score})`
+				);
 				console.log(`  Keywords: ${result.item.keywords.join(", ")}`);
 			});
 
@@ -120,22 +136,30 @@ describe("Settings Search Tests", () => {
 
 		test("should prioritize name matches over description matches", () => {
 			const results = indexer.search("filter");
-			
+
 			console.log("Search results for 'filter' with scores:");
-			results.forEach(result => {
-				console.log(`- ${result.item.name} (${result.matchType}, score: ${result.score})`);
+			results.forEach((result) => {
+				console.log(
+					`- ${result.item.name} (${result.matchType}, score: ${result.score})`
+				);
 			});
 
 			expect(results.length).toBeGreaterThan(0);
-			
+
 			// Find name matches and description matches
-			const nameMatches = results.filter(r => r.matchType === "name");
-			const descriptionMatches = results.filter(r => r.matchType === "description");
-			
+			const nameMatches = results.filter((r) => r.matchType === "name");
+			const descriptionMatches = results.filter(
+				(r) => r.matchType === "description"
+			);
+
 			if (nameMatches.length > 0 && descriptionMatches.length > 0) {
 				// Name matches should have higher scores
-				const highestNameScore = Math.max(...nameMatches.map(r => r.score));
-				const highestDescScore = Math.max(...descriptionMatches.map(r => r.score));
+				const highestNameScore = Math.max(
+					...nameMatches.map((r) => r.score)
+				);
+				const highestDescScore = Math.max(
+					...descriptionMatches.map((r) => r.score)
+				);
 				expect(highestNameScore).toBeGreaterThan(highestDescScore);
 			}
 		});
@@ -165,7 +189,7 @@ describe("Settings Search Tests", () => {
 			const lowerResults = indexer.search("progress");
 			const upperResults = indexer.search("PROGRESS");
 			const mixedResults = indexer.search("Progress");
-			
+
 			expect(lowerResults.length).toBe(upperResults.length);
 			expect(lowerResults.length).toBe(mixedResults.length);
 		});
@@ -174,14 +198,14 @@ describe("Settings Search Tests", () => {
 	describe("Translation Integration", () => {
 		test("should call translation function for setting names", () => {
 			indexer.search("progress");
-			
+
 			// Should have called t() for translating setting names
 			expect(mockT).toHaveBeenCalled();
-			
+
 			// Check if it was called with expected translation keys
 			const calls = mockT.mock.calls.map((call: any) => call[0]);
 			console.log("Translation calls:", calls.slice(0, 10)); // Show first 10 calls
-			
+
 			expect(calls).toContain("Progress bar");
 		});
 	});
@@ -208,7 +232,7 @@ describe("Settings Search Tests", () => {
 			const start = performance.now();
 			indexer.initialize();
 			const end = performance.now();
-			
+
 			const buildTime = end - start;
 			console.log(`Index build time: ${buildTime.toFixed(2)}ms`);
 			expect(buildTime).toBeLessThan(50); // Should be under 50ms
@@ -216,13 +240,17 @@ describe("Settings Search Tests", () => {
 
 		test("should search quickly", () => {
 			indexer.initialize(); // Pre-initialize
-			
+
 			const start = performance.now();
 			const results = indexer.search("progress");
 			const end = performance.now();
-			
+
 			const searchTime = end - start;
-			console.log(`Search time: ${searchTime.toFixed(2)}ms for ${results.length} results`);
+			console.log(
+				`Search time: ${searchTime.toFixed(2)}ms for ${
+					results.length
+				} results`
+			);
 			expect(searchTime).toBeLessThan(10); // Should be under 10ms
 		});
 	});
@@ -230,43 +258,48 @@ describe("Settings Search Tests", () => {
 	describe("Specific Setting Tests", () => {
 		test("should find 'Enable Task Filter' setting", () => {
 			const results = indexer.search("enable task filter");
-			
+
 			console.log("Searching for 'enable task filter':");
-			results.forEach(result => {
+			results.forEach((result) => {
 				console.log(`- ${result.item.name} (ID: ${result.item.id})`);
 			});
-			
-			const exactMatch = results.find(r => r.item.id === "enable-task-filter");
+
+			const exactMatch = results.find(
+				(r) => r.item.id === "enable-task-filter"
+			);
 			expect(exactMatch).toBeDefined();
 		});
 
 		test("should find progress bar settings", () => {
 			const results = indexer.search("progress bar");
-			
+
 			console.log("Searching for 'progress bar':");
-			results.forEach(result => {
+			results.forEach((result) => {
 				console.log(`- ${result.item.name} (ID: ${result.item.id})`);
 			});
-			
-			const progressBarMain = results.find(r => r.item.id === "progress-bar-main");
+
+			const progressBarMain = results.find(
+				(r) => r.item.id === "progress-bar-main"
+			);
 			expect(progressBarMain).toBeDefined();
 			expect(progressBarMain?.matchType).toBe("name");
 		});
 
 		test("should find settings by partial name", () => {
 			const results = indexer.search("workflow");
-			
+
 			console.log("Searching for 'workflow':");
-			results.forEach(result => {
+			results.forEach((result) => {
 				console.log(`- ${result.item.name} (ID: ${result.item.id})`);
 			});
-			
+
 			expect(results.length).toBeGreaterThan(0);
-			
+
 			// Should find workflow-related settings
-			const workflowSettings = results.filter(r => 
-				r.item.name.toLowerCase().includes("workflow") ||
-				r.item.tabId === "workflow"
+			const workflowSettings = results.filter(
+				(r) =>
+					r.item.name.toLowerCase().includes("workflow") ||
+					r.item.tabId === "workflow"
 			);
 			expect(workflowSettings.length).toBeGreaterThan(0);
 		});
