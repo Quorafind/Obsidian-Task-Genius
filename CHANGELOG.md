@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.5](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.4...9.7.5) (2025-08-18)
+
+### Chores
+
+* remove dist folder in repo ([b92371c](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/b92371c0880311bcda4e1ee64c7e5787006c6605))
+
 ## [9.7.4](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.3...9.7.4) (2025-08-18)
 
 ### Bug Fixes
