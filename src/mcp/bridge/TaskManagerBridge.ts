@@ -165,6 +165,8 @@ export class TaskManagerBridge {
 
 		// Ensure file exists (create folders/file if missing)
 		let file = vault.getAbstractFileByPath(filePath) as TFile | null;
+		let insertedLine = -1;
+		
 		if (!file) {
 			// Create directory structure if needed
 			const parts = filePath.split("/");
@@ -174,10 +176,10 @@ export class TaskManagerBridge {
 			}
 			// Create file with initial task content
 			file = await vault.create(filePath, `${taskContent}\n`);
+			insertedLine = 0;
 		} else {
 			// Append task to existing file (or insert as subtask)
 			const content = await vault.read(file);
-			let insertedLine = -1;
 			let newContent = "";
 			
 			if (args.parent) {

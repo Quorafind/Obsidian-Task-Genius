@@ -353,7 +353,38 @@ export class DataflowBridge {
 	}
 
 
-async addProjectTaskToQuickCapture(args: { content: string; project: string; tags?: string[]; priority?: number; dueDate?: string; startDate?: string; context?: string; heading?: string; completed?: boolean; completedDate?: string; }): Promise<any> {
+	async addProjectTaskToQuickCapture(args: { content: string; project: string; tags?: string[]; priority?: number; dueDate?: string; startDate?: string; context?: string; heading?: string; completed?: boolean; completedDate?: string; }): Promise<any> {
 		return this.writeAPI.addProjectTaskToQuickCapture(args);
+	}
+
+	async batchCreateTasks(args: { tasks: CreateTaskArgs[]; defaultFilePath?: string }): Promise<{ success: boolean; created: number; errors: string[] }> {
+		const results = {
+			success: true,
+			created: 0,
+			errors: [] as string[]
+		};
+
+		for (let i = 0; i < args.tasks.length; i++) {
+			const task = args.tasks[i];
+			try {
+				// Use defaultFilePath if task doesn't specify filePath
+				const taskArgs: CreateTaskArgs = {
+					...task,
+					filePath: task.filePath || args.defaultFilePath
+				};
+				
+				const result = await this.writeAPI.createTask(taskArgs);
+				if (result.success) {
+					results.created++;
+				} else {
+					results.errors.push(`Task ${i + 1}: ${result.error || 'Failed to create'}`);
+				}
+			} catch (error: any) {
+				results.success = false;
+				results.errors.push(`Task ${i + 1}: ${error.message}`);
+			}
+		}
+
+		return results;
 	}
 }
