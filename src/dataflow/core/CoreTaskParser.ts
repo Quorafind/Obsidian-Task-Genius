@@ -5,9 +5,9 @@
  * It provides both line-level and file-level parsing capabilities.
  */
 
-import { Task } from "../../types/task";
-import { TASK_REGEX } from "../../common/regex-define";
-import { parseLocalDate } from "../dateUtil";
+import { Task } from "../../../utils/../types/task";
+import { TASK_REGEX } from "../../../utils/../common/regex-define";
+import { parseLocalDate } from "../../../utils/dateUtil";
 import {
 	EMOJI_START_DATE_REGEX,
 	EMOJI_COMPLETED_DATE_REGEX,
@@ -29,8 +29,8 @@ import {
 	DV_CONTEXT_REGEX,
 	ANY_DATAVIEW_FIELD_REGEX,
 	EMOJI_TAG_REGEX,
-} from "../../common/regex-define";
-import { PRIORITY_MAP } from "../../common/default-symbol";
+} from "../../../utils/../common/regex-define";
+import { PRIORITY_MAP } from "../../../utils/../common/default-symbol";
 
 /**
  * Metadata format for parsing

@@ -2,7 +2,7 @@
  * Debug File Metadata Inheritance
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 import { createMockPlugin } from "./mockUtils";
 import { DEFAULT_SETTINGS } from "../common/setting-definition";

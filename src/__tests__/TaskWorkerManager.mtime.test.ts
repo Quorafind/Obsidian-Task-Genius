@@ -2,7 +2,7 @@
  * Integration tests for TaskWorkerManager mtime optimization
  */
 
-import { TaskWorkerManager } from "../utils/workers/TaskWorkerManager";
+import { TaskWorkerManager } from "../dataflow/workers/TaskWorkerManager";
 import { TaskIndexer } from "../utils/import/TaskIndexer";
 import { TFile } from "obsidian";
 

@@ -5,7 +5,7 @@
  * with file extensions works correctly.
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 
 describe("OnCompletion Boundary Parsing Fix", () => {

@@ -747,6 +747,11 @@ export interface TaskProgressBarSettings {
 	// MCP Integration Settings
 	mcpIntegration?: McpServerConfig;
 
+	// Experimental Settings
+	experimental?: {
+		dataflowEnabled: boolean;
+	};
+
 	// Onboarding Settings
 	onboarding?: {
 		completed: boolean;
@@ -1467,6 +1472,11 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	enableCustomDateFormats: false,
 	customDateFormats: [],
 	
+	// Experimental Defaults
+	experimental: {
+		dataflowEnabled: false
+	},
+
 	// Onboarding Defaults
 	onboarding: {
 		completed: false,

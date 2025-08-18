@@ -1,4 +1,4 @@
-import { CanvasParser } from "../../utils/parsing/CanvasParser";
+import { CanvasParser } from "../../dataflow/core/CanvasParser";
 import type { Task } from "../../types/task";
 import { getConfig } from "../../common/task-parser-config";
 import TaskProgressBarPlugin from "../../index";

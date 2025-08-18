@@ -1,3 +1,51 @@
+/* Experimental Settings */
+.experimental-settings-section {
+	margin: 20px 0;
+}
+
+.experimental-section-heading {
+	margin: 20px 0 10px 0;
+	color: var(--text-normal);
+}
+
+.experimental-subsection-heading {
+	margin: 15px 0 8px 0;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.experimental-warning {
+	background: var(--background-modifier-error);
+	color: var(--text-on-accent);
+	padding: 12px;
+	border-radius: 6px;
+	margin: 10px 0 20px 0;
+	border-left: 4px solid var(--color-red);
+}
+
+.experimental-dataflow-section {
+	margin: 15px 0;
+	padding: 15px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+}
+
+.experimental-info {
+	color: var(--text-muted);
+	font-size: 0.85em;
+	margin-top: 8px;
+	line-height: 1.4;
+}
+
+.experimental-restart-notice {
+	background: var(--background-modifier-form-field);
+	color: var(--text-muted);
+	padding: 8px;
+	border-radius: 4px;
+	margin-top: 10px;
+	font-size: 0.85em;
+}
+
 /* Checkbox Status Cycle management UI */
 .task-states-container {
 	margin: 10px 0;
@@ -57,6 +105,54 @@
 	text-decoration: none !important;
 
 	cursor: pointer;
+}
+
+/* Experimental Settings */
+.experimental-settings-section {
+	margin: 20px 0;
+}
+
+.experimental-section-heading {
+	margin: 20px 0 10px 0;
+	color: var(--text-normal);
+}
+
+.experimental-subsection-heading {
+	margin: 15px 0 8px 0;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.experimental-warning {
+	background: var(--background-modifier-error);
+	color: var(--text-on-accent);
+	padding: 12px;
+	border-radius: 6px;
+	margin: 10px 0 20px 0;
+	border-left: 4px solid var(--color-red);
+}
+
+.experimental-dataflow-section {
+	margin: 15px 0;
+	padding: 15px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+}
+
+.experimental-info {
+	color: var(--text-muted);
+	font-size: 0.85em;
+	margin-top: 8px;
+	line-height: 1.4;
+}
+
+.experimental-restart-notice {
+	background: var(--background-modifier-form-field);
+	color: var(--text-muted);
+	padding: 8px;
+	border-radius: 4px;
+	margin-top: 10px;
+	font-size: 0.85em;
 }
 
 /* Checkbox Status Cycle management UI */

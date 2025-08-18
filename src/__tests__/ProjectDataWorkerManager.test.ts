@@ -2,7 +2,7 @@
  * Test for ProjectDataWorkerManager
  */
 
-import { ProjectDataWorkerManager } from "../utils/ProjectDataWorkerManager";
+import { ProjectDataWorkerManager } from "../dataflow/workers/ProjectDataWorkerManager";
 import { ProjectConfigManager } from "../utils/ProjectConfigManager";
 import { Vault, MetadataCache } from "obsidian";
 

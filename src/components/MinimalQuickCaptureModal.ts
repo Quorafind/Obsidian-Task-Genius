@@ -19,7 +19,7 @@ import { MinimalQuickCaptureSuggest } from "./MinimalQuickCaptureSuggest";
 import { DatePickerPopover } from "./date-picker/DatePickerPopover";
 import { TagSuggest } from "./AutoComplete";
 import { SuggestManager, UniversalEditorSuggest } from "./suggest";
-import { ConfigurableTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { ConfigurableTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { clearAllMarks } from "./MarkdownRenderer";
 
 interface TaskMetadata {

@@ -4,7 +4,7 @@
  * vs regex-based approaches for parsing Chinese nested tags.
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 import { createMockPlugin } from "./mockUtils";
 

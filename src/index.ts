@@ -108,6 +108,8 @@ import { OnboardingView, ONBOARDING_VIEW_TYPE } from "./components/onboarding/On
 import { TaskTimerExporter } from "./utils/TaskTimerExporter";
 import { TaskTimerManager } from "./utils/TaskTimerManager";
 import { McpServerManager } from "./mcp/McpServerManager";
+import { createDataflow, isDataflowEnabled } from "./dataflow/createDataflow";
+import type { DataflowOrchestrator } from "./dataflow/Orchestrator";
 
 class TaskProgressBarPopover extends HoverPopover {
 	plugin: TaskProgressBarPlugin;
@@ -190,6 +192,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// Task manager instance
 	taskManager: TaskManager;
 
+	// Dataflow orchestrator instance (experimental)
+	dataflowOrchestrator?: DataflowOrchestrator;
+
 	rewardManager: RewardManager;
 
 	habitManager: HabitManager;
@@ -257,7 +262,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Initialize rebuild progress manager
 		this.rebuildProgressManager = new RebuildProgressManager();
 
-		// Initialize task manager
+		// Initialize task management systems
 		if (this.settings.enableView) {
 			this.loadViews();
 
@@ -268,6 +273,31 @@ export default class TaskProgressBarPlugin extends Plugin {
 			addIcon("abandoned", getStatusIcon("abandoned"));
 			addIcon("notStarted", getStatusIcon("notStarted"));
 
+			// Initialize dataflow orchestrator if enabled (experimental)
+			if (isDataflowEnabled(this)) {
+				try {
+					console.log("Dataflow architecture enabled - initializing in parallel with TaskManager");
+					createDataflow(
+						this.app,
+						this.app.vault,
+						this.app.metadataCache,
+						this,
+						{
+							useWorkers: true,
+							debug: true
+						}
+					).then((orchestrator) => {
+						this.dataflowOrchestrator = orchestrator;
+						console.log("Dataflow orchestrator initialized successfully");
+					}).catch((error) => {
+						console.error("Failed to initialize dataflow orchestrator:", error);
+					});
+				} catch (error) {
+					console.error("Error setting up dataflow orchestrator:", error);
+				}
+			}
+
+			// Initialize traditional TaskManager (kept for backward compatibility)
 			this.taskManager = new TaskManager(
 				this.app,
 				this.app.vault,
@@ -1285,6 +1315,13 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Clean up global suggest manager
 		if (this.globalSuggestManager) {
 			this.globalSuggestManager.cleanup();
+		}
+
+		// Clean up dataflow orchestrator (experimental)
+		if (this.dataflowOrchestrator) {
+			this.dataflowOrchestrator.cleanup().catch((error) => {
+				console.error("Error cleaning up dataflow orchestrator:", error);
+			});
 		}
 
 		// Clean up task manager when plugin is unloaded

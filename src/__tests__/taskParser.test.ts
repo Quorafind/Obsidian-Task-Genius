@@ -4,7 +4,7 @@
  * Tests for ConfigurableTaskParser and enhanced project functionality
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 import { Task } from "../types/task";
 import { createMockPlugin } from "./mockUtils";

@@ -8,7 +8,7 @@
  * 4. The worker logic correctly infers type from source characteristics
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { TaskParserConfig, MetadataParseMode } from "../types/TaskParserConfig";
 
 // Mock the worker logic for testing

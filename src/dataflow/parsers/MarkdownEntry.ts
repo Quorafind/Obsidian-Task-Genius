@@ -1,4 +1,4 @@
-import { MarkdownTaskParser } from "../../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../../dataflow/core/ConfigurableTaskParser";
 import type { Task } from "../../types/task";
 import { TaskParserConfig, MetadataParseMode } from "../../types/TaskParserConfig";
 

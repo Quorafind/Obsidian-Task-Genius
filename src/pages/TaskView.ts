@@ -53,6 +53,7 @@ import {
 } from "../components/task-filter/ViewTaskFilter";
 import { FilterConfigModal } from "../components/task-filter/FilterConfigModal";
 import { SavedFilterConfig } from "../common/setting-definition";
+import { isDataflowEnabled } from "../dataflow/createDataflow";
 
 export const TASK_VIEW_TYPE = "task-genius-view";
 
@@ -1167,6 +1168,32 @@ export class TaskView extends ItemView {
 		forceSync: boolean = false,
 		skipViewUpdate: boolean = false
 	) {
+		// Check if dataflow is enabled and available
+		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+			try {
+				console.log("Loading tasks from dataflow orchestrator...");
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				this.tasks = await queryAPI.getAllTasks();
+				console.log(`TaskView loaded ${this.tasks.length} tasks from dataflow`);
+			} catch (error) {
+				console.error("Error loading tasks from dataflow, falling back to TaskManager:", error);
+				// Fall back to TaskManager
+				await this.loadTasksFromTaskManager(forceSync);
+			}
+		} else {
+			// Use traditional TaskManager
+			await this.loadTasksFromTaskManager(forceSync);
+		}
+
+		if (!skipViewUpdate) {
+			await this.triggerViewUpdate();
+		}
+	}
+
+	/**
+	 * Load tasks from traditional TaskManager
+	 */
+	private async loadTasksFromTaskManager(forceSync: boolean = false) {
 		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
@@ -1177,7 +1204,30 @@ export class TaskView extends ItemView {
 			// Use regular method for subsequent updates
 			this.tasks = taskManager.getAllTasks();
 		}
-		console.log(`TaskView loaded ${this.tasks.length} tasks`);
+		console.log(`TaskView loaded ${this.tasks.length} tasks from TaskManager`);
+	}
+
+	/**
+	 * Load tasks fast using cached data - for UI initialization
+	 */
+	private async loadTasksFast(skipViewUpdate: boolean = false) {
+		// Check if dataflow is enabled and available
+		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+			try {
+				console.log("Loading tasks fast from dataflow orchestrator...");
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				// For fast loading, use regular getAllTasks (it should be cached)
+				this.tasks = await queryAPI.getAllTasks();
+				console.log(`TaskView loaded ${this.tasks.length} tasks (fast from dataflow)`);
+			} catch (error) {
+				console.error("Error loading tasks fast from dataflow, falling back to TaskManager:", error);
+				// Fall back to TaskManager
+				this.loadTasksFastFromTaskManager();
+			}
+		} else {
+			// Use traditional TaskManager
+			this.loadTasksFastFromTaskManager();
+		}
 
 		if (!skipViewUpdate) {
 			await this.triggerViewUpdate();
@@ -1185,19 +1235,15 @@ export class TaskView extends ItemView {
 	}
 
 	/**
-	 * Load tasks fast using cached data - for UI initialization
+	 * Load tasks fast from traditional TaskManager
 	 */
-	private async loadTasksFast(skipViewUpdate: boolean = false) {
+	private loadTasksFastFromTaskManager() {
 		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
 		// Use fast method to get cached data immediately
 		this.tasks = taskManager.getAllTasksFast();
-		console.log(`TaskView loaded ${this.tasks.length} tasks (fast)`);
-
-		if (!skipViewUpdate) {
-			await this.triggerViewUpdate();
-		}
+		console.log(`TaskView loaded ${this.tasks.length} tasks (fast from TaskManager)`);
 	}
 
 	/**

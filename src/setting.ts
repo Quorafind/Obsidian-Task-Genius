@@ -174,6 +174,12 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			icon: "flask-conical",
 			category: "advanced",
 		},
+		{
+			id: "experimental",
+			name: t("Experimental"),
+			icon: "beaker",
+			category: "advanced",
+		},
 		{ id: "about", name: t("About"), icon: "info", category: "info" },
 	];
 
@@ -517,6 +523,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		const betaTestSection = this.createTabSection("beta-test");
 		this.displayBetaTestSettings(betaTestSection);
 
+		// Experimental Tab
+		const experimentalSection = this.createTabSection("experimental");
+		this.displayExperimentalSettings(experimentalSection);
+
 		// About Tab
 		const aboutSection = this.createTabSection("about");
 		this.displayAboutSettings(aboutSection);
@@ -614,6 +624,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 	private displayBetaTestSettings(containerEl: HTMLElement): void {
 		renderBetaTestSettingsTab(this, containerEl);
+	}
+
+	private displayExperimentalSettings(containerEl: HTMLElement): void {
+		this.renderExperimentalSettingsTab(containerEl);
 	}
 
 	private renderTaskTimerSettingsTab(containerEl: HTMLElement): void {
@@ -809,5 +823,60 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				listItem.appendText(" - " + command.desc);
 			});
 		}
+	}
+
+	private renderExperimentalSettingsTab(containerEl: HTMLElement): void {
+		// Create experimental settings section
+		const experimentalSection = containerEl.createDiv();
+		experimentalSection.addClass("experimental-settings-section");
+
+		// Section header
+		const headerEl = experimentalSection.createEl("h2");
+		headerEl.setText("Experimental Features");
+		headerEl.addClass("experimental-section-heading");
+
+		// Warning notice
+		const warningEl = experimentalSection.createDiv();
+		warningEl.addClass("experimental-warning");
+		warningEl.createEl("strong").setText("⚠️ Warning: ");
+		warningEl.appendText("These features are experimental and may not be stable. Use at your own risk.");
+
+		// Dataflow Settings
+		const dataflowSection = experimentalSection.createDiv();
+		dataflowSection.addClass("experimental-dataflow-section");
+		
+		const dataflowHeading = dataflowSection.createEl("h3");
+		dataflowHeading.setText("New Dataflow Architecture");
+		dataflowHeading.addClass("experimental-subsection-heading");
+
+		// Enable dataflow setting
+		new Setting(dataflowSection)
+			.setName("Enable Dataflow Architecture")
+			.setDesc("Enable the new dataflow-based task processing system. This is an experimental feature that replaces the current TaskManager.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.experimental?.dataflowEnabled || false)
+					.onChange(async (value) => {
+						if (!this.plugin.settings.experimental) {
+							this.plugin.settings.experimental = {
+								dataflowEnabled: false
+							};
+						}
+						this.plugin.settings.experimental.dataflowEnabled = value;
+						await this.plugin.saveSettings();
+
+						// Show restart notice
+						if (value) {
+							const restartNotice = dataflowSection.createDiv();
+							restartNotice.addClass("experimental-restart-notice");
+							restartNotice.setText("⚠️ A restart may be required for the dataflow architecture to take full effect.");
+						}
+					});
+			});
+
+		// Dataflow info
+		const infoEl = dataflowSection.createDiv();
+		infoEl.addClass("experimental-info");
+		infoEl.setText("The new dataflow architecture provides improved performance and scalability for task processing. It includes better caching, worker-based processing, and more efficient data structures.");
 	}
 }

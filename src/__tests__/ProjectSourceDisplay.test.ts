@@ -8,7 +8,7 @@
  * 4. The backup determineTgProject method in ConfigurableTaskParser works correctly
  */
 
-import { MarkdownTaskParser } from "../utils/workers/ConfigurableTaskParser";
+import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { TaskParserConfig, MetadataParseMode } from "../types/TaskParserConfig";
 
 // Mock Obsidian types

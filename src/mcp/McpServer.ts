@@ -6,6 +6,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { AuthMiddleware } from "./auth/AuthMiddleware";
 import { TaskManagerBridge } from "./bridge/TaskManagerBridge";
+import { DataflowBridge } from "./bridge/DataflowBridge";
 import { McpServerConfig } from "./types/mcp";
 import TaskProgressBarPlugin from "../index";
 
@@ -17,7 +18,7 @@ const url = require("url");
 export class McpServer {
 	private httpServer: any;
 	private authMiddleware: AuthMiddleware;
-	private taskBridge: TaskManagerBridge;
+	private taskBridge: TaskManagerBridge | DataflowBridge;
 	private isRunning: boolean = false;
 	private requestCount: number = 0;
 	private startTime?: Date;
@@ -29,7 +30,14 @@ export class McpServer {
 		private config: McpServerConfig
 	) {
 		this.authMiddleware = new AuthMiddleware(config.authToken);
-		this.taskBridge = new TaskManagerBridge(plugin, plugin.taskManager);
+		// Choose bridge based on dataflow setting
+		if (plugin.settings?.experimental?.dataflowEnabled && plugin.queryAPI) {
+			this.taskBridge = new DataflowBridge(plugin, plugin.queryAPI);
+			console.log("MCP Server: Using DataflowBridge");
+		} else {
+			this.taskBridge = new TaskManagerBridge(plugin, plugin.taskManager);
+			console.log("MCP Server: Using TaskManagerBridge");
+		}
 	}
 
 	/**
@@ -599,16 +607,29 @@ export class McpServer {
 	 */
 	private async executeTool(toolName: string, args: any): Promise<any> {
 		try {
-			// Ensure TaskManager is available before executing tools
-			if (!this.plugin.taskManager) {
-				return {
-					content: [{ type: "text", text: "Error: TaskManager not initialized. Please enable the main view or wait for plugin initialization." }],
-					isError: true,
-				};
-			}
-			// Rebind bridge if it's not initialized yet
-			if (!this.taskBridge) {
-				this.taskBridge = new TaskManagerBridge(this.plugin, this.plugin.taskManager);
+			// Ensure data source is available before executing tools
+			if (this.plugin.settings?.experimental?.dataflowEnabled) {
+				if (!this.plugin.queryAPI) {
+					return {
+						content: [{ type: "text", text: "Error: QueryAPI not initialized. Please wait for plugin initialization." }],
+						isError: true,
+					};
+				}
+				// Rebind bridge if it's not initialized yet
+				if (!this.taskBridge) {
+					this.taskBridge = new DataflowBridge(this.plugin, this.plugin.queryAPI);
+				}
+			} else {
+				if (!this.plugin.taskManager) {
+					return {
+						content: [{ type: "text", text: "Error: TaskManager not initialized. Please enable the main view or wait for plugin initialization." }],
+						isError: true,
+					};
+				}
+				// Rebind bridge if it's not initialized yet
+				if (!this.taskBridge) {
+					this.taskBridge = new TaskManagerBridge(this.plugin, this.plugin.taskManager);
+				}
 			}
 			let result: any;
 
