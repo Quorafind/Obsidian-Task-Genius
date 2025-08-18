@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.6](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.5...9.7.6) (2025-08-18)
+
+### Bug Fixes
+
+* **mcp:** correct Accept header validation for POST requests ([641b8c0](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/641b8c0314bb29367985ef4020dff8e60be7437a))
+* **mcp:** improve protocol compliance and error handling ([329e1f9](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/329e1f913e00ca9ff8410193172ff74a90eba506))
+* **mcp:** restrict POST endpoint to /mcp path only ([f9b37e7](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f9b37e7a4c6f67ed259d92a1b6422b01c2a8a43b))
+
 ## [9.7.5](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.4...9.7.5) (2025-08-18)
 
 ### Bug Fixes
