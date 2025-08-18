@@ -879,8 +879,8 @@ export class McpServer {
 					return;
 				}
 
-				// MCP endpoint
-				if (pathname === "/mcp" && req.method === "POST") {
+				// MCP endpoint (also handle root path for compatibility)
+				if ((pathname === "/mcp" || pathname === "/") && req.method === "POST") {
 					// Validate Origin header for security (DNS rebinding protection)
 					const origin = req.headers.origin as string;
 					if (origin && !this.isOriginAllowed(origin)) {
@@ -888,72 +888,74 @@ export class McpServer {
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
-								error: "Forbidden",
-								message: "Origin not allowed",
+								jsonrpc: "2.0",
+								id: null,
+								error: {
+									code: -32603,
+									message: "Forbidden: Origin not allowed",
+								},
 							})
 						);
 						return;
 					}
-					
-					// Validate Accept header for POST requests
-					const acceptHeader = req.headers.accept as string;
-					if (!acceptHeader || !acceptHeader.includes("application/json")) {
-						res.statusCode = 400;
-						res.setHeader("Content-Type", "application/json");
-						res.end(
-							JSON.stringify({
-								error: "Bad Request",
-								message: "Accept header must include application/json for POST requests",
-							})
-						);
-						return;
-					}
-					
+
 					// Check MCP-Protocol-Version header
-					// Default to 2025-03-26 if not provided (as per spec)
-					const protocolVersion = (req.headers["mcp-protocol-version"] as string) || "2025-03-26";
-					const supportedVersions = ["2024-11-05", "2025-03-26", "2025-06-18"];
-					if (!supportedVersions.includes(protocolVersion)) {
+					const protocolVersion = req.headers["mcp-protocol-version"] as string;
+					if (protocolVersion && protocolVersion !== "2024-11-05" && protocolVersion !== "2025-06-18") {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
-								error: "Bad Request",
-								message: `Unsupported MCP-Protocol-Version: ${protocolVersion}`,
+								jsonrpc: "2.0",
+								id: null,
+								error: {
+									code: -32602,
+									message: `Unsupported MCP-Protocol-Version: ${protocolVersion}`,
+								},
 							})
 						);
 						return;
 					}
-					
+
 					// Authenticate request
 					if (!this.authMiddleware.validateRequest(req)) {
 						res.statusCode = 401;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
-								error: "Unauthorized",
-								message: "Invalid or missing authentication token",
+								jsonrpc: "2.0",
+								id: null,
+								error: {
+									code: -32603,
+									message: "Unauthorized: Invalid or missing authentication token",
+								},
 							})
 						);
 						return;
 					}
 
-					// Optional client app identity validation (for cross-vault protection)
-					// Only validate if client provides an app ID - don't require it
+					// Validate client app identity to avoid cross-vault confusion
 					const expectedAppId = this.plugin.app.appId;
 					const headerAppId = (req.headers["mcp-app-id"] as string) || "";
 					const bearerAppId = this.authMiddleware.getClientAppId(req);
 					const clientAppId = headerAppId || bearerAppId || "";
 
-					// Only validate if client explicitly provides an app ID
-					if (clientAppId && clientAppId !== expectedAppId) {
+					if (!clientAppId || clientAppId !== expectedAppId) {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
-								error: "InvalidClient",
-								message: `Client app ID mismatch. Expected: ${expectedAppId}, received: ${clientAppId}`,
-								details: { expectedAppId, received: clientAppId, source: headerAppId ? "header" : "authorization" }
+								jsonrpc: "2.0",
+								id: null,
+								error: {
+									code: -32602,
+									message: "Invalid client app id",
+									data: {
+										expectedAppId,
+										received: clientAppId || null,
+										source: headerAppId ? "header" : (bearerAppId ? "authorization" : "none")
+									}
+								},
 							})
 						);
 						return;
@@ -993,21 +995,39 @@ export class McpServer {
 						try {
 							
 							// For non-initialize requests, validate session exists
-							if (request.method !== "initialize" && sessionId && !this.sessions.has(sessionId)) {
-								console.warn("Invalid session ID:", sessionId);
-								res.statusCode = 404;
-								res.setHeader("Content-Type", "application/json");
-								res.end(
-									JSON.stringify({
-										jsonrpc: "2.0",
-										id: request.id,
-										error: {
-											code: -32603,
-											message: "Invalid or expired session",
-										},
-									})
-								);
-								return;
+							if (request.method !== "initialize") {
+								if (!sessionId) {
+									console.warn("Missing session ID for method:", request.method);
+									res.statusCode = 200;
+									res.setHeader("Content-Type", "application/json");
+									res.end(
+										JSON.stringify({
+											jsonrpc: "2.0",
+											id: request.id,
+											error: {
+												code: -32603,
+												message: "Missing session ID. Initialize connection first.",
+											},
+										})
+									);
+									return;
+								}
+								if (!this.sessions.has(sessionId)) {
+									console.warn("Invalid session ID:", sessionId);
+									res.statusCode = 200;
+									res.setHeader("Content-Type", "application/json");
+									res.end(
+										JSON.stringify({
+											jsonrpc: "2.0",
+											id: request.id,
+											error: {
+												code: -32603,
+												message: "Invalid or expired session",
+											},
+										})
+									);
+									return;
+								}
 							}
 							
 							// Handle MCP request
@@ -1022,17 +1042,7 @@ export class McpServer {
 								delete response._sessionId;
 							}
 
-							// Determine status code based on message type
-							// If it's a notification (no id) or the client sent a response, return 202 Accepted
-							const isNotification = !request.id;
-							const isResponse = request.result !== undefined || request.error !== undefined;
-							
-							if (isNotification || isResponse) {
-								res.statusCode = 202; // Accepted for notifications and responses
-							} else {
-								res.statusCode = 200; // OK for requests
-							}
-							
+							res.statusCode = 200;
 							res.setHeader("Content-Type", "application/json");
 							res.end(JSON.stringify(response));
 						} catch (error: any) {
@@ -1056,20 +1066,6 @@ export class McpServer {
 
 				// SSE endpoint for notifications (simplified - just returns empty)
 				if (pathname === "/mcp" && req.method === "GET") {
-					// Validate Accept header for GET requests (SSE)
-					const acceptHeader = req.headers.accept as string;
-					if (!acceptHeader || !acceptHeader.includes("text/event-stream")) {
-						res.statusCode = 400;
-						res.setHeader("Content-Type", "application/json");
-						res.end(
-							JSON.stringify({
-								error: "Bad Request",
-								message: "Accept header must include text/event-stream for GET requests",
-							})
-						);
-						return;
-					}
-					
 					const sessionId = req.headers["mcp-session-id"] as string;
 					// Make session validation optional for SSE
 					if (sessionId && !this.sessions.has(sessionId)) {
@@ -1111,15 +1107,20 @@ export class McpServer {
 					return;
 				}
 
-				// Root endpoint - return 404 as per MCP spec
-				if (pathname === "/") {
-					res.statusCode = 404;
+				// Root endpoint for discovery - return simple server info (not JSON-RPC format)
+				if (pathname === "/" && req.method === "GET") {
+					res.statusCode = 200;
 					res.setHeader("Content-Type", "application/json");
 					res.end(
 						JSON.stringify({
-							error: "Not Found",
-							message: "MCP server is running. Please use POST /mcp for JSON-RPC requests.",
-							endpoint: "/mcp"
+							server: "Obsidian Task Genius MCP Server",
+							version: "1.0.0", // Fallback version
+							mcp_version: "2025-06-18",
+							endpoints: {
+								mcp: "/mcp",
+								health: "/health"
+							},
+							description: "MCP server for Obsidian task management"
 						})
 					);
 					return;
@@ -1130,8 +1131,12 @@ export class McpServer {
 				res.setHeader("Content-Type", "application/json");
 				res.end(
 					JSON.stringify({
-						error: "Not found",
-						message: `Path ${pathname} not found`,
+						jsonrpc: "2.0",
+						id: null,
+						error: {
+							code: -32601,
+							message: `Path not found: ${pathname}`,
+						},
 					})
 				);
 			}
