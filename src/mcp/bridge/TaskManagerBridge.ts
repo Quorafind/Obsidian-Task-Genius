@@ -556,15 +556,10 @@ export class TaskManagerBridge {
 		const metadata: string[] = [];
 		const useDataviewFormat = this.plugin.settings.preferMetadataFormat === "dataview";
 
-		// 1. Tags (handle both formats)
+		// 1. Tags (always use hashtag format for both dataview and tasks)
 		if (args.tags?.length) {
-			if (useDataviewFormat) {
-				// In dataview format, tags are stored as a field
-				metadata.push(`[tags:: ${args.tags.join(", ")}]`);
-			} else {
-				// In tasks format, use hashtags
-				metadata.push(...args.tags.map(tag => `#${tag}`));
-			}
+			// Always use hashtags format regardless of metadata format preference
+			metadata.push(...args.tags.map(tag => `#${tag}`));
 		}
 
 		// 2. Project

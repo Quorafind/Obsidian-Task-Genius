@@ -895,9 +895,25 @@ export class McpServer {
 						return;
 					}
 					
+					// Validate Accept header for POST requests
+					const acceptHeader = req.headers.accept as string;
+					if (!acceptHeader || (!acceptHeader.includes("application/json") || !acceptHeader.includes("text/event-stream"))) {
+						res.statusCode = 400;
+						res.setHeader("Content-Type", "application/json");
+						res.end(
+							JSON.stringify({
+								error: "Bad Request",
+								message: "Accept header must include both application/json and text/event-stream",
+							})
+						);
+						return;
+					}
+					
 					// Check MCP-Protocol-Version header
-					const protocolVersion = req.headers["mcp-protocol-version"] as string;
-					if (protocolVersion && protocolVersion !== "2024-11-05" && protocolVersion !== "2025-06-18") {
+					// Default to 2025-03-26 if not provided (as per spec)
+					const protocolVersion = (req.headers["mcp-protocol-version"] as string) || "2025-03-26";
+					const supportedVersions = ["2024-11-05", "2025-03-26", "2025-06-18"];
+					if (!supportedVersions.includes(protocolVersion)) {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
@@ -977,7 +993,7 @@ export class McpServer {
 							// For non-initialize requests, validate session exists
 							if (request.method !== "initialize" && sessionId && !this.sessions.has(sessionId)) {
 								console.warn("Invalid session ID:", sessionId);
-								res.statusCode = 200;
+								res.statusCode = 404;
 								res.setHeader("Content-Type", "application/json");
 								res.end(
 									JSON.stringify({
@@ -1004,7 +1020,17 @@ export class McpServer {
 								delete response._sessionId;
 							}
 
-							res.statusCode = 200;
+							// Determine status code based on message type
+							// If it's a notification (no id) or the client sent a response, return 202 Accepted
+							const isNotification = !request.id;
+							const isResponse = request.result !== undefined || request.error !== undefined;
+							
+							if (isNotification || isResponse) {
+								res.statusCode = 202; // Accepted for notifications and responses
+							} else {
+								res.statusCode = 200; // OK for requests
+							}
+							
 							res.setHeader("Content-Type", "application/json");
 							res.end(JSON.stringify(response));
 						} catch (error: any) {
@@ -1028,6 +1054,20 @@ export class McpServer {
 
 				// SSE endpoint for notifications (simplified - just returns empty)
 				if (pathname === "/mcp" && req.method === "GET") {
+					// Validate Accept header for GET requests (SSE)
+					const acceptHeader = req.headers.accept as string;
+					if (!acceptHeader || !acceptHeader.includes("text/event-stream")) {
+						res.statusCode = 400;
+						res.setHeader("Content-Type", "application/json");
+						res.end(
+							JSON.stringify({
+								error: "Bad Request",
+								message: "Accept header must include text/event-stream for GET requests",
+							})
+						);
+						return;
+					}
+					
 					const sessionId = req.headers["mcp-session-id"] as string;
 					// Make session validation optional for SSE
 					if (sessionId && !this.sessions.has(sessionId)) {
@@ -1069,21 +1109,15 @@ export class McpServer {
 					return;
 				}
 
-				// Root endpoint for discovery
+				// Root endpoint - return 404 as per MCP spec
 				if (pathname === "/") {
-					res.statusCode = 200;
+					res.statusCode = 404;
 					res.setHeader("Content-Type", "application/json");
 					res.end(
 						JSON.stringify({
-							name: "Obsidian Task Genius MCP Server",
-							version: this.plugin.manifest.version,
-							protocol: "MCP/1.0",
-							capabilities: {
-								tools: true,
-								resources: false,
-								prompts: false,
-								sampling: false,
-							},
+							error: "Not Found",
+							message: "MCP server is running. Please use POST /mcp for JSON-RPC requests.",
+							endpoint: "/mcp"
 						})
 					);
 					return;
