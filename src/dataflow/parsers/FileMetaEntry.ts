@@ -1,19 +1,30 @@
 import { FileMetadataTaskParser } from "../../utils/workers/FileMetadataTaskParser";
 import type { Task } from "../../types/task";
-import type { FileParsingConfiguration } from "../../common/setting-definition";
+import type TaskGeniusPlugin from "../../main";
 
-// Project detection is disabled here; project will be added in augment stage
+/**
+ * Parse file-level tasks from frontmatter and tags
+ * Project detection is disabled here - project will be added in augment stage
+ */
 export async function parseFileMeta(
-  content: string,
-  filePath: string,
-  fileCache: any,
-  config: FileParsingConfiguration
+  plugin: TaskGeniusPlugin,
+  filePath: string
 ): Promise<Task[]> {
-  const parser = new FileMetadataTaskParser({
-    ...config,
-    // ensure project detection defaults are respected; detection methods are passed as undefined here
-  } as any, undefined);
-  const { tasks } = parser.parseFileForTasks(filePath, content, fileCache);
+  const file = plugin.app.vault.getAbstractFileByPath(filePath);
+  if (!file) return [];
+  
+  const fileCache = plugin.app.metadataCache.getFileCache(file);
+  if (!fileCache) return [];
+  
+  const fileContent = await plugin.app.vault.cachedRead(file);
+  
+  // Create parser with project detection disabled (pass undefined for detection methods)
+  const parser = new FileMetadataTaskParser(
+    plugin.settings.fileParsingConfig,
+    undefined // No project detection methods - handled by ProjectResolver
+  );
+  
+  const { tasks } = parser.parseFileForTasks(filePath, fileContent, fileCache);
   return tasks;
 }
 
