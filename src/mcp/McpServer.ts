@@ -897,7 +897,7 @@ export class McpServer {
 					
 					// Validate Accept header for POST requests
 					const acceptHeader = req.headers.accept as string;
-					if (!acceptHeader || (!acceptHeader.includes("application/json") || !acceptHeader.includes("text/event-stream"))) {
+					if (!acceptHeader || !acceptHeader.includes("application/json") || !acceptHeader.includes("text/event-stream")) {
 						res.statusCode = 400;
 						res.setHeader("Content-Type", "application/json");
 						res.end(
