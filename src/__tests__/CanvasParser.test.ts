@@ -2,7 +2,7 @@
  * Tests for Canvas file parsing functionality
  */
 
-import { CanvasParser } from '../utils/parsing/CanvasParser';
+import { CanvasParser } from '../parsers/canvas-parser';
 import { CanvasData, CanvasTextData } from '../types/canvas';
 import { getConfig } from '../common/task-parser-config';
 

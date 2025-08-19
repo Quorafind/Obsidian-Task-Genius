@@ -9,9 +9,9 @@ import {
 	EnhancedTask,
 	MetadataParseMode,
 } from "../../types/TaskParserConfig";
-import { parseLocalDate } from "../../utils/dateUtil";
+import { parseLocalDate } from "../../utils/date/date-formatter";
 import { TASK_REGEX } from "../../common/regex-define";
-import { ContextDetector } from "../../utils/workers/ContextDetector";
+import { ContextDetector } from "../../parsers/context-detector";
 
 export class MarkdownTaskParser {
 	private config: TaskParserConfig;

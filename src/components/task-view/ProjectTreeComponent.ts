@@ -6,7 +6,7 @@ import {
 	buildProjectTreeFromTasks, 
 	findNodeByPath, 
 	getAllDescendants
-} from "../../utils/projectTreeBuilder";
+} from "../../core/project-tree-builder";
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 

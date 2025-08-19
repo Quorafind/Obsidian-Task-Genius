@@ -13,7 +13,7 @@ import {
 	EmbeddableMarkdownEditor,
 } from "../editor-ext/markdownEditor";
 import TaskProgressBarPlugin from "../index";
-import { saveCapture, processDateTemplates } from "../utils/fileUtils";
+import { saveCapture, processDateTemplates } from "../utils/file/file-operations";
 import { FileSuggest } from "../components/AutoComplete";
 import { t } from "../translations/helper";
 import { MarkdownRendererComponent } from "./MarkdownRenderer";
@@ -25,7 +25,7 @@ import {
 	DEFAULT_TIME_PARSING_CONFIG,
 	ParsedTimeResult,
 	LineParseResult,
-} from "../utils/TimeParsingService";
+} from "../services/time-parsing-service";
 import { SuggestManager, UniversalEditorSuggest } from "./suggest";
 
 interface TaskMetadata {

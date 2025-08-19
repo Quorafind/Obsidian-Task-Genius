@@ -1,6 +1,6 @@
 import type { Task, TaskCache, TaskFilter, SortingCriteria, TaskIndexer as TaskIndexerInterface } from "../../types/task";
 import type { App, Vault, MetadataCache, TFile } from "obsidian";
-import { TaskIndexer } from "../../utils/import/TaskIndexer";
+import { TaskIndexer } from "../../core/task-indexer";
 import { Storage } from "../persistence/Storage";
 import { emit, Events, Seq } from "../events/Events";
 

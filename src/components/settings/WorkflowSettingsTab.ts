@@ -2,7 +2,7 @@ import { Setting, Modal } from "obsidian";
 import { t } from "../../translations/helper";
 import { TaskProgressBarSettingTab } from "../../setting";
 import { WorkflowDefinitionModal } from "../WorkflowDefinitionModal";
-import { generateUniqueId } from "src/utils/common";
+import { generateUniqueId } from "../../utils/id-generator";
 
 export function renderWorkflowSettingsTab(
 	settingTab: TaskProgressBarSettingTab,

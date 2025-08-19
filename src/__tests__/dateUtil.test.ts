@@ -1,4 +1,4 @@
-import { getTodayLocalDateString, getLocalDateString } from "../utils/dateUtil";
+import { getTodayLocalDateString, getLocalDateString } from "../utils/date/date-formatter";
 
 describe("dateUtil", () => {
 	describe("getTodayLocalDateString", () => {

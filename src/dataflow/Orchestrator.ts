@@ -1,6 +1,6 @@
 import { App, TFile, Vault, MetadataCache } from "obsidian";
 import type { Task } from "../types/task";
-import type { ProjectConfigManagerOptions } from "../utils/ProjectConfigManager";
+import type { ProjectConfigManagerOptions } from "../managers/project-config-manager";
 
 import { QueryAPI } from "./api/QueryAPI";
 import { Repository } from "./indexer/Repository";

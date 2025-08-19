@@ -8,7 +8,7 @@
  * - Error handling and validation
  */
 
-import { ArchiveActionExecutor } from "../utils/onCompletion/ArchiveActionExecutor";
+import { ArchiveActionExecutor } from "../executors/completion/archive-executor";
 import {
 	OnCompletionActionType,
 	OnCompletionExecutionContext,

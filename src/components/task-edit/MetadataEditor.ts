@@ -17,7 +17,7 @@ import { t } from "../../translations/helper";
 import { ProjectSuggest, TagSuggest, ContextSuggest } from "../AutoComplete";
 import { StatusComponent } from "../StatusComponent";
 import { format } from "date-fns";
-import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 import { OnCompletionConfigurator } from "../onCompletion/OnCompletionConfigurator";
 
 export interface MetadataChangeEvent {

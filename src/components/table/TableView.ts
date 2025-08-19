@@ -13,7 +13,7 @@ import { TreeManager } from "./TreeManager";
 import { VirtualScrollManager } from "./VirtualScrollManager";
 import { TableHeader, TableHeaderCallbacks } from "./TableHeader";
 import { sortTasks } from "../../commands/sortTaskCommands";
-import { isProjectReadonly } from "../../utils/taskUtil";
+import { isProjectReadonly } from "../../utils/task/task-operations";
 import "../../styles/table.css";
 
 export interface TableViewCallbacks {

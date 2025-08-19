@@ -14,7 +14,7 @@ import {
 	ProjectConfigManagerOptions,
 	MetadataMapping,
 	ProjectNamingStrategy,
-} from "../utils/ProjectConfigManager";
+} from "../managers/project-config-manager";
 
 // Mock Obsidian types
 class MockTFile {

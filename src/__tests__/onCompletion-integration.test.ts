@@ -8,7 +8,7 @@
  * - Performance considerations
  */
 
-import { OnCompletionManager } from "../utils/OnCompletionManager";
+import { OnCompletionManager } from "../managers/completion-manager";
 import { Task } from "../types/task";
 import { createMockPlugin, createMockApp } from "./mockUtils";
 import { OnCompletionActionType } from "../types/onCompletion";

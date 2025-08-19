@@ -3,7 +3,7 @@
  * Tests to verify that the ICS network timeout and non-blocking UI fixes work correctly
  */
 
-import { IcsManager } from "../utils/ics/IcsManager";
+import { IcsManager } from "../managers/ics-manager";
 import { IcsManagerConfig } from "../types/ics";
 
 // Mock moment.js

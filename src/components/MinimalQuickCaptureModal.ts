@@ -13,7 +13,7 @@ import {
 	EmbeddableMarkdownEditor,
 } from "../editor-ext/markdownEditor";
 import TaskProgressBarPlugin from "../index";
-import { saveCapture } from "../utils/fileUtils";
+import { saveCapture } from "../utils/file/file-operations";
 import { t } from "../translations/helper";
 import { MinimalQuickCaptureSuggest } from "./MinimalQuickCaptureSuggest";
 import { DatePickerPopover } from "./date-picker/DatePickerPopover";

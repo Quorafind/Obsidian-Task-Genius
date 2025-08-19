@@ -7,7 +7,7 @@
 
 import { Task } from "../../types/task";
 import { TASK_REGEX } from "../../common/regex-define";
-import { parseLocalDate } from "../../utils/dateUtil";
+import { parseLocalDate } from "../../utils/date/date-formatter";
 import {
 	EMOJI_START_DATE_REGEX,
 	EMOJI_COMPLETED_DATE_REGEX,

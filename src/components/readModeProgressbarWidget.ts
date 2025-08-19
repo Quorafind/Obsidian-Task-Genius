@@ -12,7 +12,7 @@ import {
 	checkIfParentElementHasGoalFormat,
 	extractTaskAndGoalInfoReadMode,
 	getCustomTotalGoalReadMode,
-} from "../utils/goal/readMode";
+} from "../core/goal/read-mode";
 
 interface GroupElement {
 	parentElement: HTMLElement;

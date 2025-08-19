@@ -5,7 +5,7 @@ import {
 	OnboardingConfigManager,
 	OnboardingConfigMode,
 	OnboardingConfig,
-} from "../../utils/OnboardingConfigManager";
+} from "../../managers/onboarding-manager";
 import { UserLevelSelector } from "./UserLevelSelector";
 import { ConfigPreview } from "./ConfigPreview";
 import { TaskCreationGuide } from "./TaskCreationGuide";

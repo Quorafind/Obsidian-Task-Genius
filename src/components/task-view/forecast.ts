@@ -16,7 +16,7 @@ import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
 import { ForecastSpecificConfig } from "../../common/setting-definition";
 import { sortTasks } from "../../commands/sortTaskCommands"; // 导入 sortTasks 函数
-import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { getInitialViewMode, saveViewMode } from "../../utils/ui/view-mode-utils";
 
 interface DateSection {
 	title: string;

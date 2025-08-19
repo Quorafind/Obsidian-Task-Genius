@@ -1,6 +1,6 @@
 import { Component, App } from "obsidian";
 import { GanttTaskItem, Timescale, PlacedGanttTaskItem } from "./gantt"; // Correctly imports PlacedGanttTaskItem now
-import { DateHelper } from "../../utils/DateHelper"; // Corrected import path again
+import { DateHelper } from "../../utils/date/date-helper"; // Corrected import path again
 
 // Interface for parameters needed by the grid component
 interface GridBackgroundParams {

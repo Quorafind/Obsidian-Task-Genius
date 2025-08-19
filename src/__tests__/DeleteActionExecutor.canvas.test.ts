@@ -7,7 +7,7 @@
  * - Canvas file structure integrity
  */
 
-import { DeleteActionExecutor } from "../utils/onCompletion/DeleteActionExecutor";
+import { DeleteActionExecutor } from "../executors/completion/delete-executor";
 import {
 	OnCompletionActionType,
 	OnCompletionExecutionContext,

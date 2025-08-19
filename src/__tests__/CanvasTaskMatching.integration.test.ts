@@ -8,7 +8,7 @@
  * - OnCompletion metadata scenarios
  */
 
-import { CanvasTaskUpdater } from "../utils/parsing/CanvasTaskUpdater";
+import { CanvasTaskUpdater } from "../parsers/canvas-task-updater";
 import { Task, CanvasTaskMetadata } from "../types/task";
 import { Vault } from "obsidian";
 import TaskProgressBarPlugin from "../index";

@@ -9,7 +9,7 @@ import {
 import { MappingHabitProps } from "../../../types/habit-card";
 import { HabitCard } from "./habitcard";
 import TaskProgressBarPlugin from "../../../index";
-import { getTodayLocalDateString } from "../../../utils/dateUtil";
+import { getTodayLocalDateString } from "../../../utils/date/date-formatter";
 
 export class MappingHabitCard extends HabitCard {
 	constructor(

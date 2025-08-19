@@ -1,4 +1,4 @@
-import { FileMetadataTaskParser } from "../../utils/workers/FileMetadataTaskParser";
+import { FileMetadataTaskParser } from "../../parsers/file-metadata-parser";
 import type { Task } from "../../types/task";
 import type TaskGeniusPlugin from "../../index";
 

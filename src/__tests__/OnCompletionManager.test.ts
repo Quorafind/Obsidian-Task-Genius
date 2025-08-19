@@ -8,7 +8,7 @@
  * - Error handling and validation
  */
 
-import { OnCompletionManager } from "../utils/OnCompletionManager";
+import { OnCompletionManager } from "../managers/completion-manager";
 import {
 	OnCompletionActionType,
 	OnCompletionConfig,

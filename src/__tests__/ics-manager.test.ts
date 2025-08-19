@@ -3,7 +3,7 @@
  * Tests for managing ICS calendar sources and fetching data
  */
 
-import { IcsManager } from "../utils/ics/IcsManager";
+import { IcsManager } from "../managers/ics-manager";
 import { IcsSource, IcsManagerConfig } from "../types/ics";
 
 // Mock minimal settings for testing

@@ -1,5 +1,5 @@
 import { QuickCaptureModal } from "../components/QuickCaptureModal";
-import { DEFAULT_TIME_PARSING_CONFIG } from "../utils/TimeParsingService";
+import { DEFAULT_TIME_PARSING_CONFIG } from "../services/time-parsing-service";
 import { App } from "obsidian";
 
 // Mock dependencies

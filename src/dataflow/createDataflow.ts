@@ -4,7 +4,7 @@
 
 import type { App, Vault, MetadataCache } from "obsidian";
 import type TaskProgressBarPlugin from "../index";
-import type { ProjectConfigManagerOptions } from "../utils/ProjectConfigManager";
+import type { ProjectConfigManagerOptions } from "../managers/project-config-manager";
 
 import { DataflowOrchestrator } from "./Orchestrator";
 

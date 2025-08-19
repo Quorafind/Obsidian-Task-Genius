@@ -6,14 +6,14 @@ import {
 	getViewSettingOrDefault,
 	SortCriterion,
 } from "../../common/setting-definition"; // 导入 SortCriterion
-import { tasksToTree } from "../../utils/treeViewUtil"; // Re-import needed utils
+import { tasksToTree } from "../../utils/ui/tree-view-utils"; // Re-import needed utils
 import { TaskTreeItemComponent } from "./treeItem"; // Re-import needed components
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
-import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { getInitialViewMode, saveViewMode } from "../../utils/ui/view-mode-utils";
 
 // @ts-ignore
-import { filterTasks } from "../../utils/TaskFilterUtils";
+import { filterTasks } from "../../utils/task/task-filter-utils";
 import { sortTasks } from "../../commands/sortTaskCommands"; // 导入 sortTasks 函数
 
 interface ContentComponentParams {

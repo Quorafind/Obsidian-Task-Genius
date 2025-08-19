@@ -1,4 +1,4 @@
-import { processDateTemplates } from "../utils/fileUtils";
+import { processDateTemplates } from "../utils/file/file-operations";
 
 // Mock moment function to return predictable results
 jest.mock("obsidian", () => ({

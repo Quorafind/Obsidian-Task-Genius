@@ -2,8 +2,8 @@
  * Integration tests for Canvas file support
  */
 
-import { isSupportedFile, getFileType, SupportedFileType } from '../utils/fileTypeUtils';
-import { CanvasParser } from '../utils/parsing/CanvasParser';
+import { isSupportedFile, getFileType, SupportedFileType } from '../utils/file/file-type-detector';
+import { CanvasParser } from '../parsers/canvas-parser';
 import { getConfig } from '../common/task-parser-config';
 
 // Mock TFile for testing

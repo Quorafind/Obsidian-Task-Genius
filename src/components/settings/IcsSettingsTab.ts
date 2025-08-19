@@ -23,8 +23,8 @@ import {
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import "../../styles/ics-settings.css";
-import { HolidayDetector } from "../../utils/ics/HolidayDetector";
-import { WebcalUrlConverter } from "../../utils/ics/WebcalUrlConverter";
+import { HolidayDetector } from "../../parsers/holiday-detector";
+import { WebcalUrlConverter } from "../../parsers/webcal-converter";
 
 export class IcsSettingsComponent {
 	private plugin: TaskProgressBarPlugin;

@@ -58,7 +58,7 @@ import { FileTask, FileTaskPropertyMapping } from "../types/file-task";
 import {
 	FileTaskManagerImpl,
 	DEFAULT_FILE_TASK_MAPPING,
-} from "../utils/FileTaskManager";
+} from "../managers/file-task-manager";
 import TaskProgressBarPlugin from "../index";
 import { ForecastComponent } from "../components/task-view/forecast";
 import { TagsComponent } from "../components/task-view/tags";
@@ -83,7 +83,7 @@ import {
 	getViewSettingOrDefault,
 	TwoColumnSpecificConfig,
 } from "../common/setting-definition";
-import { filterTasks } from "../utils/TaskFilterUtils";
+import { filterTasks } from "../utils/task/task-filter-utils";
 import { TaskPropertyTwoColumnView } from "../components/task-view/TaskPropertyTwoColumnView";
 import { RootFilterState } from "../components/task-filter/ViewTaskFilter";
 import { t } from "../translations/helper";

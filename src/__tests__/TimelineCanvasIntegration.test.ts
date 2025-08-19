@@ -5,7 +5,7 @@
  */
 
 import { Task, CanvasTaskMetadata } from "../types/task";
-import { CanvasTaskUpdater } from "../utils/parsing/CanvasTaskUpdater";
+import { CanvasTaskUpdater } from "../parsers/canvas-task-updater";
 import { CanvasData } from "../types/canvas";
 
 // Mock Vault and TFile (same as CanvasTaskUpdater.test.ts)

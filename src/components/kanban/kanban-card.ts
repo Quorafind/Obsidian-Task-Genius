@@ -4,8 +4,8 @@ import { MarkdownRendererComponent } from "../MarkdownRenderer"; // Adjust path
 import TaskProgressBarPlugin from "../../index"; // Adjust path
 import { KanbanSpecificConfig } from "../../common/setting-definition";
 import { createTaskCheckbox } from "../task-view/details";
-import { getEffectiveProject } from "../../utils/taskUtil";
-import { sanitizePriorityForClass } from "../../utils/priorityUtils";
+import { getEffectiveProject } from "../../utils/task/task-operations";
+import { sanitizePriorityForClass } from "../../utils/task/priority-utils";
 
 export class KanbanCardComponent extends Component {
 	public element: HTMLElement;

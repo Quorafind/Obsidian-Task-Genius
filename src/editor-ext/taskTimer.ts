@@ -8,9 +8,9 @@ import { EditorState, Range, StateField, Transaction, Facet } from "@codemirror/
 import { MetadataCache, editorInfoField, editorEditorField, MarkdownView } from "obsidian";
 import type TaskProgressBarPlugin from "../index";
 import { TaskTimerSettings } from "../common/setting-definition";
-import { TaskTimerMetadataDetector } from "../utils/TaskTimerMetadataDetector";
-import { TaskTimerManager, TimerState } from "../utils/TaskTimerManager";
-import { TaskTimerFormatter } from "../utils/TaskTimerFormatter";
+import { TaskTimerMetadataDetector } from "../services/timer-metadata-service";
+import { TaskTimerManager, TimerState } from "../managers/timer-manager";
+import { TaskTimerFormatter } from "../services/timer-format-service";
 import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
 import "../styles/task-timer.css";
 

@@ -3,7 +3,7 @@
  */
 
 import { ProjectDataWorkerManager } from "../dataflow/workers/ProjectDataWorkerManager";
-import { ProjectConfigManager } from "../utils/ProjectConfigManager";
+import { ProjectConfigManager } from "../managers/project-config-manager";
 import { Vault, MetadataCache } from "obsidian";
 
 // Mock the worker

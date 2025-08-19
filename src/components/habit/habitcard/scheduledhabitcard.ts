@@ -10,7 +10,7 @@ import { HabitCard } from "./habitcard";
 import TaskProgressBarPlugin from "../../../index";
 import { t } from "../../../translations/helper";
 import { EventDetailModal } from "../habit";
-import { getTodayLocalDateString } from "../../../utils/dateUtil";
+import { getTodayLocalDateString } from "../../../utils/date/date-formatter";
 
 function renderPieDotSVG(completed: number, total: number): string {
 	if (total <= 0) return "";

@@ -10,7 +10,7 @@ import {
 	getAllDescendants,
 	getExpandedPaths,
 	restoreExpandedState
-} from '../utils/projectTreeBuilder';
+} from '../core/project-tree-builder';
 import { TreeNode, ProjectNodeData } from '../types/tree';
 import { Task } from '../types/task';
 

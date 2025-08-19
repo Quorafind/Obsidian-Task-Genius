@@ -3,8 +3,8 @@
  * This test focuses on testing the cache clearing logic without mocking the full TaskManager
  */
 
-import { TaskParsingService } from "../utils/TaskParsingService";
-import { ProjectConfigManager } from "../utils/ProjectConfigManager";
+import { TaskParsingService } from "../services/task-parsing-service";
+import { ProjectConfigManager } from "../managers/project-config-manager";
 import { getConfig } from "../common/task-parser-config";
 
 // Mock Obsidian components

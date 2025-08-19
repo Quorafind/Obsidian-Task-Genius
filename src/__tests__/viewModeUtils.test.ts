@@ -3,7 +3,7 @@
  * These tests verify the global view mode configuration feature
  */
 
-import { getDefaultViewMode, getSavedViewMode, saveViewMode, getInitialViewMode } from '../utils/viewModeUtils';
+import { getDefaultViewMode, getSavedViewMode, saveViewMode, getInitialViewMode } from '../utils/ui/view-mode-utils';
 
 // Mock Obsidian App
 class MockApp {

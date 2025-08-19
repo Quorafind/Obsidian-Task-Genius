@@ -7,7 +7,7 @@ import {
 import { GanttTaskItem, PlacedGanttTaskItem, Timescale } from "./gantt"; // 添加PlacedGanttTaskItem导入
 import { Task } from "../../types/task";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
-import { sanitizePriorityForClass } from "../../utils/priorityUtils";
+import { sanitizePriorityForClass } from "../../utils/task/priority-utils";
 
 // Constants from GanttComponent (consider moving to a shared config/constants file)
 const ROW_HEIGHT = 24;

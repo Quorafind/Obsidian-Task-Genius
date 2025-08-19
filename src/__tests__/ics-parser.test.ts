@@ -3,7 +3,7 @@
  * Tests for parsing Chinese Lunar Calendar ICS data
  */
 
-import { IcsParser } from "../utils/ics/IcsParser";
+import { IcsParser } from "../parsers/ics-parser";
 import { IcsSource, IcsEvent } from "../types/ics";
 
 describe("ICS Parser", () => {

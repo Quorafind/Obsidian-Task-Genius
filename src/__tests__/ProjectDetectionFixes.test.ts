@@ -11,7 +11,7 @@
 import {
 	ProjectConfigManager,
 	ProjectConfigManagerOptions,
-} from "../utils/ProjectConfigManager";
+} from "../managers/project-config-manager";
 
 // Mock Obsidian types
 class MockTFile {

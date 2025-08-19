@@ -1,4 +1,4 @@
-import { OnboardingConfig } from "../../utils/OnboardingConfigManager";
+import { OnboardingConfig } from "../../managers/onboarding-manager";
 import { t } from "../../translations/helper";
 import { setIcon } from "obsidian";
 

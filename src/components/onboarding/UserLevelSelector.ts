@@ -1,7 +1,7 @@
 import {
 	OnboardingConfigManager,
 	OnboardingConfig,
-} from "../../utils/OnboardingConfigManager";
+} from "../../managers/onboarding-manager";
 import { t } from "../../translations/helper";
 import { setIcon } from "obsidian";
 

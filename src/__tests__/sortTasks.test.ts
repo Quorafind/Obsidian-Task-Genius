@@ -238,7 +238,7 @@ Just regular text content`;
 		});
 
 		// Debug: Test parseTaskLine directly
-		const { parseTaskLine } = require("../utils/taskUtil");
+		const { parseTaskLine } = require("../utils/task/task-operations");
 		const testLine = "- [ ] Task A 📅 2025-01-01";
 		const parsedTask = parseTaskLine(
 			"test.md",

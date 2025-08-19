@@ -2,7 +2,7 @@ import {
 	TimeParsingService,
 	DEFAULT_TIME_PARSING_CONFIG,
 	LineParseResult,
-} from "../utils/TimeParsingService";
+} from "../services/time-parsing-service";
 
 describe("TimeParsingService", () => {
 	let service: TimeParsingService;

@@ -3,8 +3,8 @@
  * Tests for real-world ICS parsing using Chinese Lunar Calendar data
  */
 
-import { IcsParser } from "../utils/ics/IcsParser";
-import { IcsManager } from "../utils/ics/IcsManager";
+import { IcsParser } from "../parsers/ics-parser";
+import { IcsManager } from "../managers/ics-manager";
 import { IcsSource, IcsManagerConfig } from "../types/ics";
 
 // Mock Obsidian Component

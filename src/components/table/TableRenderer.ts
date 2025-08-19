@@ -6,7 +6,7 @@ import { DatePickerPopover } from "../date-picker/DatePickerPopover";
 import type TaskProgressBarPlugin from "../../index";
 import { ContextSuggest, ProjectSuggest, TagSuggest } from "../AutoComplete";
 import { clearAllMarks } from "../MarkdownRenderer";
-import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 
 // Cache for autocomplete data to avoid repeated expensive operations
 interface AutoCompleteCache {

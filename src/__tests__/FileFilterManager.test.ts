@@ -1,4 +1,4 @@
-import { FileFilterManager } from "../utils/FileFilterManager";
+import { FileFilterManager } from "../managers/file-filter-manager";
 import { FilterMode } from "../common/setting-definition";
 import { FileFilterSettings } from "../common/setting-definition";
 

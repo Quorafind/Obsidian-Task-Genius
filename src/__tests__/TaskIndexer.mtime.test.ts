@@ -2,7 +2,7 @@
  * Tests for TaskIndexer mtime-based caching functionality
  */
 
-import { TaskIndexer } from "../utils/import/TaskIndexer";
+import { TaskIndexer } from "../core/task-indexer";
 import { Task } from "../types/task";
 
 // Mock obsidian Component class

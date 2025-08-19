@@ -1,6 +1,6 @@
 import { App, Component, setIcon, Menu } from "obsidian";
 import { Task } from "../../types/task";
-import { formatDate } from "../../utils/dateUtil";
+import { formatDate } from "../../utils/date/date-formatter";
 import "../../styles/tree-view.css";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
 import { createTaskCheckbox } from "./details";
@@ -9,12 +9,12 @@ import {
 	getViewSettingOrDefault,
 	ViewMode,
 } from "../../common/setting-definition";
-import { getRelativeTimeString } from "../../utils/dateUtil";
+import { getRelativeTimeString } from "../../utils/date/date-formatter";
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import { InlineEditor, InlineEditorOptions } from "./InlineEditor";
 import { InlineEditorManager } from "./InlineEditorManager";
-import { sanitizePriorityForClass } from "../../utils/priorityUtils";
+import { sanitizePriorityForClass } from "../../utils/task/priority-utils";
 
 export class TaskTreeItemComponent extends Component {
 	public element: HTMLElement;

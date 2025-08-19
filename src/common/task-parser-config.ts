@@ -1,5 +1,5 @@
 import { MetadataParseMode, TaskParserConfig } from "../types/TaskParserConfig";
-import { MetadataFormat } from "../utils/taskUtil";
+import { MetadataFormat } from "../utils/task/task-operations";
 import type TaskProgressBarPlugin from "../index";
 
 export const getConfig = (

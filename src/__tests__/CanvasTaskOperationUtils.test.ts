@@ -8,7 +8,7 @@
  * - Canvas data saving operations
  */
 
-import { CanvasTaskOperationUtils } from "../utils/onCompletion/CanvasTaskOperationUtils";
+import { CanvasTaskOperationUtils } from "../executors/completion/canvas-operation-utils";
 import { Task } from "../types/task";
 import { CanvasData, CanvasTextData } from "../types/canvas";
 import { createMockApp } from "./mockUtils";

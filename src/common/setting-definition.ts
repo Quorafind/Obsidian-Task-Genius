@@ -3,7 +3,7 @@ import type TaskProgressBarPlugin from "../index"; // Type-only import
 import { BaseHabitData } from "../types/habit-card";
 import type { RootFilterState } from "../components/task-filter/ViewTaskFilter";
 import { IcsManagerConfig } from "../types/ics";
-import { TimeParsingConfig } from "../utils/TimeParsingService";
+import { TimeParsingConfig } from "../services/time-parsing-service";
 
 // Interface for individual project review settings (If still needed, otherwise remove)
 // Keep it for now, in case it's used elsewhere, but it's not part of TaskProgressBarSettings anymore

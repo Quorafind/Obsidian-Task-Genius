@@ -12,7 +12,7 @@
 import {
 	TaskParsingService,
 	TaskParsingServiceOptions,
-} from "../utils/TaskParsingService";
+} from "../services/task-parsing-service";
 import { TaskParserConfig, MetadataParseMode } from "../types/TaskParserConfig";
 import { Task, TgProject } from "../types/task";
 
@@ -1285,7 +1285,7 @@ describe("TaskParsingService Integration", () => {
 
 			// Clear cache before test
 			const { MarkdownTaskParser } = await import(
-				"../utils/workers/ConfigurableTaskParser"
+				"../parsers/configurable-task-parser"
 			);
 			MarkdownTaskParser.clearDateCache();
 
@@ -1335,7 +1335,7 @@ describe("TaskParsingService Integration", () => {
 
 		it("should handle date cache size limit correctly", async () => {
 			const { MarkdownTaskParser } = await import(
-				"../utils/workers/ConfigurableTaskParser"
+				"../parsers/configurable-task-parser"
 			);
 
 			// Clear cache before test

@@ -11,7 +11,7 @@
 import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
 import { getConfig } from "../common/task-parser-config";
 import { createMockPlugin } from "./mockUtils";
-import { ContextDetector } from "../utils/workers/ContextDetector";
+import { ContextDetector } from "../parsers/context-detector";
 
 describe("Tag Parsing Edge Cases", () => {
 	let parser: MarkdownTaskParser;

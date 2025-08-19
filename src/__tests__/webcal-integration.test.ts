@@ -3,7 +3,7 @@
  * Tests for webcal URL conversion and integration functionality
  */
 
-import { WebcalUrlConverter } from "../utils/ics/WebcalUrlConverter";
+import { WebcalUrlConverter } from "../parsers/webcal-converter";
 
 describe("WebcalUrlConverter", () => {
 	describe("convertWebcalUrl", () => {

@@ -4,7 +4,7 @@
  */
 
 import { TFile } from 'obsidian';
-import { isSupportedFile, isCanvasFile } from '../utils/fileTypeUtils';
+import { isSupportedFile, isCanvasFile } from '../utils/file/file-type-detector';
 import { CanvasData } from '../types/canvas';
 
 // Mock TFile for testing

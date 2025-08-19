@@ -13,7 +13,7 @@ import {
 import TaskProgressBarPlugin from "../index";
 import { buildIndentString } from "../utils";
 import { t } from "../translations/helper";
-import { isSupportedFile } from "../utils/fileTypeUtils";
+import { isSupportedFile } from "../utils/file/file-type-detector";
 
 /**
  * Modal for selecting a target file to move tasks to

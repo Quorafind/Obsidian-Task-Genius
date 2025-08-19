@@ -2,8 +2,8 @@
  * Tests for FileMetadataTaskParser and FileMetadataTaskUpdater
  */
 
-import { FileMetadataTaskParser } from "../utils/workers/FileMetadataTaskParser";
-import { FileMetadataTaskUpdater } from "../utils/workers/FileMetadataTaskUpdater";
+import { FileMetadataTaskParser } from "../parsers/file-metadata-parser";
+import { FileMetadataTaskUpdater } from "../parsers/file-metadata-updater";
 import { FileParsingConfiguration } from "../common/setting-definition";
 import { StandardFileTaskMetadata, Task } from "../types/task";
 

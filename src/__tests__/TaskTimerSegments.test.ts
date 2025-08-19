@@ -1,4 +1,4 @@
-import { TaskTimerManager, TimerState, TimeSegment } from "../utils/TaskTimerManager";
+import { TaskTimerManager, TimerState, TimeSegment } from "../managers/timer-manager";
 import { TaskTimerSettings } from "../common/setting-definition";
 
 // Mock localStorage

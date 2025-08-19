@@ -3,7 +3,7 @@
  * Tests for optimized parsing performance
  */
 
-import { IcsParser } from "../utils/ics/IcsParser";
+import { IcsParser } from "../parsers/ics-parser";
 import { IcsSource } from "../types/ics";
 
 describe("ICS Parser Performance", () => {

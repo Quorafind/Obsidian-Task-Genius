@@ -7,7 +7,7 @@
  * - Task completion status enforcement
  */
 
-import { ArchiveActionExecutor } from "../utils/onCompletion/ArchiveActionExecutor";
+import { ArchiveActionExecutor } from "../executors/completion/archive-executor";
 import {
 	OnCompletionExecutionContext,
 	OnCompletionArchiveConfig,

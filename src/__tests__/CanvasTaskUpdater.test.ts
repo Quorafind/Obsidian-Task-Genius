@@ -2,7 +2,7 @@
  * Tests for Canvas task updater functionality
  */
 
-import { CanvasTaskUpdater } from '../utils/parsing/CanvasTaskUpdater';
+import { CanvasTaskUpdater } from '../parsers/canvas-task-updater';
 import { Task, CanvasTaskMetadata } from '../types/task';
 import { CanvasData } from '../types/canvas';
 

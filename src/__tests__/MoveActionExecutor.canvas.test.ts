@@ -8,7 +8,7 @@
  * - Error handling and validation
  */
 
-import { MoveActionExecutor } from "../utils/onCompletion/MoveActionExecutor";
+import { MoveActionExecutor } from "../executors/completion/move-executor";
 import {
 	OnCompletionActionType,
 	OnCompletionExecutionContext,

@@ -1,5 +1,5 @@
 import type { Task, TaskCache } from "../../types/task";
-import { LocalStorageCache, Cached } from "../../utils/persister";
+import { LocalStorageCache, Cached } from "../../cache/local-storage-cache";
 
 /**
  * Storage record types with versioning and hashing

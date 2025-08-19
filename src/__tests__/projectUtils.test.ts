@@ -8,7 +8,7 @@ import {
 	getEffectiveProject,
 	isProjectReadonly,
 	hasProject,
-} from "../utils/taskUtil";
+} from "../utils/task/task-operations";
 import { Task } from "../types/task";
 import { TgProject } from "../types/task";
 

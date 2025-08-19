@@ -1,7 +1,7 @@
 import type { TgProject } from "../../types/task";
 import type { App, Vault, MetadataCache } from "obsidian";
-import { ProjectConfigManager, ProjectConfigManagerOptions } from "../../utils/ProjectConfigManager";
-import { ProjectDataCache, CachedProjectData } from "../../utils/ProjectDataCache";
+import { ProjectConfigManager, ProjectConfigManagerOptions } from "../../managers/project-config-manager";
+import { ProjectDataCache, CachedProjectData } from "../../cache/project-data-cache";
 
 export interface ProjectData {
   tgProject?: TgProject;

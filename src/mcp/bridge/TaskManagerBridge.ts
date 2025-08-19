@@ -3,7 +3,7 @@
  */
 
 import { Task } from "../../types/task";
-import { TaskManager } from "../../utils/TaskManager";
+import { TaskManager } from "../../managers/task-manager";
 import {
 	QueryTasksArgs,
 	UpdateTaskArgs,
@@ -24,7 +24,7 @@ import {
 	appHasDailyNotesPluginLoaded,
 	getDailyNoteSettings,
 } from "obsidian-daily-notes-interface";
-import { saveCapture, processDateTemplates } from "../../utils/fileUtils";
+import { saveCapture, processDateTemplates } from "../../utils/file/file-operations";
 
 export class TaskManagerBridge {
 	constructor(

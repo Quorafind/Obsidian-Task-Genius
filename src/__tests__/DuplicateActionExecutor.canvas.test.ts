@@ -8,7 +8,7 @@
  * - Cross-format task duplication
  */
 
-import { DuplicateActionExecutor } from "../utils/onCompletion/DuplicateActionExecutor";
+import { DuplicateActionExecutor } from "../executors/completion/duplicate-executor";
 import {
 	OnCompletionActionType,
 	OnCompletionExecutionContext,

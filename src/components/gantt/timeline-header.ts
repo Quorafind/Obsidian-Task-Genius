@@ -1,6 +1,6 @@
 import { Component, App } from "obsidian";
 import { Timescale } from "./gantt"; // Assuming types are exported or moved
-import { DateHelper } from "../../utils/DateHelper"; // Assuming DateHelper exists
+import { DateHelper } from "../../utils/date/date-helper"; // Assuming DateHelper exists
 
 // Interface for parameters needed by the header component
 interface TimelineHeaderParams {

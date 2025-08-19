@@ -19,7 +19,7 @@ import { clearAllMarks } from "../MarkdownRenderer";
 import { StatusComponent } from "../StatusComponent";
 import { ContextSuggest, ProjectSuggest, TagSuggest } from "../AutoComplete";
 import { FileTask } from "../../types/file-task";
-import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 import { OnCompletionConfigurator } from "../onCompletion/OnCompletionConfigurator";
 
 function getStatus(task: Task, settings: TaskProgressBarSettings) {

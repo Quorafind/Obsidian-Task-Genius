@@ -3,7 +3,7 @@
  */
 
 import { TaskWorkerManager } from "../dataflow/workers/TaskWorkerManager";
-import { TaskIndexer } from "../utils/import/TaskIndexer";
+import { TaskIndexer } from "../core/task-indexer";
 import { TFile } from "obsidian";
 
 // Mock dependencies

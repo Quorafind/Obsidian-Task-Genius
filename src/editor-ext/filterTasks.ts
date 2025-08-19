@@ -29,7 +29,7 @@ import {
 	parseAdvancedFilterQuery,
 	evaluateFilterNode,
 	parsePriorityFilterValue,
-} from "../utils/filterUtils";
+} from "../utils/task/filter-compatibility";
 import { t } from "../translations/helper";
 import { Task as TaskIndexTask } from "../types/task";
 import "../styles/task-filter.css";

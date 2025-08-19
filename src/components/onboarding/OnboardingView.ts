@@ -5,8 +5,8 @@ import {
 	OnboardingConfigManager,
 	OnboardingConfigMode,
 	OnboardingConfig,
-} from "../../utils/OnboardingConfigManager";
-import { SettingsChangeDetector } from "../../utils/SettingsChangeDetector";
+} from "../../managers/onboarding-manager";
+import { SettingsChangeDetector } from "../../services/settings-change-detector";
 import { UserLevelSelector } from "./UserLevelSelector";
 import { ConfigPreview } from "./ConfigPreview";
 import { TaskCreationGuide } from "./TaskCreationGuide";

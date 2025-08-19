@@ -1,7 +1,7 @@
 import {
 	OnboardingConfig,
 	OnboardingConfigManager,
-} from "../../utils/OnboardingConfigManager";
+} from "../../managers/onboarding-manager";
 import { t } from "../../translations/helper";
 import { setIcon } from "obsidian";
 import type TaskProgressBarPlugin from "../../index";

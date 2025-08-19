@@ -8,7 +8,7 @@ import {
 	createWorkflowStartingTask,
 	convertCurrentTaskToWorkflowRoot,
 	suggestWorkflowFromExisting,
-} from "../utils/workflowConversion";
+} from "../core/workflow-converter";
 import { t } from "../translations/helper";
 
 /**

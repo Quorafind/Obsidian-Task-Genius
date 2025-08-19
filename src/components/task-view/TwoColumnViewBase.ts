@@ -9,7 +9,7 @@ import { Task } from "../../types/task";
 import { TaskListRendererComponent } from "./TaskList";
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
-import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { getInitialViewMode, saveViewMode } from "../../utils/ui/view-mode-utils";
 import "../../styles/view.css";
 
 /**

@@ -2,7 +2,7 @@ import { App, Modal, Setting } from "obsidian";
 import { t } from "../../translations/helper";
 import { TaskProgressBarSettingTab } from "../../setting";
 import { migrateOldFilterOptions } from "../../editor-ext/filterTasks";
-import { generateUniqueId } from "../../utils/common";
+import { generateUniqueId } from "../../utils/id-generator";
 
 class PresetFilterModal extends Modal {
 	constructor(app: App, private preset: any, private onSave: () => void) {

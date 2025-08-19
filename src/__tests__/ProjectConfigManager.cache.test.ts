@@ -2,7 +2,7 @@
  * Performance tests for ProjectConfigManager cache optimizations
  */
 
-import { ProjectConfigManager, ProjectConfigManagerOptions } from "../utils/ProjectConfigManager";
+import { ProjectConfigManager, ProjectConfigManagerOptions } from "../managers/project-config-manager";
 import { TFile, Vault, MetadataCache } from "obsidian";
 
 // Mock implementations

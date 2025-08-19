@@ -13,7 +13,7 @@ import { TaskTreeItemComponent } from "./treeItem";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
 import { sortTasks } from "../../commands/sortTaskCommands";
-import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { getInitialViewMode, saveViewMode } from "../../utils/ui/view-mode-utils";
 
 interface SelectedTags {
 	tags: string[];

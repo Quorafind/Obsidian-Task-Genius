@@ -8,9 +8,9 @@ import {
 	EmbeddableMarkdownEditor,
 } from "../../editor-ext/markdownEditor";
 import "../../styles/inline-editor.css";
-import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 import { t } from "../../translations/helper";
-import { sanitizePriorityForClass } from "../../utils/priorityUtils";
+import { sanitizePriorityForClass } from "../../utils/task/priority-utils";
 
 export interface InlineEditorOptions {
 	onTaskUpdate: (task: Task, updatedTask: Task) => Promise<void>;

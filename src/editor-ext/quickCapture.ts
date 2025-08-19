@@ -21,7 +21,7 @@ import {
 	EmbeddableMarkdownEditor,
 } from "./markdownEditor";
 import TaskProgressBarPlugin from "../index";
-import { saveCapture, processDateTemplates } from "../utils/fileUtils";
+import { saveCapture, processDateTemplates } from "../utils/file/file-operations";
 import { t } from "../translations/helper";
 import "../styles/quick-capture.css";
 import { FileSuggest } from "../components/AutoComplete";

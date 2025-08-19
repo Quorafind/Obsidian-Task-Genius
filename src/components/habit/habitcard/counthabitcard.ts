@@ -3,7 +3,7 @@ import { CountHabitProps } from "../../../types/habit-card";
 import { HabitCard } from "./habitcard";
 import { t } from "../../../translations/helper";
 import TaskProgressBarPlugin from "../../../index";
-import { getTodayLocalDateString } from "../../../utils/dateUtil";
+import { getTodayLocalDateString } from "../../../utils/date/date-formatter";
 
 export class CountHabitCard extends HabitCard {
 	constructor(

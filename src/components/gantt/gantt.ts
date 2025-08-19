@@ -9,7 +9,7 @@ import { type Task } from "../../types/task";
 import "../../styles/gantt/gantt.css";
 
 // Import new components and helpers
-import { DateHelper } from "../../utils/DateHelper";
+import { DateHelper } from "../../utils/date/date-helper";
 import { TimelineHeaderComponent } from "./timeline-header";
 import { GridBackgroundComponent } from "./grid-background";
 import { TaskRendererComponent } from "./task-renderer";

@@ -15,7 +15,7 @@ import {
 	createWorkflowStartingTask,
 	convertCurrentTaskToWorkflowRoot,
 	suggestWorkflowFromExisting,
-} from "../utils/workflowConversion";
+} from "../core/workflow-converter";
 import { WorkflowProgressIndicator } from "../components/WorkflowProgressIndicator";
 import { createMockPlugin, createMockApp } from "./mockUtils";
 import { WorkflowDefinition } from "../common/setting-definition";

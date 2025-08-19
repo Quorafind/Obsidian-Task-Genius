@@ -6,15 +6,15 @@
  */
 
 import { Vault, MetadataCache } from "obsidian";
-import { ProjectConfigManager } from "../../utils/ProjectConfigManager";
-import { ProjectDataCache, CachedProjectData } from "../../utils/ProjectDataCache";
+import { ProjectConfigManager } from "../../managers/project-config-manager";
+import { ProjectDataCache, CachedProjectData } from "../../cache/project-data-cache";
 import {
 	ProjectDataResponse,
 	WorkerResponse,
 	UpdateConfigMessage,
 	ProjectDataMessage,
 	BatchProjectDataMessage,
-} from "../../utils/workers/TaskIndexWorkerMessage";
+} from "./task-index-message";
 
 // @ts-ignore Ignore type error for worker import
 import ProjectWorker from "./ProjectData.worker";

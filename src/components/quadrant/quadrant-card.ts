@@ -4,7 +4,7 @@ import { Task } from "../../types/task";
 import { createTaskCheckbox } from "../task-view/details";
 import { MarkdownRendererComponent } from "../MarkdownRenderer";
 import { t } from "../../translations/helper";
-import { sanitizePriorityForClass } from "../../utils/priorityUtils";
+import { sanitizePriorityForClass } from "../../utils/task/priority-utils";
 
 export class QuadrantCardComponent extends Component {
 	plugin: TaskProgressBarPlugin;

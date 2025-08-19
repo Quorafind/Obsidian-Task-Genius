@@ -8,7 +8,7 @@
  * - Error handling
  */
 
-import { CompleteActionExecutor } from "../utils/onCompletion/CompleteActionExecutor";
+import { CompleteActionExecutor } from "../executors/completion/complete-executor";
 import {
 	OnCompletionActionType,
 	OnCompletionExecutionContext,

@@ -7,7 +7,7 @@ import {
 	TFile,
 } from "obsidian";
 import { getTasksAPI } from "../utils";
-import { parseTaskLine } from "../utils/taskUtil";
+import { parseTaskLine } from "../utils/task/task-operations";
 
 // This component replaces standard checkboxes with custom text marks in reading view
 export function applyTaskTextMarks({

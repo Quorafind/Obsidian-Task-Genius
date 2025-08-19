@@ -12,12 +12,12 @@ import "../../styles/project-tree.css";
 import { TaskListRendererComponent } from "./TaskList";
 import TaskProgressBarPlugin from "../../index";
 import { sortTasks } from "../../commands/sortTaskCommands";
-import { getEffectiveProject } from "../../utils/taskUtil";
-import { getInitialViewMode, saveViewMode } from "../../utils/viewModeUtils";
+import { getEffectiveProject } from "../../utils/task/task-operations";
+import { getInitialViewMode, saveViewMode } from "../../utils/ui/view-mode-utils";
 import { ProjectTreeComponent } from "./ProjectTreeComponent";
-import { buildProjectTree } from "../../utils/projectTreeBuilder";
+import { buildProjectTree } from "../../core/project-tree-builder";
 import { TreeNode, ProjectNodeData } from "../../types/tree";
-import { filterTasksByProjectPaths } from "../../utils/projectFilter";
+import { filterTasksByProjectPaths } from "../../core/project-filter";
 
 interface SelectedProjects {
 	projects: string[];

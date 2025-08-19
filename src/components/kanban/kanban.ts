@@ -22,7 +22,7 @@ import {
 	KanbanSpecificConfig,
 	KanbanColumnConfig,
 } from "../../common/setting-definition";
-import { getEffectiveProject, isProjectReadonly } from "../../utils/taskUtil";
+import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 
 // CSS classes for drop indicators
 const DROP_INDICATOR_BEFORE_CLASS = "tg-kanban-card--drop-indicator-before";

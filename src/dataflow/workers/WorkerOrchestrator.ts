@@ -1,6 +1,6 @@
 import type { TFile } from "obsidian";
 import type { Task } from "../../types/task";
-import type { CachedProjectData } from "../../utils/ProjectDataCache";
+import type { CachedProjectData } from "../../cache/project-data-cache";
 import { TaskWorkerManager, DEFAULT_WORKER_OPTIONS } from "./TaskWorkerManager";
 import { ProjectDataWorkerManager } from "./ProjectDataWorkerManager";
 
