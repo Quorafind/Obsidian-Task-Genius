@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [9.7.7](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.6...9.7.7) (2025-08-19)
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** insertSubtask method signature changed to async
+
+### Features
+
+* **mcp:** add batch task creation and fix subtask insertion ([82c2a60](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/82c2a601ce6bf1f440725154299d4fd032825aee))
+
+### Bug Fixes
+
+* **mcp:** improve task retrieval after creation and updates ([19ca25f](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/19ca25f684fcc08a6eeebc9f4a67dc09563679b9))
+* **mcp:** resolve variable scope error in TaskManagerBridge ([fd9888d](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/fd9888d46916281437ab005e5ff80e5710a24233))
+
+### Styles
+
+* **settings:** add tg- prefix to CSS classes to avoid conflicts ([4f9f41e](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/4f9f41ed2b7166204c1c3045d2b4993c36dd1895))
+
 ## [9.7.6](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/compare/9.7.5...9.7.6) (2025-08-18)
 
 ### Bug Fixes
