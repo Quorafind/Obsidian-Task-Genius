@@ -8,7 +8,7 @@ type SortDirection = "ASC" | "DESC" | "TOGGLE" | "NONE";
 /**
  * Property type enum
  */
-type PropertyType = "property" | "file" | "formula";
+type PropertyType = "note" | "file" | "formula";
 
 /**
  * Data type enum for properties
@@ -160,10 +160,7 @@ interface BasesEntry {
 	properties: Record<string, any>;
 
 	/** Get value for a property */
-	getValue(prop: {
-		type: "property" | "file" | "formula";
-		name: string;
-	}): any;
+	getValue(prop: { type: "note" | "file" | "formula"; name: string }): any;
 	/** Update a property value */
 	updateProperty(key: string, value: any): void;
 	/** Get formula value */
@@ -223,13 +220,21 @@ interface BasesView extends BaseView {
 	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
-	data: BasesViewData[];
-	properties: BasesProperty[];
+	// New Bases API may provide a model object instead of array groups
+	data: any;
+	// New Bases API also exposes allProperties; keep backward compatibility
+	allProperties?: BasesProperty[];
+	properties?: BasesProperty[];
+	// View config from Bases
+	config?: any;
 
 	// Core methods
 	updateConfig(settings: BasesViewSettings): void;
-	updateData(properties: BasesProperty[], data: BasesViewData[]): void;
+	updateData(properties: BasesProperty[], data: any): void;
 	display(): void;
+	// Ephemeral state (new Bases API)
+	getEphemeralState?(): any;
+	setEphemeralState?(state: any): void;
 }
 
 // Function related types

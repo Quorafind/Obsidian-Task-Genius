@@ -100,7 +100,7 @@ import { autoDateManagerExtension } from "./editor-ext/autoDateManager";
 import { taskMarkCleanupExtension } from "./editor-ext/taskMarkCleanup";
 import { ViewManager } from "./pages/ViewManager";
 import { IcsManager } from "./utils/ics/IcsManager";
-import { VersionManager } from "./utils/VersionManager";
+import { VersionManager } from "./utils/versionManager";
 import { RebuildProgressManager } from "./utils/RebuildProgressManager";
 import { OnboardingConfigManager } from "./utils/OnboardingConfigManager";
 import { SettingsChangeDetector } from "./utils/SettingsChangeDetector";
@@ -236,7 +236,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		await this.loadSettings();
 
 		if (
-			requireApiVersion("1.9.0") &&
+			requireApiVersion("1.9.10") &&
 			this.settings.betaTest?.enableBaseView
 		) {
 			const viewManager = new ViewManager(this.app, this);

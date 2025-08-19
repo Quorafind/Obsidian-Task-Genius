@@ -31,6 +31,9 @@ interface BasesProperty {
 interface BaseView {
 	onload?(): void;
 	onunload?(): void;
+	getEphemeralState?(): any;
+	setEphemeralState?(state: any): void;
+
 	onActionsMenu(): Array<{
 		name: string;
 		callback: () => void;
@@ -48,10 +51,14 @@ interface BasesView extends BaseView {
 	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
-	data: BasesViewData[];
-	properties: BasesProperty[];
+	// New Bases API may provide a model object instead of grouped arrays
+	data: any;
+	// New Bases API exposes allProperties; keep backward compatibility
+	properties?: BasesProperty[];
+	allProperties?: BasesProperty[];
+	config?: any;
 	updateConfig(settings: BasesViewSettings): void;
-	updateData(properties: BasesProperty[], data: BasesViewData[]): void;
+	updateData(properties: BasesProperty[], data: any): void;
 	display(): void;
 }
 import { FileTask, FileTaskPropertyMapping } from "../types/file-task";
@@ -93,8 +100,10 @@ export class FileTaskView extends Component implements BasesView {
 	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
-	data: BasesViewData[] = [];
-	properties: BasesProperty[] = [];
+	data: any = [];
+	properties?: BasesProperty[] = [];
+	allProperties?: BasesProperty[];
+	config?: any;
 	private isSidebarCollapsed: boolean = false;
 
 	// File task specific properties
@@ -453,9 +462,10 @@ export class FileTaskView extends Component implements BasesView {
 		this.updateTaskViewComponents();
 	}
 
-	updateData(properties: BasesProperty[], data: BasesViewData[]): void {
+	updateData(properties: BasesProperty[], data: any): void {
 		console.log("[FileTaskView] Data updated:", { properties, data });
-		this.properties = properties;
+		this.properties = properties as any;
+		this.allProperties = properties as any;
 		this.data = data;
 
 		// Convert entries to file tasks with incremental update
@@ -478,6 +488,25 @@ export class FileTaskView extends Component implements BasesView {
 	private onDataUpdated(): void {
 		// Update task view components with new data
 		this.updateTaskViewComponents();
+	}
+
+	// Ephemeral state bridge for Bases (to persist view UI state across switches)
+	getEphemeralState?(): any {
+		return {
+			viewMode: this.currentViewId,
+			isDetailsVisible: this.isDetailsVisible,
+			selectedFileTaskId: this.currentSelectedTaskId,
+		};
+	}
+	setEphemeralState?(state: any): void {
+		if (!state || typeof state !== "object") return;
+		if (state.viewMode) this.currentViewId = state.viewMode;
+		if (state.isDetailsVisible !== undefined)
+			this.toggleDetailsVisibility(!!state.isDetailsVisible);
+		if (state.selectedFileTaskId)
+			this.currentSelectedTaskId = state.selectedFileTaskId;
+		// Ensure UI reflects restored mode
+		this.switchView(this.currentViewId);
 	}
 
 	display(): void {
@@ -596,34 +625,36 @@ export class FileTaskView extends Component implements BasesView {
 	}
 
 	private convertEntriesToFileTasks(): boolean {
-		if (!this.data || this.data.length === 0) {
+		// Ensure we can handle both grouped arrays and model objects
+		const entries = this.extractEntriesFromData(this.data);
+		if (!entries || entries.length === 0) {
 			const hadTasks = this.fileTasks.length > 0;
 			this.fileTasks = [];
-			return hadTasks; // Return true if we had tasks before but now have none
+			return hadTasks;
 		}
 
-		const allEntries = this.data.flatMap((dataGroup) => dataGroup.entries);
-
 		// Log file types for debugging
-		const fileTypes = allEntries.reduce((acc, entry) => {
-			const ext = entry.file.extension;
-			acc[ext] = (acc[ext] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
+		const fileTypes = entries.reduce(
+			(acc: Record<string, number>, entry: any) => {
+				const ext = entry.file?.extension ?? "";
+				acc[ext] = (acc[ext] || 0) + 1;
+				return acc;
+			},
+			{} as Record<string, number>
+		);
 
 		console.log(`[FileTaskView] File types found:`, fileTypes);
 
 		// Validate property mapping (only occasionally to avoid spam)
 		if (Math.random() < 0.2) {
-			// 20% chance to validate
 			this.fileTaskManager.validatePropertyMapping(
-				allEntries,
+				entries,
 				this.propertyMapping
 			);
 		}
 
 		const newFileTasks = this.fileTaskManager.getFileTasksFromEntries(
-			allEntries,
+			entries,
 			this.propertyMapping
 		);
 
@@ -631,7 +662,7 @@ export class FileTaskView extends Component implements BasesView {
 		const hasChanges = this.updateFileTasksIncrementally(newFileTasks);
 
 		console.log(
-			`[FileTaskView] Converted ${allEntries.length} entries to ${newFileTasks.length} file tasks, hasChanges: ${hasChanges}`
+			`[FileTaskView] Converted ${entries.length} entries to ${newFileTasks.length} file tasks, hasChanges: ${hasChanges}`
 		);
 
 		// Update tasks array for compatibility with existing components only if there are changes
@@ -642,6 +673,32 @@ export class FileTaskView extends Component implements BasesView {
 		}
 
 		return hasChanges;
+	}
+
+	/**
+	 * Extract entries array from various Bases data shapes
+	 */
+	private extractEntriesFromData(data: any): any[] {
+		if (!data) return [];
+		try {
+			// If data is already grouped array [{ entries }]
+			if (Array.isArray(data)) {
+				return data.flatMap((g) =>
+					g && Array.isArray(g.entries) ? g.entries : []
+				);
+			}
+			// If data is a model with an entries array
+			if (Array.isArray((data as any).entries))
+				return (data as any).entries;
+			// Common alternative property names
+			const alt = data as any;
+			if (Array.isArray(alt.results)) return alt.results;
+			if (Array.isArray(alt.list)) return alt.list;
+			if (Array.isArray(alt.items)) return alt.items;
+			// If model exposes toArray()
+			if (typeof alt.toArray === "function") return alt.toArray();
+		} catch {}
+		return [];
 	}
 
 	/**

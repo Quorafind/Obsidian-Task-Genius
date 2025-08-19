@@ -34,7 +34,7 @@ interface BasesViewData {
 
 interface BasesProperty {
 	name: string;
-	type: string;
+	type: "note" | "file" | "formula";
 	dataType?: string;
 }
 
@@ -58,11 +58,17 @@ interface BasesView extends BaseView {
 	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
-	data: BasesViewData[];
-	properties: BasesProperty[];
+	// New Bases API may provide a model object instead of grouped arrays
+	data: any;
+	// New Bases API exposes allProperties; keep backward compatibility
+	properties?: BasesProperty[];
+	allProperties?: BasesProperty[];
+	config?: any;
 	updateConfig(settings: BasesViewSettings): void;
-	updateData(properties: BasesProperty[], data: BasesViewData[]): void;
+	updateData(properties: BasesProperty[], data: any): void;
 	display(): void;
+	getEphemeralState?(): any;
+	setEphemeralState?(state: any): void;
 }
 
 export abstract class BaseTaskBasesView extends Component implements BasesView {
@@ -71,8 +77,10 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 	app: App;
 	containerEl: HTMLElement;
 	settings: BasesViewSettings;
-	data: BasesViewData[] = [];
+	data: any = [];
 	properties: BasesProperty[] = [];
+	allProperties?: BasesProperty[];
+	config?: any;
 
 	// Task-specific properties
 	protected plugin: TaskProgressBarPlugin;
@@ -87,13 +95,55 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 	protected lastToggleTimestamp: number = 0;
 
 	constructor(
-		containerEl: HTMLElement,
+		containerEl: HTMLElement | { containerEl: HTMLElement },
 		app: App,
 		plugin: TaskProgressBarPlugin,
 		viewMode: ViewMode
 	) {
 		super();
-		this.containerEl = containerEl;
+		// Normalize container: support multiple shapes from different Bases API versions
+		const candidate: any = containerEl as any;
+		let resolved: HTMLElement | null = null;
+		const isElement = (x: any) =>
+			x &&
+			typeof x === "object" &&
+			(x instanceof Element || x.nodeType === 1);
+		if (isElement(candidate)) {
+			resolved = candidate as HTMLElement;
+		} else if (candidate && typeof candidate === "object") {
+			// Common keys used by various APIs/wrappers
+			const keys = [
+				"containerEl",
+				"viewContainerEl",
+				"contentEl",
+				"container",
+				"el",
+				"element",
+				"root",
+			];
+			for (const key of keys) {
+				const v = (candidate as any)[key];
+				if (isElement(v)) {
+					resolved = v as HTMLElement;
+					break;
+				}
+			}
+			// Some wrappers pass an object that itself behaves like an element (has createDiv)
+			if (!resolved && typeof candidate.createDiv === "function") {
+				resolved = candidate as HTMLElement;
+			}
+		}
+		if (!resolved) {
+			console.warn(
+				"[BaseTaskBasesView] Unable to resolve containerEl from:",
+				containerEl
+			);
+			// Fallback: create a detached container to avoid breaking other views
+			resolved = document.createElement("div");
+		}
+		// Use an inner wrapper as the actual view container to avoid polluting the outer Bases container
+		const wrapperEl = resolved.createDiv({ cls: "tg-view-root" });
+		this.containerEl = wrapperEl;
 		this.app = app;
 		this.plugin = plugin;
 		this.viewMode = viewMode;
@@ -554,21 +604,12 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 	 * Find the original Bases entry by task ID
 	 */
 	private findEntryByTaskId(taskId: string): any | null {
-		for (const group of this.data) {
-			if (!group.entries) continue;
-
-			for (const entry of group.entries) {
-				try {
-					// Check if this entry corresponds to the task ID
-					const entryTaskId = this.generateTaskId(entry);
-					if (entryTaskId === taskId) {
-						return entry;
-					}
-				} catch (error) {
-					// Continue searching if this entry can't be processed
-					continue;
-				}
-			}
+		const entries = this.extractEntriesFromData(this.data);
+		for (const entry of entries) {
+			try {
+				const entryTaskId = this.generateTaskId(entry);
+				if (entryTaskId === taskId) return entry;
+			} catch {}
 		}
 		return null;
 	}
@@ -619,12 +660,13 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 		this.onConfigUpdated();
 	}
 
-	updateData(properties: BasesProperty[], data: BasesViewData[]): void {
+	updateData(properties: BasesProperty[], data: any): void {
 		console.log(`[${this.type}] Data updated via updateData:`, {
 			properties,
 			data,
 		});
-		this.properties = properties;
+		this.properties = properties as any;
+		this.allProperties = properties as any;
 		this.data = data;
 
 		// Data has been updated, trigger the standard data update flow
@@ -637,6 +679,23 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 		this.onDisplay();
 	}
 
+	// Ephemeral state bridge for Bases
+	getEphemeralState?(): any {
+		return {
+			viewMode: this.viewMode,
+			isDetailsVisible: this.isDetailsVisible,
+			selectedTaskId: this.currentSelectedTaskId,
+		};
+	}
+	setEphemeralState?(state: any): void {
+		if (!state || typeof state !== "object") return;
+		if (state.viewMode !== undefined) this.viewMode = state.viewMode;
+		if (state.isDetailsVisible !== undefined)
+			this.toggleDetailsVisibility(!!state.isDetailsVisible);
+		if (state.selectedTaskId)
+			this.currentSelectedTaskId = state.selectedTaskId;
+	}
+
 	// BaseView interface implementation
 	onload(): void {
 		console.log(`[${this.type}] Loading view`);
@@ -645,6 +704,17 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 
 	onunload(): void {
 		console.log(`[${this.type}] Unloading view`);
+		// Clean up classes we added on the container to avoid affecting other views
+		const classesToRemove = [
+			"base-task-bases-view",
+			"task-genius-view",
+			"task-genius-container",
+			"no-sidebar",
+			"details-visible",
+			"details-hidden",
+		];
+		for (const cls of classesToRemove)
+			this.containerEl.toggleClass(cls, false);
 		this.onViewUnload();
 		this.unload();
 	}
@@ -684,43 +754,29 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 		console.log(`[${this.type}] Converting entries to tasks`);
 		console.log(`[${this.type}] Raw data:`, this.data);
 
-		if (!this.data || this.data.length === 0) {
-			console.log(`[${this.type}] No data available, clearing tasks`);
+		const entries = this.extractEntriesFromData(this.data);
+		if (!entries || entries.length === 0) {
+			console.log(`[${this.type}] No entries available, clearing tasks`);
+			const hadTasks = this.tasks.length > 0;
 			this.tasks = [];
-			return true;
+			return hadTasks;
 		}
 
 		const newTasks: Task[] = [];
 
-		for (const group of this.data) {
-			if (!group.entries) {
-				console.log(`[${this.type}] Group has no entries:`, group);
-				continue;
-			}
-
-			console.log(
-				`[${this.type}] Processing ${group.entries.length} entries from group`
-			);
-
-			for (const entry of group.entries) {
-				try {
-					const task = this.entryToTask(entry);
-					if (task) {
-						newTasks.push(task);
-					}
-				} catch (error) {
-					console.error(
-						`[${this.type}] Error converting entry to task:`,
-						error,
-						entry
-					);
-				}
+		console.log(`[${this.type}] Processing ${entries.length} entries`);
+		for (const entry of entries) {
+			try {
+				const task = this.entryToTask(entry);
+				if (task) newTasks.push(task);
+			} catch (error) {
+				console.error(
+					`[${this.type}] Error converting entry to task:`,
+					error,
+					entry
+				);
 			}
 		}
-
-		console.log(
-			`[${this.type}] Converted ${newTasks.length} tasks from ${this.data.length} data groups`
-		);
 
 		// Check if tasks have changed
 		const hasChanged = this.hasTasksChanged(this.tasks, newTasks);
@@ -732,11 +788,50 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 		return hasChanged;
 	}
 
+	/**
+	 * Extract entries array from various Bases data shapes
+	 */
+	private extractEntriesFromData(data: any): any[] {
+		if (!data) return [];
+		try {
+			if (Array.isArray(data)) {
+				// Case A: array of entries directly
+				if (data.length > 0) {
+					const first = data[0] as any;
+					if (
+						first &&
+						typeof first === "object" &&
+						!Array.isArray((first as any).entries) &&
+						("file" in first || "note" in first || "path" in first)
+					) {
+						return data as any[];
+					}
+				}
+				// Case B: grouped array [{ entries }]
+				return data.flatMap((g) =>
+					g && Array.isArray((g as any).entries)
+						? (g as any).entries
+						: []
+				);
+			}
+			// If data is a model with an entries array
+			if (Array.isArray((data as any).entries))
+				return (data as any).entries;
+			// Common alternative property names
+			const alt = data as any;
+			if (Array.isArray(alt.results)) return alt.results;
+			if (Array.isArray(alt.list)) return alt.list;
+			if (Array.isArray(alt.items)) return alt.items;
+			// If model exposes toArray()
+			if (typeof alt.toArray === "function") return alt.toArray();
+		} catch {}
+		return [];
+	}
+
 	protected entryToTask(entry: any): Task | null {
 		try {
 			// Extract basic file information
 			const file = entry.file;
-			const frontmatter = entry.frontmatter || {};
 
 			if (!file) {
 				console.warn(
@@ -884,7 +979,9 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 	 * This is a placeholder method that subclasses can override
 	 */
 	protected updateUIWithLatestTaskData(): void {
-		console.log(`[${this.type}] Updating UI with latest task data (base implementation)`);
+		console.log(
+			`[${this.type}] Updating UI with latest task data (base implementation)`
+		);
 		// Base implementation does nothing - subclasses should override if needed
 	}
 
@@ -1169,7 +1266,9 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 			// Fallback to random ID
 		}
 
-		return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		return `task-${Date.now()}-${Math.random()
+			.toString(36)
+			.substring(2, 11)}`;
 	}
 
 	/**
@@ -1190,8 +1289,18 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 
 		// Fallback: try direct property access
 		try {
-			if (type === "note" && entry.frontmatter) {
-				return entry.frontmatter[propertyName];
+			if (type === "note") {
+				// Prefer explicit note.data when available
+				const noteData = (entry as any)?.note?.data;
+				if (
+					noteData &&
+					Object.prototype.hasOwnProperty.call(noteData, propertyName)
+				) {
+					return noteData[propertyName];
+				}
+				if (entry.frontmatter) {
+					return entry.frontmatter[propertyName];
+				}
 			}
 			if (type === "file" && entry.file) {
 				return entry.file[propertyName];

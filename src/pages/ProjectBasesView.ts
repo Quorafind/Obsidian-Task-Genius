@@ -18,7 +18,7 @@ export class ProjectBasesView extends BaseTaskBasesView {
 	private isLoaded = false;
 
 	constructor(
-		containerEl: HTMLElement,
+		containerEl: HTMLElement | { containerEl: HTMLElement },
 		app: App,
 		plugin: TaskProgressBarPlugin
 	) {

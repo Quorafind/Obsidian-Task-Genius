@@ -389,8 +389,8 @@ export class VersionManager extends Component {
 	 */
 	public isNewBasesApiSupported(): boolean {
 		try {
-			// Check if Obsidian version is 1.9.3 or higher
-			const hasVersionSupport = this.isObsidianVersionSupported("1.9.3");
+			// Check if Obsidian version is 1.9.10 or higher
+			const hasVersionSupport = this.isObsidianVersionSupported("1.9.10");
 
 			// Check if the plugin has the registerBasesView method
 			const hasMethodSupport =
