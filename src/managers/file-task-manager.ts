@@ -363,9 +363,32 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		entries: BasesEntry[],
 		mapping: FileTaskPropertyMapping = DEFAULT_FILE_TASK_MAPPING
 	): FileTask[] {
-		// Filter out non-markdown files
+		// Filter out non-markdown files with robust extension detection
 		const markdownEntries = entries.filter((entry) => {
-			return entry.file.extension === "md";
+			try {
+				let ext: string | undefined = (entry as any)?.file?.extension;
+				if (!ext || typeof ext !== "string") {
+					// Try implicit.ext from Bases
+					ext = (entry as any)?.implicit?.ext;
+				}
+				if (!ext || typeof ext !== "string") {
+					// Derive from path
+					const path: string | undefined = (entry as any)?.file?.path;
+					if (path && path.includes(".")) {
+						ext = path.split(".").pop();
+					}
+				}
+				if (!ext || typeof ext !== "string") {
+					// Derive from file name
+					const name: string | undefined = (entry as any)?.file?.name;
+					if (name && name.includes(".")) {
+						ext = name.split(".").pop();
+					}
+				}
+				return (ext || "").toLowerCase() === "md";
+			} catch {
+				return false;
+			}
 		});
 
 		console.log(
@@ -395,16 +418,37 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		propertyName?: string
 	): string | undefined {
 		if (!propertyName) return undefined;
+		// 1) Try Bases API
 		try {
 			const value = entry.getValue({
 				type: "property",
 				name: propertyName,
 			});
-			if (value === null || value === undefined) return undefined;
-			return String(value);
-		} catch {
-			return undefined;
-		}
+			if (value !== null && value !== undefined) return String(value);
+		} catch {}
+		// 2) Fallback: direct properties/frontmatter/note.data
+		try {
+			const anyEntry: any = entry as any;
+			if (
+				anyEntry?.properties &&
+				anyEntry.properties[propertyName] !== undefined
+			) {
+				return String(anyEntry.properties[propertyName]);
+			}
+			if (
+				anyEntry?.frontmatter &&
+				anyEntry.frontmatter[propertyName] !== undefined
+			) {
+				return String(anyEntry.frontmatter[propertyName]);
+			}
+			if (
+				anyEntry?.note?.data &&
+				anyEntry.note.data[propertyName] !== undefined
+			) {
+				return String(anyEntry.note.data[propertyName]);
+			}
+		} catch {}
+		return undefined;
 	}
 
 	private getBooleanPropertyValue(

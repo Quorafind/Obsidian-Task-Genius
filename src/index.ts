@@ -245,7 +245,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		await this.loadSettings();
 
 		if (
-			requireApiVersion("1.9.0") &&
+			requireApiVersion("1.9.10") &&
 			this.settings.betaTest?.enableBaseView
 		) {
 			const viewManager = new ViewManager(this.app, this);

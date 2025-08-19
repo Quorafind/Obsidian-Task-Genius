@@ -123,6 +123,32 @@ export class ViewManager extends Component {
 	}
 
 	/**
+	 * Resolve container element from different parameter formats in Bases API
+	 */
+	private resolveContainerEl(arg1: any, arg2?: any): HTMLElement {
+		const candidates = [arg1, arg2];
+		for (const c of candidates) {
+			if (!c) continue;
+			if (c instanceof HTMLElement) return c;
+			if (typeof c === "object") {
+				if ((c as any).containerEl instanceof HTMLElement)
+					return (c as any).containerEl;
+				if ((c as any).viewContainerEl instanceof HTMLElement)
+					return (c as any).viewContainerEl;
+				if (typeof (c as any).createDiv === "function")
+					return c as any as HTMLElement;
+			}
+		}
+		console.warn(
+			"[ViewManager] resolveContainerEl: Could not resolve container element from",
+			arg1,
+			arg2
+		);
+		// Fallback to detached container to avoid hard failure; the view can still render
+		return document.createElement("div");
+	}
+
+	/**
 	 * 注册文件任务视图
 	 */
 	private async registerFileTaskView(): Promise<void> {
@@ -134,14 +160,23 @@ export class ViewManager extends Component {
 		}
 
 		try {
-			const factory = (container: HTMLElement) => {
-				console.log(`[ViewManager] Creating ${viewId} instance`);
-				return new FileTaskView(container, this.app, this.plugin);
+			const self = this;
+			const factory = function (container: any): any {
+				const containerEl = self.resolveContainerEl(
+					container,
+					(arguments as any)[1]
+				);
+				console.log(
+					`[ViewManager] Creating ${viewId} instance`,
+					container,
+					(arguments as any)[1]
+				);
+				return new FileTaskView(containerEl, self.app, self.plugin);
 			};
 
 			await this.registerView(
 				viewId,
-				factory,
+				factory as any,
 				"Task Genius View",
 				"task-genius"
 			);
@@ -166,12 +201,21 @@ export class ViewManager extends Component {
 		}
 
 		try {
-			const factory = (container: HTMLElement) => {
-				console.log(`[ViewManager] Creating ${viewId} instance`);
-				return new InboxBasesView(container, this.app, this.plugin);
+			const self = this;
+			const factory = function (container: any): any {
+				const containerEl = self.resolveContainerEl(
+					container,
+					(arguments as any)[1]
+				);
+				console.log(
+					`[ViewManager] Creating ${viewId} instance`,
+					container,
+					(arguments as any)[1]
+				);
+				return new InboxBasesView(containerEl, self.app, self.plugin);
 			};
 
-			await this.registerView(viewId, factory, "Inbox Tasks", "inbox");
+			await this.registerView(viewId, factory as any, "Inbox Tasks", "inbox");
 		} catch (error) {
 			console.error(
 				`[ViewManager] Failed to register view ${viewId}:`,
@@ -193,12 +237,21 @@ export class ViewManager extends Component {
 		}
 
 		try {
-			const factory = (container: HTMLElement) => {
-				console.log(`[ViewManager] Creating ${viewId} instance`);
-				return new FlaggedBasesView(container, this.app, this.plugin);
+			const self = this;
+			const factory = function (container: any): any {
+				const containerEl = self.resolveContainerEl(
+					container,
+					(arguments as any)[1]
+				);
+				console.log(
+					`[ViewManager] Creating ${viewId} instance`,
+					container,
+					(arguments as any)[1]
+				);
+				return new FlaggedBasesView(containerEl, self.app, self.plugin);
 			};
 
-			await this.registerView(viewId, factory, "Flagged Tasks", "flag");
+			await this.registerView(viewId, factory as any, "Flagged Tasks", "flag");
 		} catch (error) {
 			console.error(
 				`[ViewManager] Failed to register view ${viewId}:`,
@@ -220,14 +273,23 @@ export class ViewManager extends Component {
 		}
 
 		try {
-			const factory = (container: HTMLElement) => {
-				console.log(`[ViewManager] Creating ${viewId} instance`);
-				return new ProjectBasesView(container, this.app, this.plugin);
+			const self = this;
+			const factory = function (container: any): any {
+				const containerEl = self.resolveContainerEl(
+					container,
+					(arguments as any)[1]
+				);
+				console.log(
+					`[ViewManager] Creating ${viewId} instance`,
+					container,
+					(arguments as any)[1]
+				);
+				return new ProjectBasesView(containerEl, self.app, self.plugin);
 			};
 
 			await this.registerView(
 				viewId,
-				factory,
+				factory as any,
 				"Project Tasks",
 				"folders"
 			);
@@ -252,12 +314,21 @@ export class ViewManager extends Component {
 		}
 
 		try {
-			const factory = (container: HTMLElement) => {
-				console.log(`[ViewManager] Creating ${viewId} instance`);
-				return new TagsBasesView(container, this.app, this.plugin);
+			const self = this;
+			const factory = function (container: any): any {
+				const containerEl = self.resolveContainerEl(
+					container,
+					(arguments as any)[1]
+				);
+				console.log(
+					`[ViewManager] Creating ${viewId} instance`,
+					container,
+					(arguments as any)[1]
+				);
+				return new TagsBasesView(containerEl, self.app, self.plugin);
 			};
 
-			await this.registerView(viewId, factory, "Tagged Tasks", "tag");
+			await this.registerView(viewId, factory as any, "Tagged Tasks", "tag");
 		} catch (error) {
 			console.error(
 				`[ViewManager] Failed to register view ${viewId}:`,
