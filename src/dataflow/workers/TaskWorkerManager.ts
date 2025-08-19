@@ -973,15 +973,28 @@ export class TaskWorkerManager extends Component {
 	}
 
 	/**
-	 * Set enhanced project data for worker processing
+	 * @deprecated Project data is now handled by Augmentor in main thread per dataflow architecture.
+	 * Workers only perform raw task extraction without project enhancement.
 	 */
 	public setEnhancedProjectData(
 		enhancedProjectData: import("./task-index-message").EnhancedProjectData
 	): void {
-		// Update the settings with enhanced project data
+		// NO-OP: Project data is handled by Augmentor, not Workers
+		// This method is kept for backward compatibility but does nothing
+	}
+
+	/**
+	 * Update worker settings dynamically
+	 */
+	public updateSettings(settings: Partial<{
+		preferMetadataFormat: "dataview" | "tasks";
+		customDateFormats?: string[];
+		fileMetadataInheritance?: any;
+		projectConfig?: any;
+	}>): void {
+		// Update the settings
 		if (this.options.settings) {
-			(this.options.settings as any).enhancedProjectData =
-				enhancedProjectData;
+			Object.assign(this.options.settings, settings);
 		}
 	}
 

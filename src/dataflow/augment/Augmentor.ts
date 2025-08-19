@@ -230,13 +230,20 @@ export class Augmentor {
     }
 
     // Set TgProject if project metadata is available
-    if (ctx.projectMeta && ctx.projectName) {
-      metadata.tgProject = {
-        type: ctx.projectMeta.type || 'metadata',
-        name: ctx.projectName,
-        source: ctx.projectMeta.source,
-        readonly: ctx.projectMeta.readonly || false
-      } as TgProject;
+    // The tgProject should come from ProjectResolver which includes all necessary fields
+    if (ctx.projectMeta) {
+      // Check if we have a tgProject object in the project metadata
+      if (ctx.projectMeta.tgProject) {
+        metadata.tgProject = ctx.projectMeta.tgProject;
+      } else if (ctx.projectName) {
+        // Fallback: construct from available data
+        metadata.tgProject = {
+          type: ctx.projectMeta.type || 'metadata',
+          name: ctx.projectName,
+          source: ctx.projectMeta.source || ctx.projectMeta.configSource || 'unknown',
+          readonly: ctx.projectMeta.readonly || false
+        } as TgProject;
+      }
     }
   }
 

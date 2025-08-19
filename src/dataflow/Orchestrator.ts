@@ -173,7 +173,10 @@ export class DataflowOrchestrator {
         filePath,
         fileMeta: fileMetadata?.frontmatter || {},
         projectName: projectData.tgProject?.name,
-        projectMeta: projectData.enhancedMetadata,
+        projectMeta: {
+          ...projectData.enhancedMetadata,
+          tgProject: projectData.tgProject  // Include tgProject in projectMeta
+        },
         tasks: rawTasks
       };
       const augmentedTasks = await this.augmentor.merge(augmentContext);
@@ -241,11 +244,112 @@ export class DataflowOrchestrator {
   }
 
   /**
-   * Process multiple files in batch
+   * Process multiple files in batch using workers for parallel processing
    */
-  async processBatch(files: TFile[]): Promise<void> {
+  async processBatch(files: TFile[], useWorkers: boolean = true): Promise<void> {
     const updates = new Map<string, Task[]>();
     let skippedCount = 0;
+    
+    // Decide whether to use workers based on batch size and configuration
+    const shouldUseWorkers = useWorkers && files.length > 5; // Use workers for batches > 5 files
+    
+    if (shouldUseWorkers) {
+      // Use WorkerOrchestrator for parallel processing
+      console.log(`[DataflowOrchestrator] Using workers to process ${files.length} files in parallel`);
+      
+      try {
+        // Configure worker manager with plugin settings
+        const taskWorkerManager = this.workerOrchestrator['taskWorkerManager'] as TaskWorkerManager;
+        if (taskWorkerManager) {
+          taskWorkerManager.updateSettings({
+            preferMetadataFormat: this.plugin.settings.preferMetadataFormat || 'tasks',
+            customDateFormats: this.plugin.settings.customDateFormats,
+            fileMetadataInheritance: this.plugin.settings.fileMetadataInheritance,
+            projectConfig: this.plugin.settings.projectConfig
+          });
+        }
+        
+        // Parse all files in parallel using workers (raw parsing only, no project data)
+        console.log(`[DataflowOrchestrator] Parsing ${files.length} files with workers (raw extraction)...`);
+        const parsedResults = await this.workerOrchestrator.batchParse(files, "normal");
+        
+        // Compute project data in parallel with storage operations
+        const projectDataPromises = new Map<string, Promise<any>>();
+        for (const file of files) {
+          projectDataPromises.set(file.path, this.projectResolver.get(file.path));
+        }
+        
+        // Process each parsed result
+        for (const [filePath, rawTasks] of parsedResults) {
+          try {
+            const file = files.find(f => f.path === filePath);
+            if (!file) continue;
+            
+            // Get file modification time for caching
+            const fileStat = await this.vault.adapter.stat(filePath);
+            const mtime = fileStat?.mtime;
+            const fileContent = await this.vault.cachedRead(file);
+            
+            // Store parsed tasks with mtime (can happen in parallel)
+            const storePromise = this.storage.storeRaw(filePath, rawTasks, fileContent, mtime);
+            
+            // Get project data for augmentation (already computing in parallel)
+            const projectData = await projectDataPromises.get(filePath);
+            
+            // Wait for storage to complete
+            await storePromise;
+            
+            // Augment tasks with project data
+            const fileMetadata = this.metadataCache.getFileCache(file);
+            const augmentContext: AugmentContext = {
+              filePath,
+              fileMeta: fileMetadata?.frontmatter || {},
+              projectName: projectData?.tgProject?.name,
+              projectMeta: projectData ? {
+                ...projectData.enhancedMetadata || {},
+                tgProject: projectData.tgProject  // Include tgProject in projectMeta
+              } : {},
+              tasks: rawTasks
+            };
+            const augmentedTasks = await this.augmentor.merge(augmentContext);
+            
+            updates.set(filePath, augmentedTasks);
+          } catch (error) {
+            console.error(`Error processing parsed result for ${filePath}:`, error);
+          }
+        }
+        
+        console.log(`[DataflowOrchestrator] Worker processing complete, parsed ${parsedResults.size} files`);
+        
+      } catch (error) {
+        console.error("[DataflowOrchestrator] Worker processing failed, falling back to sequential:", error);
+        // Fall back to sequential processing
+        await this.processBatchSequential(files, updates, skippedCount);
+      }
+    } else {
+      // Use sequential processing for small batches or when workers are disabled
+      await this.processBatchSequential(files, updates, skippedCount);
+    }
+    
+    if (skippedCount > 0) {
+      console.log(`[DataflowOrchestrator] Skipped ${skippedCount} unchanged files`);
+    }
+    
+    // Update repository in batch
+    if (updates.size > 0) {
+      await this.repository.updateBatch(updates);
+    }
+  }
+  
+  /**
+   * Process files sequentially (fallback or for small batches)
+   */
+  private async processBatchSequential(
+    files: TFile[],
+    updates: Map<string, Task[]>,
+    skippedCount: number
+  ): Promise<number> {
+    let localSkippedCount = 0;
     
     for (const file of files) {
       try {
@@ -275,7 +379,10 @@ export class DataflowOrchestrator {
             filePath,
             fileMeta: fileMetadata?.frontmatter || {},
             projectName: projectData.tgProject?.name,
-            projectMeta: projectData.enhancedMetadata,
+            projectMeta: {
+              ...projectData.enhancedMetadata,
+              tgProject: projectData.tgProject  // Include tgProject in projectMeta
+            },
             tasks: rawTasks
           };
           const augmentedTasks = await this.augmentor.merge(augmentContext);
@@ -296,7 +403,10 @@ export class DataflowOrchestrator {
             filePath,
             fileMeta: fileMetadata?.frontmatter || {},
             projectName: projectData.tgProject?.name,
-            projectMeta: projectData.enhancedMetadata,
+            projectMeta: {
+              ...projectData.enhancedMetadata,
+              tgProject: projectData.tgProject  // Include tgProject in projectMeta
+            },
             tasks: rawTasks
           };
           const augmentedTasks = await this.augmentor.merge(augmentContext);
@@ -305,18 +415,11 @@ export class DataflowOrchestrator {
         }
         
       } catch (error) {
-        console.error(`Error processing file ${file.path} in batch:`, error);
+        console.error(`Error processing file ${file.path} sequentially:`, error);
       }
     }
     
-    if (skippedCount > 0) {
-      console.log(`[DataflowOrchestrator] Skipped ${skippedCount} unchanged files`);
-    }
-    
-    // Update repository in batch
-    if (updates.size > 0) {
-      await this.repository.updateBatch(updates);
-    }
+    return localSkippedCount;
   }
 
   /**

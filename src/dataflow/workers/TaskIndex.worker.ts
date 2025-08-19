@@ -43,100 +43,14 @@ function parseTasksWithConfigurableParser(
 
 		const parser = new MarkdownTaskParser(config);
 
-		// Enhanced parsing: use pre-computed data if available
-		let enhancedFileMetadata = fileMetadata;
-		let projectConfigData: Record<string, any> | undefined;
-		let tgProject: TgProject | undefined;
-
-		// Only process enhanced project data if enhanced project is enabled
-		if (
-			settings.enhancedProjectData &&
-			settings.projectConfig?.enableEnhancedProject
-		) {
-			// Use pre-computed enhanced metadata if available (this already contains MetadataMapping transforms)
-			const precomputedMetadata =
-				settings.enhancedProjectData.fileMetadataMap[filePath];
-			if (precomputedMetadata) {
-				// Use the pre-computed metadata directly since it already includes the original metadata + mappings
-				enhancedFileMetadata = precomputedMetadata;
-			}
-
-			// Use pre-computed project config data
-			const dirPath = filePath.substring(0, filePath.lastIndexOf("/"));
-			projectConfigData =
-				settings.enhancedProjectData.projectConfigMap[dirPath];
-
-			// Use pre-computed tgProject
-			const projectInfo =
-				settings.enhancedProjectData.fileProjectMap[filePath];
-			if (projectInfo) {
-				// The projectInfo.source contains either the actual type or the specific source
-				// We need to determine the type and appropriate display source
-				let actualType: "metadata" | "path" | "config" | "default";
-				let displaySource: string;
-
-				// If source is one of the type values, use it directly
-				if (
-					["metadata", "path", "config", "default"].includes(
-						projectInfo.source
-					)
-				) {
-					actualType = projectInfo.source as
-						| "metadata"
-						| "path"
-						| "config"
-						| "default";
-				}
-				// Otherwise, infer type from source characteristics
-				else if (
-					projectInfo.source &&
-					projectInfo.source.includes("/")
-				) {
-					// Path patterns contain "/"
-					actualType = "path";
-				} else if (
-					projectInfo.source &&
-					projectInfo.source.includes(".")
-				) {
-					// Config files contain "."
-					actualType = "config";
-				} else {
-					// Metadata keys are simple strings without "/" or "."
-					actualType = "metadata";
-				}
-
-				// Set appropriate display source based on type
-				switch (actualType) {
-					case "path":
-						displaySource = "path-mapping";
-						break;
-					case "metadata":
-						displaySource = "frontmatter";
-						break;
-					case "config":
-						displaySource = "config-file";
-						break;
-					case "default":
-						displaySource = "default-naming";
-						break;
-				}
-
-				tgProject = {
-					type: actualType,
-					name: projectInfo.project,
-					source: displaySource,
-					readonly: projectInfo.readonly,
-				};
-			}
-		}
-
-		// Use the parseLegacy method with enhanced data
+		// Raw parsing only - no project enhancement per dataflow architecture
+		// Project data will be handled by Augmentor in main thread
 		const tasks = parser.parseLegacy(
 			content,
 			filePath,
-			enhancedFileMetadata,
-			projectConfigData,
-			tgProject
+			fileMetadata,
+			undefined,  // No project config in worker
+			undefined   // No tgProject in worker
 		);
 
 		// Apply heading filters if specified

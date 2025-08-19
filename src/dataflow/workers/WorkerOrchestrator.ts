@@ -275,10 +275,49 @@ export class WorkerOrchestrator {
    */
   private async parseFileTasksMainThread(file: TFile): Promise<Task[]> {
     this.metrics.fallbackToMainThread++;
-    // This would typically delegate to the original synchronous parsers
-    // For now, return empty array as a safe fallback
-    console.warn(`WorkerOrchestrator: Main thread parsing not implemented for ${file.path}`);
-    return [];
+    console.warn(`WorkerOrchestrator: Falling back to main thread parsing for ${file.path}`);
+    
+    // Import and use ConfigurableTaskParser for fallback
+    const { ConfigurableTaskParser } = await import("../core/ConfigurableTaskParser");
+    const { parseCanvas } = await import("../parsers/CanvasEntry");
+    const { parseFileMeta } = await import("../parsers/FileMetaEntry");
+    
+    const extension = file.extension.toLowerCase();
+    let tasks: Task[] = [];
+    
+    if (extension === "md") {
+      // Get necessary data
+      const vault = (this.taskWorkerManager as any).vault;
+      const metadataCache = (this.taskWorkerManager as any).metadataCache;
+      const content = await vault.cachedRead(file);
+      const fileCache = metadataCache.getFileCache(file);
+      const fileMetadata = fileCache?.frontmatter || {};
+      
+      // Create parser with default settings
+      const parser = new ConfigurableTaskParser({
+        parseMetadata: true,
+        parseTags: true,
+        parseComments: true,
+        parseHeadings: true
+      });
+      
+      // Parse tasks - raw extraction only, no project enhancement
+      // Project data will be handled by Augmentor per dataflow architecture
+      const markdownTasks = parser.parseLegacy(
+        content, 
+        file.path, 
+        fileMetadata,
+        undefined,  // No project config in fallback
+        undefined   // No tgProject in fallback
+      );
+      tasks.push(...markdownTasks);
+      
+    } else if (extension === "canvas") {
+      // For canvas files, we need plugin instance
+      console.warn(`WorkerOrchestrator: Canvas parsing requires plugin instance, returning empty`);
+    }
+    
+    return tasks;
   }
 
   private async batchParseMainThread(files: TFile[]): Promise<Map<string, Task[]>> {
