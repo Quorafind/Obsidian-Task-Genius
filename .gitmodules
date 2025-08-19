@@ -1,0 +1,3 @@
+[submodule "docs-site"]
+	path = docs-site
+	url = git@github.com:Quorafind/Task-Genius-Doc.git
