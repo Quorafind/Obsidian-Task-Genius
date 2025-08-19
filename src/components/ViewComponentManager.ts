@@ -122,7 +122,19 @@ class ViewComponentFactory {
 							onTaskCompleted: handlers.onTaskCompleted,
 							onTaskContextMenu: handlers.onTaskContextMenu,
 							onTaskUpdated: async (task: Task) => {
-								// Handle task updates through the plugin's task manager
+								// Prefer view-level update handler if provided (e.g., FileTaskView)
+								if (handlers.onTaskUpdate) {
+									try {
+										await handlers.onTaskUpdate(task, task);
+										return;
+									} catch (e) {
+										console.warn(
+											"[ViewComponentManager] onTaskUpdate handler failed, falling back to plugin.taskManager.updateTask",
+											e
+										);
+									}
+								}
+								// Fallback: update via plugin's task manager (for regular Task views)
 								if (plugin.taskManager) {
 									await plugin.taskManager.updateTask(task);
 								}
@@ -144,6 +156,18 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onTaskContextMenu: handlers.onTaskContextMenu,
 						onTaskUpdated: async (task: Task) => {
+							// Prefer view-level update handler if provided
+							if (handlers.onTaskUpdate) {
+								try {
+									await handlers.onTaskUpdate(task, task);
+									return;
+								} catch (e) {
+									console.warn(
+										"[ViewComponentManager] Quadrant onTaskUpdate failed, fallback to plugin.taskManager.updateTask",
+										e
+									);
+								}
+							}
 							if (plugin.taskManager) {
 								await plugin.taskManager.updateTask(task);
 							}

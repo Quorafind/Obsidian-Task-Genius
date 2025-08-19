@@ -363,9 +363,32 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		entries: BasesEntry[],
 		mapping: FileTaskPropertyMapping = DEFAULT_FILE_TASK_MAPPING
 	): FileTask[] {
-		// Filter out non-markdown files
+		// Filter out non-markdown files with robust extension detection
 		const markdownEntries = entries.filter((entry) => {
-			return entry.file.extension === "md";
+			try {
+				let ext: string | undefined = (entry as any)?.file?.extension;
+				if (!ext || typeof ext !== "string") {
+					// Try implicit.ext from Bases
+					ext = (entry as any)?.implicit?.ext;
+				}
+				if (!ext || typeof ext !== "string") {
+					// Derive from path
+					const path: string | undefined = (entry as any)?.file?.path;
+					if (path && path.includes(".")) {
+						ext = path.split(".").pop();
+					}
+				}
+				if (!ext || typeof ext !== "string") {
+					// Derive from file name
+					const name: string | undefined = (entry as any)?.file?.name;
+					if (name && name.includes(".")) {
+						ext = name.split(".").pop();
+					}
+				}
+				return (ext || "").toLowerCase() === "md";
+			} catch {
+				return false;
+			}
 		});
 
 		console.log(
@@ -395,16 +418,37 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		propertyName?: string
 	): string | undefined {
 		if (!propertyName) return undefined;
+		// 1) Try Bases API
 		try {
 			const value = entry.getValue({
 				type: "property",
 				name: propertyName,
 			});
-			if (value === null || value === undefined) return undefined;
-			return String(value);
-		} catch {
-			return undefined;
-		}
+			if (value !== null && value !== undefined) return String(value);
+		} catch {}
+		// 2) Fallback: direct properties/frontmatter/note.data
+		try {
+			const anyEntry: any = entry as any;
+			if (
+				anyEntry?.properties &&
+				anyEntry.properties[propertyName] !== undefined
+			) {
+				return String(anyEntry.properties[propertyName]);
+			}
+			if (
+				anyEntry?.frontmatter &&
+				anyEntry.frontmatter[propertyName] !== undefined
+			) {
+				return String(anyEntry.frontmatter[propertyName]);
+			}
+			if (
+				anyEntry?.note?.data &&
+				anyEntry.note.data[propertyName] !== undefined
+			) {
+				return String(anyEntry.note.data[propertyName]);
+			}
+		} catch {}
+		return undefined;
 	}
 
 	private getBooleanPropertyValue(
@@ -412,20 +456,47 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		propertyName?: string
 	): boolean | undefined {
 		if (!propertyName) return undefined;
+		const parseBool = (v: any): boolean | undefined => {
+			if (typeof v === "boolean") return v;
+			if (typeof v === "string") {
+				const lower = v.toLowerCase();
+				if (["true", "yes", "1"].includes(lower)) return true;
+				if (["false", "no", "0"].includes(lower)) return false;
+			}
+			if (v === null || v === undefined) return undefined;
+			return Boolean(v);
+		};
+		// 1) Try Bases API
 		try {
 			const value = entry.getValue({
 				type: "property",
 				name: propertyName,
 			});
-			if (typeof value === "boolean") return value;
-			if (typeof value === "string") {
-				const lower = value.toLowerCase();
-				return lower === "true" || lower === "yes" || lower === "1";
-			}
-			return Boolean(value);
-		} catch {
-			return undefined;
-		}
+			const parsed = parseBool(value);
+			if (parsed !== undefined) return parsed;
+		} catch {}
+		// 2) Fallbacks
+		try {
+			const anyEntry: any = entry as any;
+			let v: any = undefined;
+			if (
+				anyEntry?.properties &&
+				anyEntry.properties[propertyName] !== undefined
+			)
+				v = anyEntry.properties[propertyName];
+			else if (
+				anyEntry?.frontmatter &&
+				anyEntry.frontmatter[propertyName] !== undefined
+			)
+				v = anyEntry.frontmatter[propertyName];
+			else if (
+				anyEntry?.note?.data &&
+				anyEntry.note.data[propertyName] !== undefined
+			)
+				v = anyEntry.note.data[propertyName];
+			return parseBool(v);
+		} catch {}
+		return undefined;
 	}
 
 	private getNumberPropertyValue(
@@ -433,62 +504,101 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		propertyName?: string
 	): number | undefined {
 		if (!propertyName) return undefined;
+		const tryParse = (v: any): number | undefined => {
+			if (v === null || v === undefined) return undefined;
+			const num = Number(v);
+			return isNaN(num) ? undefined : num;
+		};
+		// 1) Try Bases API
 		try {
 			const value = entry.getValue({
 				type: "property",
 				name: propertyName,
 			});
-			const num = Number(value);
-			return isNaN(num) ? undefined : num;
-		} catch {
-			return undefined;
-		}
+			const parsed = tryParse(value);
+			if (parsed !== undefined) return parsed;
+		} catch {}
+		// 2) Fallbacks
+		try {
+			const anyEntry: any = entry as any;
+			if (
+				anyEntry?.properties &&
+				anyEntry.properties[propertyName] !== undefined
+			) {
+				return tryParse(anyEntry.properties[propertyName]);
+			}
+			if (
+				anyEntry?.frontmatter &&
+				anyEntry.frontmatter[propertyName] !== undefined
+			) {
+				return tryParse(anyEntry.frontmatter[propertyName]);
+			}
+			if (
+				anyEntry?.note?.data &&
+				anyEntry.note.data[propertyName] !== undefined
+			) {
+				return tryParse(anyEntry.note.data[propertyName]);
+			}
+		} catch {}
+		return undefined;
 	}
 
 	private getDatePropertyValue(
 		entry: BasesEntry,
 		propertyName?: string
 	): number | undefined {
+		const parseDateLike = (value: any): number | undefined => {
+			if (value === null || value === undefined) return undefined;
+			if (typeof value === "number") return value;
+			if (value instanceof Date)
+				return isNaN(value.getTime()) ? undefined : value.getTime();
+			if (typeof value === "string") {
+				const dateStr = value.trim();
+				if (!dateStr) return undefined;
+				if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+					const [y, m, d] = dateStr.split("-").map(Number);
+					const dt = new Date(y, m - 1, d);
+					return isNaN(dt.getTime()) ? undefined : dt.getTime();
+				}
+				const dt = new Date(dateStr);
+				return isNaN(dt.getTime()) ? undefined : dt.getTime();
+			}
+			return undefined;
+		};
 		if (!propertyName) return undefined;
+		// 1) Try Bases API
 		try {
 			const value = entry.getValue({
 				type: "property",
 				name: propertyName,
 			});
-
-			if (value === null || value === undefined) return undefined;
-
-			// Handle timestamp (number)
-			if (typeof value === "number") return value;
-
-			// Handle date string
-			if (typeof value === "string") {
-				// Support various date formats commonly used in dataview
-				const dateStr = value.trim();
-				if (!dateStr) return undefined;
-
-				// Try parsing as ISO date first (YYYY-MM-DD)
-				if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-					// Parse as local date to avoid timezone issues
-					const [year, month, day] = dateStr.split("-").map(Number);
-					const date = new Date(year, month - 1, day);
-					return isNaN(date.getTime()) ? undefined : date.getTime();
+			const parsed = parseDateLike(value);
+			if (parsed !== undefined) return parsed;
+		} catch {}
+		// 2) Fallbacks: direct properties/frontmatter/note.data + alternate keys
+		try {
+			const anyEntry: any = entry as any;
+			const fm = anyEntry?.frontmatter || {};
+			const props = anyEntry?.properties || {};
+			const noteData = anyEntry?.note?.data || {};
+			const candidates = [propertyName, "date", "日期", "📆日期"]; // common aliases
+			for (const key of candidates) {
+				if (!key) continue;
+				if (props[key] !== undefined) {
+					const p = parseDateLike(props[key]);
+					if (p !== undefined) return p;
 				}
-
-				// Try parsing as general date (but be careful about timezone)
-				const date = new Date(dateStr);
-				return isNaN(date.getTime()) ? undefined : date.getTime();
+				if (fm[key] !== undefined) {
+					const p = parseDateLike(fm[key]);
+					if (p !== undefined) return p;
+				}
+				if (noteData[key] !== undefined) {
+					const p = parseDateLike(noteData[key]);
+					if (p !== undefined) return p;
+				}
 			}
-
-			// Handle Date object
-			if (value instanceof Date) {
-				return isNaN(value.getTime()) ? undefined : value.getTime();
-			}
-
-			return undefined;
-		} catch {
-			return undefined;
-		}
+		} catch {}
+		return undefined;
 	}
 
 	private getArrayPropertyValue(
@@ -496,49 +606,67 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		propertyName?: string
 	): string[] | undefined {
 		if (!propertyName) return undefined;
-		try {
-			const value = entry.getValue({
-				type: "property",
-				name: propertyName,
-			});
+		const parseArray = (value: any): string[] | undefined => {
 			if (value === null || value === undefined) return undefined;
-
-			// Handle array values
 			if (Array.isArray(value)) {
 				return value
 					.map((v) => String(v))
 					.filter((v) => v.trim().length > 0);
 			}
-
-			// Handle string values (comma-separated or space-separated)
 			if (typeof value === "string") {
 				const str = value.trim();
 				if (!str) return undefined;
-
-				// Try to parse as comma-separated values first
 				if (str.includes(",")) {
 					return str
 						.split(",")
 						.map((v) => v.trim())
 						.filter((v) => v.length > 0);
 				}
-
-				// Try to parse as space-separated values (for tags)
 				if (str.includes(" ")) {
 					return str
 						.split(/\s+/)
 						.map((v) => v.trim())
 						.filter((v) => v.length > 0);
 				}
-
-				// Single value
 				return [str];
 			}
-
 			return undefined;
-		} catch {
-			return undefined;
-		}
+		};
+		// 1) Try Bases API
+		try {
+			const value = entry.getValue({
+				type: "property",
+				name: propertyName,
+			});
+			const parsed = parseArray(value);
+			if (parsed) return parsed;
+		} catch {}
+		// 2) Fallbacks
+		try {
+			const anyEntry: any = entry as any;
+			if (
+				anyEntry?.properties &&
+				anyEntry.properties[propertyName] !== undefined
+			) {
+				const parsed = parseArray(anyEntry.properties[propertyName]);
+				if (parsed) return parsed;
+			}
+			if (
+				anyEntry?.frontmatter &&
+				anyEntry.frontmatter[propertyName] !== undefined
+			) {
+				const parsed = parseArray(anyEntry.frontmatter[propertyName]);
+				if (parsed) return parsed;
+			}
+			if (
+				anyEntry?.note?.data &&
+				anyEntry.note.data[propertyName] !== undefined
+			) {
+				const parsed = parseArray(anyEntry.note.data[propertyName]);
+				if (parsed) return parsed;
+			}
+		} catch {}
+		return undefined;
 	}
 
 	private formatDateForProperty(timestamp: number): string {

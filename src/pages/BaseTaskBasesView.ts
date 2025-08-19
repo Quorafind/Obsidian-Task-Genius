@@ -798,14 +798,20 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 				// Case A: array of entries directly
 				if (data.length > 0) {
 					const first = data[0] as any;
-					if (
-						first &&
-						typeof first === "object" &&
-						!Array.isArray((first as any).entries) &&
-						("file" in first || "note" in first || "path" in first)
-					) {
-						return data as any[];
-					}
+					try {
+						if (
+							first &&
+							typeof first === "object" &&
+							!Array.isArray((first as any).entries)
+						) {
+							const f = (first as any).file;
+							const n = (first as any).note;
+							const p = (first as any).path;
+							if (f || n || typeof p === "string") {
+								return data as any[];
+							}
+						}
+					} catch {}
 				}
 				// Case B: grouped array [{ entries }]
 				return data.flatMap((g) =>
@@ -819,6 +825,19 @@ export abstract class BaseTaskBasesView extends Component implements BasesView {
 				return (data as any).entries;
 			// Common alternative property names
 			const alt = data as any;
+			// Bases CG model often exposes a .data array of entries
+			if (Array.isArray(alt.data)) return alt.data;
+			// Cached/grouped structures
+			if (Array.isArray(alt.groupedData)) {
+				return alt.groupedData.flatMap((g: any) =>
+					g && Array.isArray(g.entries) ? g.entries : []
+				);
+			}
+			if (Array.isArray(alt.groupedDataCache)) {
+				return alt.groupedDataCache.flatMap((g: any) =>
+					g && Array.isArray(g.entries) ? g.entries : []
+				);
+			}
 			if (Array.isArray(alt.results)) return alt.results;
 			if (Array.isArray(alt.list)) return alt.list;
 			if (Array.isArray(alt.items)) return alt.items;

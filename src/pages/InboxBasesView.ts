@@ -168,15 +168,30 @@ export class InboxBasesView extends BaseTaskBasesView {
 
 		try {
 			// Filter tasks for inbox view (tasks without projects)
-			const inboxTasks = filterTasks(this.tasks, "inbox", this.plugin);
+			let inboxTasks = filterTasks(this.tasks, "inbox", this.plugin);
 
 			console.log(
 				`[InboxBasesView] Filtered ${inboxTasks.length} inbox tasks from ${this.tasks.length} total tasks`
 			);
 
+			// Fallback: if filtering yields zero but we have tasks, show all tasks to avoid empty UI
+			if (inboxTasks.length === 0 && this.tasks.length > 0) {
+				console.warn(
+					"[InboxBasesView] Inbox filter returned 0 while tasks exist; showing all tasks as fallback"
+				);
+				inboxTasks = [...this.tasks];
+			}
+
 			// Update content component with filtered tasks
 			this.contentComponent.setTasks(inboxTasks, this.tasks);
 			this.contentComponent.setViewMode("inbox");
+
+			// Toggle empty state based on filtered inbox tasks
+			if (inboxTasks.length === 0) {
+				this.showEmptyState();
+			} else {
+				this.hideEmptyState();
+			}
 
 			console.log(
 				`[InboxBasesView] Successfully updated ContentComponent with ${inboxTasks.length} inbox tasks`

@@ -395,6 +395,28 @@ export class FileTaskView extends Component implements BasesView {
 				onTaskStatusUpdate:
 					this.handleKanbanTaskStatusUpdate.bind(this),
 				onEventContextMenu: this.handleTaskContextMenu.bind(this),
+				onTaskUpdate: async (originalTask: Task, updatedTask: Task) => {
+					// Bridge Table/Kanban updates back to FileTaskView handler
+					const fileTask = this.fileTasks.find(
+						(ft) => ft.id === originalTask.id
+					);
+					if (fileTask) {
+						const { line, originalMarkdown, ...rest } =
+							this.fileTaskToRegularTask(fileTask);
+						await this.handleTaskUpdate(fileTask, {
+							...fileTask,
+							...rest,
+							content: updatedTask.content ?? fileTask.content,
+							status: updatedTask.status ?? fileTask.status,
+							completed:
+								updatedTask.completed ?? fileTask.completed,
+							metadata: {
+								...fileTask.metadata,
+								...updatedTask.metadata,
+							},
+						} as FileTask);
+					}
+				},
 			}
 		);
 		this.addChild(this.viewComponentManager);
@@ -681,10 +703,30 @@ export class FileTaskView extends Component implements BasesView {
 	private extractEntriesFromData(data: any): any[] {
 		if (!data) return [];
 		try {
-			// If data is already grouped array [{ entries }]
 			if (Array.isArray(data)) {
+				// Case A: array of entries directly
+				if (data.length > 0) {
+					const first = data[0] as any;
+					try {
+						if (
+							first &&
+							typeof first === "object" &&
+							!Array.isArray((first as any).entries)
+						) {
+							const f = (first as any).file;
+							const n = (first as any).note;
+							const p = (first as any).path;
+							if (f || n || typeof p === "string") {
+								return data as any[];
+							}
+						}
+					} catch {}
+				}
+				// Case B: grouped array [{ entries }]
 				return data.flatMap((g) =>
-					g && Array.isArray(g.entries) ? g.entries : []
+					g && Array.isArray((g as any).entries)
+						? (g as any).entries
+						: []
 				);
 			}
 			// If data is a model with an entries array
@@ -692,6 +734,19 @@ export class FileTaskView extends Component implements BasesView {
 				return (data as any).entries;
 			// Common alternative property names
 			const alt = data as any;
+			// Bases CG model often exposes a .data array of entries
+			if (Array.isArray(alt.data)) return alt.data;
+			// Cached/grouped structures
+			if (Array.isArray(alt.groupedData)) {
+				return alt.groupedData.flatMap((g: any) =>
+					g && Array.isArray(g.entries) ? g.entries : []
+				);
+			}
+			if (Array.isArray(alt.groupedDataCache)) {
+				return alt.groupedDataCache.flatMap((g: any) =>
+					g && Array.isArray(g.entries) ? g.entries : []
+				);
+			}
 			if (Array.isArray(alt.results)) return alt.results;
 			if (Array.isArray(alt.list)) return alt.list;
 			if (Array.isArray(alt.items)) return alt.items;
@@ -816,6 +871,23 @@ export class FileTaskView extends Component implements BasesView {
 	}
 
 	private updateTaskViewComponents(): void {
+		// Opportunistic conversion if fileTasks is empty but we may have data
+		if (this.fileTasks.length === 0 && this.data) {
+			try {
+				const hadChanges = this.convertEntriesToFileTasks();
+				if (hadChanges) {
+					console.log(
+						"[FileTaskView] Performed opportunistic conversion before updating components"
+					);
+				}
+			} catch (e) {
+				console.warn(
+					"[FileTaskView] Opportunistic conversion failed:",
+					e
+				);
+			}
+		}
+
 		// Check if we should use lazy loading based on task count
 		const shouldUseLazyLoading =
 			this.fileTasks.length > this.LAZY_LOADING_THRESHOLD;
@@ -1440,10 +1512,20 @@ export class FileTaskView extends Component implements BasesView {
 					filterOptions.advancedFilter = this.currentFilterState;
 				}
 
-				targetComponent.setTasks(
-					filterTasks(this.tasks, viewId, this.plugin, filterOptions),
-					this.tasks
+				// Apply filtering with graceful fallback to avoid empty UI
+				let filteredForSet = filterTasks(
+					this.tasks,
+					viewId,
+					this.plugin,
+					filterOptions
 				);
+				if (filteredForSet.length === 0 && this.tasks.length > 0) {
+					console.warn(
+						`[FileTaskView] Filter for view ${viewId} returned 0 while tasks exist; showing all tasks as fallback`
+					);
+					filteredForSet = [...this.tasks];
+				}
+				targetComponent.setTasks(filteredForSet, this.tasks);
 			}
 
 			// Handle updateTasks method for table view adapter
@@ -1461,9 +1543,19 @@ export class FileTaskView extends Component implements BasesView {
 					filterOptions.advancedFilter = this.currentFilterState;
 				}
 
-				targetComponent.updateTasks(
-					filterTasks(this.tasks, viewId, this.plugin, filterOptions)
+				let filteredForUpdate = filterTasks(
+					this.tasks,
+					viewId,
+					this.plugin,
+					filterOptions
 				);
+				if (filteredForUpdate.length === 0 && this.tasks.length > 0) {
+					console.warn(
+						`[FileTaskView] Update filter for view ${viewId} returned 0 while tasks exist; showing all tasks as fallback`
+					);
+					filteredForUpdate = [...this.tasks];
+				}
+				targetComponent.updateTasks(filteredForUpdate);
 			}
 
 			if (typeof targetComponent.setViewMode === "function") {
@@ -1491,14 +1583,23 @@ export class FileTaskView extends Component implements BasesView {
 						filterOptions.advancedFilter = this.currentFilterState;
 					}
 
-					component.setTasks(
-						filterTasks(
-							this.tasks,
-							component.getViewId(),
-							this.plugin,
-							filterOptions
-						)
+					// Apply filtering with fallback for TwoColumn components as well
+					let filteredForTwoColumn = filterTasks(
+						this.tasks,
+						component.getViewId(),
+						this.plugin,
+						filterOptions
 					);
+					if (
+						filteredForTwoColumn.length === 0 &&
+						this.tasks.length > 0
+					) {
+						console.warn(
+							`[FileTaskView] TwoColumn filter for view ${component.getViewId()} returned 0 while tasks exist; showing all tasks as fallback`
+						);
+						filteredForTwoColumn = [...this.tasks];
+					}
+					component.setTasks(filteredForTwoColumn);
 				}
 			});
 			if (
