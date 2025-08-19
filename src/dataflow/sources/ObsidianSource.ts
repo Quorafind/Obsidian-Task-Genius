@@ -100,9 +100,10 @@ export class ObsidianSource {
     }
     
     // Skip if this modification is from WriteAPI
+    // The WriteAPI will emit WRITE_OPERATION_COMPLETE event which is handled by Orchestrator
     if (this.skipNextModify.has(file.path)) {
       this.skipNextModify.delete(file.path);
-      console.log(`ObsidianSource: Skipping modify event for ${file.path} (WriteAPI operation)`);
+      console.log(`ObsidianSource: Skipping modify event for ${file.path} (handled by WriteAPI)`);
       return;
     }
     

@@ -7,6 +7,7 @@ import { Task, CanvasTaskMetadata } from "../types/task";
 import { CanvasData, CanvasTextData } from "../types/canvas";
 import type TaskProgressBarPlugin from "../index";
 import { MetadataFormat } from "../utils/task/task-operations";
+import { Events, emit } from "../dataflow/events/Events";
 
 /**
  * Result of a Canvas task update operation
@@ -98,7 +99,18 @@ export class CanvasTaskUpdater {
 			// Write the updated Canvas content back to the file
 			const updatedContent = JSON.stringify(canvasData, null, 2);
 			console.log("updatedContent", updatedContent);
+			
+			// Notify about write operation to trigger data flow update
+			if (this.plugin.app) {
+				emit(this.plugin.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: task.id });
+			}
+			
 			await this.vault.modify(file, updatedContent);
+			
+			// Notify write operation complete
+			if (this.plugin.app) {
+				emit(this.plugin.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: task.id });
+			}
 
 			return {
 				success: true,

@@ -1,4 +1,4 @@
-import { App, TFile, Vault, MetadataCache } from "obsidian";
+import { App, TFile, Vault, MetadataCache, EventRef } from "obsidian";
 import type { Task, TgProject } from "../types/task";
 import type { ProjectConfigManagerOptions } from "../managers/project-config-manager";
 
@@ -7,7 +7,7 @@ import { Repository } from "./indexer/Repository";
 import { Resolver as ProjectResolver } from "./project/Resolver";
 import { Augmentor, AugmentContext } from "./augment/Augmentor";
 import { Storage } from "./persistence/Storage";
-import { Events, emit, Seq } from "./events/Events";
+import { Events, emit, Seq, on } from "./events/Events";
 import { WorkerOrchestrator } from "./workers/WorkerOrchestrator";
 import { ObsidianSource } from "./sources/ObsidianSource";
 import { TaskWorkerManager } from "./workers/TaskWorkerManager";
@@ -31,6 +31,9 @@ export class DataflowOrchestrator {
   private storage: Storage;
   private workerOrchestrator: WorkerOrchestrator;
   private obsidianSource: ObsidianSource;
+  
+  // Event references for cleanup
+  private eventRefs: EventRef[] = [];
   
   // Processing queue for throttling
   private processingQueue = new Map<string, NodeJS.Timeout>();
@@ -98,12 +101,72 @@ export class DataflowOrchestrator {
     // Initialize ObsidianSource to start listening for events
     this.obsidianSource.initialize();
     
+    // Subscribe to file update events from ObsidianSource
+    this.subscribeToEvents();
+    
     // Emit initial ready event
     emit(this.app, Events.CACHE_READY, {
       initial: true,
       timestamp: Date.now(),
       seq: Seq.next()
     });
+  }
+
+  /**
+   * Subscribe to events from ObsidianSource and WriteAPI
+   */
+  private subscribeToEvents(): void {
+    // Listen for file updates from ObsidianSource
+    this.eventRefs.push(
+      on(this.app, Events.FILE_UPDATED, async (payload: any) => {
+        const { path, reason } = payload;
+        console.log(`[DataflowOrchestrator] FILE_UPDATED event: ${path} (${reason})`);
+        
+        if (reason === 'delete') {
+          // Remove file from index
+          await this.repository.removeFile(path);
+        } else {
+          // Process file update (create, modify, rename, frontmatter)
+          const file = this.vault.getAbstractFileByPath(path) as TFile;
+          if (file) {
+            await this.processFile(file);
+          }
+        }
+      })
+    );
+    
+    // Listen for batch updates
+    this.eventRefs.push(
+      on(this.app, Events.TASK_CACHE_UPDATED, async (payload: any) => {
+        const { changedFiles } = payload;
+        if (changedFiles && Array.isArray(changedFiles)) {
+          console.log(`[DataflowOrchestrator] Batch update for ${changedFiles.length} files`);
+          
+          // Process each file
+          for (const filePath of changedFiles) {
+            const file = this.vault.getAbstractFileByPath(filePath) as TFile;
+            if (file) {
+              await this.processFile(file);
+            }
+          }
+        }
+      })
+    );
+    
+    // Listen for WriteAPI completion events to trigger re-processing
+    this.eventRefs.push(
+      on(this.app, Events.WRITE_OPERATION_COMPLETE, async (payload: any) => {
+        const { path } = payload;
+        console.log(`[DataflowOrchestrator] WRITE_OPERATION_COMPLETE: ${path}`);
+        
+        // Process the file after WriteAPI completes
+        const file = this.vault.getAbstractFileByPath(path) as TFile;
+        if (file) {
+          // Process immediately without debounce for WriteAPI operations
+          await this.processFileImmediate(file);
+        }
+      })
+    );
   }
 
   /**
@@ -571,6 +634,12 @@ export class DataflowOrchestrator {
       clearTimeout(timeout);
     }
     this.processingQueue.clear();
+    
+    // Unsubscribe from events
+    for (const ref of this.eventRefs) {
+      this.app.vault.offref(ref);
+    }
+    this.eventRefs = [];
     
     // Cleanup ObsidianSource
     this.obsidianSource.destroy();
