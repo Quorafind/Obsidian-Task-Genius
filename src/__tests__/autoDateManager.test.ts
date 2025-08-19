@@ -8,7 +8,7 @@ import {
 	applyDateOperations,
 	isMoveOperation,
 	findMetadataInsertPosition,
-} from "../editor-ext/autoDateManager";
+} from "../editor-extensions/date-time/date-manager";
 import { Transaction, Text, EditorState } from "@codemirror/state";
 import TaskProgressBarPlugin from "../index";
 import { App } from "obsidian";

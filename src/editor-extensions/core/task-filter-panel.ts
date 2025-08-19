@@ -24,15 +24,15 @@ import {
 	Decoration,
 	DecorationSet,
 } from "@codemirror/view";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import {
 	parseAdvancedFilterQuery,
 	evaluateFilterNode,
 	parsePriorityFilterValue,
-} from "../utils/task/filter-compatibility";
-import { t } from "../translations/helper";
-import { Task as TaskIndexTask } from "../types/task";
-import "../styles/task-filter.css";
+} from "../../utils/task/filter-compatibility";
+import { t } from "../../translations/helper";
+import { Task as TaskIndexTask } from "../../types/task";
+import "../../styles/task-filter.css";
 
 // Effect to toggle the filter panel
 export const toggleTaskFilter = StateEffect.define<boolean>();

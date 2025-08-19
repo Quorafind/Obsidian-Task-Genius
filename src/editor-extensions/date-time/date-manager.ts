@@ -5,8 +5,8 @@ import {
 	Transaction,
 	TransactionSpec,
 } from "@codemirror/state";
-import TaskProgressBarPlugin from "../index";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
+import TaskProgressBarPlugin from "../../index";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
 
 /**
  * Creates an editor extension that automatically manages dates based on task status changes

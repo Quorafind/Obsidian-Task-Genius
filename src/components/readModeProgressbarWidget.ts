@@ -7,7 +7,7 @@ import {
 	TFile,
 } from "obsidian";
 import { shouldHideProgressBarInPreview } from "../utils";
-import { formatProgressText } from "../editor-ext/progressBarWidget";
+import { formatProgressText } from "../editor-extensions/ui-widgets/progress-bar-widget";
 import {
 	checkIfParentElementHasGoalFormat,
 	extractTaskAndGoalInfoReadMode,

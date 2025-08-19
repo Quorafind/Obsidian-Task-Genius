@@ -1,9 +1,9 @@
 import { App, debounce, editorInfoField } from "obsidian";
 import { EditorState, Transaction, Text } from "@codemirror/state";
-import TaskProgressBarPlugin from "../index"; // Adjust path if needed
-import { parseTaskLine } from "../utils/task/task-operations"; // Adjust path if needed
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
-import { Task } from "../types/task";
+import TaskProgressBarPlugin from "../../index"; // Adjust path if needed
+import { parseTaskLine } from "../../utils/task/task-operations"; // Adjust path if needed
+import { taskStatusChangeAnnotation } from "./status-switcher";
+import { Task } from "../../types/task";
 
 const debounceTrigger = debounce((app: App, task: Task) => {
 	app.workspace.trigger("task-genius:task-completed", task);

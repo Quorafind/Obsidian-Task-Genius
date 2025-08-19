@@ -16,11 +16,11 @@ import {
 	Keymap,
 	Menu,
 } from "obsidian";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import { Annotation, EditorSelection } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { getTasksAPI } from "../utils";
+import { getTasksAPI } from "../../utils";
 
 export type TaskState = string;
 export const taskStatusChangeAnnotation = Annotation.define();

@@ -7,17 +7,17 @@ import {
 	Text,
 } from "@codemirror/state";
 import { Annotation } from "@codemirror/state";
-import TaskProgressBarPlugin from "../index";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
-import { priorityChangeAnnotation } from "./priorityPicker";
-import { buildIndentString, getTabSize } from "../utils";
+import TaskProgressBarPlugin from "../../index";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
+import { priorityChangeAnnotation } from "../ui-widgets/priority-picker";
+import { buildIndentString, getTabSize } from "../../utils";
 // @ts-ignore
 import { foldable } from "@codemirror/language";
-import { t } from "../translations/helper";
+import { t } from "../../translations/helper";
 import {
 	WorkflowDefinition,
 	WorkflowStage,
-} from "../common/setting-definition";
+} from "../../common/setting-definition";
 
 // Annotation that marks a transaction as a workflow change
 export const workflowChangeAnnotation = Annotation.define<string>();
@@ -711,7 +711,7 @@ export function updateWorkflowContextMenu(
 				convertItem.setIcon("convert");
 				convertItem.onClick(() => {
 					// Import the conversion function
-					import("../commands/workflowCommands").then(
+					import("../../commands/workflowCommands").then(
 						({ convertTaskToWorkflowCommand }) => {
 							convertTaskToWorkflowCommand(
 								false,
@@ -729,7 +729,7 @@ export function updateWorkflowContextMenu(
 				startItem.setTitle(t("Start workflow here"));
 				startItem.setIcon("play");
 				startItem.onClick(() => {
-					import("../commands/workflowCommands").then(
+					import("../../commands/workflowCommands").then(
 						({ startWorkflowHereCommand }) => {
 							startWorkflowHereCommand(
 								false,
@@ -747,7 +747,7 @@ export function updateWorkflowContextMenu(
 				quickItem.setTitle(t("Create quick workflow"));
 				quickItem.setIcon("zap");
 				quickItem.onClick(() => {
-					import("../commands/workflowCommands").then(
+					import("../../commands/workflowCommands").then(
 						({ createQuickWorkflowCommand }) => {
 							createQuickWorkflowCommand(
 								false,

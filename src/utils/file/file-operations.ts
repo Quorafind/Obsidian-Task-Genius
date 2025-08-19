@@ -1,5 +1,5 @@
 import { App, getFrontMatterInfo, TFile } from "obsidian";
-import { QuickCaptureOptions } from "../../editor-ext/quickCapture";
+import { QuickCaptureOptions } from "../../editor-extensions/core/quick-capture-panel";
 import { moment } from "obsidian";
 
 /**

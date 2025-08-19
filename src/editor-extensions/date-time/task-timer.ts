@@ -6,13 +6,13 @@ import {
 } from "@codemirror/view";
 import { EditorState, Range, StateField, Transaction, Facet } from "@codemirror/state";
 import { MetadataCache, editorInfoField, editorEditorField, MarkdownView } from "obsidian";
-import type TaskProgressBarPlugin from "../index";
-import { TaskTimerSettings } from "../common/setting-definition";
-import { TaskTimerMetadataDetector } from "../services/timer-metadata-service";
-import { TaskTimerManager, TimerState } from "../managers/timer-manager";
-import { TaskTimerFormatter } from "../services/timer-format-service";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
-import "../styles/task-timer.css";
+import type TaskProgressBarPlugin from "../../index";
+import { TaskTimerSettings } from "../../common/setting-definition";
+import { TaskTimerMetadataDetector } from "../../services/timer-metadata-service";
+import { TaskTimerManager, TimerState } from "../../managers/timer-manager";
+import { TaskTimerFormatter } from "../../services/timer-format-service";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
+import "../../styles/task-timer.css";
 
 // Extension configuration for StateField access
 interface TaskTimerConfig {

@@ -13,7 +13,7 @@ import TaskProgressBarPlugin from "../index"; // Adjust the import path as neces
 // Remove circular dependency import
 // import {
 // 	taskStatusChangeAnnotation, // Import the actual annotation
-// } from "../editor-ext/autoCompleteParent"; // Adjust the import path as necessary
+// } from "../editor-extensions/autocomplete/parent-task-updater"; // Adjust the import path as necessary
 import { TaskProgressBarSettings } from "../common/setting-definition";
 import { EditorView } from "@codemirror/view";
 import { Task } from "../types/task";

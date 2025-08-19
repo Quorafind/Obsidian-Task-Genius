@@ -6,7 +6,7 @@ import {
 	TFile,
 } from "obsidian";
 import TaskProgressBarPlugin from "../index";
-import { QuickCaptureOptions } from "../editor-ext/quickCapture";
+import { QuickCaptureOptions } from "../editor-extensions/core/quick-capture-panel";
 
 // Global cache for autocomplete data to avoid repeated expensive operations
 interface GlobalAutoCompleteCache {

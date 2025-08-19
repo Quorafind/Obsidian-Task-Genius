@@ -16,7 +16,7 @@ import { QuickCaptureModal } from "../QuickCaptureModal";
 import {
 	createEmbeddableMarkdownEditor,
 	EmbeddableMarkdownEditor,
-} from "../../editor-ext/markdownEditor";
+} from "../../editor-extensions/core/markdown-editor";
 import { saveCapture } from "../../utils/file/file-operations";
 import "../../styles/timeline-sidebar.css";
 import { createTaskCheckbox } from "../task-view/details";

@@ -10,8 +10,8 @@ import {
 	requireApiVersion,
 	Platform,
 } from "obsidian";
-import { taskProgressBarExtension } from "./editor-ext/progressBarWidget";
-import { taskTimerExtension } from "./editor-ext/taskTimer";
+import { taskProgressBarExtension } from "./editor-extensions/ui-widgets/progress-bar-widget";
+import { taskTimerExtension } from "./editor-extensions/date-time/task-timer";
 import { updateProgressBarInElement } from "./components/readModeProgressbarWidget";
 import { applyTaskTextMarks } from "./components/readModeTextMark";
 import {
@@ -20,21 +20,21 @@ import {
 } from "./common/setting-definition";
 import { TaskProgressBarSettingTab } from "./setting";
 import { EditorView } from "@codemirror/view";
-import { autoCompleteParentExtension } from "./editor-ext/autoCompleteParent";
-import { taskStatusSwitcherExtension } from "./editor-ext/taskStatusSwitcher";
-import { cycleCompleteStatusExtension } from "./editor-ext/cycleCompleteStatus";
+import { autoCompleteParentExtension } from "./editor-extensions/autocomplete/parent-task-updater";
+import { taskStatusSwitcherExtension } from "./editor-extensions/task-operations/status-switcher";
+import { cycleCompleteStatusExtension } from "./editor-extensions/task-operations/status-cycler";
 import {
 	workflowExtension,
 	updateWorkflowContextMenu,
-} from "./editor-ext/workflow";
-import { workflowDecoratorExtension } from "./editor-ext/workflowDecorator";
-import { workflowRootEnterHandlerExtension } from "./editor-ext/workflowRootEnterHandler";
+} from "./editor-extensions/workflow/workflow-handler";
+import { workflowDecoratorExtension } from "./editor-extensions/ui-widgets/workflow-decorator";
+import { workflowRootEnterHandlerExtension } from "./editor-extensions/workflow/workflow-enter-handler";
 import {
 	priorityPickerExtension,
 	TASK_PRIORITIES,
 	LETTER_PRIORITIES,
 	priorityChangeAnnotation,
-} from "./editor-ext/priorityPicker";
+} from "./editor-extensions/ui-widgets/priority-picker";
 import {
 	cycleTaskStatusForward,
 	cycleTaskStatusBackward,
@@ -53,18 +53,18 @@ import {
 	duplicateWorkflowCommand,
 	showWorkflowQuickActionsCommand,
 } from "./commands/workflowCommands";
-import { datePickerExtension } from "./editor-ext/datePicker";
+import { datePickerExtension } from "./editor-extensions/date-time/date-picker";
 import {
 	quickCaptureExtension,
 	toggleQuickCapture,
 	quickCaptureState,
-} from "./editor-ext/quickCapture";
+} from "./editor-extensions/core/quick-capture-panel";
 import {
 	taskFilterExtension,
 	toggleTaskFilter,
 	taskFilterState,
 	migrateOldFilterOptions,
-} from "./editor-ext/filterTasks";
+} from "./editor-extensions/core/task-filter-panel";
 import { Task } from "./types/task";
 import { QuickCaptureModal } from "./components/QuickCaptureModal";
 import { MinimalQuickCaptureModal } from "./components/MinimalQuickCaptureModal";
@@ -93,11 +93,11 @@ import { getStatusIcon, getTaskGeniusIcon } from "./icon";
 import { RewardManager } from "./managers/reward-manager";
 import { HabitManager } from "./managers/habit-manager";
 import { TaskGeniusIconManager } from "./managers/icon-manager";
-import { monitorTaskCompletedExtension } from "./editor-ext/monitorTaskCompleted";
+import { monitorTaskCompletedExtension } from "./editor-extensions/task-operations/completion-monitor";
 import { sortTasksInDocument } from "./commands/sortTaskCommands";
-import { taskGutterExtension } from "./editor-ext/TaskGutterHandler";
-import { autoDateManagerExtension } from "./editor-ext/autoDateManager";
-import { taskMarkCleanupExtension } from "./editor-ext/taskMarkCleanup";
+import { taskGutterExtension } from "./editor-extensions/task-operations/gutter-marker";
+import { autoDateManagerExtension } from "./editor-extensions/date-time/date-manager";
+import { taskMarkCleanupExtension } from "./editor-extensions/task-operations/mark-cleanup";
 import { ViewManager } from "./pages/ViewManager";
 import { IcsManager } from "./managers/ics-manager";
 import { VersionManager } from "./managers/version-manager";

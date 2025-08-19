@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { Extension, Transaction } from "@codemirror/state";
-import { clearAllMarks } from "../components/MarkdownRenderer";
+import { clearAllMarks } from "../../components/MarkdownRenderer";
 
 /**
  * Extension to handle cleanup of task marks when text is selected and deleted

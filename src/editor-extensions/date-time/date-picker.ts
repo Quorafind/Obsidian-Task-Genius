@@ -17,12 +17,12 @@ import {
 	moment,
 	Platform,
 } from "obsidian";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import { Annotation } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { t } from "../translations/helper";
-import { DatePickerPopover, DatePickerModal } from "../components/date-picker";
+import { t } from "../../translations/helper";
+import { DatePickerPopover, DatePickerModal } from "../../components/date-picker";
 export const dateChangeAnnotation = Annotation.define();
 
 class DatePickerWidget extends WidgetType {

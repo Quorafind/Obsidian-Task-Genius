@@ -3,7 +3,7 @@ import { describe, it, expect } from "@jest/globals";
 import {
 	findMetadataInsertPosition,
 	findCompletedDateInsertPosition,
-} from "../editor-ext/autoDateManager";
+} from "../editor-extensions/date-time/date-manager";
 import TaskProgressBarPlugin from "../index";
 
 describe("autoDateManager - Final Verification", () => {

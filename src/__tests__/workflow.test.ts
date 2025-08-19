@@ -18,7 +18,7 @@ import {
 	generateWorkflowTaskText,
 	determineTaskInsertionPoint,
 	handleWorkflowTransaction,
-} from "../editor-ext/workflow";
+} from "../editor-extensions/workflow/workflow-handler";
 import { createMockPlugin, createMockApp, createMockText } from "./mockUtils";
 import {
 	WorkflowDefinition,

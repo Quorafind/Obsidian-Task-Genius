@@ -8,7 +8,7 @@
  * - Visual styling and behavior
  */
 
-import { workflowDecoratorExtension } from "../editor-ext/workflowDecorator";
+import { workflowDecoratorExtension } from "../editor-extensions/ui-widgets/workflow-decorator";
 import { createMockPlugin, createMockApp } from "./mockUtils";
 import { WorkflowDefinition } from "../common/setting-definition";
 import { EditorView } from "@codemirror/view";

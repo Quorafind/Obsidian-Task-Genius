@@ -11,11 +11,11 @@ import { App, Vault } from "obsidian";
 import { EditorState, Range, Text } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { foldable, syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { RegExpCursor } from "./regexp-cursor";
-import TaskProgressBarPlugin, { showPopoverWithProgressBar } from "../index";
-import { shouldHideProgressBarInLivePriview } from "../utils";
-import "../styles/progressbar.css";
-import { extractTaskAndGoalInfo } from "../core/goal/edit-mode";
+import { RegExpCursor } from "../core/regex-cursor";
+import TaskProgressBarPlugin, { showPopoverWithProgressBar } from "../../index";
+import { shouldHideProgressBarInLivePriview } from "../../utils";
+import "../../styles/progressbar.css";
+import { extractTaskAndGoalInfo } from "../../core/goal/edit-mode";
 
 interface Tasks {
 	completed: number;

@@ -7,7 +7,7 @@ import {
 	getParentTaskStatus,
 	hasAnyChildTasksAtLevel,
 	taskStatusChangeAnnotation,
-} from "../editor-ext/autoCompleteParent"; // Adjust the import path as necessary
+} from "../editor-extensions/autocomplete/parent-task-updater"; // Adjust the import path as necessary
 import { buildIndentString } from "../utils";
 import {
 	createMockTransaction,

@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { App, editorInfoField, Menu } from "obsidian";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import { Prec } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import {
@@ -9,10 +9,10 @@ import {
 	determineNextStage,
 	generateWorkflowTaskText,
 	createWorkflowStageTransition,
-} from "./workflow";
-import { t } from "../translations/helper";
-import { buildIndentString } from "../utils";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
+} from "./workflow-handler";
+import { t } from "../../translations/helper";
+import { buildIndentString } from "../../utils";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
 
 /**
  * Show workflow menu at cursor position

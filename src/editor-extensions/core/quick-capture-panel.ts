@@ -19,13 +19,13 @@ import { EditorView, showPanel, ViewUpdate, Panel } from "@codemirror/view";
 import {
 	createEmbeddableMarkdownEditor,
 	EmbeddableMarkdownEditor,
-} from "./markdownEditor";
-import TaskProgressBarPlugin from "../index";
-import { saveCapture, processDateTemplates } from "../utils/file/file-operations";
-import { t } from "../translations/helper";
-import "../styles/quick-capture.css";
-import { FileSuggest } from "../components/AutoComplete";
-import { QuickCaptureSuggest } from "./QuickCaptureSuggest";
+} from "./markdown-editor";
+import TaskProgressBarPlugin from "../../index";
+import { saveCapture, processDateTemplates } from "../../utils/file/file-operations";
+import { t } from "../../translations/helper";
+import "../../styles/quick-capture.css";
+import { FileSuggest } from "../../components/AutoComplete";
+import { QuickCaptureSuggest } from "../autocomplete/task-metadata-suggest";
 
 /**
  * Sanitize filename by replacing unsafe characters with safe alternatives

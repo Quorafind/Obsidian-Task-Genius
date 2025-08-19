@@ -10,21 +10,21 @@ import {
 	PluginSpec,
 } from "@codemirror/view";
 import { App, setTooltip } from "obsidian";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import { Annotation } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { t } from "../translations/helper";
+import { t } from "../../translations/helper";
 import {
 	extractWorkflowInfo,
 	resolveWorkflowInfo,
 	determineNextStage,
-} from "./workflow";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
+} from "../workflow/workflow-handler";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
 import { Range } from "@codemirror/state";
 import { RegExpCursor } from "@codemirror/search";
 import { setIcon } from "obsidian";
-import "../styles/workflow.css";
+import "../../styles/workflow.css";
 
 // Annotation that marks a transaction as a workflow decorator change
 export const workflowDecoratorAnnotation = Annotation.define<string>();

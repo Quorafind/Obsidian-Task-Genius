@@ -4,19 +4,19 @@
  */
 
 import { EditorView } from "@codemirror/view";
-import { gutter, GutterMarker } from "./patchedGutter";
+import { gutter, GutterMarker } from "../core/extended-gutter";
 import { Extension } from "@codemirror/state";
 import { App, Platform, ExtraButtonComponent } from "obsidian";
-import { Task } from "../types/task";
-import TaskProgressBarPlugin from "../index";
-import { TaskDetailsModal } from "../components/task-edit/TaskDetailsModal";
-import { TaskDetailsPopover } from "../components/task-edit/TaskDetailsPopover";
-import { MarkdownTaskParser } from "../dataflow/core/ConfigurableTaskParser";
+import { Task } from "../../types/task";
+import TaskProgressBarPlugin from "../../index";
+import { TaskDetailsModal } from "../../components/task-edit/TaskDetailsModal";
+import { TaskDetailsPopover } from "../../components/task-edit/TaskDetailsPopover";
+import { MarkdownTaskParser } from "../../dataflow/core/ConfigurableTaskParser";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import "../styles/task-gutter.css";
-import { getConfig } from "../common/task-parser-config";
-import { TaskParserConfig } from "../types/TaskParserConfig";
+import "../../styles/task-gutter.css";
+import { getConfig } from "../../common/task-parser-config";
+import { TaskParserConfig } from "../../types/TaskParserConfig";
 
 const taskRegex = /^(([\s>]*)?(-|\d+\.|\*|\+)\s\[(.)\])\s+(.*)$/m;
 

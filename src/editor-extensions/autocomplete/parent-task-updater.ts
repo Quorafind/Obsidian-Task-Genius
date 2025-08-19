@@ -5,13 +5,13 @@ import {
 	Transaction,
 	TransactionSpec,
 } from "@codemirror/state";
-import { getTabSize } from "../utils";
-import { taskStatusChangeAnnotation } from "./taskStatusSwitcher";
-import TaskProgressBarPlugin from "../index";
+import { getTabSize } from "../../utils";
+import { taskStatusChangeAnnotation } from "../task-operations/status-switcher";
+import TaskProgressBarPlugin from "../../index";
 import {
 	isLastWorkflowStageOrNotWorkflow,
 	workflowChangeAnnotation,
-} from "./workflow";
+} from "../workflow/workflow-handler";
 
 /**
  * Creates an editor extension that automatically updates parent tasks based on child task status changes

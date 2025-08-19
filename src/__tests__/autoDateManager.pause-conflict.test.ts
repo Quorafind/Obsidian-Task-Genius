@@ -4,7 +4,7 @@ import {
 	findTaskStatusChange,
 	determineDateOperations,
 	getStatusType,
-} from "../editor-ext/autoDateManager";
+} from "../editor-extensions/date-time/date-manager";
 import TaskProgressBarPlugin from "../index";
 
 // Mock the plugin

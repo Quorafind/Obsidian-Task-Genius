@@ -11,7 +11,7 @@ import {
 import {
 	createEmbeddableMarkdownEditor,
 	EmbeddableMarkdownEditor,
-} from "../editor-ext/markdownEditor";
+} from "../editor-extensions/core/markdown-editor";
 import TaskProgressBarPlugin from "../index";
 import { saveCapture, processDateTemplates } from "../utils/file/file-operations";
 import { FileSuggest } from "../components/AutoComplete";

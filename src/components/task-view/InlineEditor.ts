@@ -6,7 +6,7 @@ import { clearAllMarks } from "../MarkdownRenderer";
 import {
 	createEmbeddableMarkdownEditor,
 	EmbeddableMarkdownEditor,
-} from "../../editor-ext/markdownEditor";
+} from "../../editor-extensions/core/markdown-editor";
 import "../../styles/inline-editor.css";
 import { getEffectiveProject, isProjectReadonly } from "../../utils/task/task-operations";
 import { t } from "../../translations/helper";

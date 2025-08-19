@@ -1,5 +1,5 @@
 import { Text } from "@codemirror/state";
-import { findParentWorkflow } from "../editor-ext/workflow";
+import { findParentWorkflow } from "../editor-extensions/workflow/workflow-handler";
 
 // Create a mock Text object for testing
 function createMockDoc(lines: string[]): Text {

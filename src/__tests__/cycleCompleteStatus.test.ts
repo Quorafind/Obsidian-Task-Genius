@@ -8,7 +8,7 @@ import {
 	findTaskStatusChanges,
 	taskStatusChangeAnnotation, // Import the actual annotation
 	priorityChangeAnnotation, // Import priority annotation
-} from "../editor-ext/cycleCompleteStatus"; // Adjust the import path as necessary
+} from "../editor-extensions/task-operations/status-cycler"; // Adjust the import path as necessary
 import { buildIndentString } from "../utils";
 
 // --- Mock Setup (Reusing mocks from autoCompleteParent.test.ts) ---

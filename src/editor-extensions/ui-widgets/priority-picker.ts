@@ -10,11 +10,11 @@ import {
 	PluginSpec,
 } from "@codemirror/view";
 import { App, editorLivePreviewField, Keymap, Menu } from "obsidian";
-import TaskProgressBarPlugin from "../index";
+import TaskProgressBarPlugin from "../../index";
 import { Annotation } from "@codemirror/state";
 // @ts-ignore - This import is necessary but TypeScript can't find it
 import { syntaxTree, tokenClassNodeProp } from "@codemirror/language";
-import { t } from "../translations/helper";
+import { t } from "../../translations/helper";
 export const priorityChangeAnnotation = Annotation.define();
 
 // Priority definitions for emoji format (Tasks plugin style)

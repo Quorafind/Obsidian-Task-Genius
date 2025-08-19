@@ -11,8 +11,8 @@ import {
 } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { Transaction } from "@codemirror/state";
-import TaskProgressBarPlugin from "../index";
-import { t } from "../translations/helper";
+import TaskProgressBarPlugin from "../../index";
+import { t } from "../../translations/helper";
 
 interface SuggestOption {
 	id: string;
