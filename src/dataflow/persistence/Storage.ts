@@ -10,6 +10,7 @@ export interface RawRecord {
   version: string;
   schema: number;
   data: Task[];
+  mtime?: number; // File modification time
 }
 
 export interface ProjectRecord {
@@ -62,8 +63,9 @@ export class Storage {
   private schemaVersion: number = 1;
 
   constructor(appId: string, version?: string) {
-    this.currentVersion = version || "unknown";
+    this.currentVersion = version || "1.0.0"; // Use stable version instead of "unknown"
     this.cache = new LocalStorageCache(appId, this.currentVersion);
+    console.log(`[Storage] Initialized with appId: ${appId}, version: ${this.currentVersion}`);
   }
 
   /**
@@ -113,23 +115,31 @@ export class Storage {
   /**
    * Store raw tasks for a file
    */
-  async storeRaw(path: string, tasks: Task[], fileContent?: string): Promise<void> {
+  async storeRaw(path: string, tasks: Task[], fileContent?: string, mtime?: number): Promise<void> {
     const record: RawRecord = {
       hash: this.generateHash(fileContent || tasks),
       time: Date.now(),
       version: this.currentVersion,
       schema: this.schemaVersion,
       data: tasks,
+      mtime: mtime, // Store file modification time
     };
     
     await this.cache.storeFile(Keys.raw(path), record);
   }
 
   /**
-   * Check if raw tasks are valid based on content hash
+   * Check if raw tasks are valid based on content hash and modification time
    */
-  isRawValid(path: string, record: RawRecord, fileContent?: string): boolean {
+  isRawValid(path: string, record: RawRecord, fileContent?: string, mtime?: number): boolean {
     if (!this.isVersionValid(record)) return false;
+    
+    // Check modification time if provided
+    if (mtime !== undefined && record.mtime !== undefined) {
+      if (record.mtime !== mtime) {
+        return false; // File has been modified
+      }
+    }
     
     // If file content provided, check hash
     if (fileContent) {
@@ -218,17 +228,22 @@ export class Storage {
   async loadConsolidated(): Promise<ConsolidatedRecord | null> {
     try {
       const cached = await this.cache.loadConsolidatedCache<ConsolidatedRecord>('taskIndex');
-      if (!cached || !cached.data) return null;
+      if (!cached || !cached.data) {
+        console.log("[Storage] No consolidated cache found");
+        return null;
+      }
       
       // Check version compatibility
       if (!this.isVersionValid(cached.data)) {
+        console.log("[Storage] Consolidated cache version mismatch, clearing...");
         await this.cache.removeFile(Keys.consolidated());
         return null;
       }
       
+      console.log(`[Storage] Loaded consolidated cache with ${cached.data.data ? Object.keys(cached.data.data).length : 0} entries`);
       return cached.data;
     } catch (error) {
-      console.error("Error loading consolidated index:", error);
+      console.error("[Storage] Error loading consolidated index:", error);
       return null;
     }
   }
@@ -244,6 +259,7 @@ export class Storage {
       data: taskCache,
     };
     
+    console.log(`[Storage] Storing consolidated cache with ${taskCache ? Object.keys(taskCache).length : 0} entries`);
     await this.cache.storeConsolidatedCache('taskIndex', record);
   }
 

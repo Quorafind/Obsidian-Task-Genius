@@ -19,18 +19,25 @@ export class Repository {
     private metadataCache: MetadataCache
   ) {
     this.indexer = new TaskIndexer(app, vault, metadataCache);
-    this.storage = new Storage(app.appId || "obsidian-task-genius");
+    // Use a stable version string to avoid cache invalidation
+    this.storage = new Storage(app.appId || "obsidian-task-genius", "1.0.0");
   }
 
   /**
    * Initialize the repository (load persisted data if available)
    */
   async initialize(): Promise<void> {
+    console.log("[Repository] Initializing repository...");
+    
     // Try to load consolidated index from storage
     const consolidated = await this.storage.loadConsolidated();
     if (consolidated && consolidated.data) {
       // Restore the index from persisted data
+      console.log("[Repository] Restoring index from persisted snapshot...");
       await this.indexer.restoreFromSnapshot(consolidated.data);
+      
+      const taskCount = await this.indexer.getTotalTaskCount();
+      console.log(`[Repository] Index restored with ${taskCount} tasks`);
       
       // Emit cache ready event
       emit(this.app, Events.CACHE_READY, {
@@ -38,6 +45,8 @@ export class Repository {
         timestamp: Date.now(),
         seq: Seq.next()
       });
+    } else {
+      console.log("[Repository] No persisted data found, starting with empty index");
     }
   }
 
@@ -78,6 +87,10 @@ export class Repository {
       changedFiles.push(filePath);
       totalChanged += tasks.length;
     }
+
+    // Persist the consolidated index after batch updates
+    await this.persist();
+    console.log(`[Repository] Persisted index after batch update of ${changedFiles.length} files`);
 
     // Emit batch update event
     this.lastSequence = Seq.next();

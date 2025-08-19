@@ -1,5 +1,5 @@
 import { App, TFile, Vault, MetadataCache } from "obsidian";
-import type { Task } from "../types/task";
+import type { Task, TgProject } from "../types/task";
 import type { ProjectConfigManagerOptions } from "../managers/project-config-manager";
 
 import { QueryAPI } from "./api/QueryAPI";
@@ -17,6 +17,7 @@ import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
 import { parseMarkdown } from "./parsers/MarkdownEntry";
 import { parseCanvas } from "./parsers/CanvasEntry";
 import { parseFileMeta } from "./parsers/FileMetaEntry";
+import { ConfigurableTaskParser } from "./core/ConfigurableTaskParser";
 
 /**
  * DataflowOrchestrator - Coordinates all dataflow components
@@ -68,6 +69,32 @@ export class DataflowOrchestrator {
   async initialize(): Promise<void> {
     await this.queryAPI.initialize();
     
+    // Check if we need to perform initial scan
+    const taskCount = (await this.queryAPI.getAllTasks()).length;
+    if (taskCount === 0) {
+      console.log("[DataflowOrchestrator] No cached tasks found, performing initial scan...");
+      
+      // Get all markdown and canvas files
+      const mdFiles = this.vault.getMarkdownFiles();
+      const canvasFiles = this.vault.getFiles().filter(f => f.extension === "canvas");
+      const allFiles = [...mdFiles, ...canvasFiles];
+      
+      console.log(`[DataflowOrchestrator] Found ${allFiles.length} files to process`);
+      
+      // Process in batches for performance
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
+        const batch = allFiles.slice(i, i + BATCH_SIZE);
+        await this.processBatch(batch);
+      }
+      
+      // Persist the initial index
+      await this.repository.persist();
+      
+      const finalTaskCount = (await this.queryAPI.getAllTasks()).length;
+      console.log(`[DataflowOrchestrator] Initial scan complete, indexed ${finalTaskCount} tasks`);
+    }
+    
     // Initialize ObsidianSource to start listening for events
     this.obsidianSource.initialize();
     
@@ -105,24 +132,34 @@ export class DataflowOrchestrator {
     const filePath = file.path;
     
     try {
-      // Step 1: Check cache and parse if needed
+      // Step 1: Get file modification time
+      const fileStat = await this.vault.adapter.stat(filePath);
+      const mtime = fileStat?.mtime;
+      
+      // Step 2: Check cache and parse if needed
       const rawCached = await this.storage.loadRaw(filePath);
       const fileContent = await this.vault.cachedRead(file);
       
       let rawTasks: Task[];
-      if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent)) {
-        // Use cached raw tasks
+      let projectData: Awaited<ReturnType<typeof this.projectResolver.get>>;
+      
+      if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+        // Use cached raw tasks - file hasn't changed
+        console.log(`[DataflowOrchestrator] Using cached tasks for ${filePath} (mtime match)`); 
         rawTasks = rawCached.data;
+        // Still need to get project data for augmentation
+        projectData = await this.projectResolver.get(filePath);
       } else {
         // Parse the file
-        rawTasks = await this.parseFile(file);
+        console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
         
-        // Store raw tasks with file content for hash
-        await this.storage.storeRaw(filePath, rawTasks, fileContent);
+        // Get project data first for parsing
+        projectData = await this.projectResolver.get(filePath);
+        rawTasks = await this.parseFile(file, projectData.tgProject);
+        
+        // Store raw tasks with file content and mtime
+        await this.storage.storeRaw(filePath, rawTasks, fileContent, mtime);
       }
-      
-      // Step 2: Get project data (can be parallelized)
-      const projectData = await this.projectResolver.get(filePath);
       
       // Store project data
       await this.storage.storeProject(filePath, {
@@ -158,18 +195,36 @@ export class DataflowOrchestrator {
   }
 
   /**
-   * Parse a file based on its type
+   * Parse a file based on its type using ConfigurableTaskParser
    */
-  private async parseFile(file: TFile): Promise<Task[]> {
+  private async parseFile(file: TFile, tgProject?: TgProject): Promise<Task[]> {
     const extension = file.extension.toLowerCase();
     
     // Parse based on file type
     let tasks: Task[] = [];
     
     if (extension === "md") {
-      // Parse markdown tasks
+      // Use ConfigurableTaskParser for markdown files
       const content = await this.vault.cachedRead(file);
-      const markdownTasks = await parseMarkdown(file.path, content);
+      const fileCache = this.metadataCache.getFileCache(file);
+      const fileMetadata = fileCache?.frontmatter || {};
+      
+      // Create parser with plugin settings
+      const parser = new ConfigurableTaskParser({
+        parseMetadata: true,
+        parseTags: true,
+        parseComments: true,
+        parseHeadings: true,
+        customDateFormats: this.plugin.settings.customDateFormats,
+        statusMapping: this.plugin.settings.statusMapping || {},
+        emojiMapping: this.plugin.settings.emojiMapping || {},
+        specialTagPrefixes: this.plugin.settings.specialTagPrefixes || {},
+        fileMetadataInheritance: this.plugin.settings.fileMetadataInheritance,
+        projectConfig: this.plugin.settings.projectConfig
+      });
+      
+      // Parse tasks using ConfigurableTaskParser with tgProject
+      const markdownTasks = parser.parseLegacy(content, file.path, fileMetadata, undefined, tgProject);
       tasks.push(...markdownTasks);
       
       // Parse file-level tasks from frontmatter
@@ -190,33 +245,72 @@ export class DataflowOrchestrator {
    */
   async processBatch(files: TFile[]): Promise<void> {
     const updates = new Map<string, Task[]>();
+    let skippedCount = 0;
     
     for (const file of files) {
       try {
         const filePath = file.path;
         
-        // Parse file
-        const rawTasks = await this.parseFile(file);
+        // Get file modification time
+        const fileStat = await this.vault.adapter.stat(file.path);
+        const mtime = fileStat?.mtime;
         
-        // Get project data
-        const projectData = await this.projectResolver.get(filePath);
+        // Check if we can skip this file based on cached data
+        const rawCached = await this.storage.loadRaw(filePath);
+        const fileContent = await this.vault.cachedRead(file);
         
-        // Augment tasks
-        const fileMetadata = this.metadataCache.getFileCache(file);
-        const augmentContext: AugmentContext = {
-          filePath,
-          fileMeta: fileMetadata?.frontmatter || {},
-          projectName: projectData.tgProject?.name,
-          projectMeta: projectData.enhancedMetadata,
-          tasks: rawTasks
-        };
-        const augmentedTasks = await this.augmentor.merge(augmentContext);
-        
-        updates.set(filePath, augmentedTasks);
+        if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+          // Skip this file - it hasn't changed
+          skippedCount++;
+          
+          // Use cached raw tasks for augmentation
+          const rawTasks = rawCached.data;
+          
+          // Get project data
+          const projectData = await this.projectResolver.get(filePath);
+          
+          // Augment tasks
+          const fileMetadata = this.metadataCache.getFileCache(file);
+          const augmentContext: AugmentContext = {
+            filePath,
+            fileMeta: fileMetadata?.frontmatter || {},
+            projectName: projectData.tgProject?.name,
+            projectMeta: projectData.enhancedMetadata,
+            tasks: rawTasks
+          };
+          const augmentedTasks = await this.augmentor.merge(augmentContext);
+          
+          updates.set(filePath, augmentedTasks);
+        } else {
+          // Parse file as it has changed or is new
+          // Get project data first for parsing
+          const projectData = await this.projectResolver.get(filePath);
+          const rawTasks = await this.parseFile(file, projectData.tgProject);
+          
+          // Store raw tasks with mtime
+          await this.storage.storeRaw(filePath, rawTasks, fileContent, mtime);
+          
+          // Augment tasks
+          const fileMetadata = this.metadataCache.getFileCache(file);
+          const augmentContext: AugmentContext = {
+            filePath,
+            fileMeta: fileMetadata?.frontmatter || {},
+            projectName: projectData.tgProject?.name,
+            projectMeta: projectData.enhancedMetadata,
+            tasks: rawTasks
+          };
+          const augmentedTasks = await this.augmentor.merge(augmentContext);
+          
+          updates.set(filePath, augmentedTasks);
+        }
         
       } catch (error) {
         console.error(`Error processing file ${file.path} in batch:`, error);
       }
+    }
+    
+    if (skippedCount > 0) {
+      console.log(`[DataflowOrchestrator] Skipped ${skippedCount} unchanged files`);
     }
     
     // Update repository in batch
