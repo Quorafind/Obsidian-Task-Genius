@@ -387,7 +387,7 @@ export class FileSource {
     const seq = Seq.next();
     this.lastUpdateSeq = seq;
     
-    emit(this.app, "task-genius:file-task-removed" as any, {
+    emit(this.app, Events.FILE_TASK_REMOVED, {
       filePath,
       timestamp: Date.now(),
       seq
@@ -654,7 +654,7 @@ export class FileSource {
     const seq = Seq.next();
     this.lastUpdateSeq = seq;
     
-    emit(this.app, "task-genius:file-task-updated" as any, {
+    emit(this.app, Events.FILE_TASK_UPDATED, {
       action,
       task,
       timestamp: Date.now(),
@@ -811,7 +811,7 @@ export class FileSource {
     };
     
     // Emit cleanup event
-    emit(this.app, "task-genius:file-task-removed" as any, {
+    emit(this.app, Events.FILE_TASK_REMOVED, {
       filePath: null, // Indicates all file tasks removed
       timestamp: Date.now(),
       seq: Seq.next(),

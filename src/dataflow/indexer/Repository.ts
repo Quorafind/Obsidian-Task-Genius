@@ -14,6 +14,15 @@ export class Repository {
   private lastSequence: number = 0;
   private sourceSeq: number = 0; // Track source sequence to differentiate events
   private icsEvents: Task[] = []; // Store ICS events separately
+  private fileTasks = new Map<string, Task>(); // Store file-level tasks
+  
+  // Persistence queue management
+  private persistQueue = new Set<string>();
+  private persistTimer: NodeJS.Timeout | null = null;
+  private lastPersistTime = 0;
+  private readonly PERSIST_DELAY = 1000; // 1 second debounce
+  private readonly MAX_QUEUE_SIZE = 10; // Max 10 files before forcing persist
+  private readonly MAX_PERSIST_INTERVAL = 5000; // Max 5 seconds between persists
 
   constructor(
     private app: App,
@@ -73,6 +82,11 @@ export class Repository {
     
     // Always store augmented tasks to cache
     await this.storage.storeAugmented(filePath, tasks);
+    
+    // Schedule persist operation for single file updates
+    if (hasChanges) {
+      this.schedulePersist(filePath);
+    }
     
     // Only emit update event if there are actual changes
     if (hasChanges) {
@@ -190,20 +204,21 @@ export class Repository {
   }
 
   /**
-   * Get total task count including ICS events
+   * Get total task count including ICS events and file tasks
    */
   async getTotalTaskCount(): Promise<number> {
     const fileTaskCount = await this.indexer.getTotalTaskCount();
-    return fileTaskCount + this.icsEvents.length;
+    return fileTaskCount + this.icsEvents.length + this.fileTasks.size;
   }
 
   /**
-   * Get all tasks from the index (including ICS events)
+   * Get all tasks from the index (including ICS events and file tasks)
    */
   async all(): Promise<Task[]> {
-    const fileTasks = await this.indexer.getAllTasks();
-    // Merge file-based tasks with ICS events
-    return [...fileTasks, ...this.icsEvents];
+    const regularTasks = await this.indexer.getAllTasks();
+    const fileTaskArray = Array.from(this.fileTasks.values());
+    // Merge file-based tasks with ICS events and file tasks
+    return [...regularTasks, ...this.icsEvents, ...fileTaskArray];
   }
 
   /**
@@ -337,6 +352,48 @@ export class Repository {
   }
 
   /**
+   * Schedule a persist operation with debouncing and batching
+   */
+  private schedulePersist(source: string): void {
+    this.persistQueue.add(source);
+    
+    // Check if we should persist immediately
+    const shouldPersistNow = 
+      this.persistQueue.size >= this.MAX_QUEUE_SIZE ||
+      (Date.now() - this.lastPersistTime) > this.MAX_PERSIST_INTERVAL;
+    
+    if (shouldPersistNow) {
+      this.executePersist();
+    } else {
+      // Schedule delayed persist
+      if (this.persistTimer) {
+        clearTimeout(this.persistTimer);
+      }
+      this.persistTimer = setTimeout(() => {
+        this.executePersist();
+      }, this.PERSIST_DELAY);
+    }
+  }
+
+  /**
+   * Execute the pending persist operation
+   */
+  private async executePersist(): Promise<void> {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    
+    if (this.persistQueue.size > 0) {
+      const queueSize = this.persistQueue.size;
+      console.log(`[Repository] Persisting after ${queueSize} changes`);
+      await this.persist();
+      this.persistQueue.clear();
+      this.lastPersistTime = Date.now();
+    }
+  }
+
+  /**
    * Clear all data
    */
   async clear(): Promise<void> {
@@ -380,5 +437,40 @@ export class Repository {
     }
     
     return tasks;
+  }
+
+  /**
+   * Cleanup and ensure all pending data is persisted
+   */
+  async cleanup(): Promise<void> {
+    // Execute any pending persist operations
+    await this.executePersist();
+  }
+
+  /**
+   * Update a file-level task (from FileSource)
+   */
+  async updateFileTask(task: Task): Promise<void> {
+    const filePath = task.filePath;
+    if (!filePath) return;
+    
+    // Store the file task
+    this.fileTasks.set(filePath, task);
+    
+    // Schedule persist for file tasks
+    this.schedulePersist(`file-task:${filePath}`);
+    
+    // Emit update event
+    this.lastSequence = Seq.next();
+    emit(this.app, Events.TASK_CACHE_UPDATED, {
+      changedFiles: [`file-task:${filePath}`],
+      stats: {
+        total: await this.getTotalTaskCount(),
+        changed: 1,
+        fileTasks: this.fileTasks.size
+      },
+      timestamp: Date.now(),
+      seq: this.lastSequence
+    });
   }
 }

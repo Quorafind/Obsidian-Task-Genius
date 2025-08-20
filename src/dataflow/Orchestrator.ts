@@ -11,6 +11,7 @@ import { Events, emit, Seq, on } from "./events/Events";
 import { WorkerOrchestrator } from "./workers/WorkerOrchestrator";
 import { ObsidianSource } from "./sources/ObsidianSource";
 import { IcsSource } from "./sources/IcsSource";
+import { FileSource } from "./sources/FileSource";
 import { TaskWorkerManager } from "./workers/TaskWorkerManager";
 import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
 
@@ -33,6 +34,7 @@ export class DataflowOrchestrator {
   private workerOrchestrator: WorkerOrchestrator;
   private obsidianSource: ObsidianSource;
   private icsSource: IcsSource;
+  private fileSource: FileSource | null = null;
   
   // Event references for cleanup
   private eventRefs: EventRef[] = [];
@@ -72,6 +74,11 @@ export class DataflowOrchestrator {
     
     // Initialize ICS event source
     this.icsSource = new IcsSource(app, () => this.plugin.getIcsManager());
+    
+    // Initialize FileSource (conditionally based on settings)
+    if (this.plugin.settings?.fileSourceConfig?.enabled) {
+      this.fileSource = new FileSource(app, this.plugin.settings.fileSourceConfig);
+    }
   }
 
   /**
@@ -111,6 +118,11 @@ export class DataflowOrchestrator {
     
     // Initialize IcsSource to start listening for calendar events
     this.icsSource.initialize();
+    
+    // Initialize FileSource to start file recognition
+    if (this.fileSource) {
+      this.fileSource.initialize();
+    }
     
     // Subscribe to file update events from ObsidianSource and ICS events
     this.subscribeToEvents();
@@ -205,6 +217,30 @@ export class DataflowOrchestrator {
         }
       })
     );
+    
+    // Listen for FileSource file task updates
+    if (this.fileSource) {
+      this.eventRefs.push(
+        on(this.app, Events.FILE_TASK_UPDATED, async (payload: any) => {
+          const { task } = payload;
+          console.log(`[DataflowOrchestrator] FILE_TASK_UPDATED: ${task?.filePath}`);
+          
+          if (task) {
+            await this.repository.updateFileTask(task);
+          }
+        })
+      );
+      
+      this.eventRefs.push(
+        on(this.app, Events.FILE_TASK_REMOVED, async (payload: any) => {
+          const { filePath } = payload;
+          console.log(`[DataflowOrchestrator] FILE_TASK_REMOVED: ${filePath}`);
+          
+          // Handle file task removal if needed
+          // For now, just log it
+        })
+      );
+    }
   }
 
   /**
@@ -695,10 +731,15 @@ export class DataflowOrchestrator {
     // Cleanup IcsSource
     this.icsSource.destroy();
     
+    // Cleanup FileSource
+    if (this.fileSource) {
+      this.fileSource.destroy();
+    }
+    
     // Cleanup WorkerOrchestrator
     this.workerOrchestrator.destroy();
     
-    // Persist current state
-    await this.repository.persist();
+    // Cleanup repository and persist current state
+    await this.repository.cleanup();
   }
 }

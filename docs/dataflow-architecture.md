@@ -32,7 +32,9 @@ src/dataflow/
 │   └── Resolver.ts   # Project resolution logic
 ├── sources/          # Data sources
 │   ├── ObsidianSource.ts # File system monitoring
-│   └── IcsSource.ts      # ICS calendar events source
+│   ├── IcsSource.ts      # ICS calendar events source
+│   ├── FileSource.ts     # File-based task recognition system
+│   └── FileSourceConfig.ts # FileSource configuration management
 ├── workers/          # Background processing
 │   ├── ProjectData.worker.ts
 │   ├── ProjectDataWorkerManager.ts
@@ -92,6 +94,13 @@ src/dataflow/
 - Syncs with IcsManager
 - Converts calendar events to task format
 
+#### FileSource (New - Pending Integration)
+- Recognizes files as tasks based on configurable strategies
+- Supports metadata, tag, template, and path-based recognition
+- Emits file-task-updated events for file-level tasks
+- Manages file task caching and deduplication
+- Integrates with status mapping for flexible task states
+
 ### QueryAPI
 - Public interface for all data queries
 - Abstracts internal repository complexity
@@ -130,6 +139,8 @@ Events = {
   TASK_CACHE_UPDATED: "task-genius:task-cache-updated",
   FILE_UPDATED: "task-genius:file-updated",
   ICS_EVENTS_UPDATED: "task-genius:ics-events-updated",
+  FILE_TASK_UPDATED: "task-genius:file-task-updated", // FileSource events
+  FILE_TASK_REMOVED: "task-genius:file-task-removed", // FileSource removal
   // ... other events
 }
 ```
@@ -153,6 +164,13 @@ OR
 2. Orchestrator processes → Repository.updateIcsEvents()
 3. Repository → TASK_CACHE_UPDATED event (with sourceSeq)
 4. Views update → UI refreshes
+
+OR (pending integration)
+
+1. File Recognition → FileSource → FILE_TASK_UPDATED event
+2. Orchestrator processes → Repository.updateFileTasks() 
+3. Repository → TASK_CACHE_UPDATED event (with sourceSeq)
+4. Views update → UI refreshes
 ```
 
 ## Data Flow
@@ -161,16 +179,19 @@ OR
 1. **Repository.initialize()**: Load consolidated index and ICS events
 2. **ObsidianSource.initialize()**: Start file monitoring
 3. **IcsSource.initialize()**: Start calendar sync
-4. **Initial Scan**: Process all files if no cache exists
+4. **FileSource.initialize()** (pending): Start file recognition
+5. **Initial Scan**: Process all files if no cache exists
 
 ### Runtime Updates
 1. **File Changes**: ObsidianSource → Orchestrator → Repository → Views
 2. **ICS Updates**: IcsSource → Orchestrator → Repository → Views
-3. **Manual Refresh**: Views → QueryAPI → Repository (cached data)
+3. **File Task Updates** (pending): FileSource → Orchestrator → Repository → Views
+4. **Manual Refresh**: Views → QueryAPI → Repository (cached data)
 
 ### Data Persistence
 - **Continuous**: Augmented tasks stored on each update
 - **ICS Events**: Persisted separately for fast recovery
+- **File Tasks** (pending): Cached with recognition metadata
 - **Consolidated Index**: Saved periodically and on shutdown
 - **Version Control**: Schema versioning for migration support
 
@@ -188,6 +209,7 @@ OR
 - **Default Mode**: Dataflow is now the default
 - **Legacy Support**: TaskManager available for fallback
 - **External Data**: ICS events integrated seamlessly
+- **File Recognition**: FileSource implemented but pending integration
 - **Performance**: Optimized with caching and workers
 - **Stability**: Loop prevention and error handling
 
@@ -275,6 +297,14 @@ app.plugins.plugins['task-genius'].dataflowOrchestrator.rebuild()
 4. Update Orchestrator to subscribe
 5. Extend Repository if needed
 6. Update Storage for persistence
+
+### FileSource Integration (Pending)
+The FileSource component has been implemented but requires integration into the Orchestrator:
+1. Initialize FileSource in Orchestrator constructor
+2. Subscribe to FILE_TASK_UPDATED and FILE_TASK_REMOVED events
+3. Extend Repository to handle file tasks separately from regular tasks
+4. Update QueryAPI to merge file tasks in query results
+5. Consider caching strategy to avoid redundant project resolution
 
 ### Adding New Features
 1. Implement in dataflow architecture first

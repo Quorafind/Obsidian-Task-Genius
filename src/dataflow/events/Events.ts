@@ -14,6 +14,8 @@ export const Events = {
   WRITE_OPERATION_START: "task-genius:write-operation-start",
   WRITE_OPERATION_COMPLETE: "task-genius:write-operation-complete",
   ICS_EVENTS_UPDATED: "task-genius:ics-events-updated",
+  FILE_TASK_UPDATED: "task-genius:file-task-updated",
+  FILE_TASK_REMOVED: "task-genius:file-task-removed",
 } as const;
 
 export type SeqClock = { next(): number };
