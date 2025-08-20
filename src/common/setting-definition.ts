@@ -4,6 +4,7 @@ import { BaseHabitData } from "../types/habit-card";
 import type { RootFilterState } from "../components/task-filter/ViewTaskFilter";
 import { IcsManagerConfig } from "../types/ics";
 import { TimeParsingConfig } from "../services/time-parsing-service";
+import type { FileSourceConfiguration } from "../types/file-source";
 
 // Interface for individual project review settings (If still needed, otherwise remove)
 // Keep it for now, in case it's used elsewhere, but it's not part of TaskProgressBarSettings anymore
@@ -682,7 +683,7 @@ export interface TaskProgressBarSettings {
 	// Enhanced Project Configuration
 	projectConfig: ProjectConfiguration;
 
-	// File Parsing Configuration
+	// File Parsing Configuration (DEPRECATED - use fileSource instead)
 	fileParsingConfig: FileParsingConfiguration;
 
 	// Date Settings
@@ -694,8 +695,9 @@ export interface TaskProgressBarSettings {
 	// Focus all tasks behind heading
 	focusHeading: string;
 
-	// View Settings (Updated Structure)
-	enableView: boolean;
+	// Indexer and View Settings
+	enableIndexer: boolean; // Enable Task Genius indexer for whole vault scanning
+	enableView: boolean; // Enable Task Genius sidebar views
 	enableInlineEditor: boolean; // Enable inline editing in task views
 	enableDynamicMetadataPositioning: boolean; // Enable intelligent metadata positioning based on content length
 	defaultViewMode: "list" | "tree"; // Global default view mode for all views
@@ -760,6 +762,9 @@ export interface TaskProgressBarSettings {
 		skipOnboarding?: boolean;
 		completedAt?: string;
 	};
+
+	// FileSource Settings
+	fileSource: FileSourceConfiguration;
 }
 
 /** Define the default settings */
@@ -990,7 +995,6 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		inheritFromFrontmatterForSubtasks: false,
 	},
 
-	// Enhanced Project Configuration
 	projectConfig: {
 		enableEnhancedProject: false,
 		pathMappings: [],
@@ -1051,8 +1055,9 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	// Focus all tasks behind heading
 	focusHeading: "",
 
-	// View Defaults (Updated Structure)
-	enableView: true,
+	// Indexer and View Defaults
+	enableIndexer: true, // Enable indexer by default
+	enableView: true, // Enable view by default
 	enableInlineEditor: true, // Enable inline editing by default
 	enableDynamicMetadataPositioning: true, // Enable intelligent metadata positioning by default
 	defaultViewMode: "list", // Global default view mode for all views
@@ -1484,6 +1489,102 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		configMode: 'beginner',
 		skipOnboarding: false,
 		completedAt: ""
+	},
+
+	// FileSource Defaults - Import from FileSourceConfig
+	fileSource: {
+		enabled: false,
+		recognitionStrategies: {
+			metadata: {
+				enabled: true,
+				taskFields: ["dueDate", "status", "priority", "assigned"],
+				requireAllFields: false
+			},
+			tags: {
+				enabled: true,
+				taskTags: ["#task", "#actionable", "#todo"],
+				matchMode: "exact"
+			},
+			templates: {
+				enabled: false,
+				templatePaths: ["Templates/Task Template.md"],
+				checkTemplateMetadata: true
+			},
+			paths: {
+				enabled: false,
+				taskPaths: ["Projects/", "Tasks/"],
+				matchMode: "prefix"
+			}
+		},
+		fileTaskProperties: {
+			contentSource: "filename",
+			stripExtension: true,
+			defaultStatus: " ",
+			defaultPriority: undefined
+		},
+		relationships: {
+			enableChildRelationships: true,
+			enableMetadataInheritance: true,
+			inheritanceFields: ["project", "priority", "context"]
+		},
+		performance: {
+			enableWorkerProcessing: true,
+			enableCaching: true,
+			cacheTTL: 300000
+		},
+		advanced: {
+			excludePatterns: ["**/.obsidian/**", "**/node_modules/**"],
+			maxFileSize: 1048576
+		},
+		statusMapping: {
+			enabled: true,
+			metadataToSymbol: {
+				// Completed variants
+				'completed': 'x',
+				'done': 'x',
+				'finished': 'x',
+				'complete': 'x',
+				'checked': 'x',
+				'x': 'x',
+				
+				// In Progress variants
+				'in-progress': '/',
+				'in progress': '/',
+				'inprogress': '/',
+				'doing': '/',
+				'working': '/',
+				'/': '/',
+				
+				// Planned variants
+				'planned': '?',
+				'todo': '?',
+				'pending': '?',
+				'?': '?',
+				
+				// Abandoned variants
+				'cancelled': '-',
+				'canceled': '-',
+				'abandoned': '-',
+				'-': '-',
+				
+				// Not Started variants
+				'not-started': ' ',
+				'not started': ' ',
+				'new': ' ',
+				' ': ' '
+			},
+			symbolToMetadata: {
+				'x': 'completed',
+				'X': 'completed',
+				'/': 'in-progress',
+				'>': 'in-progress',
+				'?': 'planned',
+				'-': 'cancelled',
+				' ': 'not-started'
+			},
+			autoDetect: true,
+			caseSensitive: false
+		}
 	}
 };
 

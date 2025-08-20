@@ -1535,7 +1535,6 @@
 }
 
 .task-genius-add-format-btn:hover {
-	background-color: var(--interactive-accent-hover);
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 	transform: translateY(-1px);
 }

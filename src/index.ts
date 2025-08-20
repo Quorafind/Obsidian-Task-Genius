@@ -267,8 +267,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 		this.rebuildProgressManager = new RebuildProgressManager();
 
 		// Initialize task management systems
-		if (this.settings.enableView) {
-			this.loadViews();
+		if (this.settings.enableIndexer) {
+			// Initialize indexer-dependent features
+			if (this.settings.enableView) {
+				this.loadViews();
+			}
 
 			addIcon("task-genius", getTaskGeniusIcon());
 			addIcon("completed", getStatusIcon("completed"));
@@ -474,7 +477,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				}
 			});
 
-			if (this.settings.enableView) {
+			if (this.settings.enableIndexer) {
 				// Check for version changes and handle rebuild if needed
 				this.initializeTaskManagerWithVersionCheck().catch((error) => {
 					console.error(
@@ -711,7 +714,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			},
 		});
 
-		if (this.settings.enableView) {
+		if (this.settings.enableIndexer) {
 			// Add command to refresh the task index
 			this.addCommand({
 				id: "refresh-task-index",

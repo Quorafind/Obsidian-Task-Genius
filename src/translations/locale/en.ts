@@ -1969,7 +1969,24 @@ const translations = {
   "Quick capture configured": "Quick capture configured",
   "Workflow settings enabled": "Workflow settings enabled",
   "Advanced features enabled": "Advanced features enabled",
-  "File parsing customized": "File parsing customized"
+  "File parsing customized": "File parsing customized",
+
+  // Settings Migration
+  "Settings Migration Required": "Settings Migration Required",
+  "Task Genius has detected duplicate settings that can cause confusion. ": "Task Genius has detected duplicate settings that can cause confusion. ",
+  "We recommend migrating to the new unified FileSource system for better organization.": "We recommend migrating to the new unified FileSource system for better organization.",
+  "Auto-Migrate Settings": "Auto-Migrate Settings",
+  "Settings migrated successfully! ": "Settings migrated successfully! ",
+  " changes applied.": " changes applied.",
+  "Migration failed. Please check console for details.": "Migration failed. Please check console for details.",
+  "Learn More": "Learn More",
+  
+  // FileSource
+  "FileSource": "FileSource",
+  "FileSource Configuration": "FileSource Configuration",
+  "Go to FileSource Settings": "Go to FileSource Settings",
+  "Note: This setting will be deprecated in favor of the unified FileSource system.": "Note: This setting will be deprecated in favor of the unified FileSource system.",
+  "Note: FileSource settings have been moved to a dedicated tab for better organization and to avoid duplication with file metadata parsing.": "Note: FileSource settings have been moved to a dedicated tab for better organization and to avoid duplication with file metadata parsing."
 };
 
 export default translations;

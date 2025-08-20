@@ -13,6 +13,7 @@ import "./styles/setting.css";
 import "./styles/setting-v2.css";
 import "./styles/beta-warning.css";
 import "./styles/settings-search.css";
+import "./styles/settings-migration.css";
 import {
 	renderAboutSettingsTab,
 	renderBetaTestSettingsTab,
@@ -28,6 +29,7 @@ import {
 	renderProjectSettingsTab,
 	renderRewardSettingsTab,
 	renderTimelineSidebarSettingsTab,
+	renderIndexSettingsTab,
 	IcsSettingsComponent,
 } from "./components/settings";
 import { renderFileFilterSettingsTab } from "./components/settings/FileFilterSettingsTab";
@@ -56,8 +58,14 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			category: "core",
 		},
 		{
+			id: "index",
+			name: t("Index & Sources"),
+			icon: "database",
+			category: "core",
+		},
+		{
 			id: "view-settings",
-			name: t("Views & Index"),
+			name: t("Views"),
 			icon: "layout",
 			category: "core",
 		},
@@ -100,7 +108,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			id: "project",
 			name: t("Projects"),
 			icon: "folder-open",
-			category: "management",
+			category: "core",
 		},
 
 		// Workflow & Automation
@@ -209,7 +217,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		if (this.searchComponent) {
 			this.searchComponent.destroy();
 		}
-		this.searchComponent = new SettingsSearchComponent(this, this.containerEl);
+		this.searchComponent = new SettingsSearchComponent(
+			this,
+			this.containerEl,
+		);
 	}
 
 	// Tabs management with categories
@@ -301,7 +312,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 					tab.name +
 						(tab.id === "about"
 							? " v" + this.plugin.manifest.version
-							: "")
+							: ""),
 				);
 
 				// Add click handler
@@ -334,7 +345,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Show active section, hide others
 		const sections = this.containerEl.querySelectorAll(
-			".settings-tab-section"
+			".settings-tab-section",
 		);
 		sections.forEach((section) => {
 			if (section.getAttribute("data-tab-id") === tabId) {
@@ -348,10 +359,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Handle tab container and header visibility based on selected tab
 		const tabsContainer = this.containerEl.querySelector(
-			".settings-tabs-categorized-container"
+			".settings-tabs-categorized-container",
 		);
 		const settingsHeader = this.containerEl.querySelector(
-			".task-genius-settings-header"
+			".task-genius-settings-header",
 		);
 
 		if (tabId === "general") {
@@ -377,7 +388,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			tabId,
 			"Active sections:",
 			this.containerEl.querySelectorAll(".settings-tab-section-active")
-				.length
+				.length,
 		);
 	}
 
@@ -389,7 +400,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	private createTabSection(tabId: string): HTMLElement {
 		// Get the sections container
 		const sectionsContainer = this.containerEl.querySelector(
-			".settings-tab-sections"
+			".settings-tab-sections",
 		);
 		if (!sectionsContainer) return this.containerEl;
 
@@ -497,6 +508,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		const projectSection = this.createTabSection("project");
 		this.displayProjectSettings(projectSection);
 
+		// Index Settings Tab
+		const indexSection = this.createTabSection("index");
+		this.displayIndexSettings(indexSection);
+
 		// View Settings Tab
 		const viewSettingsSection = this.createTabSection("view-settings");
 		this.displayViewSettings(viewSettingsSection);
@@ -585,6 +600,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		renderViewSettingsTab(this, containerEl);
 	}
 
+	private displayIndexSettings(containerEl: HTMLElement): void {
+		renderIndexSettingsTab(this, containerEl);
+	}
+
 	private displayProjectSettings(containerEl: HTMLElement): void {
 		renderProjectSettingsTab(this, containerEl);
 	}
@@ -596,16 +615,14 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			() => {
 				this.currentTab = "general";
 				this.display();
-			}
+			},
 		);
 		icsSettingsComponent.display();
 	}
 
 	private displayMcpSettings(containerEl: HTMLElement): void {
-		renderMcpIntegrationSettingsTab(
-			containerEl,
-			this.plugin,
-			() => this.applySettingsUpdate()
+		renderMcpIntegrationSettingsTab(containerEl, this.plugin, () =>
+			this.applySettingsUpdate(),
 		);
 	}
 
@@ -638,7 +655,9 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// Main enable/disable setting
 		new Setting(timerSection)
 			.setName("Enable Task Timer")
-			.setDesc("Enable task timer functionality for tracking time spent on tasks")
+			.setDesc(
+				"Enable task timer functionality for tracking time spent on tasks",
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(this.plugin.settings.taskTimer?.enabled || false)
@@ -649,10 +668,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 								metadataDetection: {
 									frontmatter: "task-timer",
 									folders: [],
-									tags: []
+									tags: [],
 								},
 								timeFormat: "{h}hrs{m}mins",
-								blockRefPrefix: "timer"
+								blockRefPrefix: "timer",
 							};
 						}
 						this.plugin.settings.taskTimer.enabled = value;
@@ -668,7 +687,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Metadata detection section
 			const metadataSection = timerSection.createDiv();
 			metadataSection.addClass("task-timer-metadata-section");
-			
+
 			const metadataHeading = metadataSection.createEl("h3");
 			metadataHeading.setText("Metadata Detection");
 			metadataHeading.addClass("task-timer-section-heading");
@@ -676,29 +695,45 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Frontmatter field setting
 			new Setting(metadataSection)
 				.setName("Frontmatter field")
-				.setDesc("Field name in frontmatter to check for enabling task timer (e.g., 'task-timer: true')")
+				.setDesc(
+					"Field name in frontmatter to check for enabling task timer (e.g., 'task-timer: true')",
+				)
 				.addText((text) => {
-					text
-						.setValue(this.plugin.settings.taskTimer?.metadataDetection?.frontmatter || "task-timer")
-						.onChange(async (value) => {
-							if (this.plugin.settings.taskTimer?.metadataDetection) {
-								this.plugin.settings.taskTimer.metadataDetection.frontmatter = value;
-								this.applySettingsUpdate();
-							}
-						});
+					text.setValue(
+						this.plugin.settings.taskTimer?.metadataDetection
+							?.frontmatter || "task-timer",
+					).onChange(async (value) => {
+						if (this.plugin.settings.taskTimer?.metadataDetection) {
+							this.plugin.settings.taskTimer.metadataDetection.frontmatter =
+								value;
+							this.applySettingsUpdate();
+						}
+					});
 				});
 
 			// Folder paths setting
 			new Setting(metadataSection)
 				.setName("Folder paths")
-				.setDesc("Comma-separated list of folder paths where task timer should be enabled")
+				.setDesc(
+					"Comma-separated list of folder paths where task timer should be enabled",
+				)
 				.addTextArea((textArea) => {
 					textArea
-						.setValue(this.plugin.settings.taskTimer?.metadataDetection?.folders?.join(", ") || "")
+						.setValue(
+							this.plugin.settings.taskTimer?.metadataDetection?.folders?.join(
+								", ",
+							) || "",
+						)
 						.onChange(async (value) => {
-							if (this.plugin.settings.taskTimer?.metadataDetection) {
-								this.plugin.settings.taskTimer.metadataDetection.folders = 
-									value.split(",").map(f => f.trim()).filter(f => f);
+							if (
+								this.plugin.settings.taskTimer
+									?.metadataDetection
+							) {
+								this.plugin.settings.taskTimer.metadataDetection.folders =
+									value
+										.split(",")
+										.map((f) => f.trim())
+										.filter((f) => f);
 								this.applySettingsUpdate();
 							}
 						});
@@ -711,11 +746,21 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				.setDesc("Comma-separated list of tags that enable task timer")
 				.addTextArea((textArea) => {
 					textArea
-						.setValue(this.plugin.settings.taskTimer?.metadataDetection?.tags?.join(", ") || "")
+						.setValue(
+							this.plugin.settings.taskTimer?.metadataDetection?.tags?.join(
+								", ",
+							) || "",
+						)
 						.onChange(async (value) => {
-							if (this.plugin.settings.taskTimer?.metadataDetection) {
-								this.plugin.settings.taskTimer.metadataDetection.tags = 
-									value.split(",").map(t => t.trim()).filter(t => t);
+							if (
+								this.plugin.settings.taskTimer
+									?.metadataDetection
+							) {
+								this.plugin.settings.taskTimer.metadataDetection.tags =
+									value
+										.split(",")
+										.map((t) => t.trim())
+										.filter((t) => t);
 								this.applySettingsUpdate();
 							}
 						});
@@ -725,7 +770,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Time format section
 			const formatSection = timerSection.createDiv();
 			formatSection.addClass("task-timer-format-section");
-			
+
 			const formatHeading = formatSection.createEl("h3");
 			formatHeading.setText("Time Format");
 			formatHeading.addClass("task-timer-section-heading");
@@ -733,36 +778,39 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Time format template setting
 			new Setting(formatSection)
 				.setName("Time format template")
-				.setDesc("Template for displaying completed task time. Use {h} for hours, {m} for minutes, {s} for seconds")
+				.setDesc(
+					"Template for displaying completed task time. Use {h} for hours, {m} for minutes, {s} for seconds",
+				)
 				.addText((text) => {
-					text
-						.setValue(this.plugin.settings.taskTimer?.timeFormat || "{h}hrs{m}mins")
-						.onChange(async (value) => {
-							if (this.plugin.settings.taskTimer) {
-								this.plugin.settings.taskTimer.timeFormat = value;
-								this.applySettingsUpdate();
-							}
-						});
+					text.setValue(
+						this.plugin.settings.taskTimer?.timeFormat ||
+							"{h}hrs{m}mins",
+					).onChange(async (value) => {
+						if (this.plugin.settings.taskTimer) {
+							this.plugin.settings.taskTimer.timeFormat = value;
+							this.applySettingsUpdate();
+						}
+					});
 				});
 
 			// Format examples
 			const examplesDiv = formatSection.createDiv();
 			examplesDiv.addClass("task-timer-examples");
-			
+
 			const examplesTitle = examplesDiv.createDiv();
 			examplesTitle.addClass("task-timer-examples-title");
 			examplesTitle.setText("Format Examples:");
-			
+
 			const examplesList = examplesDiv.createEl("ul");
-			
+
 			const examples = [
 				{ format: "{h}hrs{m}mins", result: "2hrs30mins" },
 				{ format: "{h}h {m}m {s}s", result: "2h 30m 45s" },
 				{ format: "{h}:{m}:{s}", result: "2:30:45" },
-				{ format: "({m}mins)", result: "(150mins)" }
+				{ format: "({m}mins)", result: "(150mins)" },
 			];
-			
-			examples.forEach(example => {
+
+			examples.forEach((example) => {
 				const listItem = examplesList.createEl("li");
 				const codeEl = listItem.createEl("code");
 				codeEl.setText(example.format);
@@ -772,7 +820,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Block reference section
 			const blockRefSection = timerSection.createDiv();
 			blockRefSection.addClass("task-timer-blockref-section");
-			
+
 			const blockRefHeading = blockRefSection.createEl("h3");
 			blockRefHeading.setText("Block References");
 			blockRefHeading.addClass("task-timer-section-heading");
@@ -780,43 +828,64 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			// Block reference prefix setting
 			new Setting(blockRefSection)
 				.setName("Block reference prefix")
-				.setDesc("Prefix for generated block reference IDs (e.g., 'timer' creates ^timer-123456-7890)")
+				.setDesc(
+					"Prefix for generated block reference IDs (e.g., 'timer' creates ^timer-123456-7890)",
+				)
 				.addText((text) => {
-					text
-						.setValue(this.plugin.settings.taskTimer?.blockRefPrefix || "timer")
-						.onChange(async (value) => {
-							if (this.plugin.settings.taskTimer) {
-								this.plugin.settings.taskTimer.blockRefPrefix = value;
-								this.applySettingsUpdate();
-							}
-						});
+					text.setValue(
+						this.plugin.settings.taskTimer?.blockRefPrefix ||
+							"timer",
+					).onChange(async (value) => {
+						if (this.plugin.settings.taskTimer) {
+							this.plugin.settings.taskTimer.blockRefPrefix =
+								value;
+							this.applySettingsUpdate();
+						}
+					});
 				});
 
 			// Commands section
 			const commandsSection = timerSection.createDiv();
 			commandsSection.addClass("task-timer-commands-section");
-			
+
 			const commandsHeading = commandsSection.createEl("h3");
 			commandsHeading.setText("Data Management");
 			commandsHeading.addClass("task-timer-section-heading");
 
 			const commandsDesc = commandsSection.createDiv();
 			commandsDesc.addClass("task-timer-commands-desc");
-			
+
 			const descParagraph = commandsDesc.createEl("p");
-			descParagraph.setText("Use the command palette to access timer data management:");
-			
+			descParagraph.setText(
+				"Use the command palette to access timer data management:",
+			);
+
 			const commandsList = commandsDesc.createEl("ul");
-			
+
 			const commands = [
-				{ name: "Export task timer data", desc: "Export all timer data to JSON" },
-				{ name: "Import task timer data", desc: "Import timer data from JSON file" },
-				{ name: "Export task timer data (YAML)", desc: "Export to YAML format" },
-				{ name: "Create task timer backup", desc: "Create a backup of active timers" },
-				{ name: "Show task timer statistics", desc: "Display timer usage statistics" }
+				{
+					name: "Export task timer data",
+					desc: "Export all timer data to JSON",
+				},
+				{
+					name: "Import task timer data",
+					desc: "Import timer data from JSON file",
+				},
+				{
+					name: "Export task timer data (YAML)",
+					desc: "Export to YAML format",
+				},
+				{
+					name: "Create task timer backup",
+					desc: "Create a backup of active timers",
+				},
+				{
+					name: "Show task timer statistics",
+					desc: "Display timer usage statistics",
+				},
 			];
-			
-			commands.forEach(command => {
+
+			commands.forEach((command) => {
 				const listItem = commandsList.createEl("li");
 				const strongEl = listItem.createEl("strong");
 				strongEl.setText(command.name);
@@ -839,12 +908,14 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		const warningEl = experimentalSection.createDiv();
 		warningEl.addClass("experimental-warning");
 		warningEl.createEl("strong").setText("⚠️ Warning: ");
-		warningEl.appendText("These features are experimental and may not be stable. Use at your own risk.");
+		warningEl.appendText(
+			"These features are experimental and may not be stable. Use at your own risk.",
+		);
 
 		// Dataflow Settings
 		const dataflowSection = experimentalSection.createDiv();
 		dataflowSection.addClass("experimental-dataflow-section");
-		
+
 		const dataflowHeading = dataflowSection.createEl("h3");
 		dataflowHeading.setText("New Dataflow Architecture");
 		dataflowHeading.addClass("experimental-subsection-heading");
@@ -852,24 +923,34 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// Enable dataflow setting
 		new Setting(dataflowSection)
 			.setName("Enable Dataflow Architecture")
-			.setDesc("Enable the new dataflow-based task processing system. This is an experimental feature that replaces the current TaskManager.")
+			.setDesc(
+				"Enable the new dataflow-based task processing system. This is an experimental feature that replaces the current TaskManager.",
+			)
 			.addToggle((toggle) => {
 				toggle
-					.setValue(this.plugin.settings.experimental?.dataflowEnabled || false)
+					.setValue(
+						this.plugin.settings.experimental?.dataflowEnabled ||
+							false,
+					)
 					.onChange(async (value) => {
 						if (!this.plugin.settings.experimental) {
 							this.plugin.settings.experimental = {
-								dataflowEnabled: false
+								dataflowEnabled: false,
 							};
 						}
-						this.plugin.settings.experimental.dataflowEnabled = value;
+						this.plugin.settings.experimental.dataflowEnabled =
+							value;
 						await this.plugin.saveSettings();
 
 						// Show restart notice
 						if (value) {
 							const restartNotice = dataflowSection.createDiv();
-							restartNotice.addClass("experimental-restart-notice");
-							restartNotice.setText("⚠️ A restart may be required for the dataflow architecture to take full effect.");
+							restartNotice.addClass(
+								"experimental-restart-notice",
+							);
+							restartNotice.setText(
+								"⚠️ A restart may be required for the dataflow architecture to take full effect.",
+							);
 						}
 					});
 			});
@@ -877,6 +958,8 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// Dataflow info
 		const infoEl = dataflowSection.createDiv();
 		infoEl.addClass("experimental-info");
-		infoEl.setText("The new dataflow architecture provides improved performance and scalability for task processing. It includes better caching, worker-based processing, and more efficient data structures.");
+		infoEl.setText(
+			"The new dataflow architecture provides improved performance and scalability for task processing. It includes better caching, worker-based processing, and more efficient data structures.",
+		);
 	}
 }
