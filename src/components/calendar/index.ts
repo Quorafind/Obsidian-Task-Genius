@@ -41,6 +41,7 @@ export interface CalendarEvent extends Task {
 	allDay: boolean; // Indicates if the event is an all-day event
 	// task: Task; // Removed, as properties are now inherited
 	color?: string; // Optional color for the event
+	badge?: boolean; // Indicates if this is a badge event (for ICS events with showType="badge")
 }
 
 export class CalendarComponent extends Component {
@@ -460,11 +461,6 @@ export class CalendarComponent extends Component {
 			const icsTask = isIcsTask ? (task as IcsTask) : null; // Type assertion for IcsTask
 			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
 
-			// Skip ICS tasks with badge showType - they will be handled separately
-			if (isIcsTask && showAsBadge) {
-				return;
-			}
-
 			// Determine the date to use based on priority (dueDate > scheduledDate > startDate)
 			// This logic might need refinement based on exact requirements in PRD 4.2
 			let eventDate: number | null = null;
@@ -538,6 +534,7 @@ export class CalendarComponent extends Component {
 					end: end, // Add end date if calculated
 					allDay: isAllDay,
 					color: eventColor,
+					badge: showAsBadge, // Mark badge events for special handling
 				});
 			}
 			// Else: Task has no relevant date, ignore for now (PRD: maybe "unscheduled" panel)
@@ -677,6 +674,7 @@ export class CalendarComponent extends Component {
 						end: icsTask.icsEvent.dtend,
 						allDay: icsTask.icsEvent.allDay,
 						color: icsTask.icsEvent.source.color,
+						badge: true, // Mark as badge event
 					};
 					badgeEventsForDate.push(calendarEvent);
 				}
