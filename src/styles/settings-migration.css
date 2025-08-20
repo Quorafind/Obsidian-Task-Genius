@@ -1,0 +1,90 @@
+/* Settings Migration Styling */
+
+.setting-item-info.mod-warning {
+	border: 1px solid var(--background-modifier-error);
+	border-radius: 6px;
+	padding: 16px;
+	margin: 12px 0;
+}
+
+.setting-item-info.mod-warning .setting-item-name {
+	font-weight: 600;
+	color: var(--text-error);
+	margin-bottom: 8px;
+}
+
+.setting-item-info.mod-warning .setting-item-description {
+	color: var(--text-muted);
+	margin-bottom: 12px;
+}
+
+.setting-item-info.mod-warning .setting-item-description p {
+	margin: 4px 0;
+}
+
+.setting-item-info.mod-warning .setting-item-control {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.setting-item-info.mod-warning button.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: 4px;
+	padding: 8px 16px;
+	cursor: pointer;
+	font-weight: 500;
+}
+
+.setting-item-info.mod-warning button.mod-cta:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+.setting-item-info.mod-warning button.mod-muted {
+	background-color: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 8px 16px;
+	cursor: pointer;
+}
+
+.setting-item-info.mod-warning button.mod-muted:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* Migration Success Indicator */
+.setting-item-info.mod-success {
+	background-color: var(--color-green-bg);
+	border: 1px solid var(--color-green);
+	border-radius: 6px;
+	padding: 16px;
+	margin: 12px 0;
+}
+
+.setting-item-info.mod-success .setting-item-name {
+	font-weight: 600;
+	color: var(--color-green);
+	margin-bottom: 8px;
+}
+
+/* FileSource Integration Notice */
+.file-source-notice {
+	background-color: var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 12px;
+	margin: 8px 0;
+}
+
+.file-source-notice .notice-title {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.file-source-notice .notice-description {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
