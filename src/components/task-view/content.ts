@@ -53,6 +53,7 @@ export class ContentComponent extends Component {
 	private selectedProjectForView: string | null = null; // Keep track if a specific project is filtered (for project view)
 	private focusFilter: string | null = null; // Keep focus filter if needed
 	private isTreeView: boolean = false;
+	private isRendering: boolean = false; // Guard against concurrent renders
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -176,6 +177,27 @@ export class ContentComponent extends Component {
 	}
 
 	public setTasks(tasks: Task[], notFilteredTasks: Task[]) {
+		// Prevent unnecessary refreshes if data hasn't actually changed
+		if (this.allTasks.length === tasks.length && 
+			this.notFilteredTasks.length === notFilteredTasks.length &&
+			tasks.length > 0) {
+			// Quick check - if same length and not empty, check if first few tasks are identical
+			const sampleSize = Math.min(3, tasks.length);
+			let unchanged = true;
+			for (let i = 0; i < sampleSize; i++) {
+				if (this.allTasks[i]?.id !== tasks[i]?.id || 
+					this.allTasks[i]?.content !== tasks[i]?.content ||
+					this.allTasks[i]?.status !== tasks[i]?.status) {
+					unchanged = false;
+					break;
+				}
+			}
+			if (unchanged) {
+				console.log("ContentComponent: Tasks unchanged, skipping refresh");
+				return;
+			}
+		}
+
 		this.allTasks = tasks;
 		this.notFilteredTasks = notFilteredTasks;
 		this.applyFilters();
@@ -266,31 +288,46 @@ export class ContentComponent extends Component {
 	}
 
 	private refreshTaskList() {
-		this.cleanupComponents(); // Clear previous state and components
-
-		// Reset indices for lazy loading
-		this.nextTaskIndex = 0;
-		this.nextRootTaskIndex = 0;
-		this.rootTasks = [];
-
-		if (this.filteredTasks.length === 0) {
-			this.addEmptyState(t("No tasks found."));
+		// Prevent concurrent renders
+		if (this.isRendering) {
+			console.log("ContentComponent: Already rendering, skipping refresh");
 			return;
 		}
+		
+		this.isRendering = true;
+		
+		try {
+			this.cleanupComponents(); // Clear previous state and components
 
-		// Render based on view mode
-		if (this.isTreeView) {
-			const taskMap = new Map<string, Task>();
-			// Add all non-filtered tasks to the taskMap
-			this.notFilteredTasks.forEach((task) => taskMap.set(task.id, task));
-			this.rootTasks = tasksToTree(this.filteredTasks); // Calculate root tasks
-			this.loadRootTaskBatch(taskMap); // Load the first batch
-		} else {
-			this.loadTaskBatch(); // Load the first batch
+			// Reset indices for lazy loading
+			this.nextTaskIndex = 0;
+			this.nextRootTaskIndex = 0;
+			this.rootTasks = [];
+
+			if (this.filteredTasks.length === 0) {
+				this.addEmptyState(t("No tasks found."));
+				return;
+			}
+
+			// Render based on view mode
+			if (this.isTreeView) {
+				const taskMap = new Map<string, Task>();
+				// Add all non-filtered tasks to the taskMap
+				this.notFilteredTasks.forEach((task) => taskMap.set(task.id, task));
+				this.rootTasks = tasksToTree(this.filteredTasks); // Calculate root tasks
+				this.loadRootTaskBatch(taskMap); // Load the first batch
+			} else {
+				this.loadTaskBatch(); // Load the first batch
+			}
+
+			// Add load marker if necessary
+			this.checkAndAddLoadMarker();
+		} finally {
+			// Reset rendering flag after completion
+			setTimeout(() => {
+				this.isRendering = false;
+			}, 50); // Small delay to prevent immediate re-entry
 		}
-
-		// Add load marker if necessary
-		this.checkAndAddLoadMarker();
 	}
 
 	private loadTaskBatch(): number {

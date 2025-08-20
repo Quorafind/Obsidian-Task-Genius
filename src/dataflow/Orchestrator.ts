@@ -10,6 +10,7 @@ import { Storage } from "./persistence/Storage";
 import { Events, emit, Seq, on } from "./events/Events";
 import { WorkerOrchestrator } from "./workers/WorkerOrchestrator";
 import { ObsidianSource } from "./sources/ObsidianSource";
+import { IcsSource } from "./sources/IcsSource";
 import { TaskWorkerManager } from "./workers/TaskWorkerManager";
 import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
 
@@ -31,6 +32,7 @@ export class DataflowOrchestrator {
   private storage: Storage;
   private workerOrchestrator: WorkerOrchestrator;
   private obsidianSource: ObsidianSource;
+  private icsSource: IcsSource;
   
   // Event references for cleanup
   private eventRefs: EventRef[] = [];
@@ -38,6 +40,9 @@ export class DataflowOrchestrator {
   // Processing queue for throttling
   private processingQueue = new Map<string, NodeJS.Timeout>();
   private readonly DEBOUNCE_DELAY = 300; // ms
+  
+  // Track last processed sequence to avoid infinite loops
+  private lastProcessedSeq: number = 0;
 
   constructor(
     private app: App,
@@ -64,6 +69,9 @@ export class DataflowOrchestrator {
     
     // Initialize Obsidian event source
     this.obsidianSource = new ObsidianSource(app, vault, metadataCache);
+    
+    // Initialize ICS event source
+    this.icsSource = new IcsSource(app, () => this.plugin.getIcsManager());
   }
 
   /**
@@ -101,7 +109,10 @@ export class DataflowOrchestrator {
     // Initialize ObsidianSource to start listening for events
     this.obsidianSource.initialize();
     
-    // Subscribe to file update events from ObsidianSource
+    // Initialize IcsSource to start listening for calendar events
+    this.icsSource.initialize();
+    
+    // Subscribe to file update events from ObsidianSource and ICS events
     this.subscribeToEvents();
     
     // Emit initial ready event
@@ -113,9 +124,22 @@ export class DataflowOrchestrator {
   }
 
   /**
-   * Subscribe to events from ObsidianSource and WriteAPI
+   * Subscribe to events from ObsidianSource, IcsSource and WriteAPI
    */
   private subscribeToEvents(): void {
+    // Listen for ICS events updates
+    this.eventRefs.push(
+      on(this.app, Events.ICS_EVENTS_UPDATED, async (payload: any) => {
+        const { events, seq } = payload;
+        console.log(`[DataflowOrchestrator] ICS_EVENTS_UPDATED: ${events?.length || 0} events`);
+        
+        // Update repository with ICS events
+        if (events) {
+          await this.repository.updateIcsEvents(events, seq);
+        }
+      })
+    );
+    
     // Listen for file updates from ObsidianSource
     this.eventRefs.push(
       on(this.app, Events.FILE_UPDATED, async (payload: any) => {
@@ -135,10 +159,24 @@ export class DataflowOrchestrator {
       })
     );
     
-    // Listen for batch updates
+    // Listen for batch updates from Repository only
+    // ObsidianSource uses FILE_UPDATED events instead
     this.eventRefs.push(
       on(this.app, Events.TASK_CACHE_UPDATED, async (payload: any) => {
-        const { changedFiles } = payload;
+        const { changedFiles, sourceSeq } = payload;
+        
+        // Skip if this is our own event (avoid infinite loop)
+        // Check sourceSeq to identify origin from our own processing
+        if (sourceSeq && sourceSeq === this.lastProcessedSeq) {
+          return;
+        }
+        
+        // Skip if no sourceSeq (likely from ObsidianSource - deprecated path)
+        if (!sourceSeq) {
+          console.log(`[DataflowOrchestrator] Ignoring TASK_CACHE_UPDATED without sourceSeq`);
+          return;
+        }
+        
         if (changedFiles && Array.isArray(changedFiles)) {
           console.log(`[DataflowOrchestrator] Batch update for ${changedFiles.length} files`);
           
@@ -205,6 +243,7 @@ export class DataflowOrchestrator {
       
       let rawTasks: Task[];
       let projectData: Awaited<ReturnType<typeof this.projectResolver.get>>;
+      let needsParsing = false;
       
       if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
         // Use cached raw tasks - file hasn't changed
@@ -215,6 +254,7 @@ export class DataflowOrchestrator {
       } else {
         // Parse the file
         console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
+        needsParsing = true;
         
         // Get project data first for parsing
         projectData = await this.projectResolver.get(filePath);
@@ -245,7 +285,11 @@ export class DataflowOrchestrator {
       const augmentedTasks = await this.augmentor.merge(augmentContext);
       
       // Step 4: Update repository (index + storage + events)
-      await this.repository.updateFile(filePath, augmentedTasks);
+      // Generate a unique sequence for this operation
+      this.lastProcessedSeq = Seq.next();
+      
+      // Pass our sequence to repository to track event origin
+      await this.repository.updateFile(filePath, augmentedTasks, this.lastProcessedSeq);
       
     } catch (error) {
       console.error(`Error processing file ${filePath}:`, error);
@@ -376,6 +420,7 @@ export class DataflowOrchestrator {
             };
             const augmentedTasks = await this.augmentor.merge(augmentContext);
             
+            // Always update for newly parsed files
             updates.set(filePath, augmentedTasks);
           } catch (error) {
             console.error(`Error processing parsed result for ${filePath}:`, error);
@@ -400,7 +445,11 @@ export class DataflowOrchestrator {
     
     // Update repository in batch
     if (updates.size > 0) {
-      await this.repository.updateBatch(updates);
+      // Generate a unique sequence for this batch operation
+      this.lastProcessedSeq = Seq.next();
+      
+      // Pass our sequence to repository to track event origin
+      await this.repository.updateBatch(updates, this.lastProcessedSeq);
     }
   }
   
@@ -427,9 +476,6 @@ export class DataflowOrchestrator {
         const fileContent = await this.vault.cachedRead(file);
         
         if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
-          // Skip this file - it hasn't changed
-          skippedCount++;
-          
           // Use cached raw tasks for augmentation
           const rawTasks = rawCached.data;
           
@@ -450,7 +496,9 @@ export class DataflowOrchestrator {
           };
           const augmentedTasks = await this.augmentor.merge(augmentContext);
           
+          // Always add to updates - Repository will handle change detection
           updates.set(filePath, augmentedTasks);
+          skippedCount++; // Count as skipped since we used cache
         } else {
           // Parse file as it has changed or is new
           // Get project data first for parsing
@@ -643,6 +691,9 @@ export class DataflowOrchestrator {
     
     // Cleanup ObsidianSource
     this.obsidianSource.destroy();
+    
+    // Cleanup IcsSource
+    this.icsSource.destroy();
     
     // Cleanup WorkerOrchestrator
     this.workerOrchestrator.destroy();

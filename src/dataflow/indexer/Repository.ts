@@ -12,6 +12,8 @@ export class Repository {
   private indexer: TaskIndexer;
   private storage: Storage;
   private lastSequence: number = 0;
+  private sourceSeq: number = 0; // Track source sequence to differentiate events
+  private icsEvents: Task[] = []; // Store ICS events separately
 
   constructor(
     private app: App,
@@ -48,61 +50,94 @@ export class Repository {
     } else {
       console.log("[Repository] No persisted data found, starting with empty index");
     }
+    
+    // Load ICS events from storage
+    this.icsEvents = await this.storage.loadIcsEvents();
+    console.log(`[Repository] Loaded ${this.icsEvents.length} ICS events from storage`);
   }
 
   /**
    * Update tasks for a specific file
+   * @param filePath - Path of the file
+   * @param tasks - Tasks to update
+   * @param sourceSeq - Optional source sequence to track event origin
    */
-  async updateFile(filePath: string, tasks: Task[]): Promise<void> {
-    // Update the in-memory index
+  async updateFile(filePath: string, tasks: Task[], sourceSeq?: number): Promise<void> {
+    // Check if tasks have actually changed
+    const existingAugmented = await this.storage.loadAugmented(filePath);
+    const hasChanges = !existingAugmented || 
+      JSON.stringify(tasks) !== JSON.stringify(existingAugmented.data);
+    
+    // Always update the in-memory index for consistency
     await this.indexer.updateIndexWithTasks(filePath, tasks);
     
-    // Store augmented tasks to cache
+    // Always store augmented tasks to cache
     await this.storage.storeAugmented(filePath, tasks);
     
-    // Emit update event
-    this.lastSequence = Seq.next();
-    emit(this.app, Events.TASK_CACHE_UPDATED, {
-      changedFiles: [filePath],
-      stats: {
-        total: await this.indexer.getTotalTaskCount(),
-        changed: tasks.length
-      },
-      timestamp: Date.now(),
-      seq: this.lastSequence
-    });
+    // Only emit update event if there are actual changes
+    if (hasChanges) {
+      this.lastSequence = Seq.next();
+      emit(this.app, Events.TASK_CACHE_UPDATED, {
+        changedFiles: [filePath],
+        stats: {
+          total: await this.indexer.getTotalTaskCount(),
+          changed: tasks.length
+        },
+        timestamp: Date.now(),
+        seq: this.lastSequence,
+        sourceSeq: sourceSeq || 0 // Include source sequence for loop detection
+      });
+    }
   }
 
   /**
    * Update tasks for multiple files in batch
+   * @param updates - Map of file paths to tasks
+   * @param sourceSeq - Optional source sequence to track event origin
    */
-  async updateBatch(updates: Map<string, Task[]>): Promise<void> {
+  async updateBatch(updates: Map<string, Task[]>, sourceSeq?: number): Promise<void> {
     const changedFiles: string[] = [];
     let totalChanged = 0;
+    let hasActualChanges = false;
 
-    // Process each file update
+    // Process each file update and check for actual changes
     for (const [filePath, tasks] of updates) {
+      // Check if tasks have actually changed
+      const existingAugmented = await this.storage.loadAugmented(filePath);
+      const hasChanges = !existingAugmented || 
+        JSON.stringify(tasks) !== JSON.stringify(existingAugmented.data);
+      
       await this.indexer.updateIndexWithTasks(filePath, tasks);
       await this.storage.storeAugmented(filePath, tasks);
-      changedFiles.push(filePath);
-      totalChanged += tasks.length;
+      
+      if (hasChanges) {
+        changedFiles.push(filePath);
+        totalChanged += tasks.length;
+        hasActualChanges = true;
+      }
     }
 
-    // Persist the consolidated index after batch updates
-    await this.persist();
-    console.log(`[Repository] Persisted index after batch update of ${changedFiles.length} files`);
+    // Only emit events and persist if there are actual changes
+    if (hasActualChanges) {
+      // Persist the consolidated index after batch updates
+      await this.persist();
+      console.log(`[Repository] Persisted index after batch update of ${changedFiles.length} files with changes`);
 
-    // Emit batch update event
-    this.lastSequence = Seq.next();
-    emit(this.app, Events.TASK_CACHE_UPDATED, {
-      changedFiles,
-      stats: {
-        total: await this.indexer.getTotalTaskCount(),
-        changed: totalChanged
-      },
-      timestamp: Date.now(),
-      seq: this.lastSequence
-    });
+      // Emit batch update event only for files that actually changed
+      this.lastSequence = Seq.next();
+      emit(this.app, Events.TASK_CACHE_UPDATED, {
+        changedFiles,
+        stats: {
+          total: await this.indexer.getTotalTaskCount(),
+          changed: totalChanged
+        },
+        timestamp: Date.now(),
+        seq: this.lastSequence,
+        sourceSeq: sourceSeq || 0 // Include source sequence for loop detection
+      });
+    } else {
+      console.log(`[Repository] Batch update completed with no actual changes - skipping event emission`);
+    }
   }
 
   /**
@@ -128,10 +163,47 @@ export class Repository {
   }
 
   /**
-   * Get all tasks from the index
+   * Update ICS events in the repository
+   */
+  async updateIcsEvents(events: Task[], sourceSeq?: number): Promise<void> {
+    console.log(`[Repository] Updating ${events.length} ICS events`);
+    
+    // Store the new ICS events
+    this.icsEvents = events;
+    
+    // Store ICS events to persistence
+    await this.storage.storeIcsEvents(events);
+    
+    // Emit update event to notify views
+    this.lastSequence = Seq.next();
+    emit(this.app, Events.TASK_CACHE_UPDATED, {
+      changedFiles: ['ics:events'], // Special marker for ICS events
+      stats: {
+        total: await this.getTotalTaskCount(),
+        changed: events.length,
+        icsEvents: events.length
+      },
+      timestamp: Date.now(),
+      seq: this.lastSequence,
+      sourceSeq: sourceSeq || 0
+    });
+  }
+
+  /**
+   * Get total task count including ICS events
+   */
+  async getTotalTaskCount(): Promise<number> {
+    const fileTaskCount = await this.indexer.getTotalTaskCount();
+    return fileTaskCount + this.icsEvents.length;
+  }
+
+  /**
+   * Get all tasks from the index (including ICS events)
    */
   async all(): Promise<Task[]> {
-    return this.indexer.getAllTasks();
+    const fileTasks = await this.indexer.getAllTasks();
+    // Merge file-based tasks with ICS events
+    return [...fileTasks, ...this.icsEvents];
   }
 
   /**
@@ -139,7 +211,14 @@ export class Repository {
    */
   async byProject(project: string): Promise<Task[]> {
     const taskIds = await this.indexer.getTaskIdsByProject(project);
-    return this.getTasksByIds(taskIds);
+    const fileTasks = await this.getTasksByIds(taskIds);
+    
+    // Also filter ICS events by project if they have one
+    const icsProjectTasks = this.icsEvents.filter(task => 
+      task.metadata?.project === project
+    );
+    
+    return [...fileTasks, ...icsProjectTasks];
   }
 
   /**

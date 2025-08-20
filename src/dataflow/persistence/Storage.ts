@@ -47,6 +47,7 @@ export const Keys = {
   project: (path: string) => `project.data:${path}`,
   augmented: (path: string) => `tasks.augmented:${path}`,
   consolidated: () => `consolidated:taskIndex`,
+  icsEvents: () => `ics:events`,
   meta: {
     version: () => `meta:version`,
     schemaVersion: () => `meta:schemaVersion`,
@@ -220,6 +221,44 @@ export class Storage {
     };
     
     await this.cache.storeFile(Keys.augmented(path), record);
+  }
+
+  /**
+   * Store ICS events
+   */
+  async storeIcsEvents(events: Task[]): Promise<void> {
+    const record = {
+      time: Date.now(),
+      version: this.currentVersion,
+      schema: this.schemaVersion,
+      data: events,
+    };
+    
+    await this.cache.storeFile(Keys.icsEvents(), record);
+    console.log(`[Storage] Stored ${events.length} ICS events`);
+  }
+
+  /**
+   * Load ICS events
+   */
+  async loadIcsEvents(): Promise<Task[]> {
+    try {
+      const cached = await this.cache.loadFile<any>(Keys.icsEvents());
+      if (!cached || !cached.data) {
+        return [];
+      }
+      
+      // Check version compatibility
+      if (!this.isVersionValid(cached.data)) {
+        await this.cache.removeFile(Keys.icsEvents());
+        return [];
+      }
+      
+      return cached.data.data || [];
+    } catch (error) {
+      console.error("[Storage] Error loading ICS events:", error);
+      return [];
+    }
   }
 
   /**

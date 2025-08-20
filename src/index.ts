@@ -719,7 +719,36 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: async () => {
 					try {
 						new Notice(t("Refreshing task index..."));
-						await this.taskManager.initialize();
+						
+						// Check if dataflow is enabled
+						if (this.settings?.experimental?.dataflowEnabled && this.dataflowOrchestrator) {
+							// Use dataflow orchestrator for refresh
+							console.log("[Command] Refreshing task index via dataflow");
+							
+							// Re-scan all files to refresh the index
+							const files = this.app.vault.getMarkdownFiles();
+							const canvasFiles = this.app.vault.getFiles().filter(f => f.extension === "canvas");
+							const allFiles = [...files, ...canvasFiles];
+							
+							// Process files in batches
+							const batchSize = 50;
+							for (let i = 0; i < allFiles.length; i += batchSize) {
+								const batch = allFiles.slice(i, i + batchSize);
+								await Promise.all(batch.map(file => 
+									(this.dataflowOrchestrator as any).processFileImmediate(file)
+								));
+							}
+							
+							// Refresh ICS events if available
+							const icsSource = (this.dataflowOrchestrator as any).icsSource;
+							if (icsSource) {
+								await icsSource.refresh();
+							}
+						} else {
+							// Use legacy task manager
+							await this.taskManager.initialize();
+						}
+						
 						new Notice(t("Task index refreshed"));
 					} catch (error) {
 						console.error("Failed to refresh task index:", error);
@@ -734,7 +763,26 @@ export default class TaskProgressBarPlugin extends Plugin {
 				name: t("Force reindex all tasks"),
 				callback: async () => {
 					try {
-						await this.taskManager.forceReindex();
+						// Check if dataflow is enabled
+						if (this.settings?.experimental?.dataflowEnabled && this.dataflowOrchestrator) {
+							// Use dataflow orchestrator for force reindex
+							console.log("[Command] Force reindexing via dataflow");
+							new Notice(t("Clearing task cache and rebuilding index..."));
+							
+							// Clear all caches and rebuild from scratch
+							await this.dataflowOrchestrator.rebuild();
+							
+							// Refresh ICS events after rebuild
+							const icsSource = (this.dataflowOrchestrator as any).icsSource;
+							if (icsSource) {
+								await icsSource.refresh();
+							}
+							
+							new Notice(t("Task index completely rebuilt"));
+						} else {
+							// Use legacy task manager
+							await this.taskManager.forceReindex();
+						}
 					} catch (error) {
 						console.error("Failed to force reindex tasks:", error);
 						new Notice(t("Failed to force reindex tasks"));

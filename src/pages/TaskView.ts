@@ -142,6 +142,14 @@ export class TaskView extends ItemView {
 			cls: "task-genius-container",
 		});
 
+		// Add debounced view update to prevent rapid successive refreshes
+		const debouncedViewUpdate = debounce(async () => {
+			const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
+			if (!skipViewUpdate) {
+				await this.loadTasks(false, false);
+			}
+		}, 150); // 150ms debounce delay
+
 		// 1. 首先注册事件监听器，确保不会错过任何更新
 		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
 			// Dataflow: 订阅统一事件
@@ -153,23 +161,14 @@ export class TaskView extends ItemView {
 				})
 			);
 			this.registerEvent(
-				on(this.app, Events.TASK_CACHE_UPDATED, async () => {
-					// 任务缓存更新，增量刷新
-					const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
-					await this.loadTasks(false, skipViewUpdate);
-				})
+				on(this.app, Events.TASK_CACHE_UPDATED, debouncedViewUpdate)
 			);
 		} else {
 			// Legacy: 兼容旧事件
 			this.registerEvent(
 				this.app.workspace.on(
 					"task-genius:task-cache-updated",
-					async () => {
-						// Only skip view update if currently editing content in details panel
-						// Always update view for status changes from external sources (e.g., editor)
-						const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
-						await this.loadTasks(false, skipViewUpdate);
-					}
+					debouncedViewUpdate
 				)
 			);
 		}
@@ -243,13 +242,17 @@ export class TaskView extends ItemView {
 		this.sidebarComponent.setViewMode(this.currentViewId);
 
 		// 5. 快速加载缓存数据以立即显示 UI
-		await this.loadTasksFast(true); // 跳过视图更新，避免双重渲染
+		await this.loadTasksFast(false); // Don't skip view update - we need the initial render
 
-		// 6. 使用快速加载的数据显示视图
-		this.switchView(this.currentViewId);
-
-		// 7. 后台同步最新数据（非阻塞）
-		this.loadTasksWithSyncInBackground();
+		// 6. Only switch view if we have tasks to display
+		if (this.tasks.length > 0) {
+			this.switchView(this.currentViewId);
+		} else {
+			// If no tasks loaded yet, wait for background sync before rendering
+			console.log("No cached tasks found, waiting for background sync...");
+			await this.loadTasksWithSyncInBackground();
+			this.switchView(this.currentViewId);
+		}
 
 		console.log("currentFilterState", this.currentFilterState);
 		// 7. 在组件初始化完成后应用筛选器状态
@@ -1268,27 +1271,46 @@ export class TaskView extends ItemView {
 	/**
 	 * Load tasks with sync in background - non-blocking
 	 */
-	private loadTasksWithSyncInBackground() {
+	private async loadTasksWithSyncInBackground() {
+		// When dataflow is enabled, ICS events are handled through dataflow architecture
+		// Just do a single sync load and return
+		if (isDataflowEnabled(this.plugin)) {
+			try {
+				const queryAPI = this.plugin.dataflowOrchestrator?.getQueryAPI();
+				if (!queryAPI) {
+					console.warn("[TaskView] QueryAPI not available");
+					return;
+				}
+				const tasks = await queryAPI.getAllTasks();
+				if (tasks.length !== this.tasks.length || tasks.length === 0) {
+					this.tasks = tasks;
+					console.log(`TaskView updated with ${this.tasks.length} tasks (dataflow sync)`);
+					return; // Don't trigger view update here as it will be handled by events
+				}
+			} catch (error) {
+				console.warn("Dataflow background sync failed:", error);
+			}
+			return;
+		}
+		
 		const taskManager = this.plugin.taskManager;
 		if (!taskManager) return;
 
-		// Start background sync without blocking UI
-		taskManager
-			.getAllTasksWithSync()
-			.then((tasks) => {
-				// Only update if we got different data
-				if (tasks.length !== this.tasks.length) {
-					this.tasks = tasks;
-					console.log(
-						`TaskView updated with ${this.tasks.length} tasks (background sync)`
-					);
-					// Update the view with new data
-					this.triggerViewUpdate();
-				}
-			})
-			.catch((error) => {
-				console.warn("Background task sync failed:", error);
-			});
+		// Start background sync without blocking UI (for legacy mode)
+		try {
+			const tasks = await taskManager.getAllTasksWithSync();
+			// Only update if we got different data
+			if (tasks.length !== this.tasks.length) {
+				this.tasks = tasks;
+				console.log(
+					`TaskView updated with ${this.tasks.length} tasks (background sync)`
+				);
+				// Update the view with new data
+				this.triggerViewUpdate();
+			}
+		} catch (error) {
+			console.warn("Background task sync failed:", error);
+		}
 	}
 
 	public async triggerViewUpdate() {
