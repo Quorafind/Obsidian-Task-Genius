@@ -1,31 +1,54 @@
-import { App, Modal, Setting } from "obsidian";
+import { Setting } from "obsidian";
 import { TaskProgressBarSettingTab } from "../../setting";
 import { t } from "../../translations/helper";
-import TaskProgressBarPlugin from "../../index";
 
 export function renderProjectSettingsTab(
 	settingTab: TaskProgressBarSettingTab,
-	containerEl: HTMLElement
+	containerEl: HTMLElement,
 ) {
 	new Setting(containerEl)
-		.setName(t("Enhanced Project Configuration"))
+		.setName(t("Project Management"))
 		.setDesc(
-			t("Configure advanced project detection and management features")
+			t("Configure project display, organization and metadata mappings"),
 		)
 		.setHeading();
 
+	// Initialize projectConfig if it doesn't exist
+	if (!settingTab.plugin.settings.projectConfig) {
+		settingTab.plugin.settings.projectConfig = {
+			enableEnhancedProject: false,
+			pathMappings: [],
+			metadataConfig: {
+				metadataKey: "project",
+				enabled: false,
+			},
+			configFile: {
+				fileName: "project.md",
+				searchRecursively: true,
+				enabled: false,
+			},
+			metadataMappings: [],
+			defaultProjectNaming: {
+				strategy: "filename",
+				stripExtension: true,
+				enabled: false,
+			},
+		};
+	}
+
+	// Main enhanced project features toggle
 	new Setting(containerEl)
-		.setName(t("Enable enhanced project features"))
+		.setName(t("Enable project features"))
 		.setDesc(
 			t(
-				"Enable path-based, metadata-based, and config file-based project detection"
-			)
+				"Enable path-based, metadata-based, and config file-based project detection",
+			),
 		)
 		.addToggle((toggle) => {
 			toggle
 				.setValue(
 					settingTab.plugin.settings.projectConfig
-						?.enableEnhancedProject || false
+						?.enableEnhancedProject || false,
 				)
 				.onChange(async (value) => {
 					if (!settingTab.plugin.settings.projectConfig) {
@@ -34,8 +57,6 @@ export function renderProjectSettingsTab(
 							pathMappings: [],
 							metadataConfig: {
 								metadataKey: "project",
-								
-								
 								enabled: false,
 							},
 							configFile: {
@@ -53,7 +74,7 @@ export function renderProjectSettingsTab(
 					}
 					settingTab.plugin.settings.projectConfig.enableEnhancedProject =
 						value;
-					settingTab.applySettingsUpdate();
+					await settingTab.plugin.saveSettings();
 					setTimeout(() => {
 						settingTab.display();
 					}, 200);
@@ -61,6 +82,7 @@ export function renderProjectSettingsTab(
 		});
 
 	if (settingTab.plugin.settings.projectConfig?.enableEnhancedProject) {
+		// Always show project management settings
 		new Setting(containerEl)
 			.setName(t("Path-based Project Mappings"))
 			.setDesc(t("Configure project names based on file paths"))
@@ -80,8 +102,7 @@ export function renderProjectSettingsTab(
 					pathMappings: [],
 					metadataConfig: {
 						metadataKey: "project",
-						
-						
+
 						enabled: false,
 					},
 					configFile: {
@@ -101,7 +122,7 @@ export function renderProjectSettingsTab(
 			if (
 				!settingTab.plugin.settings.projectConfig.pathMappings ||
 				!Array.isArray(
-					settingTab.plugin.settings.projectConfig.pathMappings
+					settingTab.plugin.settings.projectConfig.pathMappings,
 				)
 			) {
 				settingTab.plugin.settings.projectConfig.pathMappings = [];
@@ -126,7 +147,7 @@ export function renderProjectSettingsTab(
 					.setName(`${t("Mapping")} ${index + 1}`)
 					.addText((text) => {
 						text.setPlaceholder(
-							t("Path pattern (e.g., Projects/Work)")
+							t("Path pattern (e.g., Projects/Work)"),
 						)
 							.setValue(mapping.pathPattern)
 							.onChange(async (value) => {
@@ -171,7 +192,7 @@ export function renderProjectSettingsTab(
 								if (settingTab.plugin.settings.projectConfig) {
 									settingTab.plugin.settings.projectConfig.pathMappings.splice(
 										index,
-										1
+										1,
 									);
 									await settingTab.plugin.saveSettings();
 									refreshPathMappings();
@@ -193,8 +214,7 @@ export function renderProjectSettingsTab(
 								pathMappings: [],
 								metadataConfig: {
 									metadataKey: "project",
-									
-									
+
 									enabled: false,
 								},
 								configFile: {
@@ -215,7 +235,7 @@ export function renderProjectSettingsTab(
 						if (
 							!Array.isArray(
 								settingTab.plugin.settings.projectConfig
-									.pathMappings
+									.pathMappings,
 							)
 						) {
 							settingTab.plugin.settings.projectConfig.pathMappings =
@@ -228,7 +248,7 @@ export function renderProjectSettingsTab(
 								pathPattern: "",
 								projectName: "",
 								enabled: true,
-							}
+							},
 						);
 
 						await settingTab.plugin.saveSettings();
@@ -241,9 +261,9 @@ export function renderProjectSettingsTab(
 
 		refreshPathMappings();
 
-		// Metadata-based project configuration
+		// Metadata-based project detection settings
 		new Setting(containerEl)
-			.setName(t("Metadata-based Project Configuration"))
+			.setName(t("Metadata-based Project Detection"))
 			.setDesc(t("Configure project detection from file frontmatter"))
 			.setHeading();
 
@@ -254,7 +274,7 @@ export function renderProjectSettingsTab(
 				toggle
 					.setValue(
 						settingTab.plugin.settings.projectConfig?.metadataConfig
-							?.enabled || false
+							?.enabled || false,
 					)
 					.onChange(async (value) => {
 						if (
@@ -275,7 +295,7 @@ export function renderProjectSettingsTab(
 				text.setPlaceholder("project")
 					.setValue(
 						settingTab.plugin.settings.projectConfig?.metadataConfig
-							?.metadataKey || "project"
+							?.metadataKey || "project",
 					)
 					.onChange(async (value) => {
 						if (
@@ -284,6 +304,56 @@ export function renderProjectSettingsTab(
 						) {
 							settingTab.plugin.settings.projectConfig.metadataConfig.metadataKey =
 								value || "project";
+							await settingTab.plugin.saveSettings();
+						}
+					});
+			});
+
+		// Config file-based project detection settings
+		new Setting(containerEl)
+			.setName(t("Config File-based Project Detection"))
+			.setDesc(
+				t(
+					"Configure project detection from project configuration files",
+				),
+			)
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName(t("Enable config file project detection"))
+			.setDesc(t("Detect project from project configuration files"))
+			.addToggle((toggle) => {
+				toggle
+					.setValue(
+						settingTab.plugin.settings.projectConfig?.configFile
+							?.enabled || false,
+					)
+					.onChange(async (value) => {
+						if (
+							settingTab.plugin.settings.projectConfig?.configFile
+						) {
+							settingTab.plugin.settings.projectConfig.configFile.enabled =
+								value;
+							await settingTab.plugin.saveSettings();
+						}
+					});
+			});
+
+		new Setting(containerEl)
+			.setName(t("Config file name"))
+			.setDesc(t("Name of the project configuration file"))
+			.addText((text) => {
+				text.setPlaceholder("project.md")
+					.setValue(
+						settingTab.plugin.settings.projectConfig?.configFile
+							?.fileName || "project.md",
+					)
+					.onChange(async (value) => {
+						if (
+							settingTab.plugin.settings.projectConfig?.configFile
+						) {
+							settingTab.plugin.settings.projectConfig.configFile.fileName =
+								value || "project.md";
 							await settingTab.plugin.saveSettings();
 						}
 					});
@@ -303,13 +373,19 @@ export function renderProjectSettingsTab(
 			detectionMethodsContainer.empty();
 
 			// Ensure detectionMethods exists
-			if (!settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods) {
+			if (
+				!settingTab.plugin.settings.projectConfig?.metadataConfig
+					?.detectionMethods
+			) {
 				if (settingTab.plugin.settings.projectConfig?.metadataConfig) {
-					settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods = [];
+					settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods =
+						[];
 				}
 			}
 
-			const methods = settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods || [];
+			const methods =
+				settingTab.plugin.settings.projectConfig?.metadataConfig
+					?.detectionMethods || [];
 
 			methods.forEach((method, index) => {
 				const methodDiv = detectionMethodsContainer.createDiv({
@@ -325,16 +401,21 @@ export function renderProjectSettingsTab(
 							.addOption("link", t("Linked Note"))
 							.setValue(method.type)
 							.onChange(async (value) => {
-								method.type = value as "metadata" | "tag" | "link";
+								method.type = value as
+									| "metadata"
+									| "tag"
+									| "link";
 								await settingTab.plugin.saveSettings();
 								refreshDetectionMethods();
 							});
 					})
 					.addText((text) => {
-						const placeholder = 
-							method.type === "metadata" ? "project" :
-							method.type === "tag" ? "project" :
-							"category";
+						const placeholder =
+							method.type === "metadata"
+								? "project"
+								: method.type === "tag"
+									? "project"
+									: "category";
 						text.setPlaceholder(placeholder)
 							.setValue(method.propertyKey)
 							.onChange(async (value) => {
@@ -365,7 +446,11 @@ export function renderProjectSettingsTab(
 				if (method.type === "link") {
 					new Setting(methodDiv)
 						.setName(t("Link Filter"))
-						.setDesc(t("Optional: Only match links containing this text"))
+						.setDesc(
+							t(
+								"Optional: Only match links containing this text",
+							),
+						)
 						.addText((text) => {
 							text.setPlaceholder("Projects/")
 								.setValue(method.linkFilter || "")
@@ -378,101 +463,43 @@ export function renderProjectSettingsTab(
 			});
 
 			// Add new method button
-			new Setting(detectionMethodsContainer)
-				.addButton((button) => {
-					button
-						.setButtonText(t("Add Detection Method"))
-						.setCta()
-						.onClick(async () => {
-							if (!settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods) {
-								if (settingTab.plugin.settings.projectConfig?.metadataConfig) {
-									settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods = [];
-								}
+			new Setting(detectionMethodsContainer).addButton((button) => {
+				button
+					.setButtonText(t("Add Detection Method"))
+					.setCta()
+					.onClick(async () => {
+						if (
+							!settingTab.plugin.settings.projectConfig
+								?.metadataConfig?.detectionMethods
+						) {
+							if (
+								settingTab.plugin.settings.projectConfig
+									?.metadataConfig
+							) {
+								settingTab.plugin.settings.projectConfig.metadataConfig.detectionMethods =
+									[];
 							}
-							settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods?.push({
+						}
+						settingTab.plugin.settings.projectConfig?.metadataConfig?.detectionMethods?.push(
+							{
 								type: "metadata",
 								propertyKey: "",
 								enabled: false,
-							});
-							await settingTab.plugin.saveSettings();
-							refreshDetectionMethods();
-						});
-				});
+							},
+						);
+						await settingTab.plugin.saveSettings();
+						refreshDetectionMethods();
+					});
+			});
 		};
 
 		refreshDetectionMethods();
-
-		// Project config file settings
-		new Setting(containerEl)
-			.setName(t("Project Configuration File"))
-			.setDesc(t("Configure project detection from project config files"))
-			.setHeading();
-
-		new Setting(containerEl)
-			.setName(t("Enable config file project detection"))
-			.setDesc(t("Detect project from project configuration files"))
-			.addToggle((toggle) => {
-				toggle
-					.setValue(
-						settingTab.plugin.settings.projectConfig?.configFile
-							?.enabled || false
-					)
-					.onChange(async (value) => {
-						if (
-							settingTab.plugin.settings.projectConfig?.configFile
-						) {
-							settingTab.plugin.settings.projectConfig.configFile.enabled =
-								value;
-							await settingTab.plugin.saveSettings();
-						}
-					});
-			});
-
-		new Setting(containerEl)
-			.setName(t("Config file name"))
-			.setDesc(t("Name of the project configuration file"))
-			.addText((text) => {
-				text.setPlaceholder("project.md")
-					.setValue(
-						settingTab.plugin.settings.projectConfig?.configFile
-							?.fileName || "project.md"
-					)
-					.onChange(async (value) => {
-						if (
-							settingTab.plugin.settings.projectConfig?.configFile
-						) {
-							settingTab.plugin.settings.projectConfig.configFile.fileName =
-								value || "project.md";
-							await settingTab.plugin.saveSettings();
-						}
-					});
-			});
-
-		new Setting(containerEl)
-			.setName(t("Search recursively"))
-			.setDesc(t("Search for config files in parent directories"))
-			.addToggle((toggle) => {
-				toggle
-					.setValue(
-						settingTab.plugin.settings.projectConfig?.configFile
-							?.searchRecursively ?? false
-					)
-					.onChange(async (value) => {
-						if (
-							settingTab.plugin.settings.projectConfig?.configFile
-						) {
-							settingTab.plugin.settings.projectConfig.configFile.searchRecursively =
-								value;
-							await settingTab.plugin.saveSettings();
-						}
-					});
-			});
 
 		// Metadata mappings section
 		new Setting(containerEl)
 			.setName(t("Metadata Mappings"))
 			.setDesc(
-				t("Configure how metadata fields are mapped and transformed")
+				t("Configure how metadata fields are mapped and transformed"),
 			)
 			.setHeading();
 
@@ -487,7 +514,7 @@ export function renderProjectSettingsTab(
 			if (
 				!settingTab.plugin.settings.projectConfig?.metadataMappings ||
 				!Array.isArray(
-					settingTab.plugin.settings.projectConfig.metadataMappings
+					settingTab.plugin.settings.projectConfig.metadataMappings,
 				)
 			) {
 				if (settingTab.plugin.settings.projectConfig) {
@@ -517,7 +544,7 @@ export function renderProjectSettingsTab(
 					metadataMappings
 						.filter((_, i) => i !== index)
 						.map((m) => m.targetKey)
-						.filter((key) => key && key.trim() !== "")
+						.filter((key) => key && key.trim() !== ""),
 				);
 
 				// Available target keys from StandardTaskMetadata
@@ -534,7 +561,7 @@ export function renderProjectSettingsTab(
 					"recurrence",
 				].filter(
 					(key) =>
-						!usedTargetKeys.has(key) || key === mapping.targetKey
+						!usedTargetKeys.has(key) || key === mapping.targetKey,
 				);
 
 				new Setting(mappingRow)
@@ -594,7 +621,7 @@ export function renderProjectSettingsTab(
 								if (settingTab.plugin.settings.projectConfig) {
 									settingTab.plugin.settings.projectConfig.metadataMappings.splice(
 										index,
-										1
+										1,
 									);
 									await settingTab.plugin.saveSettings();
 									refreshMetadataMappings();
@@ -613,7 +640,7 @@ export function renderProjectSettingsTab(
 							if (
 								!Array.isArray(
 									settingTab.plugin.settings.projectConfig
-										.metadataMappings
+										.metadataMappings,
 								)
 							) {
 								settingTab.plugin.settings.projectConfig.metadataMappings =
@@ -625,7 +652,7 @@ export function renderProjectSettingsTab(
 									sourceKey: "",
 									targetKey: "",
 									enabled: true,
-								}
+								},
 							);
 
 							await settingTab.plugin.saveSettings();
@@ -644,8 +671,8 @@ export function renderProjectSettingsTab(
 			.setName(t("Default Project Naming"))
 			.setDesc(
 				t(
-					"Configure fallback project naming when no explicit project is found"
-				)
+					"Configure fallback project naming when no explicit project is found",
+				),
 			)
 			.setHeading();
 
@@ -653,14 +680,14 @@ export function renderProjectSettingsTab(
 			.setName(t("Enable default project naming"))
 			.setDesc(
 				t(
-					"Use default naming strategy when no project is explicitly defined"
-				)
+					"Use default naming strategy when no project is explicitly defined",
+				),
 			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(
 						settingTab.plugin.settings.projectConfig
-							?.defaultProjectNaming?.enabled || false
+							?.defaultProjectNaming?.enabled || false,
 					)
 					.onChange(async (value) => {
 						if (
@@ -696,7 +723,7 @@ export function renderProjectSettingsTab(
 					.addOption("metadata", t("Use metadata field"))
 					.setValue(
 						settingTab.plugin.settings.projectConfig
-							?.defaultProjectNaming?.strategy || "filename"
+							?.defaultProjectNaming?.strategy || "filename",
 					)
 					.onChange(async (value) => {
 						if (
@@ -727,7 +754,7 @@ export function renderProjectSettingsTab(
 
 		console.log(
 			settingTab.plugin.settings.projectConfig?.defaultProjectNaming
-				?.strategy
+				?.strategy,
 		);
 
 		// Show metadata key field only for metadata strategy
@@ -740,11 +767,11 @@ export function renderProjectSettingsTab(
 				.setDesc(t("Metadata field to use as project name"))
 				.addText((text) => {
 					text.setPlaceholder(
-						t("Enter metadata key (e.g., project-name)")
+						t("Enter metadata key (e.g., project-name)"),
 					)
 						.setValue(
 							settingTab.plugin.settings.projectConfig
-								?.defaultProjectNaming?.metadataKey || ""
+								?.defaultProjectNaming?.metadataKey || "",
 						)
 						.onChange(async (value) => {
 							if (
@@ -768,14 +795,14 @@ export function renderProjectSettingsTab(
 				.setName(t("Strip file extension"))
 				.setDesc(
 					t(
-						"Remove file extension from filename when using as project name"
-					)
+						"Remove file extension from filename when using as project name",
+					),
 				)
 				.addToggle((toggle) => {
 					toggle
 						.setValue(
 							settingTab.plugin.settings.projectConfig
-								?.defaultProjectNaming?.stripExtension || true
+								?.defaultProjectNaming?.stripExtension || true,
 						)
 						.onChange(async (value) => {
 							if (

@@ -13,3 +13,5 @@ export { renderWorkflowSettingsTab } from "./WorkflowSettingsTab";
 export { renderProjectSettingsTab } from "./ProjectSettingsTab";
 export { renderDatePrioritySettingsTab } from "./DatePrioritySettingsTab";
 export { renderTimelineSidebarSettingsTab } from "./TimelineSidebarSettingsTab";
+export { renderIndexSettingsTab } from "./IndexSettingsTab";
+export { createFileSourceSettings } from "./FileSourceSettings";
