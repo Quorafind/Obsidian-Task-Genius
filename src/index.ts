@@ -283,8 +283,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 			// Initialize dataflow orchestrator if enabled (experimental)
 			if (isDataflowEnabled(this)) {
 				try {
-					console.log("Dataflow architecture enabled - initializing in parallel with TaskManager");
-					createDataflow(
+					console.log("[Plugin] Dataflow architecture enabled - initializing...");
+					// Wait for dataflow initialization to complete before proceeding
+					this.dataflowOrchestrator = await createDataflow(
 						this.app,
 						this.app.vault,
 						this.app.metadataCache,
@@ -292,18 +293,16 @@ export default class TaskProgressBarPlugin extends Plugin {
 						{
 							// ProjectConfigManagerOptions is narrower; pass only known properties
 						}
-					).then((orchestrator) => {
-						this.dataflowOrchestrator = orchestrator;
-						console.log("Dataflow orchestrator initialized successfully");
-					}).catch((error) => {
-						console.error("Failed to initialize dataflow orchestrator:", error);
-					});
+					);
+					console.log("[Plugin] Dataflow orchestrator initialized successfully");
 				} catch (error) {
-					console.error("Error setting up dataflow orchestrator:", error);
+					console.error("[Plugin] Failed to initialize dataflow orchestrator:", error);
+					// Continue without dataflow, fallback to TaskManager
 				}
 			}
 
 			// Initialize traditional TaskManager (kept for backward compatibility)
+			console.log("[Plugin] Initializing TaskManager...");
 			this.taskManager = new TaskManager(
 				this.app,
 				this.app.vault,
@@ -316,6 +315,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			);
 
 			this.addChild(this.taskManager);
+			console.log("[Plugin] TaskManager initialized");
 			
 			// Initialize WriteAPI if dataflow is enabled
 			if (this.settings?.experimental?.dataflowEnabled) {

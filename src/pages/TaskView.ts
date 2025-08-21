@@ -1193,17 +1193,20 @@ export class TaskView extends ItemView {
 		// Check if dataflow is enabled and available
 		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
 			try {
-				console.log("Loading tasks from dataflow orchestrator...");
+				console.log("[TaskView] Loading tasks from dataflow orchestrator...");
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				this.tasks = await queryAPI.getAllTasks();
-				console.log(`TaskView loaded ${this.tasks.length} tasks from dataflow`);
+				console.log(`[TaskView] Loaded ${this.tasks.length} tasks from dataflow`);
 			} catch (error) {
-				console.error("Error loading tasks from dataflow, falling back to TaskManager:", error);
+				console.error("[TaskView] Error loading tasks from dataflow, falling back to TaskManager:", error);
 				// Fall back to TaskManager
 				await this.loadTasksFromTaskManager(forceSync);
 			}
 		} else {
-			// Use traditional TaskManager
+			// Use traditional TaskManager or wait for dataflow initialization
+			if (isDataflowEnabled(this.plugin)) {
+				console.log("[TaskView] Dataflow enabled but not ready yet, using TaskManager");
+			}
 			await this.loadTasksFromTaskManager(forceSync);
 		}
 
@@ -1236,13 +1239,13 @@ export class TaskView extends ItemView {
 		// Check if dataflow is enabled and available
 		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
 			try {
-				console.log("Loading tasks fast from dataflow orchestrator...");
+				console.log("[TaskView] Loading tasks fast from dataflow orchestrator...");
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				// For fast loading, use regular getAllTasks (it should be cached)
 				this.tasks = await queryAPI.getAllTasks();
-				console.log(`TaskView loaded ${this.tasks.length} tasks (fast from dataflow)`);
+				console.log(`[TaskView] Loaded ${this.tasks.length} tasks (fast from dataflow)`);
 			} catch (error) {
-				console.error("Error loading tasks fast from dataflow, falling back to TaskManager:", error);
+				console.error("[TaskView] Error loading tasks fast from dataflow, falling back to TaskManager:", error);
 				// Fall back to TaskManager
 				this.loadTasksFastFromTaskManager();
 			}

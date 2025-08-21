@@ -18,7 +18,8 @@ export async function createDataflow(
   plugin: TaskProgressBarPlugin,
   projectOptions?: Partial<ProjectConfigManagerOptions>
 ): Promise<DataflowOrchestrator> {
-  console.log("Creating dataflow orchestrator...");
+  const startTime = Date.now();
+  console.log("[createDataflow] Creating dataflow orchestrator...");
   
   const orchestrator = new DataflowOrchestrator(
     app,
@@ -28,10 +29,16 @@ export async function createDataflow(
     projectOptions
   );
   
-  console.log("Initializing dataflow orchestrator...");
-  await orchestrator.initialize();
+  console.log("[createDataflow] Initializing dataflow orchestrator...");
+  try {
+    await orchestrator.initialize();
+    const elapsed = Date.now() - startTime;
+    console.log(`[createDataflow] Dataflow orchestrator ready (took ${elapsed}ms)`);
+  } catch (error) {
+    console.error("[createDataflow] Failed to initialize orchestrator:", error);
+    throw error;
+  }
   
-  console.log("Dataflow orchestrator ready");
   return orchestrator;
 }
 

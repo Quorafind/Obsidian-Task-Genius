@@ -40,29 +40,40 @@ export class Repository {
   async initialize(): Promise<void> {
     console.log("[Repository] Initializing repository...");
     
-    // Try to load consolidated index from storage
-    const consolidated = await this.storage.loadConsolidated();
-    if (consolidated && consolidated.data) {
-      // Restore the index from persisted data
-      console.log("[Repository] Restoring index from persisted snapshot...");
-      await this.indexer.restoreFromSnapshot(consolidated.data);
+    try {
+      // Try to load consolidated index from storage
+      console.log("[Repository] Attempting to load consolidated index from storage...");
+      const consolidated = await this.storage.loadConsolidated();
       
-      const taskCount = await this.indexer.getTotalTaskCount();
-      console.log(`[Repository] Index restored with ${taskCount} tasks`);
+      if (consolidated && consolidated.data) {
+        // Restore the index from persisted data
+        const snapshotTaskCount = consolidated.data?.tasks ? 
+          (consolidated.data.tasks instanceof Map ? consolidated.data.tasks.size : Object.keys(consolidated.data.tasks).length) : 0;
+        console.log(`[Repository] Found persisted snapshot with ${snapshotTaskCount} tasks, restoring...`);
+        await this.indexer.restoreFromSnapshot(consolidated.data);
+        
+        const taskCount = await this.indexer.getTotalTaskCount();
+        console.log(`[Repository] Index restored successfully with ${taskCount} tasks`);
+        
+        // Emit cache ready event
+        emit(this.app, Events.CACHE_READY, {
+          initial: true,
+          timestamp: Date.now(),
+          seq: Seq.next()
+        });
+      } else {
+        console.log("[Repository] No persisted data found, starting with empty index");
+      }
       
-      // Emit cache ready event
-      emit(this.app, Events.CACHE_READY, {
-        initial: true,
-        timestamp: Date.now(),
-        seq: Seq.next()
-      });
-    } else {
-      console.log("[Repository] No persisted data found, starting with empty index");
+      // Load ICS events from storage
+      console.log("[Repository] Loading ICS events from storage...");
+      this.icsEvents = await this.storage.loadIcsEvents();
+      console.log(`[Repository] Loaded ${this.icsEvents.length} ICS events from storage`);
+    } catch (error) {
+      console.error("[Repository] Error during initialization:", error);
+      // Continue with empty index on error
+      console.log("[Repository] Continuing with empty index after error");
     }
-    
-    // Load ICS events from storage
-    this.icsEvents = await this.storage.loadIcsEvents();
-    console.log(`[Repository] Loaded ${this.icsEvents.length} ICS events from storage`);
   }
 
   /**

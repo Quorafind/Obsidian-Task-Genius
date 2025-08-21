@@ -86,54 +86,77 @@ export class DataflowOrchestrator {
    * Initialize the orchestrator (load persisted data)
    */
   async initialize(): Promise<void> {
-    await this.queryAPI.initialize();
+    const startTime = Date.now();
+    console.log("[DataflowOrchestrator] Starting initialization...");
     
-    // Check if we need to perform initial scan
-    const taskCount = (await this.queryAPI.getAllTasks()).length;
-    if (taskCount === 0) {
-      console.log("[DataflowOrchestrator] No cached tasks found, performing initial scan...");
+    try {
+      // Initialize QueryAPI and Repository
+      console.log("[DataflowOrchestrator] Initializing QueryAPI and Repository...");
+      await this.queryAPI.initialize();
       
-      // Get all markdown and canvas files
-      const mdFiles = this.vault.getMarkdownFiles();
-      const canvasFiles = this.vault.getFiles().filter(f => f.extension === "canvas");
-      const allFiles = [...mdFiles, ...canvasFiles];
+      // Check if we have cached data
+      const taskCount = (await this.queryAPI.getAllTasks()).length;
+      console.log(`[DataflowOrchestrator] Found ${taskCount} cached tasks`);
       
-      console.log(`[DataflowOrchestrator] Found ${allFiles.length} files to process`);
-      
-      // Process in batches for performance
-      const BATCH_SIZE = 50;
-      for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
-        const batch = allFiles.slice(i, i + BATCH_SIZE);
-        await this.processBatch(batch);
+      if (taskCount === 0) {
+        console.log("[DataflowOrchestrator] No cached tasks found, performing initial scan...");
+        
+        // Get all markdown and canvas files
+        const mdFiles = this.vault.getMarkdownFiles();
+        const canvasFiles = this.vault.getFiles().filter(f => f.extension === "canvas");
+        const allFiles = [...mdFiles, ...canvasFiles];
+        
+        console.log(`[DataflowOrchestrator] Found ${allFiles.length} files to process`);
+        
+        // Process in batches for performance
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < allFiles.length; i += BATCH_SIZE) {
+          const batch = allFiles.slice(i, i + BATCH_SIZE);
+          console.log(`[DataflowOrchestrator] Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(allFiles.length/BATCH_SIZE)}...`);
+          await this.processBatch(batch);
+        }
+        
+        // Persist the initial index
+        console.log("[DataflowOrchestrator] Persisting initial index...");
+        await this.repository.persist();
+        
+        const finalTaskCount = (await this.queryAPI.getAllTasks()).length;
+        console.log(`[DataflowOrchestrator] Initial scan complete, indexed ${finalTaskCount} tasks`);
+      } else {
+        console.log("[DataflowOrchestrator] Using cached tasks, skipping initial scan");
       }
       
-      // Persist the initial index
-      await this.repository.persist();
+      // Initialize ObsidianSource to start listening for events
+      console.log("[DataflowOrchestrator] Initializing ObsidianSource...");
+      this.obsidianSource.initialize();
       
-      const finalTaskCount = (await this.queryAPI.getAllTasks()).length;
-      console.log(`[DataflowOrchestrator] Initial scan complete, indexed ${finalTaskCount} tasks`);
+      // Initialize IcsSource to start listening for calendar events
+      console.log("[DataflowOrchestrator] Initializing IcsSource...");
+      this.icsSource.initialize();
+      
+      // Initialize FileSource to start file recognition
+      if (this.fileSource) {
+        console.log("[DataflowOrchestrator] Initializing FileSource...");
+        this.fileSource.initialize();
+      }
+      
+      // Subscribe to file update events from ObsidianSource and ICS events
+      console.log("[DataflowOrchestrator] Subscribing to events...");
+      this.subscribeToEvents();
+      
+      // Emit initial ready event
+      emit(this.app, Events.CACHE_READY, {
+        initial: true,
+        timestamp: Date.now(),
+        seq: Seq.next()
+      });
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`[DataflowOrchestrator] Initialization complete (took ${elapsed}ms)`);
+    } catch (error) {
+      console.error("[DataflowOrchestrator] Initialization failed:", error);
+      throw error;
     }
-    
-    // Initialize ObsidianSource to start listening for events
-    this.obsidianSource.initialize();
-    
-    // Initialize IcsSource to start listening for calendar events
-    this.icsSource.initialize();
-    
-    // Initialize FileSource to start file recognition
-    if (this.fileSource) {
-      this.fileSource.initialize();
-    }
-    
-    // Subscribe to file update events from ObsidianSource and ICS events
-    this.subscribeToEvents();
-    
-    // Emit initial ready event
-    emit(this.app, Events.CACHE_READY, {
-      initial: true,
-      timestamp: Date.now(),
-      seq: Seq.next()
-    });
   }
 
   /**
