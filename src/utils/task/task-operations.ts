@@ -247,7 +247,9 @@ export function extractPriority(
 	// Try emoji format (primary or fallback)
 	match = remainingContent.match(EMOJI_PRIORITY_REGEX);
 	if (match && match[1]) {
-		task.metadata.priority = PRIORITY_MAP[match[1]] ?? undefined;
+		// match[2] contains emoji symbols, match[3] contains [#A-E] format
+		const prioritySymbol = match[2] || match[3] || match[1];
+		task.metadata.priority = PRIORITY_MAP[prioritySymbol] ?? undefined;
 		if (task.metadata.priority !== undefined) {
 			remainingContent = remainingContent.replace(match[0], "");
 		}

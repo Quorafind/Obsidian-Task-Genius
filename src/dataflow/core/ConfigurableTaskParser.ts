@@ -169,6 +169,18 @@ export class MarkdownTaskParser {
 
 				i += linesToSkip;
 
+				// Debug: Log priority extraction for each task
+				const extractedPriority = this.extractLegacyPriority(inheritedMetadata);
+				if (process.env.NODE_ENV === 'development' || true) { // Always log for debugging
+					console.log('[Parser] Task priority extraction:', {
+						lineNumber: i + 1,
+						content: cleanedContent.substring(0, 50),
+						metadataPriority: inheritedMetadata.priority,
+						extractedPriority,
+						filePath
+					});
+				}
+
 				const enhancedTask: EnhancedTask = {
 					id: taskId,
 					content: cleanedContent,
@@ -193,7 +205,7 @@ export class MarkdownTaskParser {
 					// Legacy fields for backward compatibility
 					line: i,
 					children: [],
-					priority: this.extractLegacyPriority(inheritedMetadata),
+					priority: extractedPriority,
 					startDate: this.extractLegacyDate(
 						inheritedMetadata,
 						"startDate"
@@ -363,6 +375,16 @@ export class MarkdownTaskParser {
 				if (bracketMatch) {
 					const [key, value, newRemaining] = bracketMatch;
 					metadata[key] = value;
+					
+					// Debug: Log dataview metadata extraction, especially priority
+					if ((process.env.NODE_ENV === 'development' || true) && key === 'priority') { // Always log for debugging
+						console.log('[Parser] Dataview priority found:', {
+							key,
+							value,
+							remaining: remaining.substring(0, 50)
+						});
+					}
+					
 					remaining = newRemaining;
 					foundMatch = true;
 					continue;
@@ -585,8 +607,22 @@ export class MarkdownTaskParser {
 				.map((id) => id.trim())
 				.filter((id) => id.length > 0)
 				.join(",");
+		} else if (earliestEmoji.key === "priority") {
+			// For priority emojis, use the emoji itself or the provided value
+			// This ensures we can distinguish between different priority levels
+			metadataValue = value || earliestEmoji.emoji;
+			
+			// Debug: Log priority emoji extraction
+			if (process.env.NODE_ENV === 'development' || true) { // Always log for debugging
+				console.log('[Parser] Priority emoji found:', {
+					emoji: earliestEmoji.emoji,
+					value,
+					metadataValue,
+					position: earliestEmoji.pos
+				});
+			}
 		} else {
-			// For priority emojis, use specific values based on the emoji
+			// For other emojis, use provided value or default
 			metadataValue =
 				value || this.getDefaultEmojiValue(earliestEmoji.emoji);
 		}
@@ -1092,6 +1128,13 @@ export class MarkdownTaskParser {
 			moderate: 3, // Alias for medium
 			minor: 2, // Alias for low
 			trivial: 1, // Alias for lowest
+			// Emoji priority mappings
+			"🔺": 5,
+			"⏫": 4,
+			"🔼": 3,
+			"🔽": 2,
+			"⏬️": 1,
+			"⏬": 1,
 		};
 
 		// First try to parse as number
@@ -1100,8 +1143,8 @@ export class MarkdownTaskParser {
 			return numericPriority;
 		}
 
-		// Then try to map string values
-		const mappedPriority = priorityMap[metadata.priority.toLowerCase()];
+		// Then try to map string values (including emojis)
+		const mappedPriority = priorityMap[metadata.priority.toLowerCase()] || priorityMap[metadata.priority];
 		return mappedPriority;
 	}
 
@@ -1406,6 +1449,13 @@ export class MarkdownTaskParser {
 				moderate: 3,
 				minor: 2,
 				trivial: 1,
+				// Emoji priority mappings
+				"🔺": 5,
+				"⏫": 4,
+				"🔼": 3,
+				"🔽": 2,
+				"⏬️": 1,
+				"⏬": 1,
 			};
 
 			// Try numeric conversion first
@@ -1414,8 +1464,8 @@ export class MarkdownTaskParser {
 				return String(numericValue);
 			}
 
-			// Try priority mapping
-			const mappedPriority = priorityMap[strValue.toLowerCase()];
+			// Try priority mapping (including emojis)
+			const mappedPriority = priorityMap[strValue.toLowerCase()] || priorityMap[strValue];
 			if (mappedPriority !== undefined) {
 				return String(mappedPriority);
 			}

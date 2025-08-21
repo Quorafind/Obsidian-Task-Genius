@@ -20,6 +20,7 @@ import { parseMarkdown } from "./parsers/MarkdownEntry";
 import { parseCanvas } from "./parsers/CanvasEntry";
 import { parseFileMeta } from "./parsers/FileMetaEntry";
 import { ConfigurableTaskParser } from "./core/ConfigurableTaskParser";
+import { MetadataParseMode } from "../types/TaskParserConfig";
 
 /**
  * DataflowOrchestrator - Coordinates all dataflow components
@@ -275,52 +276,64 @@ export class DataflowOrchestrator {
       
       // Step 2: Check cache and parse if needed
       const rawCached = await this.storage.loadRaw(filePath);
+      const augmentedCached = await this.storage.loadAugmented(filePath);
       const fileContent = await this.vault.cachedRead(file);
       
-      let rawTasks: Task[];
-      let projectData: Awaited<ReturnType<typeof this.projectResolver.get>>;
-      let needsParsing = false;
+      let augmentedTasks: Task[];
+      let needsProcessing = false;
       
-      if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
-        // Use cached raw tasks - file hasn't changed
-        console.log(`[DataflowOrchestrator] Using cached tasks for ${filePath} (mtime match)`); 
-        rawTasks = rawCached.data;
-        // Still need to get project data for augmentation
-        projectData = await this.projectResolver.get(filePath);
+      // Check if we can use fully cached augmented tasks
+      if (rawCached && augmentedCached && 
+          this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+        // Use cached augmented tasks - file hasn't changed and we have augmented data
+        console.log(`[DataflowOrchestrator] Using cached augmented tasks for ${filePath} (mtime match)`); 
+        augmentedTasks = augmentedCached.data;
       } else {
-        // Parse the file
-        console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
-        needsParsing = true;
+        // Need to parse and/or augment
+        needsProcessing = true;
         
-        // Get project data first for parsing
-        projectData = await this.projectResolver.get(filePath);
-        rawTasks = await this.parseFile(file, projectData.tgProject);
+        let rawTasks: Task[];
+        let projectData: any; // Type will be inferred from projectResolver.get
         
-        // Store raw tasks with file content and mtime
-        await this.storage.storeRaw(filePath, rawTasks, fileContent, mtime);
+        if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+          // Use cached raw tasks but re-augment (project data might have changed)
+          console.log(`[DataflowOrchestrator] Re-augmenting cached raw tasks for ${filePath}`);
+          rawTasks = rawCached.data;
+          projectData = await this.projectResolver.get(filePath);
+        } else {
+          // Parse the file from scratch
+          console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
+          
+          // Get project data first for parsing
+          projectData = await this.projectResolver.get(filePath);
+          rawTasks = await this.parseFile(file, projectData.tgProject);
+          
+          // Store raw tasks with file content and mtime
+          await this.storage.storeRaw(filePath, rawTasks, fileContent, mtime);
+        }
+        
+        // Store project data
+        await this.storage.storeProject(filePath, {
+          tgProject: projectData.tgProject,
+          enhancedMetadata: projectData.enhancedMetadata
+        });
+        
+        // Augment tasks with project and file metadata
+        const fileMetadata = this.metadataCache.getFileCache(file);
+        const augmentContext: AugmentContext = {
+          filePath,
+          fileMeta: fileMetadata?.frontmatter || {},
+          projectName: projectData.tgProject?.name,
+          projectMeta: {
+            ...projectData.enhancedMetadata,
+            tgProject: projectData.tgProject  // Include tgProject in projectMeta
+          },
+          tasks: rawTasks
+        };
+        augmentedTasks = await this.augmentor.merge(augmentContext);
       }
       
-      // Store project data
-      await this.storage.storeProject(filePath, {
-        tgProject: projectData.tgProject,
-        enhancedMetadata: projectData.enhancedMetadata
-      });
-      
-      // Step 3: Augment tasks with project and file metadata
-      const fileMetadata = this.metadataCache.getFileCache(file);
-      const augmentContext: AugmentContext = {
-        filePath,
-        fileMeta: fileMetadata?.frontmatter || {},
-        projectName: projectData.tgProject?.name,
-        projectMeta: {
-          ...projectData.enhancedMetadata,
-          tgProject: projectData.tgProject  // Include tgProject in projectMeta
-        },
-        tasks: rawTasks
-      };
-      const augmentedTasks = await this.augmentor.merge(augmentContext);
-      
-      // Step 4: Update repository (index + storage + events)
+      // Step 3: Update repository (index + storage + events)
       // Generate a unique sequence for this operation
       this.lastProcessedSeq = Seq.next();
       
@@ -361,9 +374,33 @@ export class DataflowOrchestrator {
         parseTags: true,
         parseComments: true,
         parseHeadings: true,
+        metadataParseMode: MetadataParseMode.Both, // Parse both emoji and dataview metadata
+        maxIndentSize: 8,
+        maxParseIterations: 4000,
+        maxMetadataIterations: 400,
+        maxTagLength: 100,
+        maxEmojiValueLength: 200,
+        maxStackOperations: 4000,
+        maxStackSize: 1000,
         customDateFormats: this.plugin.settings.customDateFormats,
         statusMapping: this.plugin.settings.statusMapping || {},
-        emojiMapping: this.plugin.settings.emojiMapping || {},
+        emojiMapping: this.plugin.settings.emojiMapping || {
+          "📅": "dueDate",
+          "🛫": "startDate",
+          "⏳": "scheduledDate",
+          "✅": "completedDate",
+          "❌": "cancelledDate",
+          "➕": "createdDate",
+          "🔁": "recurrence",
+          "🏁": "onCompletion",
+          "⛔": "dependsOn",
+          "🆔": "id",
+          "🔺": "priority",
+          "⏫": "priority",
+          "🔼": "priority",
+          "🔽": "priority",
+          "⏬": "priority"
+        },
         specialTagPrefixes: this.plugin.settings.specialTagPrefixes || {},
         fileMetadataInheritance: this.plugin.settings.fileMetadataInheritance,
         projectConfig: this.plugin.settings.projectConfig
@@ -511,8 +548,18 @@ export class DataflowOrchestrator {
         const rawCached = await this.storage.loadRaw(filePath);
         const fileContent = await this.vault.cachedRead(file);
         
-        if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
-          // Use cached raw tasks for augmentation
+        // Check both raw and augmented cache
+        const augmentedCached = await this.storage.loadAugmented(filePath);
+        
+        if (rawCached && augmentedCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+          // Use cached augmented tasks directly - no need to re-augment
+          const augmentedTasks = augmentedCached.data;
+          
+          // Always add to updates - Repository will handle change detection
+          updates.set(filePath, augmentedTasks);
+          localSkippedCount++; // Count as skipped since we used cache
+        } else if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+          // Have raw cache but not augmented, need to re-augment
           const rawTasks = rawCached.data;
           
           // Get project data
@@ -534,7 +581,7 @@ export class DataflowOrchestrator {
           
           // Always add to updates - Repository will handle change detection
           updates.set(filePath, augmentedTasks);
-          skippedCount++; // Count as skipped since we used cache
+          localSkippedCount++; // Count as skipped since we used cache
         } else {
           // Parse file as it has changed or is new
           // Get project data first for parsing

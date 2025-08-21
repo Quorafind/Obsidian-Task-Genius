@@ -95,6 +95,43 @@ export class Augmentor {
     const originalMetadata = task.metadata || {};
     const enhancedMetadata = { ...originalMetadata };
 
+    // Special handling for priority: check both task.priority and metadata.priority
+    // Priority might be at task root level (from parser) or in metadata
+    // IMPORTANT: Once priority is set, it should NOT be overridden by inheritance
+    
+    // Debug logging for priority processing
+    const debug = process.env.NODE_ENV === 'development';
+    if (debug && (enhancedMetadata.priority !== undefined || (task as any).priority !== undefined)) {
+      console.log('[Augmentor] Priority processing:', {
+        metadataPriority: enhancedMetadata.priority,
+        taskPriority: (task as any).priority,
+        filePath: ctx.filePath
+      });
+    }
+    
+    // First, ensure we have the priority from task-level if it exists
+    if ((enhancedMetadata.priority === undefined || enhancedMetadata.priority === null) && 
+        (task as any).priority !== undefined && (task as any).priority !== null) {
+      enhancedMetadata.priority = (task as any).priority;
+    }
+    
+    // Ensure priority is properly converted to numeric format if it exists
+    // Clean up null values to undefined for consistency
+    if (enhancedMetadata.priority === null) {
+      enhancedMetadata.priority = undefined;
+    } else if (enhancedMetadata.priority !== undefined) {
+      const originalPriority = enhancedMetadata.priority;
+      enhancedMetadata.priority = this.convertPriorityValue(enhancedMetadata.priority);
+      
+      if (debug) {
+        console.log('[Augmentor] Priority conversion:', {
+          original: originalPriority,
+          converted: enhancedMetadata.priority,
+          filePath: ctx.filePath
+        });
+      }
+    }
+
     // Apply inheritance for each metadata field
     this.applyScalarInheritance(enhancedMetadata, ctx);
     this.applyArrayInheritance(enhancedMetadata, ctx);
@@ -127,7 +164,30 @@ export class Augmentor {
         continue;
       }
 
-      // Apply inheritance priority: file > project > default
+      // Special handling for priority - NEVER apply default value
+      // Priority should only come from task itself, file, or project
+      if (field === 'priority') {
+        // Only check file and project sources, skip default
+        for (const source of ['file', 'project']) {
+          let value: any;
+          
+          if (source === 'file') {
+            value = ctx.fileMeta?.[field];
+          } else if (source === 'project') {
+            value = ctx.projectMeta?.[field];
+          }
+
+          if (value !== undefined && value !== null) {
+            // Convert priority value to numeric format
+            metadata[field] = this.convertPriorityValue(value);
+            break;
+          }
+        }
+        // If no priority found, leave it undefined (don't set default)
+        continue;
+      }
+
+      // Apply inheritance priority for other fields: file > project > default
       for (const source of this.strategy.scalarPriority.slice(1)) { // Skip 'task' since we checked above
         let value: any;
         
@@ -257,11 +317,68 @@ export class Augmentor {
   }
 
   /**
+   * Convert priority value to consistent numeric format
+   */
+  private convertPriorityValue(value: any): number | undefined {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+
+    // If it's already a number, return it
+    if (typeof value === "number") {
+      return value;
+    }
+
+    // If it's a string, try to convert
+    const strValue = String(value);
+    
+    // Priority mapping for text and emoji values
+    const priorityMap: Record<string, number> = {
+      // Text priorities
+      highest: 5,
+      high: 4,
+      medium: 3,
+      low: 2,
+      lowest: 1,
+      urgent: 5,
+      critical: 5,
+      important: 4,
+      normal: 3,
+      moderate: 3,
+      minor: 2,
+      trivial: 1,
+      // Emoji priorities (Tasks plugin compatible)
+      "🔺": 5,
+      "⏫": 4,
+      "🔼": 3,
+      "🔽": 2,
+      "⏬️": 1,
+      "⏬": 1,
+    };
+
+    // Try numeric conversion first
+    const numericValue = parseInt(strValue, 10);
+    if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= 5) {
+      return numericValue;
+    }
+
+    // Try priority mapping (including emojis)
+    const mappedPriority = priorityMap[strValue.toLowerCase()] || priorityMap[strValue];
+    if (mappedPriority !== undefined) {
+      return mappedPriority;
+    }
+
+    // If we can't convert, return undefined to avoid setting invalid values
+    return undefined;
+  }
+
+  /**
    * Get default value for a field
    */
   private getDefaultValue(field: string): any {
     const defaults: Record<string, any> = {
-      priority: 3, // Medium priority
+      // Don't set default priority for now - it should come from parser
+      // If we need to add it back, we should check if task already has priority elsewhere
       tags: [],
       dependsOn: [],
       estimatedTime: undefined,

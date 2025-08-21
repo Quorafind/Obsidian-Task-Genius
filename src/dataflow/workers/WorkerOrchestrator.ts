@@ -3,6 +3,7 @@ import type { Task } from "../../types/task";
 import type { CachedProjectData } from "../../cache/project-data-cache";
 import { TaskWorkerManager, DEFAULT_WORKER_OPTIONS } from "./TaskWorkerManager";
 import { ProjectDataWorkerManager } from "./ProjectDataWorkerManager";
+import { MetadataParseMode } from "../../types/TaskParserConfig";
 
 /**
  * WorkerOrchestrator - Unified task and project worker management
@@ -293,12 +294,39 @@ export class WorkerOrchestrator {
       const fileCache = metadataCache.getFileCache(file);
       const fileMetadata = fileCache?.frontmatter || {};
       
-      // Create parser with default settings
+      // Create parser with complete settings including metadataParseMode
       const parser = new ConfigurableTaskParser({
         parseMetadata: true,
         parseTags: true,
         parseComments: true,
-        parseHeadings: true
+        parseHeadings: true,
+        metadataParseMode: MetadataParseMode.Both, // Parse both emoji and dataview metadata
+        maxIndentSize: 8,
+        maxParseIterations: 4000,
+        maxMetadataIterations: 400,
+        maxTagLength: 100,
+        maxEmojiValueLength: 200,
+        maxStackOperations: 4000,
+        maxStackSize: 1000,
+        statusMapping: {},
+        emojiMapping: {
+          "📅": "dueDate",
+          "🛫": "startDate",
+          "⏳": "scheduledDate",
+          "✅": "completedDate",
+          "❌": "cancelledDate",
+          "➕": "createdDate",
+          "🔁": "recurrence",
+          "🏁": "onCompletion",
+          "⛔": "dependsOn",
+          "🆔": "id",
+          "🔺": "priority",
+          "⏫": "priority",
+          "🔼": "priority",
+          "🔽": "priority",
+          "⏬": "priority"
+        },
+        specialTagPrefixes: {}
       });
       
       // Parse tasks - raw extraction only, no project enhancement
