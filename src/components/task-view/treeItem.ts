@@ -975,6 +975,13 @@ export class TaskTreeItemComponent extends Component {
 				}
 			};
 
+			// Pass up onTaskUpdate - CRITICAL: This was missing and causing the callback to not be available
+			childComponent.onTaskUpdate = async (originalTask, updatedTask) => {
+				if (this.onTaskUpdate) {
+					await this.onTaskUpdate(originalTask, updatedTask);
+				}
+			};
+
 			// Load component
 			this.addChild(childComponent);
 			childComponent.load();

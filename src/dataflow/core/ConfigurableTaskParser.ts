@@ -60,7 +60,7 @@ export class MarkdownTaskParser {
 	 */
 	parse(
 		input: string,
-		filePath: string = "",
+		filePath = "",
 		fileMetadata?: Record<string, any>,
 		projectConfigData?: Record<string, any>,
 		tgProject?: TgProject,
@@ -609,17 +609,6 @@ export class MarkdownTaskParser {
 			// For priority emojis, use the emoji itself or the provided value
 			// This ensures we can distinguish between different priority levels
 			metadataValue = value || earliestEmoji.emoji;
-
-			// Debug: Log priority emoji extraction
-			if (process.env.NODE_ENV === "development" || true) {
-				// Always log for debugging
-				console.log("[Parser] Priority emoji found:", {
-					emoji: earliestEmoji.emoji,
-					value,
-					metadataValue,
-					position: earliestEmoji.pos,
-				});
-			}
 		} else {
 			// For other emojis, use provided value or default
 			metadataValue =
