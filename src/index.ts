@@ -319,18 +319,21 @@ export default class TaskProgressBarPlugin extends Plugin {
 			
 			// Initialize WriteAPI if dataflow is enabled
 			if (this.settings?.experimental?.dataflowEnabled) {
-				const getTaskById = (id: string) => {
+				const getTaskById = async (id: string): Promise<Task | null> => {
 					// Try dataflow first, fallback to taskManager
 					if (this.dataflowOrchestrator) {
 						try {
-							const QueryAPI = require("./dataflow/api/QueryAPI").QueryAPI;
-							const queryAPI = new QueryAPI(this.app, this.app.vault, this.app.metadataCache);
-							return queryAPI.getRepository().getTaskById(id);
+							const repository = this.dataflowOrchestrator.getRepository();
+							const task = await repository.getTaskById(id);
+							if (task) {
+								return task;
+							}
 						} catch (e) {
 							console.warn("Failed to get task from dataflow, falling back to taskManager", e);
 						}
 					}
-					return this.taskManager.getTaskById(id);
+					const taskManagerResult = this.taskManager.getTaskById(id);
+					return taskManagerResult || null;
 				};
 				
 				this.writeAPI = new WriteAPI(

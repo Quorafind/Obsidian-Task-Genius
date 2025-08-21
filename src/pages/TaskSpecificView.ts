@@ -49,6 +49,7 @@ import {
 	FilterGroup,
 	RootFilterState,
 } from "../components/task-filter/ViewTaskFilter";
+import { isDataflowEnabled } from "../dataflow/createDataflow";
 
 export const TASK_SPECIFIC_VIEW_TYPE = "task-genius-specific-view";
 
@@ -175,17 +176,34 @@ export class TaskSpecificView extends ItemView {
 			cls: "task-genius-container no-sidebar",
 		});
 
+		// Add debounced view update to prevent rapid successive refreshes
+		const debouncedViewUpdate = debounce(async () => {
+			// Don't skip view updates - the detailsComponent will handle edit state properly
+			await this.loadTasks(false, false);
+		}, 150); // 150ms debounce delay
+
 		// 1. 首先注册事件监听器，确保不会错过任何更新
-		this.registerEvent(
-			this.app.workspace.on(
-				"task-genius:task-cache-updated",
-				async () => {
-					// Skip view update if currently editing in details panel
-					const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
-					await this.loadTasks(false, skipViewUpdate);
-				}
-			)
-		);
+		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+			// Dataflow: 订阅统一事件
+			const { on, Events } = await import("../dataflow/events/Events");
+			this.registerEvent(
+				on(this.app, Events.CACHE_READY, async () => {
+					// 冷启动就绪，从快照加载
+					await this.loadTasksFast(true);
+				})
+			);
+			this.registerEvent(
+				on(this.app, Events.TASK_CACHE_UPDATED, debouncedViewUpdate)
+			);
+		} else {
+			// Legacy: 兼容旧事件
+			this.registerEvent(
+				this.app.workspace.on(
+					"task-genius:task-cache-updated",
+					debouncedViewUpdate
+				)
+			);
+		}
 
 		this.registerEvent(
 			this.app.workspace.on(
@@ -1242,17 +1260,10 @@ export class TaskSpecificView extends ItemView {
 				}
 			}
 
-			// 直接更新当前视图
-			// Only switch view if not currently editing in details panel
-			if (this.currentViewId && !this.detailsComponent.isCurrentlyEditing()) {
+			// Always refresh the view after a successful update
+			// The update operation itself means editing is complete
+			if (this.currentViewId) {
 				this.switchView(this.currentViewId, this.currentProject);
-			} else if (this.currentViewId) {
-				// Update task data in the current view without full re-render
-				// Find active component and update its task list
-				const activeComponent = this.getActiveComponent();
-				if (activeComponent && typeof activeComponent.setTasks === "function") {
-					activeComponent.setTasks(this.tasks, this.tasks);
-				}
 			}
 
 			return updatedTask;

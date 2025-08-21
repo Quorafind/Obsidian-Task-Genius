@@ -1060,6 +1060,7 @@ export class InlineEditor extends Component {
 
 		this.isSaving = true;
 		try {
+			console.log("[InlineEditor] Calling onTaskUpdate:", this.originalTask.content, "->", this.task.content);
 			await this.options.onTaskUpdate(this.originalTask, this.task);
 			this.originalTask = {
 				...this.task,

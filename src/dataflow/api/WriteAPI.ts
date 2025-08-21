@@ -78,7 +78,7 @@ export class WriteAPI {
 		private vault: Vault,
 		private metadataCache: MetadataCache,
 		private plugin: TaskProgressBarPlugin,
-		private getTaskById: (id: string) => Task | null
+		private getTaskById: (id: string) => Promise<Task | null> | Task | null
 	) {}
 
 	/**
@@ -90,7 +90,7 @@ export class WriteAPI {
 		completed?: boolean;
 	}): Promise<{ success: boolean; task?: Task; error?: string }> {
 		try {
-			const task = this.getTaskById(args.taskId);
+			const task = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!task) {
 				return { success: false, error: "Task not found" };
 			}
@@ -152,7 +152,7 @@ export class WriteAPI {
 	 */
 	async updateTask(args: UpdateTaskArgs): Promise<{ success: boolean; task?: Task; error?: string }> {
 		try {
-			const originalTask = this.getTaskById(args.taskId);
+			const originalTask = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!originalTask) {
 				return { success: false, error: "Task not found" };
 			}
@@ -213,9 +213,21 @@ export class WriteAPI {
 			// Notify about write operation
 			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 			await this.vault.modify(file, lines.join("\n"));
+			
+			// Create the updated task object with the new content
+			const updatedTaskObj: Task = {
+				...originalTask,
+				...args.updates,
+				originalMarkdown: taskLine.replace(/^\s*[-*+]\s*\[[^\]]*\]\s*/, ""), // Remove checkbox prefix
+			};
+			
+			// Emit task updated event for direct update in dataflow
+			emit(this.app, Events.TASK_UPDATED, { task: updatedTaskObj });
+			
+			// Still emit write operation complete for compatibility
 			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 
-			return { success: true };
+			return { success: true, task: updatedTaskObj };
 		} catch (error) {
 			console.error("WriteAPI: Error updating task:", error);
 			return { success: false, error: String(error) };
@@ -295,7 +307,7 @@ export class WriteAPI {
 	 */
 	async deleteTask(args: DeleteTaskArgs): Promise<{ success: boolean; error?: string }> {
 		try {
-			const task = this.getTaskById(args.taskId);
+			const task = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!task) {
 				return { success: false, error: "Task not found" };
 			}
@@ -398,7 +410,7 @@ export class WriteAPI {
 		const updatedTasks: Task[] = [];
 
 		for (const taskId of args.taskIds) {
-			const task = this.getTaskById(taskId);
+			const task = await Promise.resolve(this.getTaskById(taskId));
 			if (!task) continue;
 
 			const newContent = task.content.replace(args.findText, args.replaceText);
@@ -408,7 +420,7 @@ export class WriteAPI {
 			});
 
 			if (result.success) {
-				const updatedTask = this.getTaskById(taskId);
+				const updatedTask = await Promise.resolve(this.getTaskById(taskId));
 				if (updatedTask) {
 					updatedTasks.push(updatedTask);
 				}
@@ -422,7 +434,7 @@ export class WriteAPI {
 	 * Batch create subtasks
 	 */
 	async batchCreateSubtasks(args: BatchCreateSubtasksArgs): Promise<{ tasks: Task[] }> {
-		const parentTask = this.getTaskById(args.parentTaskId);
+		const parentTask = await Promise.resolve(this.getTaskById(args.parentTaskId));
 		if (!parentTask) {
 			return { tasks: [] };
 		}
@@ -635,7 +647,10 @@ export class WriteAPI {
 			if (useDataviewFormat) {
 				metadata.push(`[tags:: ${args.tags.join(", ")}]`);
 			} else {
-				metadata.push(...args.tags.map(tag => `#${tag}`));
+				// Ensure tags don't already have # prefix before adding one
+				metadata.push(...args.tags.map(tag => 
+					tag.startsWith("#") ? tag : `#${tag}`
+				));
 			}
 		}
 

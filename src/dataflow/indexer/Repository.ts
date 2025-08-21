@@ -484,4 +484,69 @@ export class Repository {
       seq: this.lastSequence
     });
   }
+
+  /**
+   * Get a task by its ID
+   */
+  async getTaskById(taskId: string): Promise<Task | undefined> {
+    // Get all tasks from the repository
+    const allTasks = await this.all();
+    
+    // Find the task by ID
+    const task = allTasks.find(t => t.id === taskId);
+    
+    return task;
+  }
+
+  /**
+   * Update a single task directly (for inline editing)
+   * This avoids re-parsing the entire file
+   */
+  async updateSingleTask(updatedTask: Task): Promise<void> {
+    const filePath = updatedTask.filePath;
+    if (!filePath) return;
+    
+    console.log(`[Repository] Updating single task: ${updatedTask.id} in ${filePath}`);
+    
+    // Load existing augmented tasks for the file
+    const existingAugmented = await this.storage.loadAugmented(filePath);
+    if (!existingAugmented) {
+      console.warn(`[Repository] No existing tasks found for ${filePath}, cannot update single task`);
+      return;
+    }
+    
+    // Find and replace the task in the array
+    const tasks = existingAugmented.data;
+    const taskIndex = tasks.findIndex(t => t.id === updatedTask.id);
+    
+    if (taskIndex === -1) {
+      console.warn(`[Repository] Task ${updatedTask.id} not found in ${filePath}`);
+      return;
+    }
+    
+    // Update the task
+    tasks[taskIndex] = updatedTask;
+    
+    // Update the index and storage
+    await this.indexer.updateIndexWithTasks(filePath, tasks);
+    await this.storage.storeAugmented(filePath, tasks);
+    
+    // Schedule persist operation
+    this.schedulePersist(filePath);
+    
+    // Emit update event
+    this.lastSequence = Seq.next();
+    emit(this.app, Events.TASK_CACHE_UPDATED, {
+      changedFiles: [filePath],
+      stats: {
+        total: await this.getTotalTaskCount(),
+        changed: 1
+      },
+      timestamp: Date.now(),
+      seq: this.lastSequence,
+      sourceSeq: undefined
+    });
+    
+    console.log(`[Repository] Single task ${updatedTask.id} updated successfully`);
+  }
 }

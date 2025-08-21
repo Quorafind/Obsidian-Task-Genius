@@ -54,6 +54,7 @@ export class ContentComponent extends Component {
 	private focusFilter: string | null = null; // Keep focus filter if needed
 	private isTreeView: boolean = false;
 	private isRendering: boolean = false; // Guard against concurrent renders
+	private pendingForceRefresh: boolean = false; // Track if a force refresh is pending
 
 	constructor(
 		private parentEl: HTMLElement,
@@ -176,18 +177,44 @@ export class ContentComponent extends Component {
 		this.refreshTaskList(); // Refresh list completely on view mode change
 	}
 
-	public setTasks(tasks: Task[], notFilteredTasks: Task[]) {
+	public setTasks(tasks: Task[], notFilteredTasks: Task[], forceRefresh: boolean = false) {
+		// Allow forced refresh for cases where we know the data has changed
+		if (forceRefresh) {
+			console.log("ContentComponent: Forced refresh requested");
+			// Cancel any ongoing rendering if force refresh is requested
+			this.isRendering = false;
+			this.pendingForceRefresh = true;
+			this.allTasks = tasks;
+			this.notFilteredTasks = notFilteredTasks;
+			this.applyFilters();
+			this.refreshTaskList();
+			return;
+		}
+
+		// If a force refresh is pending, skip non-forced updates
+		if (this.pendingForceRefresh) {
+			console.log("ContentComponent: Skipping non-forced update, force refresh is pending");
+			return;
+		}
+
 		// Prevent unnecessary refreshes if data hasn't actually changed
-		if (this.allTasks.length === tasks.length && 
+		// Check if the array reference has changed (which indicates an update)
+		if (this.allTasks === tasks && 
+			this.notFilteredTasks === notFilteredTasks) {
+			console.log("ContentComponent: Same array references, skipping refresh");
+			return;
+		}
+
+		// Additional check for actual content changes
+		if (this.allTasks.length === tasks.length &&
 			this.notFilteredTasks.length === notFilteredTasks.length &&
 			tasks.length > 0) {
 			// Quick check - if same length and not empty, check if first few tasks are identical
-			const sampleSize = Math.min(3, tasks.length);
+			const sampleSize = Math.min(5, tasks.length);
 			let unchanged = true;
 			for (let i = 0; i < sampleSize; i++) {
-				if (this.allTasks[i]?.id !== tasks[i]?.id || 
-					this.allTasks[i]?.content !== tasks[i]?.content ||
-					this.allTasks[i]?.status !== tasks[i]?.status) {
+				if (this.allTasks[i]?.id !== tasks[i]?.id ||
+					this.allTasks[i]?.originalMarkdown !== tasks[i]?.originalMarkdown) {
 					unchanged = false;
 					break;
 				}
@@ -288,7 +315,13 @@ export class ContentComponent extends Component {
 	}
 
 	private refreshTaskList() {
-		// Prevent concurrent renders
+		// Allow force refresh to override concurrent rendering
+		if (this.pendingForceRefresh) {
+			console.log("ContentComponent: Processing pending force refresh");
+			this.isRendering = false; // Cancel any ongoing render
+		}
+		
+		// Prevent concurrent renders (unless force refresh)
 		if (this.isRendering) {
 			console.log("ContentComponent: Already rendering, skipping refresh");
 			return;
@@ -326,6 +359,7 @@ export class ContentComponent extends Component {
 			// Reset rendering flag after completion
 			setTimeout(() => {
 				this.isRendering = false;
+				this.pendingForceRefresh = false; // Reset force refresh flag
 			}, 50); // Small delay to prevent immediate re-entry
 		}
 	}

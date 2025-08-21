@@ -230,14 +230,31 @@ export class DataflowOrchestrator {
     // Listen for WriteAPI completion events to trigger re-processing
     this.eventRefs.push(
       on(this.app, Events.WRITE_OPERATION_COMPLETE, async (payload: any) => {
-        const { path } = payload;
-        console.log(`[DataflowOrchestrator] WRITE_OPERATION_COMPLETE: ${path}`);
+        const { path, taskId } = payload;
+        console.log(`[DataflowOrchestrator] WRITE_OPERATION_COMPLETE: ${path}, taskId: ${taskId}`);
         
-        // Process the file after WriteAPI completes
-        const file = this.vault.getAbstractFileByPath(path) as TFile;
-        if (file) {
-          // Process immediately without debounce for WriteAPI operations
-          await this.processFileImmediate(file);
+        // If we have a taskId, it means a specific task was updated
+        // We'll handle this through TASK_UPDATED event instead
+        if (!taskId) {
+          // No specific task, process the entire file
+          const file = this.vault.getAbstractFileByPath(path) as TFile;
+          if (file) {
+            // Process immediately without debounce for WriteAPI operations
+            // Pass true to force cache invalidation
+            await this.processFileImmediate(file, true);
+          }
+        }
+      })
+    );
+    
+    // Listen for direct task updates (from inline editing)
+    this.eventRefs.push(
+      on(this.app, Events.TASK_UPDATED, async (payload: any) => {
+        const { task } = payload;
+        if (task) {
+          console.log(`[DataflowOrchestrator] TASK_UPDATED: ${task.id} in ${task.filePath}`);
+          // Update the single task directly in the repository
+          await this.repository.updateSingleTask(task);
         }
       })
     );
@@ -280,7 +297,7 @@ export class DataflowOrchestrator {
     
     const timeoutId = setTimeout(async () => {
       this.processingQueue.delete(filePath);
-      await this.processFileImmediate(file);
+      await this.processFileImmediate(file, false);
     }, this.DEBOUNCE_DELAY);
     
     this.processingQueue.set(filePath, timeoutId);
@@ -288,8 +305,10 @@ export class DataflowOrchestrator {
 
   /**
    * Process a file immediately without debouncing
+   * @param file The file to process
+   * @param forceInvalidate Force cache invalidation (for WriteAPI operations)
    */
-  private async processFileImmediate(file: TFile): Promise<void> {
+  private async processFileImmediate(file: TFile, forceInvalidate: boolean = false): Promise<void> {
     const filePath = file.path;
     
     try {
@@ -306,7 +325,8 @@ export class DataflowOrchestrator {
       let needsProcessing = false;
       
       // Check if we can use fully cached augmented tasks
-      if (rawCached && augmentedCached && 
+      // Force invalidation for WriteAPI operations to ensure fresh parsing
+      if (!forceInvalidate && rawCached && augmentedCached && 
           this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
         // Use cached augmented tasks - file hasn't changed and we have augmented data
         console.log(`[DataflowOrchestrator] Using cached augmented tasks for ${filePath} (mtime match)`); 
@@ -318,14 +338,18 @@ export class DataflowOrchestrator {
         let rawTasks: Task[];
         let projectData: any; // Type will be inferred from projectResolver.get
         
-        if (rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
+        if (!forceInvalidate && rawCached && this.storage.isRawValid(filePath, rawCached, fileContent, mtime)) {
           // Use cached raw tasks but re-augment (project data might have changed)
           console.log(`[DataflowOrchestrator] Re-augmenting cached raw tasks for ${filePath}`);
           rawTasks = rawCached.data;
           projectData = await this.projectResolver.get(filePath);
         } else {
           // Parse the file from scratch
-          console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
+          if (forceInvalidate) {
+            console.log(`[DataflowOrchestrator] Parsing ${filePath} (forced invalidation from WriteAPI)`);
+          } else {
+            console.log(`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`);
+          }
           
           // Get project data first for parsing
           projectData = await this.projectResolver.get(filePath);
@@ -734,6 +758,13 @@ export class DataflowOrchestrator {
    */
   getQueryAPI(): QueryAPI {
     return this.queryAPI;
+  }
+
+  /**
+   * Get the repository for direct access
+   */
+  getRepository(): Repository {
+    return this.repository;
   }
 
   /**

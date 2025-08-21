@@ -386,8 +386,13 @@ export class TaskDetailsComponent extends Component {
 		const tagsField = this.createFormField(this.editFormEl, t("Tags"));
 		const tagsInput = new TextComponent(tagsField);
 		console.log("tagsInput", tagsInput, task.metadata.tags);
+		// Remove # prefix from tags when displaying them
 		tagsInput.setValue(
-			task.metadata.tags ? task.metadata.tags.join(", ") : ""
+			task.metadata.tags 
+				? task.metadata.tags
+					.map(tag => tag.startsWith("#") ? tag.slice(1) : tag)
+					.join(", ") 
+				: ""
 		);
 		tagsField
 			.createSpan({ cls: "field-description" })
@@ -526,12 +531,13 @@ export class TaskDetailsComponent extends Component {
 				metadata.project = task.metadata.project;
 			}
 
-			// Parse and update tags
+			// Parse and update tags (remove # prefix if present)
 			const tagsValue = tagsInput.getValue();
 			metadata.tags = tagsValue
 				? tagsValue
 						.split(",")
 						.map((tag) => tag.trim())
+						.map((tag) => tag.startsWith("#") ? tag.slice(1) : tag) // Remove # prefix if present
 						.filter((tag) => tag)
 				: [];
 
@@ -667,6 +673,11 @@ export class TaskDetailsComponent extends Component {
 
 					// Update the current task reference but don't redraw the UI
 					this.currentTask = updatedTask;
+					// Reset editing state after successful update to allow view refreshes
+					// Use setTimeout to ensure the reset happens after any immediate WriteAPI events
+					setTimeout(() => {
+						this.isEditing = false;
+					}, 50);
 					console.log("updatedTask", updatedTask);
 				} catch (error) {
 					console.error("Failed to update task:", error);

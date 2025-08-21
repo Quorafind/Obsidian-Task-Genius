@@ -38,7 +38,9 @@ export class MarkdownTaskParser {
 	}
 
 	// Public alias for extractMetadataAndTags
-	public extractMetadataAndTags(content: string): [string, Record<string, string>, string[]] {
+	public extractMetadataAndTags(
+		content: string,
+	): [string, Record<string, string>, string[]] {
 		return this.extractMetadataAndTagsInternal(content);
 	}
 
@@ -47,7 +49,7 @@ export class MarkdownTaskParser {
 	 */
 	static createWithStatusMapping(
 		config: TaskParserConfig,
-		statusMapping: Record<string, string>
+		statusMapping: Record<string, string>,
 	): MarkdownTaskParser {
 		const newConfig = { ...config, statusMapping };
 		return new MarkdownTaskParser(newConfig);
@@ -61,7 +63,7 @@ export class MarkdownTaskParser {
 		filePath: string = "",
 		fileMetadata?: Record<string, any>,
 		projectConfigData?: Record<string, any>,
-		tgProject?: TgProject
+		tgProject?: TgProject,
 	): EnhancedTask[] {
 		this.reset();
 		this.fileMetadata = fileMetadata;
@@ -80,7 +82,7 @@ export class MarkdownTaskParser {
 			parseIteration++;
 			if (parseIteration > this.config.maxParseIterations) {
 				console.warn(
-					"Warning: Maximum parse iterations reached, stopping to prevent infinite loop"
+					"Warning: Maximum parse iterations reached, stopping to prevent infinite loop",
 				);
 				break;
 			}
@@ -132,7 +134,7 @@ export class MarkdownTaskParser {
 				const isSubtask = parentId !== undefined;
 				const inheritedMetadata = this.inheritFileMetadata(
 					metadata,
-					isSubtask
+					isSubtask,
 				);
 
 				// Process inherited tags and merge with task's own tags
@@ -140,7 +142,7 @@ export class MarkdownTaskParser {
 				if (inheritedMetadata.tags) {
 					try {
 						const inheritedTags = JSON.parse(
-							inheritedMetadata.tags
+							inheritedMetadata.tags,
 						);
 						if (Array.isArray(inheritedTags)) {
 							finalTags = this.mergeTags(tags, inheritedTags);
@@ -163,23 +165,15 @@ export class MarkdownTaskParser {
 						? this.extractMultilineComment(
 								lines,
 								i + 1,
-								actualSpaces
-						  )
+								actualSpaces,
+							)
 						: [undefined, 0];
 
 				i += linesToSkip;
 
 				// Debug: Log priority extraction for each task
-				const extractedPriority = this.extractLegacyPriority(inheritedMetadata);
-				if (process.env.NODE_ENV === 'development' || true) { // Always log for debugging
-					console.log('[Parser] Task priority extraction:', {
-						lineNumber: i + 1,
-						content: cleanedContent.substring(0, 50),
-						metadataPriority: inheritedMetadata.priority,
-						extractedPriority,
-						filePath
-					});
-				}
+				const extractedPriority =
+					this.extractLegacyPriority(inheritedMetadata);
 
 				const enhancedTask: EnhancedTask = {
 					id: taskId,
@@ -208,23 +202,23 @@ export class MarkdownTaskParser {
 					priority: extractedPriority,
 					startDate: this.extractLegacyDate(
 						inheritedMetadata,
-						"startDate"
+						"startDate",
 					),
 					dueDate: this.extractLegacyDate(
 						inheritedMetadata,
-						"dueDate"
+						"dueDate",
 					),
 					scheduledDate: this.extractLegacyDate(
 						inheritedMetadata,
-						"scheduledDate"
+						"scheduledDate",
 					),
 					completedDate: this.extractLegacyDate(
 						inheritedMetadata,
-						"completedDate"
+						"completedDate",
 					),
 					createdDate: this.extractLegacyDate(
 						inheritedMetadata,
-						"createdDate"
+						"createdDate",
 					),
 					recurrence: inheritedMetadata.recurrence,
 					project: inheritedMetadata.project,
@@ -233,7 +227,7 @@ export class MarkdownTaskParser {
 
 				if (parentId && this.tasks.length > 0) {
 					const parentTask = this.tasks.find(
-						(t) => t.id === parentId
+						(t) => t.id === parentId,
 					);
 					if (parentTask) {
 						parentTask.childrenIds.push(taskId);
@@ -259,14 +253,14 @@ export class MarkdownTaskParser {
 		filePath: string = "",
 		fileMetadata?: Record<string, any>,
 		projectConfigData?: Record<string, any>,
-		tgProject?: TgProject
+		tgProject?: TgProject,
 	): Task[] {
 		const enhancedTasks = this.parse(
 			input,
 			filePath,
 			fileMetadata,
 			projectConfigData,
-			tgProject
+			tgProject,
 		);
 		return enhancedTasks.map((task) => this.convertToLegacyTask(task));
 	}
@@ -291,7 +285,7 @@ export class MarkdownTaskParser {
 	}
 
 	private extractTaskLine(
-		line: string
+		line: string,
 	): [number, number, string, string] | null {
 		const trimmed = line.trim();
 		const actualSpaces = line.length - trimmed.length;
@@ -352,7 +346,7 @@ export class MarkdownTaskParser {
 	}
 
 	private extractMetadataAndTagsInternal(
-		content: string
+		content: string,
 	): [string, Record<string, string>, string[]] {
 		const metadata: Record<string, string> = {};
 		const tags: string[] = [];
@@ -375,16 +369,20 @@ export class MarkdownTaskParser {
 				if (bracketMatch) {
 					const [key, value, newRemaining] = bracketMatch;
 					metadata[key] = value;
-					
+
 					// Debug: Log dataview metadata extraction, especially priority
-					if ((process.env.NODE_ENV === 'development' || true) && key === 'priority') { // Always log for debugging
-						console.log('[Parser] Dataview priority found:', {
+					if (
+						(process.env.NODE_ENV === "development" || true) &&
+						key === "priority"
+					) {
+						// Always log for debugging
+						console.log("[Parser] Dataview priority found:", {
 							key,
 							value,
-							remaining: remaining.substring(0, 50)
+							remaining: remaining.substring(0, 50),
 						});
 					}
-					
+
 					remaining = newRemaining;
 					foundMatch = true;
 					continue;
@@ -486,7 +484,7 @@ export class MarkdownTaskParser {
 	}
 
 	private extractDataviewMetadata(
-		content: string
+		content: string,
 	): [string, string, string] | null {
 		const start = content.indexOf("[");
 		if (start === -1) return null;
@@ -532,7 +530,7 @@ export class MarkdownTaskParser {
 	}
 
 	private extractEmojiMetadata(
-		content: string
+		content: string,
 	): [string, string, string, string] | null {
 		// Find the earliest emoji
 		let earliestEmoji: { pos: number; emoji: string; key: string } | null =
@@ -551,7 +549,7 @@ export class MarkdownTaskParser {
 
 		const beforeEmoji = content.substring(0, earliestEmoji.pos);
 		const afterEmoji = content.substring(
-			earliestEmoji.pos + earliestEmoji.emoji.length
+			earliestEmoji.pos + earliestEmoji.emoji.length,
 		);
 
 		// Extract value after emoji
@@ -565,7 +563,7 @@ export class MarkdownTaskParser {
 			// Check if we encounter other emojis or special characters
 			if (
 				Object.keys(this.config.emojiMapping).some((e) =>
-					valuePart.substring(i).startsWith(e)
+					valuePart.substring(i).startsWith(e),
 				) ||
 				char === "["
 			) {
@@ -611,14 +609,15 @@ export class MarkdownTaskParser {
 			// For priority emojis, use the emoji itself or the provided value
 			// This ensures we can distinguish between different priority levels
 			metadataValue = value || earliestEmoji.emoji;
-			
+
 			// Debug: Log priority emoji extraction
-			if (process.env.NODE_ENV === 'development' || true) { // Always log for debugging
-				console.log('[Parser] Priority emoji found:', {
+			if (process.env.NODE_ENV === "development" || true) {
+				// Always log for debugging
+				console.log("[Parser] Priority emoji found:", {
 					emoji: earliestEmoji.emoji,
 					value,
 					metadataValue,
-					position: earliestEmoji.pos
+					position: earliestEmoji.pos,
 				});
 			}
 		} else {
@@ -629,9 +628,15 @@ export class MarkdownTaskParser {
 
 		// Sanitize date-like emoji values to avoid trailing context (e.g., "2025-08-15 @work")
 		if (
-			["dueDate", "startDate", "scheduledDate", "completedDate", "createdDate", "cancelledDate"].includes(
-				earliestEmoji.key as string
-			) && typeof metadataValue === "string"
+			[
+				"dueDate",
+				"startDate",
+				"scheduledDate",
+				"completedDate",
+				"createdDate",
+				"cancelledDate",
+			].includes(earliestEmoji.key as string) &&
+			typeof metadataValue === "string"
 		) {
 			const m = metadataValue.match(/\d{4}-\d{2}-\d{2}/);
 			if (m) {
@@ -881,7 +886,7 @@ export class MarkdownTaskParser {
 	}
 
 	private extractTagsOnly(
-		content: string
+		content: string,
 	): [string, Record<string, string>, string[]] {
 		const metadata: Record<string, string> = {};
 		const tags: string[] = [];
@@ -983,7 +988,7 @@ export class MarkdownTaskParser {
 	}
 
 	private findParentAndLevel(
-		actualSpaces: number
+		actualSpaces: number,
 	): [string | undefined, number] {
 		if (this.indentStack.length === 0 || actualSpaces === 0) {
 			return [undefined, 0];
@@ -1006,7 +1011,7 @@ export class MarkdownTaskParser {
 	private updateIndentStack(
 		taskId: string,
 		indentLevel: number,
-		actualSpaces: number
+		actualSpaces: number,
 	): void {
 		let stackOperations = 0;
 
@@ -1014,7 +1019,7 @@ export class MarkdownTaskParser {
 			stackOperations++;
 			if (stackOperations > this.config.maxStackOperations) {
 				console.warn(
-					"Warning: Maximum stack operations reached, clearing stack"
+					"Warning: Maximum stack operations reached, clearing stack",
 				);
 				this.indentStack = [];
 				break;
@@ -1031,7 +1036,7 @@ export class MarkdownTaskParser {
 		if (this.indentStack.length >= this.config.maxStackSize) {
 			this.indentStack.splice(
 				0,
-				this.indentStack.length - this.config.maxStackSize + 1
+				this.indentStack.length - this.config.maxStackSize + 1,
 			);
 		}
 
@@ -1041,7 +1046,7 @@ export class MarkdownTaskParser {
 	private getStatusFromMapping(rawStatus: string): string | undefined {
 		// Find status name corresponding to raw character
 		for (const [statusName, mappedChar] of Object.entries(
-			this.config.statusMapping
+			this.config.statusMapping,
 		)) {
 			if (mappedChar === rawStatus) {
 				return statusName;
@@ -1078,7 +1083,7 @@ export class MarkdownTaskParser {
 	private extractMultilineComment(
 		lines: string[],
 		startIndex: number,
-		actualSpaces: number
+		actualSpaces: number,
 	): [string | undefined, number] {
 		const commentLines: string[] = [];
 		let i = startIndex;
@@ -1110,7 +1115,7 @@ export class MarkdownTaskParser {
 
 	// Legacy compatibility methods
 	private extractLegacyPriority(
-		metadata: Record<string, string>
+		metadata: Record<string, string>,
 	): number | undefined {
 		if (!metadata.priority) return undefined;
 
@@ -1144,19 +1149,21 @@ export class MarkdownTaskParser {
 		}
 
 		// Then try to map string values (including emojis)
-		const mappedPriority = priorityMap[metadata.priority.toLowerCase()] || priorityMap[metadata.priority];
+		const mappedPriority =
+			priorityMap[metadata.priority.toLowerCase()] ||
+			priorityMap[metadata.priority];
 		return mappedPriority;
 	}
 
 	private extractLegacyDate(
 		metadata: Record<string, string>,
-		key: string
+		key: string,
 	): number | undefined {
 		const dateStr = metadata[key];
 		if (!dateStr) return undefined;
 
 		// Check cache first to avoid repeated date parsing
-		const cacheKey = `${dateStr}_${(this.customDateFormats || []).join(',')}`;
+		const cacheKey = `${dateStr}_${(this.customDateFormats || []).join(",")}`;
 		const cachedDate = MarkdownTaskParser.dateCache.get(cacheKey);
 		if (cachedDate !== undefined) {
 			return cachedDate;
@@ -1241,8 +1248,8 @@ export class MarkdownTaskParser {
 				heading: Array.isArray(enhancedTask.heading)
 					? enhancedTask.heading
 					: enhancedTask.heading
-					? [enhancedTask.heading]
-					: [],
+						? [enhancedTask.heading]
+						: [],
 				parent: enhancedTask.parentId,
 				tgProject: enhancedTask.tgProject,
 			},
@@ -1377,18 +1384,18 @@ export class MarkdownTaskParser {
 	 * @returns Normalized tag with # prefix
 	 */
 	private normalizeTag(tag: string): string {
-		if (typeof tag !== 'string') {
+		if (typeof tag !== "string") {
 			return tag;
 		}
-		
+
 		// Trim whitespace
 		const trimmed = tag.trim();
-		
+
 		// If empty or already starts with #, return as is
-		if (!trimmed || trimmed.startsWith('#')) {
+		if (!trimmed || trimmed.startsWith("#")) {
 			return trimmed;
 		}
-		
+
 		// Add # prefix
 		return `#${trimmed}`;
 	}
@@ -1401,9 +1408,13 @@ export class MarkdownTaskParser {
 	 */
 	private mergeTags(baseTags: string[], inheritedTags: string[]): string[] {
 		// Normalize all tags before merging
-		const normalizedBaseTags = baseTags.map(tag => this.normalizeTag(tag));
-		const normalizedInheritedTags = inheritedTags.map(tag => this.normalizeTag(tag));
-		
+		const normalizedBaseTags = baseTags.map((tag) =>
+			this.normalizeTag(tag),
+		);
+		const normalizedInheritedTags = inheritedTags.map((tag) =>
+			this.normalizeTag(tag),
+		);
+
 		const merged = [...normalizedBaseTags];
 
 		for (const tag of normalizedInheritedTags) {
@@ -1420,7 +1431,7 @@ export class MarkdownTaskParser {
 	 */
 	private inheritFileMetadata(
 		taskMetadata: Record<string, string>,
-		isSubtask: boolean = false
+		isSubtask: boolean = false,
 	): Record<string, string> {
 		// Helper function to convert priority values to numbers
 		const convertPriorityValue = (value: any): string => {
@@ -1465,7 +1476,8 @@ export class MarkdownTaskParser {
 			}
 
 			// Try priority mapping (including emojis)
-			const mappedPriority = priorityMap[strValue.toLowerCase()] || priorityMap[strValue];
+			const mappedPriority =
+				priorityMap[strValue.toLowerCase()] || priorityMap[strValue];
 			if (mappedPriority !== undefined) {
 				return String(mappedPriority);
 			}
@@ -1535,7 +1547,7 @@ export class MarkdownTaskParser {
 
 					// Merge extracted metadata from tags
 					for (const [tagKey, tagValue] of Object.entries(
-						tagMetadata
+						tagMetadata,
 					)) {
 						if (
 							!nonInheritableFields.has(tagKey) &&
@@ -1563,7 +1575,9 @@ export class MarkdownTaskParser {
 							inherited["tags"] === "")
 					) {
 						// Normalize tags before storing
-						const normalizedTags = value.map(tag => this.normalizeTag(tag));
+						const normalizedTags = value.map((tag) =>
+							this.normalizeTag(tag),
+						);
 						inherited["tags"] = JSON.stringify(normalizedTags);
 					}
 				} else {
@@ -1593,7 +1607,7 @@ export class MarkdownTaskParser {
 		// Inherit from project configuration data if available
 		if (this.projectConfigCache) {
 			for (const [key, value] of Object.entries(
-				this.projectConfigCache
+				this.projectConfigCache,
 			)) {
 				// Only inherit if:
 				// 1. The field is not in the non-inheritable list
@@ -1642,10 +1656,10 @@ export class ConfigurableTaskParser extends MarkdownTaskParser {
 			maxStackOperations: 1000,
 			maxStackSize: 50,
 			statusMapping: {
-				"TODO": " ",
-				"IN_PROGRESS": "/",
-				"DONE": "x",
-				"CANCELLED": "-"
+				TODO: " ",
+				IN_PROGRESS: "/",
+				DONE: "x",
+				CANCELLED: "-",
 			},
 			emojiMapping: {
 				"📅": "dueDate",
@@ -1662,15 +1676,15 @@ export class ConfigurableTaskParser extends MarkdownTaskParser {
 				"⏫": "priority",
 				"🔼": "priority",
 				"🔽": "priority",
-				"⏬": "priority"
+				"⏬": "priority",
 			},
 			metadataParseMode: MetadataParseMode.Both,
 			specialTagPrefixes: {
-				"project": "project",
-				"@": "context"
-			}
+				project: "project",
+				"@": "context",
+			},
 		};
-		
+
 		super({ ...defaultConfig, ...config });
 	}
 }

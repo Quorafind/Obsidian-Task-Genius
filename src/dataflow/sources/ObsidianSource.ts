@@ -56,6 +56,16 @@ export class ObsidianSource {
       })
     );
     
+    // Clean up skip flag when write operation completes
+    this.eventRefs.push(
+      on(this.app, Events.WRITE_OPERATION_COMPLETE, ({ path }) => {
+        // Delay cleanup slightly to ensure metadata changes are also skipped
+        setTimeout(() => {
+          this.skipNextModify.delete(path);
+        }, 100);
+      })
+    );
+    
     // File system events
     this.eventRefs.push(
       this.vault.on('create', this.onFileCreate.bind(this)),
@@ -183,6 +193,13 @@ export class ObsidianSource {
    */
   private onMetadataChange(file: TFile): void {
     if (!this.isRelevantFile(file)) {
+      return;
+    }
+    
+    // Skip if this metadata change is from WriteAPI
+    // WriteAPI operations can trigger metadata changes, but we handle them via TASK_UPDATED
+    if (this.skipNextModify.has(file.path)) {
+      console.log(`ObsidianSource: Skipping metadata change for ${file.path} (handled by WriteAPI)`);
       return;
     }
     

@@ -81,6 +81,17 @@ export class CanvasParser {
 		canvasData: CanvasData,
 		filePath: string
 	): ParsedCanvasContent {
+		// Check if nodes exist
+		if (!canvasData || !canvasData.nodes || !Array.isArray(canvasData.nodes)) {
+			console.warn(`Canvas file ${filePath} has no nodes or invalid nodes structure`);
+			return {
+				canvasData,
+				textContent: "",
+				textNodes: [],
+				filePath,
+			};
+		}
+
 		// Filter text nodes
 		const textNodes = canvasData.nodes.filter(
 			(node): node is CanvasTextData => node.type === "text"

@@ -144,10 +144,8 @@ export class TaskView extends ItemView {
 
 		// Add debounced view update to prevent rapid successive refreshes
 		const debouncedViewUpdate = debounce(async () => {
-			const skipViewUpdate = this.detailsComponent?.isCurrentlyEditing() || false;
-			if (!skipViewUpdate) {
-				await this.loadTasks(false, false);
-			}
+			// Don't skip view updates - the detailsComponent will handle edit state properly
+			await this.loadTasks(false, false);
 		}, 150); // 150ms debounce delay
 
 		// 1. 首先注册事件监听器，确保不会错过任何更新
@@ -854,9 +852,9 @@ export class TaskView extends ItemView {
 		};
 	}
 
-	private switchView(viewId: ViewMode, project?: string | null) {
+	private switchView(viewId: ViewMode, project?: string | null, forceRefresh: boolean = false) {
 		this.currentViewId = viewId;
-		console.log("Switching view to:", viewId, "Project:", project);
+		console.log("[TaskView] Switching view to:", viewId, "Project:", project, "ForceRefresh:", forceRefresh);
 		
 		// Update sidebar to reflect current view
 		this.sidebarComponent.setViewMode(viewId);
@@ -977,10 +975,13 @@ export class TaskView extends ItemView {
 				}
 
 				console.log("tasks", this.tasks);
-
+				
+				const filteredTasks = filterTasks(this.tasks, viewId, this.plugin, filterOptions);
+				console.log("[TaskView] Calling setTasks with", filteredTasks.length, "filtered tasks, forceRefresh:", forceRefresh);
 				targetComponent.setTasks(
-					filterTasks(this.tasks, viewId, this.plugin, filterOptions),
-					this.tasks
+					filteredTasks,
+					this.tasks,
+					forceRefresh
 				);
 			}
 
@@ -1385,16 +1386,50 @@ export class TaskView extends ItemView {
 
 		try {
 			// Use WriteAPI if dataflow is enabled
+			let writeResult: { success: boolean; task?: Task; error?: string } | undefined;
 			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				const result = await this.plugin.writeAPI.updateTask({
+				writeResult = await this.plugin.writeAPI.updateTask({
 					taskId: updatedTask.id,
 					updates: updatedTask
 				});
-				if (!result.success) {
-					throw new Error(result.error || "Failed to update task");
+				if (!writeResult.success) {
+					throw new Error(writeResult.error || "Failed to update task");
+				}
+				// Prefer the authoritative task returned by WriteAPI (includes updated originalMarkdown)
+				if (writeResult.task) {
+					updatedTask = writeResult.task;
 				}
 			} else {
 				await taskManager.updateTask(updatedTask);
+			}
+
+			console.log(`Task ${updatedTask.id} updated successfully via handleTaskUpdate.`);
+
+			// Update local task list immediately
+			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
+			if (index !== -1) {
+				// Create a new array to ensure ContentComponent detects the change
+				this.tasks = [...this.tasks];
+				this.tasks[index] = updatedTask;
+			} else {
+				console.warn(
+					"Updated task not found in local list, might reload."
+				);
+			}
+
+			// Always refresh the view after a successful update
+			// The update operation itself means editing is complete
+			// Force refresh since we know the task has been updated
+			this.switchView(this.currentViewId, undefined, true);
+
+			// Update details component if the updated task is currently selected
+			if (this.currentSelectedTaskId === updatedTask.id) {
+				if (this.detailsComponent.isCurrentlyEditing()) {
+					// Update the current task reference without re-rendering UI
+					this.detailsComponent.currentTask = updatedTask;
+				} else {
+					this.detailsComponent.showTaskDetails(updatedTask);
+				}
 			}
 		} catch (error) {
 			console.error("Failed to update task:", error);
@@ -1414,13 +1449,17 @@ export class TaskView extends ItemView {
 		}
 		try {
 			// Use WriteAPI if dataflow is enabled
+			let writeResult: { success: boolean; task?: Task; error?: string } | undefined;
 			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				const result = await this.plugin.writeAPI.updateTask({
+				writeResult = await this.plugin.writeAPI.updateTask({
 					taskId: updatedTask.id,
 					updates: updatedTask
 				});
-				if (!result.success) {
-					throw new Error(result.error || "Failed to update task");
+				if (!writeResult.success) {
+					throw new Error(writeResult.error || "Failed to update task");
+				}
+				if (writeResult.task) {
+					updatedTask = writeResult.task;
 				}
 			} else {
 				await taskManager.updateTask(updatedTask);
@@ -1430,6 +1469,8 @@ export class TaskView extends ItemView {
 			// 立即更新本地任务列表
 			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
 			if (index !== -1) {
+				// Create a new array to ensure ContentComponent detects the change
+				this.tasks = [...this.tasks];
 				this.tasks[index] = updatedTask;
 			} else {
 				console.warn(
@@ -1437,25 +1478,10 @@ export class TaskView extends ItemView {
 				);
 			}
 
-			// 如果任务在当前视图中，立即更新视图
-			// Only skip view update if currently editing in details panel AND it's not a status change
-			const isStatusChange = originalTask.status !== updatedTask.status || 
-				originalTask.completed !== updatedTask.completed;
-			
-			if (!this.detailsComponent.isCurrentlyEditing() || isStatusChange) {
-				// Always refresh view for status changes or when not editing
-				this.switchView(this.currentViewId);
-			} else {
-				// Update the task in the current view without re-rendering (only for content edits)
-				// Use setTasks to update the components with the modified task list
-				if (this.currentViewId === "inbox" || this.currentViewId === "projects") {
-					this.contentComponent.setTasks(this.tasks, this.tasks);
-				} else if (this.currentViewId === "forecast") {
-					this.forecastComponent.setTasks(this.tasks);
-				} else if (this.currentViewId === "tags") {
-					this.tagsComponent.setTasks(this.tasks);
-				}
-			}
+			// Always refresh the view after a successful update
+			// The update operation itself means editing is complete
+			// Force refresh since we know the task has been updated
+			this.switchView(this.currentViewId, undefined, true);
 
 			if (this.currentSelectedTaskId === updatedTask.id) {
 				if (this.detailsComponent.isCurrentlyEditing()) {
