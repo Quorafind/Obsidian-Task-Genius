@@ -68,7 +68,7 @@ describe("ICS Manager", () => {
 
 	beforeEach(async () => {
 		mockComponent = new MockComponent();
-		icsManager = new IcsManager(testConfig, mockSettings);
+		icsManager = new IcsManager(testConfig, mockSettings, {} as any);
 		await icsManager.initialize();
 	});
 
@@ -265,7 +265,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithReplacements],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			// Convert event to task (this will apply text replacements)
@@ -323,7 +324,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithMultipleReplacements],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			const task = testManager.convertEventsToTasks([mockEvent])[0];
@@ -370,7 +372,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithAllTarget],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			const task = testManager.convertEventsToTasks([mockEvent])[0];
@@ -428,7 +431,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithDisabledRule],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			const task = testManager.convertEventsToTasks([mockEvent])[0];
@@ -473,7 +477,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithInvalidRegex],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			// Should not throw an error, and text should remain unchanged
@@ -519,7 +524,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithCaptureGroups],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			const task = testManager.convertEventsToTasks([mockEvent])[0];
@@ -556,7 +562,8 @@ describe("ICS Manager", () => {
 					...testConfig,
 					sources: [sourceWithoutReplacements],
 				},
-				mockSettings
+				mockSettings,
+				{} as any
 			);
 
 			const task = testManager.convertEventsToTasks([mockEvent])[0];
@@ -628,7 +635,7 @@ describe("ICS Manager Integration", () => {
 			defaultEventColor: "#3b82f6",
 		};
 
-		const manager = new IcsManager(config, mockSettings);
+		const manager = new IcsManager(config, mockSettings, {} as any);
 		await manager.initialize();
 
 		try {

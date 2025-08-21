@@ -440,11 +440,11 @@ export class TaskDetailsComponent extends Component {
 			cls: "date-input",
 		});
 		if (task.metadata.dueDate) {
-			// Use UTC methods to avoid timezone issues
+			// Use local date components to avoid off-by-one due to timezone
 			const date = new Date(task.metadata.dueDate);
-			const year = date.getUTCFullYear();
-			const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-			const day = String(date.getUTCDate()).padStart(2, "0");
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
 			dueDateInput.value = `${year}-${month}-${day}`;
 		}		// Start date
 		const startDateField = this.createFormField(
@@ -514,10 +514,6 @@ export class TaskDetailsComponent extends Component {
 			// Update task properties
 			const newContent = contentInput.getValue();
 			updatedTask.content = newContent;
-			// Also update originalMarkdown if content has changed
-			if (task.content !== newContent) {
-				updatedTask.originalMarkdown = newContent;
-			}
 
 			// Update metadata properties
 			const metadata = { ...updatedTask.metadata };
@@ -671,14 +667,10 @@ export class TaskDetailsComponent extends Component {
 				try {
 					await this.onTaskUpdate(task, updatedTask);
 
-					// Update the current task reference but don't redraw the UI
+					// 更新本地引用并立即重绘详情，避免显示“上一次”的值
 					this.currentTask = updatedTask;
-					// Reset editing state after successful update to allow view refreshes
-					// Use setTimeout to ensure the reset happens after any immediate WriteAPI events
-					setTimeout(() => {
-						this.isEditing = false;
-					}, 50);
-					console.log("updatedTask", updatedTask);
+					this.isEditing = false;
+					this.showTaskDetails(updatedTask);
 				} catch (error) {
 					console.error("Failed to update task:", error);
 					// TODO: Show error message to user

@@ -21,6 +21,7 @@ import { HolidayDetector } from "../parsers/holiday-detector";
 import { StatusMapper } from "../parsers/ics-status-mapper";
 import { WebcalUrlConverter } from "../parsers/webcal-converter";
 import { TaskProgressBarSettings } from "../common/setting-definition";
+import TaskProgressBarPlugin from "src";
 
 export class IcsManager extends Component {
 	private config: IcsManagerConfig;
@@ -30,13 +31,17 @@ export class IcsManager extends Component {
 	private onEventsUpdated?: (sourceId: string, events: IcsEvent[]) => void;
 	private pluginSettings: TaskProgressBarSettings;
 
+	private plugin: TaskProgressBarPlugin;
+
 	constructor(
 		config: IcsManagerConfig,
-		pluginSettings: TaskProgressBarSettings
+		pluginSettings: TaskProgressBarSettings,
+		plugin: TaskProgressBarPlugin,
 	) {
 		super();
 		this.config = config;
 		this.pluginSettings = pluginSettings;
+		this.plugin = plugin;
 	}
 
 	/**
@@ -57,6 +62,18 @@ export class IcsManager extends Component {
 		}
 
 		console.log("ICS Manager initialized");
+
+		// Notify listeners (e.g., IcsSource) that ICS is ready/config updated
+		// try {
+		// 	this.plugin.app?.workspace?.trigger?.(
+		// 		"task-genius:ics-config-changed",
+		// 	);
+		// } catch (e) {
+		// 	console.warn(
+		// 		"[IcsManager] Failed to trigger ics-config-changed on initialize",
+		// 		e,
+		// 	);
+		// }
 	}
 
 	/**
@@ -92,13 +109,24 @@ export class IcsManager extends Component {
 		} else {
 			this.stopBackgroundRefresh();
 		}
+
+		// try {
+		// 	this.plugin.app?.workspace?.trigger?.(
+		// 		"task-genius:ics-config-changed",
+		// 	);
+		// } catch (e) {
+		// 	console.warn(
+		// 		"[IcsManager] Failed to trigger ics-config-changed",
+		// 		e,
+		// 	);
+		// }
 	}
 
 	/**
 	 * Set event update callback
 	 */
 	setOnEventsUpdated(
-		callback: (sourceId: string, events: IcsEvent[]) => void
+		callback: (sourceId: string, events: IcsEvent[]) => void,
 	): void {
 		this.onEventsUpdated = callback;
 	}
@@ -129,7 +157,7 @@ export class IcsManager extends Component {
 				// Apply filters if configured
 				const filteredEvents = this.applyFilters(
 					cacheEntry.events,
-					source
+					source,
 				);
 				console.log("filteredEvents count", filteredEvents.length);
 				allEvents.push(...filteredEvents);
@@ -150,11 +178,11 @@ export class IcsManager extends Component {
 
 		console.log(
 			"getAllEventsWithHolidayDetection: cache size",
-			this.cache.size
+			this.cache.size,
 		);
 		console.log(
 			"getAllEventsWithHolidayDetection: config sources",
-			this.config.sources
+			this.config.sources,
 		);
 
 		for (const [sourceId, cacheEntry] of this.cache) {
@@ -164,7 +192,7 @@ export class IcsManager extends Component {
 				"Processing source:",
 				sourceId,
 				"enabled:",
-				source?.enabled
+				source?.enabled,
 			);
 			console.log("Cache entry events count:", cacheEntry.events.length);
 
@@ -172,7 +200,7 @@ export class IcsManager extends Component {
 				// Apply filters first
 				const filteredEvents = this.applyFilters(
 					cacheEntry.events,
-					source
+					source,
 				);
 
 				console.log("Filtered events count:", filteredEvents.length);
@@ -183,7 +211,7 @@ export class IcsManager extends Component {
 					processedEvents =
 						HolidayDetector.processEventsWithHolidayDetection(
 							filteredEvents,
-							source.holidayConfig
+							source.holidayConfig,
 						);
 				} else {
 					// Convert to IcsEventWithHoliday format without holiday detection
@@ -201,7 +229,7 @@ export class IcsManager extends Component {
 
 		console.log(
 			"getAllEventsWithHolidayDetection: total events",
-			allEvents.length
+			allEvents.length,
 		);
 		return allEvents;
 	}
@@ -324,7 +352,7 @@ export class IcsManager extends Component {
 		const mappedStatus = StatusMapper.applyStatusMapping(
 			event,
 			event.source.statusMapping,
-			this.pluginSettings
+			this.pluginSettings,
 		);
 
 		const task: IcsTask = {
@@ -371,7 +399,7 @@ export class IcsManager extends Component {
 	 * Convert single ICS event with holiday detection to Task format
 	 */
 	private convertEventWithHolidayToTask(
-		event: IcsEventWithHoliday
+		event: IcsEventWithHoliday,
 	): Task<ExtendedMetadata> & {
 		icsEvent: IcsEvent;
 		readonly: true;
@@ -394,7 +422,7 @@ export class IcsManager extends Component {
 		const mappedStatus = StatusMapper.applyStatusMapping(
 			event,
 			event.source.statusMapping,
-			this.pluginSettings
+			this.pluginSettings,
 		);
 
 		const task: IcsTask = {
@@ -458,7 +486,7 @@ export class IcsManager extends Component {
 	 * Map ICS priority to task priority
 	 */
 	private mapIcsPriorityToTaskPriority(
-		icsPriority?: number
+		icsPriority?: number,
 	): number | undefined {
 		if (icsPriority === undefined) return undefined;
 
@@ -507,12 +535,24 @@ export class IcsManager extends Component {
 
 				// Notify listeners
 				this.onEventsUpdated?.(sourceId, result.data.events);
+
+				// Broadcast workspace event so IcsSource can reload
+				// try {
+				// 	this.plugin.app?.workspace?.trigger?.(
+				// 		"task-genius:ics-cache-updated",
+				// 	);
+				// } catch (e) {
+				// 	console.warn(
+				// 		"[IcsManager] Failed to trigger ics-cache-updated",
+				// 		e,
+				// 	);
+				// }
 			} else {
 				// Handle different types of errors with appropriate logging
 				const errorType = this.categorizeError(result.error);
 				console.warn(
 					`ICS sync failed for source ${sourceId} (${errorType}):`,
-					result.error
+					result.error,
 				);
 
 				this.updateSyncStatus(sourceId, {
@@ -529,7 +569,7 @@ export class IcsManager extends Component {
 
 			console.warn(
 				`ICS sync exception for source ${sourceId} (${errorType}):`,
-				error
+				error,
 			);
 
 			this.updateSyncStatus(sourceId, {
@@ -598,7 +638,7 @@ export class IcsManager extends Component {
 		try {
 			// Convert webcal URL if needed
 			const conversionResult = WebcalUrlConverter.convertWebcalUrl(
-				source.url
+				source.url,
 			);
 
 			if (!conversionResult.success) {
@@ -626,18 +666,16 @@ export class IcsManager extends Component {
 					case "basic":
 						if (source.auth.username && source.auth.password) {
 							const credentials = btoa(
-								`${source.auth.username}:${source.auth.password}`
+								`${source.auth.username}:${source.auth.password}`,
 							);
-							requestParams.headers![
-								"Authorization"
-							] = `Basic ${credentials}`;
+							requestParams.headers!["Authorization"] =
+								`Basic ${credentials}`;
 						}
 						break;
 					case "bearer":
 						if (source.auth.token) {
-							requestParams.headers![
-								"Authorization"
-							] = `Bearer ${source.auth.token}`;
+							requestParams.headers!["Authorization"] =
+								`Bearer ${source.auth.token}`;
 						}
 						break;
 				}
@@ -659,8 +697,8 @@ export class IcsManager extends Component {
 				setTimeout(() => {
 					reject(
 						new Error(
-							`Request timeout after ${this.config.networkTimeout} seconds`
-						)
+							`Request timeout after ${this.config.networkTimeout} seconds`,
+						),
 					);
 				}, timeoutMs);
 			});
@@ -735,14 +773,14 @@ export class IcsManager extends Component {
 			const beforeFilter = filteredEvents.length;
 			filteredEvents = filteredEvents.filter((event) => !event.allDay);
 			console.log(
-				`Filtered out all-day events: ${beforeFilter} -> ${filteredEvents.length}`
+				`Filtered out all-day events: ${beforeFilter} -> ${filteredEvents.length}`,
 			);
 		}
 		if (!source.showTimedEvents) {
 			const beforeFilter = filteredEvents.length;
 			filteredEvents = filteredEvents.filter((event) => event.allDay);
 			console.log(
-				`Filtered out timed events: ${beforeFilter} -> ${filteredEvents.length}`
+				`Filtered out timed events: ${beforeFilter} -> ${filteredEvents.length}`,
 			);
 		}
 
@@ -758,28 +796,31 @@ export class IcsManager extends Component {
 						shouldInclude =
 							shouldInclude &&
 							include.summary.some((pattern) =>
-								this.matchesPattern(event.summary, pattern)
+								this.matchesPattern(event.summary, pattern),
 							);
 					}
 					if (include.description?.length && event.description) {
 						shouldInclude =
 							shouldInclude &&
 							include.description.some((pattern) =>
-								this.matchesPattern(event.description!, pattern)
+								this.matchesPattern(
+									event.description!,
+									pattern,
+								),
 							);
 					}
 					if (include.location?.length && event.location) {
 						shouldInclude =
 							shouldInclude &&
 							include.location.some((pattern) =>
-								this.matchesPattern(event.location!, pattern)
+								this.matchesPattern(event.location!, pattern),
 							);
 					}
 					if (include.categories?.length && event.categories) {
 						shouldInclude =
 							shouldInclude &&
 							include.categories.some((category) =>
-								event.categories!.includes(category)
+								event.categories!.includes(category),
 							);
 					}
 
@@ -793,7 +834,7 @@ export class IcsManager extends Component {
 					if (exclude.summary?.length) {
 						if (
 							exclude.summary.some((pattern) =>
-								this.matchesPattern(event.summary, pattern)
+								this.matchesPattern(event.summary, pattern),
 							)
 						) {
 							return false;
@@ -802,7 +843,10 @@ export class IcsManager extends Component {
 					if (exclude.description?.length && event.description) {
 						if (
 							exclude.description.some((pattern) =>
-								this.matchesPattern(event.description!, pattern)
+								this.matchesPattern(
+									event.description!,
+									pattern,
+								),
 							)
 						) {
 							return false;
@@ -811,7 +855,7 @@ export class IcsManager extends Component {
 					if (exclude.location?.length && event.location) {
 						if (
 							exclude.location.some((pattern) =>
-								this.matchesPattern(event.location!, pattern)
+								this.matchesPattern(event.location!, pattern),
 							)
 						) {
 							return false;
@@ -820,7 +864,7 @@ export class IcsManager extends Component {
 					if (exclude.categories?.length && event.categories) {
 						if (
 							exclude.categories.some((category) =>
-								event.categories!.includes(category)
+								event.categories!.includes(category),
 							)
 						) {
 							return false;
@@ -839,7 +883,7 @@ export class IcsManager extends Component {
 				.sort((a, b) => b.dtstart.getTime() - a.dtstart.getTime()) // 倒序：最新的事件在前
 				.slice(0, this.config.maxEventsPerSource);
 			console.log(
-				`Limited events: ${beforeLimit} -> ${filteredEvents.length} (max: ${this.config.maxEventsPerSource}) - keeping newest events`
+				`Limited events: ${beforeLimit} -> ${filteredEvents.length} (max: ${this.config.maxEventsPerSource}) - keeping newest events`,
 			);
 		}
 
@@ -899,14 +943,14 @@ export class IcsManager extends Component {
 					case "summary":
 						processedSummary = processedSummary.replace(
 							regex,
-							rule.replacement
+							rule.replacement,
 						);
 						break;
 					case "description":
 						if (processedDescription) {
 							processedDescription = processedDescription.replace(
 								regex,
-								rule.replacement
+								rule.replacement,
 							);
 						}
 						break;
@@ -914,25 +958,25 @@ export class IcsManager extends Component {
 						if (processedLocation) {
 							processedLocation = processedLocation.replace(
 								regex,
-								rule.replacement
+								rule.replacement,
 							);
 						}
 						break;
 					case "all":
 						processedSummary = processedSummary.replace(
 							regex,
-							rule.replacement
+							rule.replacement,
 						);
 						if (processedDescription) {
 							processedDescription = processedDescription.replace(
 								regex,
-								rule.replacement
+								rule.replacement,
 							);
 						}
 						if (processedLocation) {
 							processedLocation = processedLocation.replace(
 								regex,
-								rule.replacement
+								rule.replacement,
 							);
 						}
 						break;
@@ -940,7 +984,7 @@ export class IcsManager extends Component {
 			} catch (error) {
 				console.warn(
 					`Invalid regex pattern in text replacement rule "${rule.name}": ${rule.pattern}`,
-					error
+					error,
 				);
 			}
 		}
@@ -957,7 +1001,7 @@ export class IcsManager extends Component {
 	 */
 	private updateSyncStatus(
 		sourceId: string,
-		updates: Partial<IcsSyncStatus>
+		updates: Partial<IcsSyncStatus>,
 	): void {
 		const current = this.syncStatuses.get(sourceId) || {
 			sourceId,
@@ -1021,14 +1065,17 @@ export class IcsManager extends Component {
 			if (source.enabled) {
 				const interval =
 					source.refreshInterval || this.config.globalRefreshInterval;
-				const intervalId = setInterval(() => {
-					this.syncSource(source.id).catch((error) => {
-						console.error(
-							`Background sync failed for source ${source.id}:`,
-							error
-						);
-					});
-				}, interval * 60 * 1000); // Convert minutes to milliseconds
+				const intervalId = setInterval(
+					() => {
+						this.syncSource(source.id).catch((error) => {
+							console.error(
+								`Background sync failed for source ${source.id}:`,
+								error,
+							);
+						});
+					},
+					interval * 60 * 1000,
+				); // Convert minutes to milliseconds
 
 				this.refreshIntervals.set(source.id, intervalId as any);
 			}

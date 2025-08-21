@@ -86,7 +86,7 @@ describe("ICS Timeout Fix", () => {
 
 	beforeEach(async () => {
 		mockComponent = new MockComponent();
-		icsManager = new IcsManager(testConfig, mockSettings);
+		icsManager = new IcsManager(testConfig, mockSettings, {} as any);
 		await icsManager.initialize();
 	});
 

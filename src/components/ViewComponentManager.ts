@@ -30,7 +30,7 @@ interface ViewEventHandlers {
 	onTaskContextMenu?: (event: MouseEvent, task: Task) => void;
 	onTaskStatusUpdate?: (
 		taskId: string,
-		newStatusMark: string
+		newStatusMark: string,
 	) => Promise<void>;
 	onEventContextMenu?: (ev: MouseEvent, event: CalendarEvent) => void;
 	onTaskUpdate?: (originalTask: Task, updatedTask: Task) => Promise<void>;
@@ -44,7 +44,7 @@ class ViewComponentFactory {
 		app: App,
 		plugin: TaskProgressBarPlugin,
 		parentEl: HTMLElement,
-		handlers: ViewEventHandlers
+		handlers: ViewEventHandlers,
 	): ViewComponentInterface | null {
 		const viewConfig = getViewSettingOrDefault(plugin, viewId);
 
@@ -61,7 +61,7 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onTaskContextMenu: handlers.onTaskContextMenu,
 					},
-					viewId
+					viewId,
 				);
 
 			case "calendar":
@@ -75,7 +75,7 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onEventContextMenu: handlers.onEventContextMenu,
 					},
-					viewId
+					viewId,
 				);
 
 			case "gantt":
@@ -87,7 +87,7 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onTaskContextMenu: handlers.onTaskContextMenu,
 					},
-					viewId
+					viewId,
 				);
 
 			case "twocolumn":
@@ -97,7 +97,7 @@ class ViewComponentFactory {
 						app,
 						plugin,
 						viewConfig.specificConfig,
-						viewId
+						viewId,
 					);
 				}
 				return null;
@@ -123,19 +123,27 @@ class ViewComponentFactory {
 							onTaskContextMenu: handlers.onTaskContextMenu,
 							onTaskUpdated: async (task: Task) => {
 								// Handle task updates through WriteAPI if dataflow is enabled
-								if (plugin.settings?.experimental?.dataflowEnabled && plugin.writeAPI) {
-									const result = await plugin.writeAPI.updateTask({
-										taskId: task.id,
-										updates: task
-									});
+								if (
+									plugin.settings?.experimental
+										?.dataflowEnabled &&
+									plugin.writeAPI
+								) {
+									const result =
+										await plugin.writeAPI.updateTask({
+											taskId: task.id,
+											updates: task,
+										});
 									if (!result.success) {
-										console.error("Failed to update task:", result.error);
+										console.error(
+											"Failed to update task:",
+											result.error,
+										);
 									}
 								} else if (plugin.taskManager) {
 									await plugin.taskManager.updateTask(task);
 								}
 							},
-						}
+						},
 					);
 				}
 				return null;
@@ -153,20 +161,29 @@ class ViewComponentFactory {
 						onTaskContextMenu: handlers.onTaskContextMenu,
 						onTaskUpdated: async (task: Task) => {
 							// Handle task updates through WriteAPI if dataflow is enabled
-							if (plugin.settings?.experimental?.dataflowEnabled && plugin.writeAPI) {
-								const result = await plugin.writeAPI.updateTask({
-									taskId: task.id,
-									updates: task
-								});
+							if (
+								plugin.settings?.experimental
+									?.dataflowEnabled &&
+								plugin.writeAPI
+							) {
+								const result = await plugin.writeAPI.updateTask(
+									{
+										taskId: task.id,
+										updates: task,
+									},
+								);
 								if (!result.success) {
-									console.error("Failed to update task:", result.error);
+									console.error(
+										"Failed to update task:",
+										result.error,
+									);
 								}
 							} else if (plugin.taskManager) {
 								await plugin.taskManager.updateTask(task);
 							}
 						},
 					},
-					viewId
+					viewId,
 				);
 
 			default:
@@ -189,7 +206,7 @@ export class ViewComponentManager extends Component {
 		app: App,
 		plugin: TaskProgressBarPlugin,
 		parentEl: HTMLElement,
-		handlers: ViewEventHandlers
+		handlers: ViewEventHandlers,
 	) {
 		super();
 		this.parentComponent = parentComponent;
@@ -240,7 +257,7 @@ export class ViewComponentManager extends Component {
 			this.app,
 			this.plugin,
 			this.parentEl,
-			this.handlers
+			this.handlers,
 		);
 
 		if (component) {
@@ -296,14 +313,14 @@ export class ViewComponentManager extends Component {
 			viewId,
 			specificViewType,
 			["calendar", "kanban", "gantt", "forecast", "table"].includes(
-				viewId
-			)
+				viewId,
+			),
 		);
 
 		return !!(
 			specificViewType ||
 			["calendar", "kanban", "gantt", "forecast", "table"].includes(
-				viewId
+				viewId,
 			)
 		);
 	}

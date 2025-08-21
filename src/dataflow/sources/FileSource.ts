@@ -414,19 +414,20 @@ export class FileSource {
 
     // Generate task content based on configuration
     const content = this.generateTaskContent(filePath, fileContent, fileCache);
-    
+    const safeContent = (typeof content === "string") ? content : (filePath.split('/').pop() || filePath);
+
     // Extract metadata from frontmatter
     const metadata = this.extractTaskMetadata(filePath, fileContent, fileCache, strategy);
-    
+
     // Create the file task
     const fileTask: Task<FileSourceTaskMetadata> = {
       id: `file-source:${filePath}`,
-      content,
+      content: safeContent,
       filePath,
       line: 0, // File tasks are at line 0
       completed: metadata.status === 'x' || metadata.status === 'X',
       status: metadata.status || config.fileTaskProperties.defaultStatus,
-      originalMarkdown: `[${content}](${filePath})`,
+      originalMarkdown: `[${safeContent}](${filePath})`,
       metadata: {
         ...metadata,
         source: "file-source",

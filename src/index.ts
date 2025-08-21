@@ -104,7 +104,10 @@ import { VersionManager } from "./managers/version-manager";
 import { RebuildProgressManager } from "./managers/rebuild-progress-manager";
 import { OnboardingConfigManager } from "./managers/onboarding-manager";
 import { SettingsChangeDetector } from "./services/settings-change-detector";
-import { OnboardingView, ONBOARDING_VIEW_TYPE } from "./components/onboarding/OnboardingView";
+import {
+	OnboardingView,
+	ONBOARDING_VIEW_TYPE,
+} from "./components/onboarding/OnboardingView";
 import { TaskTimerExporter } from "./services/timer-export-service";
 import { TaskTimerManager } from "./managers/timer-manager";
 import { McpServerManager } from "./mcp/McpServerManager";
@@ -135,7 +138,7 @@ class TaskProgressBarPopover extends HoverPopover {
 		},
 		parent: HoverParent,
 		targetEl: HTMLElement,
-		waitTime: number = 1000
+		waitTime: number = 1000,
 	) {
 		super(parent, targetEl, waitTime);
 
@@ -159,7 +162,7 @@ class TaskProgressBarPopover extends HoverPopover {
 `,
 			this.hoverEl,
 			"",
-			this.plugin
+			this.plugin,
 		);
 	}
 }
@@ -181,7 +184,7 @@ export const showPopoverWithProgressBar = (
 			planned: string;
 		};
 		view: EditorView;
-	}
+	},
 ) => {
 	const editor = view.state.field(editorInfoField);
 	if (!editor) return;
@@ -195,7 +198,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 	// Dataflow orchestrator instance (experimental)
 	dataflowOrchestrator?: DataflowOrchestrator;
-	
+
 	// Write API for dataflow architecture
 	writeAPI?: WriteAPI;
 
@@ -283,7 +286,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 			// Initialize dataflow orchestrator if enabled (experimental)
 			if (isDataflowEnabled(this)) {
 				try {
-					console.log("[Plugin] Dataflow architecture enabled - initializing...");
+					console.log(
+						"[Plugin] Dataflow architecture enabled - initializing...",
+					);
 					// Wait for dataflow initialization to complete before proceeding
 					this.dataflowOrchestrator = await createDataflow(
 						this.app,
@@ -292,11 +297,16 @@ export default class TaskProgressBarPlugin extends Plugin {
 						this,
 						{
 							// ProjectConfigManagerOptions is narrower; pass only known properties
-						}
+						},
 					);
-					console.log("[Plugin] Dataflow orchestrator initialized successfully");
+					console.log(
+						"[Plugin] Dataflow orchestrator initialized successfully",
+					);
 				} catch (error) {
-					console.error("[Plugin] Failed to initialize dataflow orchestrator:", error);
+					console.error(
+						"[Plugin] Failed to initialize dataflow orchestrator:",
+						error,
+					);
 					// Continue without dataflow, fallback to TaskManager
 				}
 			}
@@ -311,37 +321,43 @@ export default class TaskProgressBarPlugin extends Plugin {
 				{
 					useWorkers: true,
 					debug: true, // Set to true for debugging
-				}
+				},
 			);
 
 			this.addChild(this.taskManager);
 			console.log("[Plugin] TaskManager initialized");
-			
+
 			// Initialize WriteAPI if dataflow is enabled
 			if (this.settings?.experimental?.dataflowEnabled) {
-				const getTaskById = async (id: string): Promise<Task | null> => {
+				const getTaskById = async (
+					id: string,
+				): Promise<Task | null> => {
 					// Try dataflow first, fallback to taskManager
 					if (this.dataflowOrchestrator) {
 						try {
-							const repository = this.dataflowOrchestrator.getRepository();
+							const repository =
+								this.dataflowOrchestrator.getRepository();
 							const task = await repository.getTaskById(id);
 							if (task) {
 								return task;
 							}
 						} catch (e) {
-							console.warn("Failed to get task from dataflow, falling back to taskManager", e);
+							console.warn(
+								"Failed to get task from dataflow, falling back to taskManager",
+								e,
+							);
 						}
 					}
 					const taskManagerResult = this.taskManager.getTaskById(id);
 					return taskManagerResult || null;
 				};
-				
+
 				this.writeAPI = new WriteAPI(
 					this.app,
 					this.app.vault,
 					this.app.metadataCache,
 					this,
-					getTaskById
+					getTaskById,
 				);
 			}
 		}
@@ -377,18 +393,18 @@ export default class TaskProgressBarPlugin extends Plugin {
 										item.setTitle(
 											`${t("Set priority")}: ${
 												priority.text
-											}`
+											}`,
 										);
 										item.setIcon("arrow-big-up-dash");
 										item.onClick(() => {
 											setPriorityAtCursor(
 												editor,
-												priority.emoji
+												priority.emoji,
 											);
 										});
 									});
 								}
-							}
+							},
 						);
 
 						submenu.addSeparator();
@@ -398,17 +414,17 @@ export default class TaskProgressBarPlugin extends Plugin {
 							([key, priority]) => {
 								submenu.addItem((item) => {
 									item.setTitle(
-										`${t("Set priority")}: ${key}`
+										`${t("Set priority")}: ${key}`,
 									);
 									item.setIcon("a-arrow-up");
 									item.onClick(() => {
 										setPriorityAtCursor(
 											editor,
-											`[#${key}]`
+											`[#${key}]`,
 										);
 									});
 								});
-							}
+							},
 						);
 
 						// Remove priority command
@@ -428,7 +444,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				if (this.settings.workflow.enableWorkflow) {
 					updateWorkflowContextMenu(menu, editor, this);
 				}
-			})
+			}),
 		);
 
 		this.app.workspace.onLayoutReady(() => {
@@ -485,35 +501,36 @@ export default class TaskProgressBarPlugin extends Plugin {
 				this.initializeTaskManagerWithVersionCheck().catch((error) => {
 					console.error(
 						"Failed to initialize task manager with version check:",
-						error
+						error,
 					);
 				});
 
 				// Register the TaskView
 				this.registerView(
 					TASK_VIEW_TYPE,
-					(leaf) => new TaskView(leaf, this)
+					(leaf) => new TaskView(leaf, this),
 				);
 
 				this.registerView(
 					TASK_SPECIFIC_VIEW_TYPE,
-					(leaf) => new TaskSpecificView(leaf, this)
+					(leaf) => new TaskSpecificView(leaf, this),
 				);
 
 				// Register the Timeline Sidebar View
 				this.registerView(
 					TIMELINE_SIDEBAR_VIEW_TYPE,
-					(leaf) => new TimelineSidebarView(leaf, this)
+					(leaf) => new TimelineSidebarView(leaf, this),
 				);
 
 				// Register the Onboarding View
 				this.registerView(
 					ONBOARDING_VIEW_TYPE,
-					(leaf) => new OnboardingView(leaf, this, () => {
-						console.log("Onboarding completed successfully");
-						// Close the onboarding view and refresh views
-						leaf.detach();
-					})
+					(leaf) =>
+						new OnboardingView(leaf, this, () => {
+							console.log("Onboarding completed successfully");
+							// Close the onboarding view and refresh views
+							leaf.detach();
+						}),
 				);
 
 				// Add a ribbon icon for opening the TaskView
@@ -522,7 +539,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 					t("Open Task Genius view"),
 					() => {
 						this.activateTaskView();
-					}
+					},
 				);
 				// Add a command to open the TaskView
 				this.addCommand({
@@ -561,7 +578,8 @@ export default class TaskProgressBarPlugin extends Plugin {
 			if (this.settings.icsIntegration.sources.length > 0) {
 				this.icsManager = new IcsManager(
 					this.settings.icsIntegration,
-					this.settings
+					this.settings,
+					this,
 				);
 				this.addChild(this.icsManager);
 
@@ -581,7 +599,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 					this.activateTimelineSidebarView().catch((error) => {
 						console.error(
 							"Failed to auto-open timeline sidebar:",
-							error
+							error,
 						);
 					});
 				}, 1000);
@@ -598,11 +616,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 					(preset: any) => {
 						if (preset.options) {
 							preset.options = migrateOldFilterOptions(
-								preset.options
+								preset.options,
 							);
 						}
 						return preset;
-					}
+					},
 				);
 			await this.saveSettings();
 		}
@@ -637,7 +655,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				if (view) {
 					view.dispatch({
 						effects: toggleTaskFilter.of(
-							!view.state.field(taskFilterState)
+							!view.state.field(taskFilterState),
 						),
 					});
 				}
@@ -657,14 +675,14 @@ export default class TaskProgressBarPlugin extends Plugin {
 					const changes = sortTasksInDocument(
 						editorView,
 						this,
-						false
+						false,
 					);
 
 					if (changes) {
 						new Notice(
 							t(
-								"Tasks sorted (using settings). Change application needs refinement."
-							)
+								"Tasks sorted (using settings). Change application needs refinement.",
+							),
 						);
 					} else {
 						// Notice is already handled within sortTasksInDocument if no changes or sorting disabled
@@ -688,11 +706,11 @@ export default class TaskProgressBarPlugin extends Plugin {
 							return changes;
 						});
 						new Notice(
-							t("Entire document sorted (using settings).")
+							t("Entire document sorted (using settings)."),
 						);
 					} else {
 						new Notice(
-							t("Tasks already sorted or no tasks found.")
+							t("Tasks already sorted or no tasks found."),
 						);
 					}
 				},
@@ -725,28 +743,44 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: async () => {
 					try {
 						new Notice(t("Refreshing task index..."));
-						
+
 						// Check if dataflow is enabled
-						if (this.settings?.experimental?.dataflowEnabled && this.dataflowOrchestrator) {
+						if (
+							this.settings?.experimental?.dataflowEnabled &&
+							this.dataflowOrchestrator
+						) {
 							// Use dataflow orchestrator for refresh
-							console.log("[Command] Refreshing task index via dataflow");
-							
+							console.log(
+								"[Command] Refreshing task index via dataflow",
+							);
+
 							// Re-scan all files to refresh the index
 							const files = this.app.vault.getMarkdownFiles();
-							const canvasFiles = this.app.vault.getFiles().filter(f => f.extension === "canvas");
+							const canvasFiles = this.app.vault
+								.getFiles()
+								.filter((f) => f.extension === "canvas");
 							const allFiles = [...files, ...canvasFiles];
-							
+
 							// Process files in batches
 							const batchSize = 50;
-							for (let i = 0; i < allFiles.length; i += batchSize) {
+							for (
+								let i = 0;
+								i < allFiles.length;
+								i += batchSize
+							) {
 								const batch = allFiles.slice(i, i + batchSize);
-								await Promise.all(batch.map(file => 
-									(this.dataflowOrchestrator as any).processFileImmediate(file)
-								));
+								await Promise.all(
+									batch.map((file) =>
+										(
+											this.dataflowOrchestrator as any
+										).processFileImmediate(file),
+									),
+								);
 							}
-							
+
 							// Refresh ICS events if available
-							const icsSource = (this.dataflowOrchestrator as any).icsSource;
+							const icsSource = (this.dataflowOrchestrator as any)
+								.icsSource;
 							if (icsSource) {
 								await icsSource.refresh();
 							}
@@ -754,7 +788,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							// Use legacy task manager
 							await this.taskManager.initialize();
 						}
-						
+
 						new Notice(t("Task index refreshed"));
 					} catch (error) {
 						console.error("Failed to refresh task index:", error);
@@ -770,20 +804,30 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: async () => {
 					try {
 						// Check if dataflow is enabled
-						if (this.settings?.experimental?.dataflowEnabled && this.dataflowOrchestrator) {
+						if (
+							this.settings?.experimental?.dataflowEnabled &&
+							this.dataflowOrchestrator
+						) {
 							// Use dataflow orchestrator for force reindex
-							console.log("[Command] Force reindexing via dataflow");
-							new Notice(t("Clearing task cache and rebuilding index..."));
-							
+							console.log(
+								"[Command] Force reindexing via dataflow",
+							);
+							new Notice(
+								t(
+									"Clearing task cache and rebuilding index...",
+								),
+							);
+
 							// Clear all caches and rebuild from scratch
 							await this.dataflowOrchestrator.rebuild();
-							
+
 							// Refresh ICS events after rebuild
-							const icsSource = (this.dataflowOrchestrator as any).icsSource;
+							const icsSource = (this.dataflowOrchestrator as any)
+								.icsSource;
 							if (icsSource) {
 								await icsSource.refresh();
 							}
-							
+
 							new Notice(t("Task index completely rebuilt"));
 						} else {
 							// Use legacy task manager
@@ -854,7 +898,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						editor,
 						ctx,
 						this,
-						"allCompleted"
+						"allCompleted",
 					);
 				},
 			});
@@ -869,7 +913,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						editor,
 						ctx,
 						this,
-						"directChildren"
+						"directChildren",
 					);
 				},
 			});
@@ -884,7 +928,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						editor,
 						ctx,
 						this,
-						"all"
+						"all",
 					);
 				},
 			});
@@ -900,7 +944,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							editor,
 							ctx,
 							this,
-							"allCompleted"
+							"allCompleted",
 						);
 					},
 				});
@@ -908,7 +952,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				this.addCommand({
 					id: "auto-move-direct-completed-subtasks",
 					name: t(
-						"Auto-move direct completed subtasks to default file"
+						"Auto-move direct completed subtasks to default file",
 					),
 					editorCheckCallback: (checking, editor, ctx) => {
 						return autoMoveCompletedTasksCommand(
@@ -916,7 +960,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							editor,
 							ctx,
 							this,
-							"directChildren"
+							"directChildren",
 						);
 					},
 				});
@@ -930,7 +974,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							editor,
 							ctx,
 							this,
-							"all"
+							"all",
 						);
 					},
 				});
@@ -949,7 +993,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						editor,
 						ctx,
 						this,
-						"allIncompleted"
+						"allIncompleted",
 					);
 				},
 			});
@@ -964,7 +1008,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						editor,
 						ctx,
 						this,
-						"directIncompletedChildren"
+						"directIncompletedChildren",
 					);
 				},
 			});
@@ -980,7 +1024,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							editor,
 							ctx,
 							this,
-							"allIncompleted"
+							"allIncompleted",
 						);
 					},
 				});
@@ -988,7 +1032,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				this.addCommand({
 					id: "auto-move-direct-incomplete-subtasks",
 					name: t(
-						"Auto-move direct incomplete subtasks to default file"
+						"Auto-move direct incomplete subtasks to default file",
 					),
 					editorCheckCallback: (checking, editor, ctx) => {
 						return autoMoveCompletedTasksCommand(
@@ -996,7 +1040,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 							editor,
 							ctx,
 							this,
-							"directIncompletedChildren"
+							"directIncompletedChildren",
 						);
 					},
 				});
@@ -1062,8 +1106,8 @@ export default class TaskProgressBarPlugin extends Plugin {
 							} catch (e) {
 								new Notice(
 									t(
-										"Could not open quick capture panel in the current editor"
-									)
+										"Could not open quick capture panel in the current editor",
+									),
 								);
 							}
 						}, 100);
@@ -1082,7 +1126,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1095,7 +1139,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1108,7 +1152,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1121,7 +1165,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1134,7 +1178,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1147,7 +1191,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						checking,
 						editor,
 						ctx,
-						this
+						this,
 					);
 				},
 			});
@@ -1166,20 +1210,25 @@ export default class TaskProgressBarPlugin extends Plugin {
 							return;
 						}
 
-						const jsonData = this.taskTimerExporter.exportToJSON(true);
+						const jsonData =
+							this.taskTimerExporter.exportToJSON(true);
 
 						// Create a blob and download link
-						const blob = new Blob([jsonData], {type: 'application/json'});
+						const blob = new Blob([jsonData], {
+							type: "application/json",
+						});
 						const url = URL.createObjectURL(blob);
-						const a = document.createElement('a');
+						const a = document.createElement("a");
 						a.href = url;
-						a.download = `task-timer-data-${new Date().toISOString().split('T')[0]}.json`;
+						a.download = `task-timer-data-${new Date().toISOString().split("T")[0]}.json`;
 						document.body.appendChild(a);
 						a.click();
 						document.body.removeChild(a);
 						URL.revokeObjectURL(url);
 
-						new Notice(`Exported ${stats.activeTimers} timer records`);
+						new Notice(
+							`Exported ${stats.activeTimers} timer records`,
+						);
 					} catch (error) {
 						console.error("Error exporting timer data:", error);
 						new Notice("Failed to export timer data");
@@ -1193,25 +1242,34 @@ export default class TaskProgressBarPlugin extends Plugin {
 				callback: async () => {
 					try {
 						// Create file input for JSON import
-						const input = document.createElement('input');
-						input.type = 'file';
-						input.accept = '.json';
+						const input = document.createElement("input");
+						input.type = "file";
+						input.accept = ".json";
 
 						input.onchange = async (e) => {
-							const file = (e.target as HTMLInputElement).files?.[0];
+							const file = (e.target as HTMLInputElement)
+								.files?.[0];
 							if (!file) return;
 
 							try {
 								const text = await file.text();
-								const success = this.taskTimerExporter.importFromJSON(text);
+								const success =
+									this.taskTimerExporter.importFromJSON(text);
 
 								if (success) {
-									new Notice("Timer data imported successfully");
+									new Notice(
+										"Timer data imported successfully",
+									);
 								} else {
-									new Notice("Failed to import timer data - invalid format");
+									new Notice(
+										"Failed to import timer data - invalid format",
+									);
 								}
 							} catch (error) {
-								console.error("Error importing timer data:", error);
+								console.error(
+									"Error importing timer data:",
+									error,
+								);
 								new Notice("Failed to import timer data");
 							}
 						};
@@ -1235,22 +1293,30 @@ export default class TaskProgressBarPlugin extends Plugin {
 							return;
 						}
 
-						const yamlData = this.taskTimerExporter.exportToYAML(true);
+						const yamlData =
+							this.taskTimerExporter.exportToYAML(true);
 
 						// Create a blob and download link
-						const blob = new Blob([yamlData], {type: 'text/yaml'});
+						const blob = new Blob([yamlData], {
+							type: "text/yaml",
+						});
 						const url = URL.createObjectURL(blob);
-						const a = document.createElement('a');
+						const a = document.createElement("a");
 						a.href = url;
-						a.download = `task-timer-data-${new Date().toISOString().split('T')[0]}.yaml`;
+						a.download = `task-timer-data-${new Date().toISOString().split("T")[0]}.yaml`;
 						document.body.appendChild(a);
 						a.click();
 						document.body.removeChild(a);
 						URL.revokeObjectURL(url);
 
-						new Notice(`Exported ${stats.activeTimers} timer records to YAML`);
+						new Notice(
+							`Exported ${stats.activeTimers} timer records to YAML`,
+						);
 					} catch (error) {
-						console.error("Error exporting timer data to YAML:", error);
+						console.error(
+							"Error exporting timer data to YAML:",
+							error,
+						);
 						new Notice("Failed to export timer data to YAML");
 					}
 				},
@@ -1261,14 +1327,17 @@ export default class TaskProgressBarPlugin extends Plugin {
 				name: "Create task timer backup",
 				callback: async () => {
 					try {
-						const backupData = this.taskTimerExporter.createBackup();
+						const backupData =
+							this.taskTimerExporter.createBackup();
 
 						// Create a blob and download link
-						const blob = new Blob([backupData], {type: 'application/json'});
+						const blob = new Blob([backupData], {
+							type: "application/json",
+						});
 						const url = URL.createObjectURL(blob);
-						const a = document.createElement('a');
+						const a = document.createElement("a");
 						a.href = url;
-						a.download = `task-timer-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+						a.download = `task-timer-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 						document.body.appendChild(a);
 						a.click();
 						document.body.removeChild(a);
@@ -1319,24 +1388,26 @@ export default class TaskProgressBarPlugin extends Plugin {
 		if (this.settings.taskTimer?.enabled) {
 			// Initialize task timer manager and exporter
 			if (!this.taskTimerManager) {
-				this.taskTimerManager = new TaskTimerManager(this.settings.taskTimer);
+				this.taskTimerManager = new TaskTimerManager(
+					this.settings.taskTimer,
+				);
 			}
 			if (!this.taskTimerExporter) {
-				this.taskTimerExporter = new TaskTimerExporter(this.taskTimerManager);
+				this.taskTimerExporter = new TaskTimerExporter(
+					this.taskTimerManager,
+				);
 			}
 
-			this.registerEditorExtension([
-				taskTimerExtension(this),
-			]);
+			this.registerEditorExtension([taskTimerExtension(this)]);
 		}
 
 		this.settings.taskGutter.enableTaskGutter &&
-		this.registerEditorExtension([taskGutterExtension(this.app, this)]);
+			this.registerEditorExtension([taskGutterExtension(this.app, this)]);
 		this.settings.enableTaskStatusSwitcher &&
-		this.settings.enableCustomTaskMarks &&
-		this.registerEditorExtension([
-			taskStatusSwitcherExtension(this.app, this),
-		]);
+			this.settings.enableCustomTaskMarks &&
+			this.registerEditorExtension([
+				taskStatusSwitcherExtension(this.app, this),
+			]);
 
 		// Add priority picker extension
 		if (this.settings.enablePriorityPicker) {
@@ -1372,7 +1443,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		if (this.settings.quickCapture.enableMinimalMode) {
 			this.minimalQuickCaptureSuggest = new MinimalQuickCaptureSuggest(
 				this.app,
-				this
+				this,
 			);
 			this.registerEditorSuggest(this.minimalQuickCaptureSuggest);
 		}
@@ -1402,7 +1473,10 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Clean up dataflow orchestrator (experimental)
 		if (this.dataflowOrchestrator) {
 			this.dataflowOrchestrator.cleanup().catch((error) => {
-				console.error("Error cleaning up dataflow orchestrator:", error);
+				console.error(
+					"Error cleaning up dataflow orchestrator:",
+					error,
+				);
 			});
 		}
 
@@ -1425,15 +1499,20 @@ export default class TaskProgressBarPlugin extends Plugin {
 	private async checkAndShowOnboarding(): Promise<void> {
 		try {
 			// Check if this is the first install and onboarding hasn't been completed
-			const versionResult = await this.versionManager.checkVersionChange();
+			const versionResult =
+				await this.versionManager.checkVersionChange();
 			const isFirstInstall = versionResult.versionInfo.isFirstInstall;
-			const shouldShowOnboarding = this.onboardingConfigManager.shouldShowOnboarding();
+			const shouldShowOnboarding =
+				this.onboardingConfigManager.shouldShowOnboarding();
 
 			// For existing users with changes, let the view handle the async detection
 			// For new users, show onboarding directly
-			if ((isFirstInstall && shouldShowOnboarding) ||
-				(!isFirstInstall && shouldShowOnboarding && this.settingsChangeDetector.hasUserMadeChanges())) {
-
+			if (
+				(isFirstInstall && shouldShowOnboarding) ||
+				(!isFirstInstall &&
+					shouldShowOnboarding &&
+					this.settingsChangeDetector.hasUserMadeChanges())
+			) {
 				// Small delay to ensure UI is ready
 				setTimeout(() => {
 					this.openOnboardingView();
@@ -1448,7 +1527,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 	 * Open the onboarding view in a new leaf
 	 */
 	async openOnboardingView(): Promise<void> {
-		const {workspace} = this.app;
+		const { workspace } = this.app;
 
 		// Check if onboarding view is already open
 		const existingLeaf = workspace.getLeavesOfType(ONBOARDING_VIEW_TYPE)[0];
@@ -1460,7 +1539,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Create a new leaf in the main area and open the onboarding view
 		const leaf = workspace.getLeaf("tab");
-		await leaf.setViewState({type: ONBOARDING_VIEW_TYPE});
+		await leaf.setViewState({ type: ONBOARDING_VIEW_TYPE });
 		workspace.revealLeaf(leaf);
 	}
 
@@ -1517,10 +1596,10 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Add any missing default views to user settings
 		defaultViews.forEach((defaultView) => {
 			const existingView = this.settings.viewConfiguration.find(
-				(v) => v.id === defaultView.id
+				(v) => v.id === defaultView.id,
 			);
 			if (!existingView) {
-				this.settings.viewConfiguration.push({...defaultView});
+				this.settings.viewConfiguration.push({ ...defaultView });
 			}
 		});
 
@@ -1530,7 +1609,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// Helper method to set priority at cursor position
 
 	async activateTaskView() {
-		const {workspace} = this.app;
+		const { workspace } = this.app;
 
 		// Check if view is already open
 		const existingLeaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
@@ -1543,16 +1622,16 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Otherwise, create a new leaf in the right split and open the view
 		const leaf = workspace.getLeaf("tab");
-		await leaf.setViewState({type: TASK_VIEW_TYPE});
+		await leaf.setViewState({ type: TASK_VIEW_TYPE });
 		workspace.revealLeaf(leaf);
 	}
 
 	async activateTimelineSidebarView() {
-		const {workspace} = this.app;
+		const { workspace } = this.app;
 
 		// Check if view is already open
 		const existingLeaf = workspace.getLeavesOfType(
-			TIMELINE_SIDEBAR_VIEW_TYPE
+			TIMELINE_SIDEBAR_VIEW_TYPE,
 		)[0];
 
 		if (existingLeaf) {
@@ -1564,7 +1643,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Open in the right sidebar
 		const leaf = workspace.getRightLeaf(false);
 		if (leaf) {
-			await leaf.setViewState({type: TIMELINE_SIDEBAR_VIEW_TYPE});
+			await leaf.setViewState({ type: TIMELINE_SIDEBAR_VIEW_TYPE });
 			workspace.revealLeaf(leaf);
 		}
 	}
@@ -1584,7 +1663,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Update Timeline Sidebar Views
 		const timelineViewLeaves = this.app.workspace.getLeavesOfType(
-			TIMELINE_SIDEBAR_VIEW_TYPE
+			TIMELINE_SIDEBAR_VIEW_TYPE,
 		);
 		if (timelineViewLeaves.length > 0) {
 			for (const leaf of timelineViewLeaves) {
@@ -1617,7 +1696,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 				if (!diagnosticInfo.canWrite) {
 					throw new Error(
-						"Cannot write to version storage - storage may be corrupted"
+						"Cannot write to version storage - storage may be corrupted",
 					);
 				}
 
@@ -1626,7 +1705,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 					diagnosticInfo.previousVersion
 				) {
 					console.warn(
-						"Invalid version data detected, attempting recovery"
+						"Invalid version data detected, attempting recovery",
 					);
 					await this.versionManager.recoverFromCorruptedVersion();
 				}
@@ -1644,13 +1723,13 @@ export default class TaskProgressBarPlugin extends Plugin {
 						.filter(
 							(file) =>
 								file.extension === "md" ||
-								file.extension === "canvas"
+								file.extension === "canvas",
 						);
 
 					// Start rebuild progress tracking
 					this.rebuildProgressManager.startRebuild(
 						allFiles.length,
-						versionResult.rebuildReason
+						versionResult.rebuildReason,
 					);
 
 					// Force clear all caches before rebuild
@@ -1660,7 +1739,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						} catch (clearError) {
 							console.warn(
 								"Error clearing cache, attempting to recreate storage:",
-								clearError
+								clearError,
 							);
 							await this.taskManager.persister.recreate();
 						}
@@ -1668,7 +1747,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 					// Set progress manager for the task manager
 					this.taskManager.setProgressManager(
-						this.rebuildProgressManager
+						this.rebuildProgressManager,
 					);
 
 					// Initialize task manager (this will trigger the rebuild)
@@ -1692,19 +1771,19 @@ export default class TaskProgressBarPlugin extends Plugin {
 				retryCount++;
 				console.error(
 					`Error during task manager initialization (attempt ${retryCount}/${maxRetries}):`,
-					error
+					error,
 				);
 
 				if (retryCount >= maxRetries) {
 					// Final attempt failed, trigger emergency rebuild
 					console.error(
-						"All initialization attempts failed, triggering emergency rebuild"
+						"All initialization attempts failed, triggering emergency rebuild",
 					);
 
 					try {
 						const emergencyResult =
 							await this.versionManager.handleEmergencyRebuild(
-								`Initialization failed after ${maxRetries} attempts: ${error.message}`
+								`Initialization failed after ${maxRetries} attempts: ${error.message}`,
 							);
 
 						// Get all supported files for progress tracking
@@ -1713,13 +1792,13 @@ export default class TaskProgressBarPlugin extends Plugin {
 							.filter(
 								(file) =>
 									file.extension === "md" ||
-									file.extension === "canvas"
+									file.extension === "canvas",
 							);
 
 						// Start emergency rebuild
 						this.rebuildProgressManager.startRebuild(
 							allFiles.length,
-							emergencyResult.rebuildReason
+							emergencyResult.rebuildReason,
 						);
 
 						// Force recreate storage
@@ -1729,7 +1808,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 						// Set progress manager for the task manager
 						this.taskManager.setProgressManager(
-							this.rebuildProgressManager
+							this.rebuildProgressManager,
 						);
 
 						// Initialize with minimal error handling
@@ -1739,7 +1818,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 						const finalTaskCount =
 							this.taskManager.getAllTasks().length;
 						this.rebuildProgressManager.completeRebuild(
-							finalTaskCount
+							finalTaskCount,
 						);
 
 						// Store current version
@@ -1750,19 +1829,19 @@ export default class TaskProgressBarPlugin extends Plugin {
 					} catch (emergencyError) {
 						console.error(
 							"Emergency rebuild also failed:",
-							emergencyError
+							emergencyError,
 						);
 						this.rebuildProgressManager.failRebuild(
-							`Emergency rebuild failed: ${emergencyError.message}`
+							`Emergency rebuild failed: ${emergencyError.message}`,
 						);
 						throw new Error(
-							`Task manager initialization failed completely: ${emergencyError.message}`
+							`Task manager initialization failed completely: ${emergencyError.message}`,
 						);
 					}
 				} else {
 					// Wait before retry
 					await new Promise((resolve) =>
-						setTimeout(resolve, 1000 * retryCount)
+						setTimeout(resolve, 1000 * retryCount),
 					);
 				}
 			}
@@ -1773,7 +1852,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 function setPriorityAtCursor(editor: Editor, priority: string) {
 	const cursor = editor.getCursor();
 	const line = editor.getLine(cursor.line);
-	const lineStart = editor.posToOffset({line: cursor.line, ch: 0});
+	const lineStart = editor.posToOffset({ line: cursor.line, ch: 0 });
 
 	// Check if this line has a task
 	const taskRegex =
@@ -1820,7 +1899,7 @@ function setPriorityAtCursor(editor: Editor, priority: string) {
 function removePriorityAtCursor(editor: Editor) {
 	const cursor = editor.getCursor();
 	const line = editor.getLine(cursor.line);
-	const lineStart = editor.posToOffset({line: cursor.line, ch: 0});
+	const lineStart = editor.posToOffset({ line: cursor.line, ch: 0 });
 
 	// Check if this line has a task with priority
 	const priorityRegex = /(?:🔺|⏫|🔼|🔽|⏬️|\[#[A-C]\])/;

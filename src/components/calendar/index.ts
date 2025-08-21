@@ -461,8 +461,13 @@ export class CalendarComponent extends Component {
 			const icsTask = isIcsTask ? (task as IcsTask) : null; // Type assertion for IcsTask
 			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
 
+			// If ICS is configured as badge, do NOT add a full event; badges will be
+			// provided via getBadgeEventsForDate from the raw tasks list to avoid duplication.
+			if (isIcsTask && showAsBadge) {
+				return; // skip adding to this.events
+			}
+
 			// Determine the date to use based on priority (dueDate > scheduledDate > startDate)
-			// This logic might need refinement based on exact requirements in PRD 4.2
 			let eventDate: number | null = null;
 			let isAllDay = true; // Assume tasks are all-day unless time info exists
 
@@ -471,9 +476,6 @@ export class CalendarComponent extends Component {
 				eventDate = icsTask.icsEvent.dtstart.getTime();
 				isAllDay = icsTask.icsEvent.allDay;
 			} else {
-				// Use the first available date field based on preference.
-				// The PRD mentions using dueDate primarily, with an option for scheduled/start.
-				// Let's stick to dueDate for now as primary.
 				if (task.metadata[primaryDateField]) {
 					eventDate = task.metadata[primaryDateField];
 				} else if (task.metadata.scheduledDate) {
@@ -482,44 +484,31 @@ export class CalendarComponent extends Component {
 					eventDate = task.metadata.startDate;
 				}
 			}
-			// We could add completedDate here if we want to show completed tasks based on completion time
 
 			if (eventDate) {
 				const startMoment = moment(eventDate);
-				// For ICS events, preserve the original time if not all-day
 				const start = isAllDay
 					? startMoment.startOf("day").toDate()
 					: startMoment.toDate();
 
-				// Handle multi-day? PRD mentions if startDate and dueDate are available.
 				let end: Date | undefined = undefined;
 				let effectiveStart = start; // Use the primary date as start by default
 
 				if (isIcsTask && icsTask?.icsEvent?.dtend) {
-					// For ICS events, use the end date from the event
 					end = icsTask.icsEvent.dtend;
 				} else if (
 					task.metadata.startDate &&
 					task.metadata.dueDate &&
 					task.metadata.startDate !== task.metadata.dueDate
 				) {
-					// Ensure start is actually before due date
-					const sMoment = moment(task.metadata.startDate).startOf(
-						"day"
-					);
-					const dMoment = moment(task.metadata.dueDate).startOf(
-						"day"
-					);
+					const sMoment = moment(task.metadata.startDate).startOf("day");
+					const dMoment = moment(task.metadata.dueDate).startOf("day");
 					if (sMoment.isBefore(dMoment)) {
-						// FullCalendar and similar often expect the 'end' date to be exclusive
-						// for all-day events. So an event ending on the 15th would have end=16th.
 						end = dMoment.add(1, "day").toDate();
-						// The 'start' should likely be the startDate in this case
-						effectiveStart = sMoment.toDate(); // Re-assign start if using date range
+						effectiveStart = sMoment.toDate();
 					}
 				}
 
-				// Determine color for the event
 				let eventColor: string | undefined;
 				if (isIcsTask && icsTask?.icsEvent?.source?.color) {
 					eventColor = icsTask.icsEvent.source.color;
@@ -528,16 +517,14 @@ export class CalendarComponent extends Component {
 				}
 
 				this.events.push({
-					...task, // Spread all properties from the original task
-					title: task.content, // Use task content as title by default
+					...task,
+					title: task.content,
 					start: effectiveStart,
-					end: end, // Add end date if calculated
+					end: end,
 					allDay: isAllDay,
 					color: eventColor,
-					badge: showAsBadge, // Mark badge events for special handling
 				});
 			}
-			// Else: Task has no relevant date, ignore for now (PRD: maybe "unscheduled" panel)
 		});
 
 		// Sort events for potentially easier rendering later (e.g., agenda)

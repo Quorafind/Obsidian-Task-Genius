@@ -471,27 +471,22 @@ export function filterTasks(
 	const filterRules = viewConfig.filterRules || {};
 	const globalFilterRules = plugin.settings.globalFilterRules || {};
 
-	// --- 过滤 badge 类型的 ICS 任务（仅在非日历视图中） ---
-	// Badge 任务只应该在日历视图中显示，其他视图应该过滤掉
-	// 检查是否为日历相关的视图ID
+	// --- 过滤 ICS 事件在不应展示的视图中（例如 inbox）---
+	// ICS 事件应仅在日历/日程类视图（calendar/forecast）中展示
 	const isCalendarView =
 		viewId === "calendar" ||
 		(typeof viewId === "string" && viewId.startsWith("calendar"));
+	const isForecastView =
+		viewId === "forecast" ||
+		(typeof viewId === "string" && viewId.startsWith("forecast"));
 
-	if (!isCalendarView) {
+	if (!isCalendarView && !isForecastView) {
 		filtered = filtered.filter((task) => {
-			// 检查是否为 ICS 任务
-			const isIcsTask = (task as any).source?.type === "ics";
-			if (!isIcsTask) {
-				return true; // 非 ICS 任务保留
-			}
-
-			// 检查是否为 badge 类型
-			const icsTask = task as any; // 类型断言为包含 icsEvent 的任务
-			const showAsBadge = icsTask?.icsEvent?.source?.showType === "badge";
-
-			// 如果是 badge 类型的 ICS 任务，则过滤掉（返回 false）
-			return !showAsBadge;
+			// 识别 ICS 事件任务（优先从 metadata.source 读取，兼容 legacy source 字段）
+			const metaSourceType = (task as any).metadata?.source?.type ?? (task as any).source?.type;
+			const isIcsTask = metaSourceType === "ics";
+			// 非 ICS 保留；ICS 在此类视图中过滤掉
+			return !isIcsTask;
 		});
 	}
 

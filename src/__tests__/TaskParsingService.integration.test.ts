@@ -1285,7 +1285,7 @@ describe("TaskParsingService Integration", () => {
 
 			// Clear cache before test
 			const { MarkdownTaskParser } = await import(
-				"../parsers/configurable-task-parser"
+				"../dataflow/core/ConfigurableTaskParser"
 			);
 			MarkdownTaskParser.clearDateCache();
 
@@ -1335,7 +1335,7 @@ describe("TaskParsingService Integration", () => {
 
 		it("should handle date cache size limit correctly", async () => {
 			const { MarkdownTaskParser } = await import(
-				"../parsers/configurable-task-parser"
+				"../dataflow/core/ConfigurableTaskParser"
 			);
 
 			// Clear cache before test

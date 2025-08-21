@@ -225,7 +225,7 @@ END:VCALENDAR`;
 
 		beforeEach(async () => {
 			mockComponent = new MockComponent();
-			icsManager = new IcsManager(testConfig, mockPluginSettings);
+			icsManager = new IcsManager(testConfig, mockPluginSettings, {} as any);
 			await icsManager.initialize();
 		});
 

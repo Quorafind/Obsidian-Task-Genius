@@ -68,7 +68,7 @@ export class TaskManager extends Component {
 	/** Options for the task manager */
 	private options: TaskManagerOptions;
 	/** Whether the manager has been initialized */
-	private initialized: boolean = false;
+	private initialized: boolean = false; 
 	/** Whether initialization is currently in progress */
 	private isInitializing: boolean = false;
 	/** Whether we should trigger update events after initialization */

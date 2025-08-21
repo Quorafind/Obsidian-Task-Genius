@@ -144,8 +144,9 @@ export class TaskView extends ItemView {
 
 		// Add debounced view update to prevent rapid successive refreshes
 		const debouncedViewUpdate = debounce(async () => {
-			// Don't skip view updates - the detailsComponent will handle edit state properly
-			await this.loadTasks(false, false);
+			// For external/editor updates, force a view refresh to avoid false "unchanged" skips
+			await this.loadTasks(false, true); // skip internal triggerViewUpdate
+			this.switchView(this.currentViewId, undefined, true); // forceRefresh
 		}, 150); // 150ms debounce delay
 
 		// 1. 首先注册事件监听器，确保不会错过任何更新

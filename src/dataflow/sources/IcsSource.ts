@@ -1,6 +1,6 @@
 /**
  * IcsSource - Event source for ICS calendar data
- * 
+ *
  * This source integrates external calendar events into the dataflow architecture.
  * It listens to IcsManager updates and emits standardized dataflow events.
  */
@@ -27,14 +27,32 @@ export class IcsSource {
     if (this.isInitialized) return;
 
     console.log("[IcsSource] Initializing ICS event source...");
-    
-    // Initial load of ICS events
-    this.loadAndEmitIcsEvents();
-    
-    // Subscribe to ICS manager updates
+
+    // Subscribe to ICS manager updates first so we don't miss early signals
     this.subscribeToIcsUpdates();
-    
+
+    // Initial load of ICS events (may be no-op if manager not ready yet)
+    this.loadAndEmitIcsEvents();
+
+    // Fallback: retry until ICS manager becomes available (up to ~30s)
+    this.ensureManagerAndLoad(0);
+
     this.isInitialized = true;
+  }
+  /**
+   * Ensure ICS manager becomes available shortly after startup and then load
+   */
+  private ensureManagerAndLoad(attempt: number): void {
+    const maxAttempts = 30; // ~30s with 1s interval
+    if (this.getIcsManager()) {
+      this.loadAndEmitIcsEvents();
+      return;
+    }
+    if (attempt >= maxAttempts) {
+      console.warn("[IcsSource] ICS manager not available after retries");
+      return;
+    }
+    setTimeout(() => this.ensureManagerAndLoad(attempt + 1), 1000);
   }
 
   /**
@@ -67,19 +85,9 @@ export class IcsSource {
     try {
       // Get all ICS events with sync
       const icsEvents = await icsManager.getAllEventsWithSync();
-      
-      // Convert ICS events to Task format with proper source marking
-      const icsTasks: Task[] = icsEvents.map((event: any) => ({
-        ...event,
-        metadata: {
-          ...event.metadata,
-          source: {
-            type: 'ics',
-            id: event.source?.id || 'unknown',
-            name: event.source?.name || 'ICS Calendar'
-          }
-        }
-      }));
+
+      // Convert ICS events to IcsTask format via manager to ensure proper shape
+      const icsTasks: Task[] = icsManager.convertEventsToTasks(icsEvents);
 
       console.log(`[IcsSource] Loaded ${icsTasks.length} ICS events`);
 
@@ -99,7 +107,7 @@ export class IcsSource {
 
     } catch (error) {
       console.error("[IcsSource] Error loading ICS events:", error);
-      
+
       // Emit empty update on error to clear stale data
       emit(this.app, Events.ICS_EVENTS_UPDATED, {
         events: [],
@@ -115,12 +123,12 @@ export class IcsSource {
    */
   private getSourceStats(events: Task[]): Record<string, number> {
     const stats: Record<string, number> = {};
-    
+
     for (const event of events) {
       const sourceId = event.metadata?.source?.id || 'unknown';
       stats[sourceId] = (stats[sourceId] || 0) + 1;
     }
-    
+
     return stats;
   }
 
@@ -150,13 +158,13 @@ export class IcsSource {
    */
   destroy(): void {
     console.log("[IcsSource] Destroying ICS source...");
-    
+
     // Clear event listeners
     for (const ref of this.eventRefs) {
       this.app.vault.offref(ref);
     }
     this.eventRefs = [];
-    
+
     // Emit clear event
     emit(this.app, Events.ICS_EVENTS_UPDATED, {
       events: [],
@@ -164,7 +172,7 @@ export class IcsSource {
       seq: Seq.next(),
       destroyed: true
     });
-    
+
     this.isInitialized = false;
   }
 }
