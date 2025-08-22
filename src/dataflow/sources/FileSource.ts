@@ -13,7 +13,8 @@ import type {
   FileSourceStats, 
   UpdateDecision,
   FileTaskCache,
-  RecognitionStrategy
+  RecognitionStrategy,
+  PathRecognitionConfig
 } from "../../types/file-source";
 
 import { Events, emit, Seq, on } from "../events/Events";
@@ -319,16 +320,84 @@ export class FileSource {
   }
 
   /**
-   * Check if file matches path strategy (stub for Phase 2)
+   * Check if file matches path strategy
    */
   private matchesPathStrategy(
     filePath: string,
     fileContent: string,
     fileCache: CachedMetadata | null,
-    config: any
+    config: PathRecognitionConfig
   ): boolean {
-    // TODO: Implement in Phase 2
+    if (!config.enabled || !config.taskPaths || config.taskPaths.length === 0) {
+      return false;
+    }
+    
+    // Normalize path (use forward slashes)
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // Check each configured path pattern
+    for (const pattern of config.taskPaths) {
+      const normalizedPattern = pattern.replace(/\\/g, '/');
+      
+      switch (config.matchMode) {
+        case 'prefix':
+          if (normalizedPath.startsWith(normalizedPattern)) {
+            console.log(`[FileSource] Path matches prefix pattern: ${pattern} for ${filePath}`);
+            return true;
+          }
+          break;
+          
+        case 'regex':
+          try {
+            const regex = new RegExp(normalizedPattern);
+            if (regex.test(normalizedPath)) {
+              console.log(`[FileSource] Path matches regex pattern: ${pattern} for ${filePath}`);
+              return true;
+            }
+          } catch (e) {
+            console.warn(`[FileSource] Invalid regex pattern: ${pattern}`, e);
+          }
+          break;
+          
+        case 'glob':
+          if (this.matchGlobPattern(normalizedPath, normalizedPattern)) {
+            console.log(`[FileSource] Path matches glob pattern: ${pattern} for ${filePath}`);
+            return true;
+          }
+          break;
+      }
+    }
+    
     return false;
+  }
+
+  /**
+   * Match a path against a glob pattern
+   * Supports: * (any chars except /), ** (any chars), ? (single char)
+   */
+  private matchGlobPattern(path: string, pattern: string): boolean {
+    // Convert glob pattern to regular expression
+    let regexPattern = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special chars
+      .replace(/\*\*/g, '§§§') // Temporary placeholder for **
+      .replace(/\*/g, '[^/]*') // * matches any chars except /
+      .replace(/§§§/g, '.*') // ** matches any chars
+      .replace(/\?/g, '[^/]'); // ? matches single char
+    
+    // If pattern ends with /, match all files in that directory
+    if (pattern.endsWith('/')) {
+      regexPattern = `^${regexPattern}.*`;
+    } else {
+      regexPattern = `^${regexPattern}$`;
+    }
+    
+    try {
+      const regex = new RegExp(regexPattern);
+      return regex.test(path);
+    } catch (e) {
+      console.warn(`[FileSource] Failed to compile glob pattern: ${pattern}`, e);
+      return false;
+    }
   }
 
   /**
@@ -466,7 +535,13 @@ export class FileSource {
       return { name: "tag", criteria: "file-tags" };
     }
     
-    // TODO: Add template and path strategies in Phase 2
+    // Check path strategy
+    if (config.recognitionStrategies.paths.enabled && 
+        this.matchesPathStrategy(filePath, fileContent, fileCache, config.recognitionStrategies.paths)) {
+      return { name: "path", criteria: config.recognitionStrategies.paths.taskPaths.join(", ") };
+    }
+    
+    // TODO: Add template strategy in Phase 2
     
     return null;
   }

@@ -220,14 +220,104 @@ function createRecognitionStrategiesSection(
 			);
 	}
 
-	// Template and Path strategies (Phase 2 placeholders)
-	const futureContainer = containerEl.createDiv(
+	// Path strategy
+	const pathContainer = containerEl.createDiv(
+		"file-source-strategy-container",
+	);
+
+	new Setting(pathContainer)
+		.setName(t("Path-based Recognition"))
+		.setDesc(t("Recognize files as tasks based on their file path"))
+		.addToggle((toggle) =>
+			toggle
+				.setValue(config.recognitionStrategies.paths.enabled)
+				.onChange(async (value) => {
+					plugin.settings.fileSource.recognitionStrategies.paths.enabled = value;
+					await plugin.saveSettings();
+					// Refresh settings interface
+					containerEl.empty();
+					createFileSourceSettings(containerEl, plugin);
+				}),
+		);
+
+	if (config.recognitionStrategies.paths.enabled) {
+		new Setting(pathContainer)
+			.setName(t("Task Paths"))
+			.setDesc(
+				t("Paths that contain task files. One per line. Examples: Projects/, Tasks/2024/, Work/TODO/")
+			)
+			.addTextArea((text) => {
+				text
+					.setPlaceholder("Projects/\nTasks/\nWork/TODO/")
+					.setValue(config.recognitionStrategies.paths.taskPaths.join("\n"))
+					.onChange(async (value) => {
+						plugin.settings.fileSource.recognitionStrategies.paths.taskPaths = 
+							value
+								.split("\n")
+								.map((s) => s.trim())
+								.filter((s) => s.length > 0);
+						await plugin.saveSettings();
+					});
+				text.inputEl.rows = 4;
+				text.inputEl.cols = 40;
+			});
+
+		new Setting(pathContainer)
+			.setName(t("Path Matching Mode"))
+			.setDesc(t("How paths should be matched"))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("prefix", t("Prefix (e.g., Projects/ matches Projects/App.md)"))
+					.addOption("glob", t("Glob pattern (e.g., Projects/**/*.md)"))
+					.addOption("regex", t("Regular expression (advanced)"))
+					.setValue(config.recognitionStrategies.paths.matchMode)
+					.onChange(async (value: "prefix" | "regex" | "glob") => {
+						plugin.settings.fileSource.recognitionStrategies.paths.matchMode = value;
+						await plugin.saveSettings();
+						// Refresh to show updated examples
+						containerEl.empty();
+						createFileSourceSettings(containerEl, plugin);
+					}),
+			);
+
+		// Add examples based on current mode
+		const examples = pathContainer.createDiv("setting-item-description");
+		examples.style.marginTop = "10px";
+		
+		const currentMode = config.recognitionStrategies.paths.matchMode;
+		let exampleText = "";
+		
+		switch (currentMode) {
+			case "prefix":
+				exampleText = t("Examples:") + "\n" +
+					"• Projects/ → " + t("matches all files under Projects folder") + "\n" +
+					"• Tasks/2024/ → " + t("matches all files under Tasks/2024 folder");
+				break;
+			case "glob":
+				exampleText = t("Examples:") + "\n" +
+					"• Projects/**/*.md → " + t("all .md files in Projects and subfolders") + "\n" +
+					"• Tasks/*.task.md → " + t("files ending with .task.md in Tasks folder") + "\n" +
+					"• Work/*/TODO.md → " + t("TODO.md in any direct subfolder of Work");
+				break;
+			case "regex":
+				exampleText = t("Examples:") + "\n" +
+					"• ^Projects/.*\\.md$ → " + t("all .md files in Projects folder") + "\n" +
+					"• ^Tasks/\\d{4}-\\d{2}-\\d{2} → " + t("files starting with date in Tasks");
+				break;
+		}
+		
+		examples.createEl("pre", {
+			text: exampleText,
+			attr: { style: "font-size: 0.9em; color: var(--text-muted);" }
+		});
+	}
+
+	// Template strategy placeholder (keep for future)
+	const templateContainer = containerEl.createDiv(
 		"file-source-future-strategies",
 	);
-	futureContainer.createEl("p", {
-		text: t(
-			"Template-based and Path-based recognition strategies will be available in a future update.",
-		),
+	templateContainer.createEl("p", {
+		text: t("Template-based recognition strategy will be available in a future update."),
 		attr: { style: "color: var(--text-muted); font-style: italic;" },
 	});
 }
