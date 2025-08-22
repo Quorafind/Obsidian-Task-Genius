@@ -760,8 +760,15 @@ export class TaskSpecificView extends ItemView {
 					filterOptions.advancedFilter = this.currentFilterState;
 				}
 
+				let filteredTasks = filterTasks(this.tasks, viewId, this.plugin, filterOptions);
+				
+				// Filter out badge tasks for forecast view - they should only appear in event view
+				if (viewId === "forecast") {
+					filteredTasks = filteredTasks.filter(task => !(task as any).badge);
+				}
+				
 				targetComponent.setTasks(
-					filterTasks(this.tasks, viewId, this.plugin, filterOptions),
+					filteredTasks,
 					this.tasks,
 					forceRefresh
 				);
@@ -812,14 +819,19 @@ export class TaskSpecificView extends ItemView {
 						filterOptions.advancedFilter = this.currentFilterState;
 					}
 
-					component.setTasks(
-						filterTasks(
-							this.tasks,
-							component.getViewId(),
-							this.plugin,
-							filterOptions
-						)
+					let filteredTasks = filterTasks(
+						this.tasks,
+						component.getViewId(),
+						this.plugin,
+						filterOptions
 					);
+					
+					// Filter out badge tasks for forecast view - they should only appear in event view
+					if (component.getViewId() === "forecast") {
+						filteredTasks = filteredTasks.filter(task => !(task as any).badge);
+					}
+					
+					component.setTasks(filteredTasks);
 				}
 			});
 			if (
