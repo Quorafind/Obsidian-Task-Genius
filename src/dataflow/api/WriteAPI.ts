@@ -7,7 +7,7 @@
  */
 
 import { App, TFile, Vault, MetadataCache, moment } from "obsidian";
-import { Task } from "../../types/task";
+import { Task, CanvasTaskMetadata } from "../../types/task";
 import TaskProgressBarPlugin from "../../index";
 import {
 	createDailyNote,
@@ -18,6 +18,7 @@ import {
 } from "obsidian-daily-notes-interface";
 import { saveCapture, processDateTemplates } from "../../utils/file/file-operations";
 import { Events, emit } from "../events/Events";
+import { CanvasTaskUpdater } from "../../parsers/canvas-task-updater";
 
 /**
  * Arguments for creating a task
@@ -73,13 +74,17 @@ export interface BatchCreateSubtasksArgs {
 }
 
 export class WriteAPI {
+	private canvasTaskUpdater: CanvasTaskUpdater;
+	
 	constructor(
 		private app: App,
 		private vault: Vault,
 		private metadataCache: MetadataCache,
 		private plugin: TaskProgressBarPlugin,
 		private getTaskById: (id: string) => Promise<Task | null> | Task | null
-	) {}
+	) {
+		this.canvasTaskUpdater = new CanvasTaskUpdater(vault, plugin);
+	}
 
 	/**
 	 * Update a task's status or completion state
@@ -93,6 +98,17 @@ export class WriteAPI {
 			const task = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!task) {
 				return { success: false, error: "Task not found" };
+			}
+
+			// Check if this is a Canvas task
+			if (CanvasTaskUpdater.isCanvasTask(task)) {
+				return this.updateCanvasTask({
+					taskId: args.taskId,
+					updates: {
+						status: args.status,
+						completed: args.completed
+					}
+				});
 			}
 
 			const file = this.vault.getAbstractFileByPath(task.filePath) as TFile;
@@ -140,6 +156,12 @@ export class WriteAPI {
 			await this.vault.modify(file, lines.join("\n"));
 			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 
+			// Trigger task-completed event if task was just completed
+			if (args.completed === true && !task.completed) {
+				const updatedTask = { ...task, completed: true };
+				this.app.workspace.trigger("task-genius:task-completed", updatedTask);
+			}
+
 			return { success: true };
 		} catch (error) {
 			console.error("WriteAPI: Error updating task status:", error);
@@ -155,6 +177,11 @@ export class WriteAPI {
 			const originalTask = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!originalTask) {
 				return { success: false, error: "Task not found" };
+			}
+
+			// Check if this is a Canvas task
+			if (CanvasTaskUpdater.isCanvasTask(originalTask)) {
+				return this.updateCanvasTask(args);
 			}
 
 			const file = this.vault.getAbstractFileByPath(originalTask.filePath) as TFile;
@@ -223,6 +250,11 @@ export class WriteAPI {
 			
 			// Emit task updated event for direct update in dataflow
 			emit(this.app, Events.TASK_UPDATED, { task: updatedTaskObj });
+			
+			// Trigger task-completed event if task was just completed
+			if (args.updates.completed === true && !originalTask.completed) {
+				this.app.workspace.trigger("task-genius:task-completed", updatedTaskObj);
+			}
 			
 			// Still emit write operation complete for compatibility
 			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
@@ -310,6 +342,11 @@ export class WriteAPI {
 			const task = await Promise.resolve(this.getTaskById(args.taskId));
 			if (!task) {
 				return { success: false, error: "Task not found" };
+			}
+
+			// Check if this is a Canvas task
+			if (CanvasTaskUpdater.isCanvasTask(task)) {
+				return this.deleteCanvasTask(args);
 			}
 
 			const file = this.vault.getAbstractFileByPath(task.filePath) as TFile;
@@ -816,5 +853,202 @@ export class WriteAPI {
 		// Normalize to local midnight
 		base.setHours(0, 0, 0, 0);
 		return base.getTime();
+	}
+
+	// ===== Canvas Task Methods =====
+
+	/**
+	 * Update a Canvas task
+	 */
+	async updateCanvasTask(args: UpdateTaskArgs): Promise<{ success: boolean; task?: Task; error?: string }> {
+		try {
+			const originalTask = await Promise.resolve(this.getTaskById(args.taskId));
+			if (!originalTask) {
+				return { success: false, error: "Task not found" };
+			}
+
+			// Ensure it's a Canvas task
+			if (!CanvasTaskUpdater.isCanvasTask(originalTask)) {
+				return { success: false, error: "Task is not a Canvas task" };
+			}
+
+			// Create updated task object
+			const updatedTask = { ...originalTask, ...args.updates } as Task<CanvasTaskMetadata>;
+
+			// Use CanvasTaskUpdater to update the task
+			const result = await this.canvasTaskUpdater.updateCanvasTask(
+				originalTask as Task<CanvasTaskMetadata>,
+				updatedTask
+			);
+
+			if (result.success) {
+				// Emit task updated event for dataflow
+				emit(this.app, Events.TASK_UPDATED, { task: updatedTask });
+				
+				// Trigger task-completed event if task was just completed
+				if (args.updates.completed === true && !originalTask.completed) {
+					this.app.workspace.trigger("task-genius:task-completed", updatedTask);
+				}
+				
+				return { success: true, task: updatedTask };
+			} else {
+				return { success: false, error: result.error };
+			}
+		} catch (error) {
+			console.error("WriteAPI: Error updating Canvas task:", error);
+			return { success: false, error: String(error) };
+		}
+	}
+
+	/**
+	 * Delete a Canvas task
+	 */
+	async deleteCanvasTask(args: DeleteTaskArgs): Promise<{ success: boolean; error?: string }> {
+		try {
+			const task = await Promise.resolve(this.getTaskById(args.taskId));
+			if (!task) {
+				return { success: false, error: "Task not found" };
+			}
+
+			// Ensure it's a Canvas task
+			if (!CanvasTaskUpdater.isCanvasTask(task)) {
+				return { success: false, error: "Task is not a Canvas task" };
+			}
+
+			// Use CanvasTaskUpdater to delete the task
+			const result = await this.canvasTaskUpdater.deleteCanvasTask(
+				task as Task<CanvasTaskMetadata>
+			);
+
+			return result;
+		} catch (error) {
+			console.error("WriteAPI: Error deleting Canvas task:", error);
+			return { success: false, error: String(error) };
+		}
+	}
+
+	/**
+	 * Move a Canvas task to another location
+	 */
+	async moveCanvasTask(args: {
+		taskId: string;
+		targetFilePath: string;
+		targetNodeId?: string;
+		targetSection?: string;
+	}): Promise<{ success: boolean; error?: string }> {
+		try {
+			const task = await Promise.resolve(this.getTaskById(args.taskId));
+			if (!task) {
+				return { success: false, error: "Task not found" };
+			}
+
+			// Ensure it's a Canvas task
+			if (!CanvasTaskUpdater.isCanvasTask(task)) {
+				return { success: false, error: "Task is not a Canvas task" };
+			}
+
+			// Use CanvasTaskUpdater to move the task
+			const result = await this.canvasTaskUpdater.moveCanvasTask(
+				task as Task<CanvasTaskMetadata>,
+				args.targetFilePath,
+				args.targetNodeId,
+				args.targetSection
+			);
+
+			return result;
+		} catch (error) {
+			console.error("WriteAPI: Error moving Canvas task:", error);
+			return { success: false, error: String(error) };
+		}
+	}
+
+	/**
+	 * Duplicate a Canvas task
+	 */
+	async duplicateCanvasTask(args: {
+		taskId: string;
+		targetFilePath?: string;
+		targetNodeId?: string;
+		targetSection?: string;
+		preserveMetadata?: boolean;
+	}): Promise<{ success: boolean; error?: string }> {
+		try {
+			const task = await Promise.resolve(this.getTaskById(args.taskId));
+			if (!task) {
+				return { success: false, error: "Task not found" };
+			}
+
+			// Ensure it's a Canvas task
+			if (!CanvasTaskUpdater.isCanvasTask(task)) {
+				return { success: false, error: "Task is not a Canvas task" };
+			}
+
+			// Use CanvasTaskUpdater to duplicate the task
+			const result = await this.canvasTaskUpdater.duplicateCanvasTask(
+				task as Task<CanvasTaskMetadata>,
+				args.targetFilePath,
+				args.targetNodeId,
+				args.targetSection,
+				args.preserveMetadata
+			);
+
+			return result;
+		} catch (error) {
+			console.error("WriteAPI: Error duplicating Canvas task:", error);
+			return { success: false, error: String(error) };
+		}
+	}
+
+	/**
+	 * Add a new task to a Canvas node
+	 */
+	async addTaskToCanvasNode(args: {
+		filePath: string;
+		content: string;
+		targetNodeId?: string;
+		targetSection?: string;
+		completed?: boolean;
+		metadata?: Partial<CanvasTaskMetadata>;
+	}): Promise<{ success: boolean; error?: string }> {
+		try {
+			// Format task content with checkbox
+			const checkboxState = args.completed ? "[x]" : "[ ]";
+			let taskContent = `- ${checkboxState} ${args.content}`;
+
+			// Add metadata if provided
+			if (args.metadata) {
+				const metadataStr = this.generateMetadata(args.metadata as any);
+				if (metadataStr) {
+					taskContent += ` ${metadataStr}`;
+				}
+			}
+
+			// Use CanvasTaskUpdater to add the task
+			const result = await this.canvasTaskUpdater.addTaskToCanvasNode(
+				args.filePath,
+				taskContent,
+				args.targetNodeId,
+				args.targetSection
+			);
+
+			return result;
+		} catch (error) {
+			console.error("WriteAPI: Error adding task to Canvas node:", error);
+			return { success: false, error: String(error) };
+		}
+	}
+
+	/**
+	 * Check if a task is a Canvas task
+	 */
+	isCanvasTask(task: Task): boolean {
+		return CanvasTaskUpdater.isCanvasTask(task);
+	}
+
+	/**
+	 * Get the Canvas task updater instance
+	 */
+	getCanvasTaskUpdater(): CanvasTaskUpdater {
+		return this.canvasTaskUpdater;
 	}
 }

@@ -280,9 +280,17 @@ export class TimelineSidebarView extends ItemView {
 		}
 	}
 
-	private loadEvents(): void {
-		// Get tasks from the plugin's task manager
-		const allTasks = this.plugin.taskManager.getAllTasks();
+	private async loadEvents(): Promise<void> {
+		// Get tasks from the plugin's dataflow
+		let allTasks: Task[] = [];
+		
+		if (this.plugin.dataflowOrchestrator) {
+			try {
+				allTasks = await this.plugin.dataflowOrchestrator.getQueryAPI().getAllTasks();
+			} catch (error) {
+				console.error("Failed to get tasks from dataflow:", error);
+			}
+		}
 
 		this.events = [];
 
@@ -755,11 +763,21 @@ export class TimelineSidebarView extends ItemView {
 			}
 		}
 
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available");
+			return;
+		}
 
 		try {
-			await taskManager.updateTask(updatedTask);
+			const result = await this.plugin.writeAPI.updateTask({
+				taskId: task.id,
+				updates: updatedTask,
+			});
+			
+			if (!result.success) {
+				console.error("Failed to toggle task completion:", result.error);
+				return;
+			}
 
 			// Update the local event data immediately for responsive UI
 			if (event) {

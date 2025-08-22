@@ -1073,7 +1073,7 @@ export class KanbanComponent extends Component {
 				return;
 		}
 
-		// Update the task using TaskManager
+		// Update the task using WriteAPI
 		try {
 			console.log(
 				`Updating task ${taskId} ${groupBy} from:`,
@@ -1081,7 +1081,20 @@ export class KanbanComponent extends Component {
 				"to:",
 				newValue
 			);
-			await this.plugin.taskManager.updateTask(updatedTask);
+			if (this.plugin.writeAPI) {
+				const result = await this.plugin.writeAPI.updateTask({
+					taskId,
+					updates: updatedTask,
+				});
+				if (!result.success) {
+					console.error(
+						`Failed to update task ${taskId} property ${groupBy}:`,
+						result.error
+					);
+				}
+			} else {
+				console.error("WriteAPI not available");
+			}
 		} catch (error) {
 			console.error(
 				`Failed to update task ${taskId} property ${groupBy}:`,

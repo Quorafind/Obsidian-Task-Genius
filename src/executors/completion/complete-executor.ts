@@ -46,16 +46,16 @@ export class CompleteActionExecutor extends BaseActionExecutor {
 			const completedTasks: string[] = [];
 			const failedTasks: string[] = [];
 
-			// Get all tasks from the task manager
-			const taskManager = plugin.taskManager;
-			if (!taskManager) {
-				return this.createErrorResult("Task manager not available");
+			// Get dataflow query API
+			if (!plugin.dataflowOrchestrator) {
+				return this.createErrorResult("Dataflow orchestrator not available");
 			}
+			const queryAPI = plugin.dataflowOrchestrator.getQueryAPI();
 
 			for (const taskId of completeConfig.taskIds) {
 				try {
 					// Find the task by ID
-					const targetTask = taskManager.getTaskById(taskId);
+					const targetTask = await queryAPI.getTaskById(taskId);
 
 					if (!targetTask) {
 						failedTasks.push(`Task not found: ${taskId}`);
@@ -78,8 +78,18 @@ export class CompleteActionExecutor extends BaseActionExecutor {
 						},
 					};
 
-					// Update the task using the task manager
-					await taskManager.updateTask(updatedTask);
+					// Update the task using WriteAPI
+					if (context.plugin.writeAPI) {
+						const result = await context.plugin.writeAPI.updateTask({
+							taskId: updatedTask.id,
+							updates: updatedTask
+						});
+						if (!result.success) {
+							throw new Error(result.error || "Failed to update task");
+						}
+					} else {
+						throw new Error("WriteAPI not available");
+					}
 					completedTasks.push(taskId);
 				} catch (error) {
 					failedTasks.push(`${taskId}: ${error.message}`);

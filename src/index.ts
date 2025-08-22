@@ -72,7 +72,6 @@ import { SuggestManager } from "./components/suggest";
 import { MarkdownView } from "obsidian";
 import { Notice } from "obsidian";
 import { t } from "./translations/helper";
-import { TaskManager } from "./managers/task-manager";
 import { TaskView, TASK_VIEW_TYPE } from "./pages/TaskView";
 import "./styles/global.css";
 import "./styles/setting.css";
@@ -102,6 +101,7 @@ import { IcsManager } from "./managers/ics-manager";
 import { VersionManager } from "./managers/version-manager";
 import { RebuildProgressManager } from "./managers/rebuild-progress-manager";
 import { OnboardingConfigManager } from "./managers/onboarding-manager";
+import { OnCompletionManager } from "./managers/completion-manager";
 import { SettingsChangeDetector } from "./services/settings-change-detector";
 import {
 	OnboardingView,
@@ -196,10 +196,8 @@ export const showPopoverWithProgressBar = (
 
 export default class TaskProgressBarPlugin extends Plugin {
 	settings: TaskProgressBarSettings;
-	// Task manager instance
-	taskManager: TaskManager;
 
-	// Dataflow orchestrator instance (experimental)
+	// Dataflow orchestrator instance (primary architecture)
 	dataflowOrchestrator?: DataflowOrchestrator;
 
 	// Write API for dataflow architecture
@@ -247,6 +245,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// MCP Server manager instance (desktop only)
 	mcpServerManager?: McpServerManager;
 
+	// OnCompletion manager instance
+	onCompletionManager?: OnCompletionManager;
+
 	async onload() {
 		await this.loadSettings();
 
@@ -279,12 +280,15 @@ export default class TaskProgressBarPlugin extends Plugin {
 			}
 
 			// Check for version changes and handle rebuild if needed
-			// this.initializeTaskManagerWithVersionCheck().catch((error) => {
-			// 	console.error(
-			// 		"Failed to initialize task manager with version check:",
-			// 		error
-			// 	);
-			// });
+			if (this.dataflowOrchestrator) {
+				// Initialize with version check for dataflow
+				this.initializeDataflowWithVersionCheck().catch((error) => {
+					console.error(
+						"Failed to initialize dataflow with version check:",
+						error
+					);
+				});
+			}
 
 			// Register the TaskView
 			this.registerView(
@@ -356,83 +360,66 @@ export default class TaskProgressBarPlugin extends Plugin {
 			addIcon("abandoned", getStatusIcon("abandoned"));
 			addIcon("notStarted", getStatusIcon("notStarted"));
 
-			// Initialize dataflow orchestrator if enabled (experimental)
-			if (isDataflowEnabled(this)) {
-				try {
-					console.log(
-						"[Plugin] Dataflow architecture enabled - initializing..."
-					);
-					// Wait for dataflow initialization to complete before proceeding
-					this.dataflowOrchestrator = await createDataflow(
-						this.app,
-						this.app.vault,
-						this.app.metadataCache,
-						this,
-						{
-							// ProjectConfigManagerOptions is narrower; pass only known properties
-						}
-					);
-					console.log(
-						"[Plugin] Dataflow orchestrator initialized successfully"
-					);
-				} catch (error) {
-					console.error(
-						"[Plugin] Failed to initialize dataflow orchestrator:",
-						error
-					);
-					// Continue without dataflow, fallback to TaskManager
-				}
-			}
-
-			// Initialize traditional TaskManager (kept for backward compatibility)
-			console.log("[Plugin] Initializing TaskManager...");
-			this.taskManager = new TaskManager(
-				this.app,
-				this.app.vault,
-				this.app.metadataCache,
-				this,
-				{
-					useWorkers: true,
-					debug: true, // Set to true for debugging
-				}
-			);
-
-			this.addChild(this.taskManager);
-			console.log("[Plugin] TaskManager initialized");
-
-			// Initialize WriteAPI if dataflow is enabled
-			if (this.settings?.experimental?.dataflowEnabled) {
-				const getTaskById = async (
-					id: string
-				): Promise<Task | null> => {
-					// Try dataflow first, fallback to taskManager
-					if (this.dataflowOrchestrator) {
-						try {
-							const repository =
-								this.dataflowOrchestrator.getRepository();
-							const task = await repository.getTaskById(id);
-							if (task) {
-								return task;
-							}
-						} catch (e) {
-							console.warn(
-								"Failed to get task from dataflow, falling back to taskManager",
-								e
-							);
-						}
-					}
-					const taskManagerResult = this.taskManager.getTaskById(id);
-					return taskManagerResult || null;
-				};
-
-				this.writeAPI = new WriteAPI(
+			// Initialize dataflow orchestrator (primary architecture)
+			try {
+				console.log(
+					"[Plugin] Initializing Dataflow architecture..."
+				);
+				// Wait for dataflow initialization to complete before proceeding
+				this.dataflowOrchestrator = await createDataflow(
 					this.app,
 					this.app.vault,
 					this.app.metadataCache,
 					this,
-					getTaskById
+					{
+						// ProjectConfigManagerOptions is narrower; pass only known properties
+					}
 				);
+				console.log(
+					"[Plugin] Dataflow orchestrator initialized successfully"
+				);
+			} catch (error) {
+				console.error(
+					"[Plugin] Failed to initialize dataflow orchestrator:",
+					error
+				);
+				// Fatal error - cannot continue without dataflow
+				new Notice(t("Failed to initialize task system. Please restart Obsidian."));
 			}
+
+			// Initialize WriteAPI (always, as dataflow is now primary)
+			const getTaskById = async (
+				id: string
+			): Promise<Task | null> => {
+				try {
+					if (!this.dataflowOrchestrator) {
+						return null;
+					}
+					const repository =
+						this.dataflowOrchestrator.getRepository();
+					const task = await repository.getTaskById(id);
+					return task || null;
+				} catch (e) {
+					console.warn(
+						"Failed to get task from dataflow",
+						e
+					);
+					return null;
+				}
+			};
+
+			this.writeAPI = new WriteAPI(
+				this.app,
+				this.app.vault,
+				this.app.metadataCache,
+				this,
+				getTaskById
+			);
+
+			// Initialize OnCompletionManager
+			this.onCompletionManager = new OnCompletionManager(this.app, this);
+			this.addChild(this.onCompletionManager);
+			console.log("[Plugin] OnCompletionManager initialized");
 		}
 
 		if (this.settings.rewards.enableRewards) {
@@ -831,8 +818,8 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 							new Notice(t("Task index completely rebuilt"));
 						} else {
-							// Use legacy task manager
-							await this.taskManager.forceReindex();
+							// No dataflow available
+							new Notice(t("Task system not initialized"));
 						}
 					} catch (error) {
 						console.error("Failed to force reindex tasks:", error);
@@ -1489,9 +1476,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 			});
 		}
 
-		// Clean up task manager when plugin is unloaded
-		if (this.taskManager) {
-			this.taskManager.onunload();
+		// Clean up dataflow when plugin is unloaded
+		if (this.dataflowOrchestrator) {
+			// Dataflow cleanup is handled automatically
 		}
 
 		// Clean up MCP server manager (desktop only)
@@ -1689,169 +1676,121 @@ export default class TaskProgressBarPlugin extends Plugin {
 	}
 
 	/**
-	 * Initialize task manager with version checking and rebuild handling
+	 * Initialize dataflow with version checking and rebuild handling
 	 */
-	private async initializeTaskManagerWithVersionCheck(): Promise<void> {
-		let retryCount = 0;
-		const maxRetries = 3;
+	private async initializeDataflowWithVersionCheck(): Promise<void> {
+		if (!this.dataflowOrchestrator) {
+			console.error("Dataflow orchestrator not available");
+			return;
+		}
 
-		while (retryCount < maxRetries) {
-			try {
-				// Validate version storage integrity first
-				const diagnosticInfo =
-					await this.versionManager.getDiagnosticInfo();
+		try {
+			// Validate version storage integrity first
+			const diagnosticInfo = await this.versionManager.getDiagnosticInfo();
 
-				if (!diagnosticInfo.canWrite) {
-					throw new Error(
-						"Cannot write to version storage - storage may be corrupted"
-					);
-				}
+			if (!diagnosticInfo.canWrite) {
+				throw new Error(
+					"Cannot write to version storage - storage may be corrupted"
+				);
+			}
 
-				if (
-					!diagnosticInfo.versionValid &&
-					diagnosticInfo.previousVersion
-				) {
-					console.warn(
-						"Invalid version data detected, attempting recovery"
-					);
-					await this.versionManager.recoverFromCorruptedVersion();
-				}
+			if (!diagnosticInfo.versionValid && diagnosticInfo.previousVersion) {
+				console.warn("Invalid version data detected, attempting recovery");
+				await this.versionManager.recoverFromCorruptedVersion();
+			}
 
-				// Check for version changes
-				const versionResult =
-					await this.versionManager.checkVersionChange();
+			// Check for version changes
+			const versionResult = await this.versionManager.checkVersionChange();
 
-				if (versionResult.requiresRebuild) {
-					console.log(`Task Genius: ${versionResult.rebuildReason}`);
+			if (versionResult.requiresRebuild) {
+				console.log(`Task Genius (Dataflow): ${versionResult.rebuildReason}`);
 
-					// Get all supported files for progress tracking
-					const allFiles = this.app.vault
-						.getFiles()
-						.filter(
-							(file) =>
-								file.extension === "md" ||
-								file.extension === "canvas"
-						);
-
-					// Start rebuild progress tracking
-					this.rebuildProgressManager.startRebuild(
-						allFiles.length,
-						versionResult.rebuildReason
+				// Get all supported files for progress tracking
+				const allFiles = this.app.vault
+					.getFiles()
+					.filter(
+						(file) =>
+							file.extension === "md" ||
+							file.extension === "canvas"
 					);
 
-					// Force clear all caches before rebuild
-					if (this.taskManager.persister) {
-						try {
-							await this.taskManager.persister.clear();
-						} catch (clearError) {
-							console.warn(
-								"Error clearing cache, attempting to recreate storage:",
-								clearError
-							);
-							await this.taskManager.persister.recreate();
-						}
-					}
-
-					// Set progress manager for the task manager
-					this.taskManager.setProgressManager(
-						this.rebuildProgressManager
-					);
-
-					// Initialize task manager (this will trigger the rebuild)
-					await this.taskManager.initialize();
-
-					// Mark rebuild as complete
-					const finalTaskCount =
-						this.taskManager.getAllTasks().length;
-					this.rebuildProgressManager.completeRebuild(finalTaskCount);
-
-					// Mark version as processed
-					await this.versionManager.markVersionProcessed();
-				} else {
-					// No rebuild needed, normal initialization
-					await this.taskManager.initialize();
-				}
-
-				// If we get here, initialization was successful
-				return;
-			} catch (error) {
-				retryCount++;
-				console.error(
-					`Error during task manager initialization (attempt ${retryCount}/${maxRetries}):`,
-					error
+				// Start rebuild progress tracking
+				this.rebuildProgressManager.startRebuild(
+					allFiles.length,
+					versionResult.rebuildReason
 				);
 
-				if (retryCount >= maxRetries) {
-					// Final attempt failed, trigger emergency rebuild
-					console.error(
-						"All initialization attempts failed, triggering emergency rebuild"
+				// Trigger dataflow rebuild
+				await this.dataflowOrchestrator.rebuild();
+
+				// Get final task count from dataflow
+				const queryAPI = this.dataflowOrchestrator.getQueryAPI();
+				const allTasks = await queryAPI.getAllTasks();
+				const finalTaskCount = allTasks.length;
+				
+				// Mark rebuild as complete
+				this.rebuildProgressManager.completeRebuild(finalTaskCount);
+
+				// Mark version as processed
+				await this.versionManager.markVersionProcessed();
+			} else {
+				// No rebuild needed, dataflow already initialized during creation
+				console.log("Task Genius (Dataflow): No rebuild needed, using existing cache");
+			}
+		} catch (error) {
+			console.error("Error during dataflow initialization with version check:", error);
+			
+			// Trigger emergency rebuild for dataflow
+			try {
+				const emergencyResult = await this.versionManager.handleEmergencyRebuild(
+					`Dataflow initialization failed: ${error.message}`
+				);
+
+				// Get all supported files for progress tracking
+				const allFiles = this.app.vault
+					.getFiles()
+					.filter(
+						(file) =>
+							file.extension === "md" ||
+							file.extension === "canvas"
 					);
 
-					try {
-						const emergencyResult =
-							await this.versionManager.handleEmergencyRebuild(
-								`Initialization failed after ${maxRetries} attempts: ${error.message}`
-							);
+				// Start emergency rebuild
+				this.rebuildProgressManager.startRebuild(
+					allFiles.length,
+					emergencyResult.rebuildReason
+				);
 
-						// Get all supported files for progress tracking
-						const allFiles = this.app.vault
-							.getFiles()
-							.filter(
-								(file) =>
-									file.extension === "md" ||
-									file.extension === "canvas"
-							);
+				// Force rebuild dataflow
+				await this.dataflowOrchestrator.rebuild();
 
-						// Start emergency rebuild
-						this.rebuildProgressManager.startRebuild(
-							allFiles.length,
-							emergencyResult.rebuildReason
-						);
+				// Get final task count
+				const queryAPI = this.dataflowOrchestrator.getQueryAPI();
+				const allTasks = await queryAPI.getAllTasks();
+				const finalTaskCount = allTasks.length;
+				
+				// Mark emergency rebuild as complete
+				this.rebuildProgressManager.completeRebuild(finalTaskCount);
 
-						// Force recreate storage
-						if (this.taskManager.persister) {
-							await this.taskManager.persister.recreate();
-						}
+				// Store current version
+				await this.versionManager.markVersionProcessed();
 
-						// Set progress manager for the task manager
-						this.taskManager.setProgressManager(
-							this.rebuildProgressManager
-						);
-
-						// Initialize with minimal error handling
-						await this.taskManager.initialize();
-
-						// Mark emergency rebuild as complete
-						const finalTaskCount =
-							this.taskManager.getAllTasks().length;
-						this.rebuildProgressManager.completeRebuild(
-							finalTaskCount
-						);
-
-						// Store current version
-						await this.versionManager.markVersionProcessed();
-
-						console.log("Emergency rebuild completed successfully");
-						return;
-					} catch (emergencyError) {
-						console.error(
-							"Emergency rebuild also failed:",
-							emergencyError
-						);
-						this.rebuildProgressManager.failRebuild(
-							`Emergency rebuild failed: ${emergencyError.message}`
-						);
-						throw new Error(
-							`Task manager initialization failed completely: ${emergencyError.message}`
-						);
-					}
-				} else {
-					// Wait before retry
-					await new Promise((resolve) =>
-						setTimeout(resolve, 1000 * retryCount)
-					);
-				}
+				console.log("Emergency dataflow rebuild completed successfully");
+			} catch (emergencyError) {
+				console.error("Emergency dataflow rebuild failed:", emergencyError);
+				throw emergencyError;
 			}
 		}
+	}
+
+	/**
+	 * Initialize task manager with version checking and rebuild handling
+	 * @deprecated This method is no longer used as TaskManager has been removed
+	 * This method is kept for reference only and will be removed in future versions
+	 */
+	private async initializeTaskManagerWithVersionCheck(): Promise<void> {
+		// This method is deprecated and should not be called
+		console.warn("initializeTaskManagerWithVersionCheck is deprecated and should not be used");
+		return Promise.resolve();
 	}
 }

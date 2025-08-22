@@ -344,10 +344,9 @@ export class WeekView extends CalendarViewComponent {
 		targetDateStr: string
 	): Promise<void> {
 		const targetDate = moment(targetDateStr).valueOf();
-		const taskManager = this.plugin.taskManager;
 
-		if (!taskManager) {
-			throw new Error("Task manager not available");
+		if (!this.plugin.writeAPI) {
+			throw new Error("WriteAPI not available");
 		}
 
 		// Create updated task with new date
@@ -366,7 +365,14 @@ export class WeekView extends CalendarViewComponent {
 		}
 
 		// Update the task
-		await taskManager.updateTask(updatedTask);
+		const result = await this.plugin.writeAPI.updateTask({
+			taskId: calendarEvent.id,
+			updates: updatedTask,
+		});
+		
+		if (!result.success) {
+			throw new Error(`Failed to update task: ${result.error}`);
+		}
 	}
 
 	/**

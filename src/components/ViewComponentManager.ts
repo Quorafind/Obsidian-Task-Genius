@@ -122,12 +122,8 @@ class ViewComponentFactory {
 							onTaskCompleted: handlers.onTaskCompleted,
 							onTaskContextMenu: handlers.onTaskContextMenu,
 							onTaskUpdated: async (task: Task) => {
-								// Handle task updates through WriteAPI if dataflow is enabled
-								if (
-									plugin.settings?.experimental
-										?.dataflowEnabled &&
-									plugin.writeAPI
-								) {
+								// Handle task updates through WriteAPI
+								if (plugin.writeAPI) {
 									const result =
 										await plugin.writeAPI.updateTask({
 											taskId: task.id,
@@ -139,8 +135,8 @@ class ViewComponentFactory {
 											result.error,
 										);
 									}
-								} else if (plugin.taskManager) {
-									await plugin.taskManager.updateTask(task);
+								} else {
+									console.error("WriteAPI not available");
 								}
 							},
 						},
@@ -160,12 +156,8 @@ class ViewComponentFactory {
 						onTaskCompleted: handlers.onTaskCompleted,
 						onTaskContextMenu: handlers.onTaskContextMenu,
 						onTaskUpdated: async (task: Task) => {
-							// Handle task updates through WriteAPI if dataflow is enabled
-							if (
-								plugin.settings?.experimental
-									?.dataflowEnabled &&
-								plugin.writeAPI
-							) {
+							// Handle task updates through WriteAPI
+							if (plugin.writeAPI) {
 								const result = await plugin.writeAPI.updateTask(
 									{
 										taskId: task.id,
@@ -178,8 +170,8 @@ class ViewComponentFactory {
 										result.error,
 									);
 								}
-							} else if (plugin.taskManager) {
-								await plugin.taskManager.updateTask(task);
+							} else {
+								console.error("WriteAPI not available");
 							}
 						},
 					},

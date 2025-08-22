@@ -4,7 +4,47 @@ This directory contains the core utilities for task parsing, management, and pro
 
 ## 🏗️ Architecture Overview
 
-The task parsing system follows a layered architecture:
+The task parsing system supports two architectures:
+
+### Dataflow Architecture (Primary)
+The modern, event-driven architecture for high performance and scalability:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    API Layer                                │
+├─────────────────────────────────────────────────────────────┤
+│  QueryAPI                │  WriteAPI                        │
+│  (Read Operations)       │  (Write Operations)              │
+│  • getAllTasks()         │  • updateTask()                  │
+│  • getAllTasksSync()     │  • createTask()                  │
+│  • getTaskByIdSync()     │  • deleteTask()                  │
+├─────────────────────────────────────────────────────────────┤
+│                    Orchestration Layer                      │
+├─────────────────────────────────────────────────────────────┤
+│  DataflowOrchestrator    │  WorkerOrchestrator              │
+│  (Event Coordination)    │  (Background Processing)         │
+├─────────────────────────────────────────────────────────────┤
+│                    Events Layer                             │
+├─────────────────────────────────────────────────────────────┤
+│  Events.ts               │  Event Emitters                  │
+│  (CACHE_READY, etc.)     │  (Task/File Updates)             │
+├─────────────────────────────────────────────────────────────┤
+│                    Repository Layer                         │
+├─────────────────────────────────────────────────────────────┤
+│  Repository.ts           │  Indexer.ts                      │
+│  (Data Storage)          │  (Fast Lookups)                  │
+│  • Sync Cache Support    │  • Optimized Queries             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Key Features:
+- **Synchronous Cache**: QueryAPI provides sync methods (`getAllTasksSync()`, `getTaskByIdSync()`) for UI components that need immediate data access
+- **Event-Driven Updates**: Real-time task updates via event system
+- **Worker-Based Processing**: Background task indexing for better performance
+- **Persistence Layer**: Automatic data persistence and recovery
+
+### Legacy Architecture (Removed)
+The traditional TaskManager-based architecture has been completely removed as of version 10.0.0:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

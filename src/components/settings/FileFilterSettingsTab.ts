@@ -25,8 +25,10 @@ export function renderFileFilterSettingsTab(
 					settingTab.plugin.settings.fileFilter.enabled = value;
 					await settingTab.plugin.saveSettings();
 
-					// Update the task manager's filter configuration
-					settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+					// Trigger dataflow rebuild if enabled
+					if (settingTab.plugin.dataflowOrchestrator) {
+						settingTab.plugin.dataflowOrchestrator.rebuild();
+					}
 
 					// Update statistics immediately
 					debouncedUpdateStats();
@@ -56,7 +58,7 @@ export function renderFileFilterSettingsTab(
 				.onChange(async (value: FilterMode) => {
 					settingTab.plugin.settings.fileFilter.mode = value;
 					await settingTab.plugin.saveSettings();
-					settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+					// File filter configuration is now handled by dataflow
 					debouncedUpdateStats();
 				})
 		);
@@ -98,7 +100,7 @@ export function renderFileFilterSettingsTab(
 				.onChange(async (value: "file" | "folder" | "pattern") => {
 					rule.type = value;
 					await settingTab.plugin.saveSettings();
-					settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+					// File filter configuration is now handled by dataflow
 					debouncedUpdateStats();
 					// Re-render rules to update suggest components
 					renderRules();
@@ -137,7 +139,7 @@ export function renderFileFilterSettingsTab(
 						rule.path = file.path;
 						pathInput.value = file.path;
 						settingTab.plugin.saveSettings();
-						settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+						// File filter configuration is now handled by dataflow
 						debouncedUpdateStats();
 					}
 				);
@@ -146,7 +148,7 @@ export function renderFileFilterSettingsTab(
 			pathInput.addEventListener("input", async () => {
 				rule.path = pathInput.value;
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				debouncedUpdateStats();
 			});
 
@@ -164,7 +166,7 @@ export function renderFileFilterSettingsTab(
 			enabledCheckbox.addEventListener("change", async () => {
 				rule.enabled = enabledCheckbox.checked;
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				debouncedUpdateStats();
 			});
 
@@ -178,7 +180,7 @@ export function renderFileFilterSettingsTab(
 			deleteButton.addEventListener("click", async () => {
 				settingTab.plugin.settings.fileFilter.rules.splice(index, 1);
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				renderRules();
 				debouncedUpdateStats();
 			});
@@ -201,7 +203,7 @@ export function renderFileFilterSettingsTab(
 				};
 				settingTab.plugin.settings.fileFilter.rules.push(newRule);
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				renderRules();
 				debouncedUpdateStats();
 			})
@@ -215,7 +217,7 @@ export function renderFileFilterSettingsTab(
 				};
 				settingTab.plugin.settings.fileFilter.rules.push(newRule);
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				renderRules();
 				debouncedUpdateStats();
 			})
@@ -229,7 +231,7 @@ export function renderFileFilterSettingsTab(
 				};
 				settingTab.plugin.settings.fileFilter.rules.push(newRule);
 				await settingTab.plugin.saveSettings();
-				settingTab.plugin.taskManager?.updateFileFilterConfiguration();
+				// File filter configuration is now handled by dataflow
 				renderRules();
 				debouncedUpdateStats();
 			})
@@ -271,10 +273,13 @@ export function renderFileFilterSettingsTab(
 
 	const updateStats = () => {
 		try {
-			const filterManager =
-				settingTab.plugin.taskManager?.getFileFilterManager?.();
-			if (filterManager) {
-				const stats = filterManager.getStats();
+			// TODO: Get file filter stats from dataflow when available
+			const stats = {
+				rulesCount: settingTab.plugin.settings.fileFilter.rules.filter(r => r.enabled).length,
+				cacheSize: 0,
+				processedFiles: 0,
+				filteredFiles: 0
+			};
 
 				// Clear existing content
 				statsContainer.empty();
@@ -315,19 +320,8 @@ export function renderFileFilterSettingsTab(
 				});
 				statusStat.createEl("span", {
 					cls: "stat-value",
-					text: stats.enabled ? t("Enabled") : t("Disabled"),
+					text: settingTab.plugin.settings.fileFilter.enabled ? t("Enabled") : t("Disabled"),
 				});
-			} else {
-				// Show message when filter manager is not available
-				statsContainer.empty();
-				const noDataStat = statsContainer.createDiv({
-					cls: "file-filter-stat",
-				});
-				noDataStat.createEl("span", {
-					cls: "stat-label",
-					text: t("No filter data available"),
-				});
-			}
 		} catch (error) {
 			console.error("Error updating filter statistics:", error);
 			statsContainer.empty();

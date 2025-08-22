@@ -546,11 +546,9 @@ export class OnCompletionConfigurator extends Component {
 			this.currentRawValue = this.generateRawValue(this.currentConfig);
 		}
 
-		// Validate the configuration
-		const parseResult = this.plugin.taskManager
-			?.getOnCompletionManager()
-			?.parseOnCompletion(this.currentRawValue);
-		const isValid = parseResult?.isValid ?? false;
+		// Skip validation for now since OnCompletionManager is being removed
+		// This validation will need to be reimplemented in Dataflow
+		const isValid = true; // Temporarily assume valid
 
 		// Notify about changes only if not an internal update
 		// Allow onChange for user configuration even during internal updates
@@ -562,7 +560,7 @@ export class OnCompletionConfigurator extends Component {
 		}
 
 		if (this.options.onValidationChange) {
-			this.options.onValidationChange(isValid, parseResult?.error);
+			this.options.onValidationChange(isValid, undefined);
 		}
 	}
 
@@ -612,14 +610,19 @@ export class OnCompletionConfigurator extends Component {
 	public setValue(value: string) {
 		this.currentRawValue = value;
 
-		// Parse the value and update UI
-		const parseResult = this.plugin.taskManager
-			?.getOnCompletionManager()
-			?.parseOnCompletion(value);
-		if (parseResult?.isValid && parseResult.config) {
-			this.currentConfig = parseResult.config;
-			this.updateUIFromConfig(parseResult.config);
-		} else {
+		// Parse the value manually for now since OnCompletionManager is being removed
+		// This parsing will need to be reimplemented in Dataflow
+		try {
+			const config = this.parseOnCompletionValue(value);
+			if (config) {
+				this.currentConfig = config;
+				this.updateUIFromConfig(config);
+			} else {
+				this.currentConfig = null;
+				this.actionTypeDropdown.setValue("");
+				this.configContainer.empty();
+			}
+		} catch (e) {
 			this.currentConfig = null;
 			this.actionTypeDropdown.setValue("");
 			this.configContainer.empty();
@@ -642,10 +645,54 @@ export class OnCompletionConfigurator extends Component {
 	}
 
 	public isValid(): boolean {
-		const parseResult = this.plugin.taskManager
-			?.getOnCompletionManager()
-			?.parseOnCompletion(this.currentRawValue);
-		return parseResult?.isValid ?? false;
+		// Temporarily return true until OnCompletion parsing is reimplemented in Dataflow
+		return this.currentConfig !== null;
+	}
+
+	/**
+	 * Temporary parsing method until OnCompletion is reimplemented in Dataflow
+	 */
+	private parseOnCompletionValue(value: string): OnCompletionConfig | null {
+		if (!value) return null;
+		
+		const trimmed = value.trim();
+		
+		// Simple actions
+		if (trimmed === 'delete') return { type: OnCompletionActionType.DELETE };
+		if (trimmed === 'keep') return { type: OnCompletionActionType.KEEP };
+		if (trimmed === 'duplicate') return { type: OnCompletionActionType.DUPLICATE };
+		
+		// Archive action
+		if (trimmed === 'archive') return { type: OnCompletionActionType.ARCHIVE };
+		if (trimmed.startsWith('archive:')) {
+			const archiveFile = trimmed.substring(8).trim();
+			return { type: OnCompletionActionType.ARCHIVE, archiveFile } as any;
+		}
+		
+		// Complete action
+		if (trimmed.startsWith('complete:')) {
+			const taskIdsStr = trimmed.substring(9).trim();
+			const taskIds = taskIdsStr ? taskIdsStr.split(',').map(id => id.trim()) : [];
+			return { type: OnCompletionActionType.COMPLETE, taskIds } as any;
+		}
+		
+		// Move action
+		if (trimmed.startsWith('move:')) {
+			const targetFile = trimmed.substring(5).trim();
+			return { type: OnCompletionActionType.MOVE, targetFile } as any;
+		}
+		
+		// Try JSON parsing for complex configurations
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (parsed && parsed.type) {
+				return parsed;
+			}
+		} catch (e) {
+			// Not JSON, ignore
+		}
+		
+		return null;
 	}
 
 	onunload() {

@@ -29,30 +29,43 @@ export class TaskIdSuggest extends AbstractInputSuggest<string> {
 	}
 
 	getSuggestions(query: string): string[] {
-		if (!this.plugin.taskManager) {
+		if (!this.plugin.dataflowOrchestrator) {
 			return [];
 		}
 
-		// Get all tasks that have IDs
-		const allTasks = this.plugin.taskManager.getAllTasks();
-		const taskIds = allTasks
-			.filter((task) => task.metadata.id)
-			.map((task) => task.metadata.id!)
-			.filter((id) => id.toLowerCase().includes(query.toLowerCase()));
+		try {
+			// Get all tasks that have IDs from dataflow using sync cache
+			const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+			const allTasks = queryAPI.getAllTasksSync();
+			const taskIds = allTasks
+				.filter((task) => task.metadata?.id)
+				.map((task) => task.metadata.id!)
+				.filter((id) => id.toLowerCase().includes(query.toLowerCase()));
 
-		return taskIds.slice(0, 10); // Limit to 10 suggestions
+			return taskIds.slice(0, 10); // Limit to 10 suggestions
+		} catch (error) {
+			console.warn("Failed to get task IDs from dataflow:", error);
+			return [];
+		}
 	}
 
 	renderSuggestion(taskId: string, el: HTMLElement): void {
 		el.createDiv({ text: taskId, cls: "task-id-suggestion" });
 
 		// Try to find the task and show its content
-		const task = this.plugin.taskManager?.getTaskById(taskId);
-		if (task) {
-			el.createDiv({
-				text: task.content,
-				cls: "task-content-preview",
-			});
+		if (this.plugin.dataflowOrchestrator) {
+			try {
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				const task = queryAPI.getTaskByIdSync(taskId);
+				if (task && task.content) {
+					el.createDiv({
+						text: task.content,
+						cls: "task-content-preview",
+					});
+				}
+			} catch (error) {
+				console.warn("Failed to get task from dataflow:", error);
+			}
 		}
 	}
 

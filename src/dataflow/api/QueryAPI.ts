@@ -8,6 +8,12 @@ import { Repository } from "../indexer/Repository";
  */
 export class QueryAPI {
   private repository: Repository;
+  private taskCache: Task[] | null = null;
+  private cacheTimestamp: number = 0;
+  private readonly CACHE_DURATION = 100; // 100ms cache for synchronous access
+  
+  // Promise cache for async operations to prevent duplicate requests
+  private pendingPromise: Promise<Task[]> | null = null;
 
   constructor(
     private app: App,
@@ -25,10 +31,31 @@ export class QueryAPI {
   }
 
   /**
-   * Get all tasks
+   * Get all tasks with deduplication for concurrent requests
    */
   async getAllTasks(): Promise<Task[]> {
-    return this.repository.all();
+    // If there's already a pending request, return the same promise
+    if (this.pendingPromise) {
+      return this.pendingPromise;
+    }
+    
+    // Create new promise and cache it
+    this.pendingPromise = this.repository.all().then(tasks => {
+      // Update synchronous cache with fresh data
+      this.taskCache = tasks;
+      this.cacheTimestamp = Date.now();
+      
+      // Clear pending promise after completion
+      this.pendingPromise = null;
+      
+      return tasks;
+    }).catch(error => {
+      // Clear pending promise on error
+      this.pendingPromise = null;
+      throw error;
+    });
+    
+    return this.pendingPromise;
   }
 
   /**
@@ -174,5 +201,238 @@ export class QueryAPI {
    */
   getRepository(): Repository {
     return this.repository;
+  }
+
+  // ===== Synchronous Cache Methods =====
+  
+  /**
+   * Update the synchronous cache with fresh data
+   */
+  private async updateCache(): Promise<void> {
+    this.taskCache = await this.repository.all();
+    this.cacheTimestamp = Date.now();
+  }
+
+  /**
+   * Get all tasks synchronously (uses cache)
+   * Returns empty array if cache is not initialized
+   */
+  getAllTasksSync(): Task[] {
+    if (!this.taskCache || Date.now() - this.cacheTimestamp > this.CACHE_DURATION) {
+      // Cache is stale or not initialized, trigger async update
+      console.debug("[QueryAPI] Sync cache miss, triggering async update");
+      this.updateCache().catch(error => {
+        console.error("[QueryAPI] Failed to update cache:", error);
+      });
+      return this.taskCache || [];
+    }
+    return this.taskCache;
+  }
+
+  /**
+   * Get task by ID synchronously (uses cache)
+   * Returns null if not found or cache not initialized
+   */
+  getTaskByIdSync(id: string): Task | null {
+    const tasks = this.getAllTasksSync();
+    return tasks.find(task => task.id === id) || null;
+  }
+
+  /**
+   * Ensure cache is populated (call this during initialization)
+   */
+  async ensureCache(): Promise<void> {
+    if (!this.taskCache) {
+      console.log("[QueryAPI] Populating initial cache...");
+      try {
+        const tasks = await this.repository.all();
+        this.taskCache = tasks;
+        this.cacheTimestamp = Date.now();
+        console.log(`[QueryAPI] Cache populated with ${tasks.length} tasks`);
+      } catch (error) {
+        console.error("[QueryAPI] Failed to populate initial cache:", error);
+      }
+    }
+  }
+
+  // ===== Convenience Query Methods =====
+
+  /**
+   * Get tasks for a specific file
+   */
+  async getTasksForFile(filePath: string): Promise<Task[]> {
+    const allTasks = await this.getAllTasks();
+    return allTasks.filter(task => task.filePath === filePath);
+  }
+
+  /**
+   * Get tasks for a specific file (synchronous)
+   */
+  getTasksForFileSync(filePath: string): Task[] {
+    const allTasks = this.getAllTasksSync();
+    return allTasks.filter(task => task.filePath === filePath);
+  }
+
+  /**
+   * Get incomplete tasks
+   */
+  async getIncompleteTasks(): Promise<Task[]> {
+    return this.getTasksByStatus(false);
+  }
+
+  /**
+   * Get incomplete tasks (synchronous)
+   */
+  getIncompleteTasksSync(): Task[] {
+    const allTasks = this.getAllTasksSync();
+    return allTasks.filter(task => !task.completed);
+  }
+
+  /**
+   * Get completed tasks
+   */
+  async getCompletedTasks(): Promise<Task[]> {
+    return this.getTasksByStatus(true);
+  }
+
+  /**
+   * Get completed tasks (synchronous)
+   */
+  getCompletedTasksSync(): Task[] {
+    const allTasks = this.getAllTasksSync();
+    return allTasks.filter(task => task.completed);
+  }
+
+  /**
+   * Get tasks due today
+   */
+  async getTasksDueToday(): Promise<Task[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return this.getTasksByDateRange({
+      from: today.getTime(),
+      to: tomorrow.getTime(),
+      field: 'due'
+    });
+  }
+
+  /**
+   * Get tasks due today (synchronous)
+   */
+  getTasksDueTodaySync(): Task[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const allTasks = this.getAllTasksSync();
+    return allTasks.filter(task => {
+      if (!task.metadata?.dueDate) return false;
+      return task.metadata.dueDate >= today.getTime() && 
+             task.metadata.dueDate < tomorrow.getTime();
+    });
+  }
+
+  /**
+   * Get overdue tasks
+   */
+  async getOverdueTasks(): Promise<Task[]> {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const allTasks = await this.getAllTasks();
+    
+    return allTasks.filter(task => 
+      !task.completed && 
+      task.metadata?.dueDate && 
+      task.metadata.dueDate < now.getTime()
+    );
+  }
+
+  /**
+   * Get overdue tasks (synchronous)
+   */
+  getOverdueTasksSync(): Task[] {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const allTasks = this.getAllTasksSync();
+    
+    return allTasks.filter(task => 
+      !task.completed && 
+      task.metadata?.dueDate && 
+      task.metadata.dueDate < now.getTime()
+    );
+  }
+
+  /**
+   * Get all available contexts and projects
+   */
+  async getAvailableContextsAndProjects(): Promise<{
+    contexts: string[];
+    projects: string[];
+  }> {
+    const allTasks = await this.getAllTasks();
+    const contexts = new Set<string>();
+    const projects = new Set<string>();
+    
+    allTasks.forEach(task => {
+      // Add context
+      if (task.metadata?.context) {
+        contexts.add(task.metadata.context);
+      }
+      
+      // Add project (support multiple formats)
+      if (task.metadata?.project) {
+        projects.add(task.metadata.project);
+      }
+      
+      // Support legacy tgProject format
+      const metadata = task.metadata as any;
+      if (metadata?.tgProject?.name) {
+        projects.add(metadata.tgProject.name);
+      }
+    });
+    
+    return {
+      contexts: Array.from(contexts).sort(),
+      projects: Array.from(projects).sort()
+    };
+  }
+
+  /**
+   * Get all available contexts and projects (synchronous)
+   */
+  getAvailableContextsAndProjectsSync(): {
+    contexts: string[];
+    projects: string[];
+  } {
+    const allTasks = this.getAllTasksSync();
+    const contexts = new Set<string>();
+    const projects = new Set<string>();
+    
+    allTasks.forEach(task => {
+      // Add context
+      if (task.metadata?.context) {
+        contexts.add(task.metadata.context);
+      }
+      
+      // Add project (support multiple formats)
+      if (task.metadata?.project) {
+        projects.add(task.metadata.project);
+      }
+      
+      // Support legacy tgProject format
+      const metadata = task.metadata as any;
+      if (metadata?.tgProject?.name) {
+        projects.add(metadata.tgProject.name);
+      }
+    });
+    
+    return {
+      contexts: Array.from(contexts).sort(),
+      projects: Array.from(projects).sort()
+    };
   }
 }

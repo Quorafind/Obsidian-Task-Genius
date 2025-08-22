@@ -20,7 +20,7 @@ let globalCache: GlobalAutoCompleteCache | null = null;
 const CACHE_DURATION = 30000; // 30 seconds
 
 // Helper function to get cached data
-function getCachedData(plugin: TaskProgressBarPlugin): GlobalAutoCompleteCache {
+async function getCachedData(plugin: TaskProgressBarPlugin): Promise<GlobalAutoCompleteCache> {
 	const now = Date.now();
 
 	if (!globalCache || now - globalCache.lastUpdate > CACHE_DURATION) {
@@ -29,11 +29,20 @@ function getCachedData(plugin: TaskProgressBarPlugin): GlobalAutoCompleteCache {
 			(tag) => tag.substring(1) // Remove # prefix
 		);
 
-		const { projects, contexts } =
-			plugin.taskManager?.getAvailableContextOrProjects() || {
-				projects: [],
-				contexts: [],
-			};
+		// Get projects and contexts from dataflow using the new convenience method
+		let projects: string[] = [];
+		let contexts: string[] = [];
+		
+		if (plugin.dataflowOrchestrator) {
+			try {
+				const queryAPI = plugin.dataflowOrchestrator.getQueryAPI();
+				const data = await queryAPI.getAvailableContextsAndProjects();
+				projects = data.projects;
+				contexts = data.contexts;
+			} catch (error) {
+				console.warn("Failed to get projects/contexts from dataflow:", error);
+			}
+		}
 
 		globalCache = {
 			tags,
@@ -117,9 +126,13 @@ export class ProjectSuggest extends CustomSuggest {
 		inputEl: HTMLInputElement,
 		plugin: TaskProgressBarPlugin
 	) {
-		// Get cached project list
-		const cachedData = getCachedData(plugin);
-		super(app, inputEl, cachedData.projects);
+		// Initialize with empty list, will be populated asynchronously
+		super(app, inputEl, []);
+		
+		// Load cached data asynchronously
+		getCachedData(plugin).then(cachedData => {
+			this.availableChoices = cachedData.projects;
+		});
 	}
 }
 
@@ -132,9 +145,13 @@ export class ContextSuggest extends CustomSuggest {
 		inputEl: HTMLInputElement,
 		plugin: TaskProgressBarPlugin
 	) {
-		// Get cached context list
-		const cachedData = getCachedData(plugin);
-		super(app, inputEl, cachedData.contexts);
+		// Initialize with empty list, will be populated asynchronously
+		super(app, inputEl, []);
+		
+		// Load cached data asynchronously
+		getCachedData(plugin).then(cachedData => {
+			this.availableChoices = cachedData.contexts;
+		});
 	}
 }
 
@@ -147,9 +164,13 @@ export class TagSuggest extends CustomSuggest {
 		inputEl: HTMLInputElement,
 		plugin: TaskProgressBarPlugin
 	) {
-		// Get cached tag list
-		const cachedData = getCachedData(plugin);
-		super(app, inputEl, cachedData.tags);
+		// Initialize with empty list, will be populated asynchronously
+		super(app, inputEl, []);
+		
+		// Load cached data asynchronously
+		getCachedData(plugin).then(cachedData => {
+			this.availableChoices = cachedData.tags;
+		});
 	}
 
 	// Override getSuggestions to handle comma-separated tags

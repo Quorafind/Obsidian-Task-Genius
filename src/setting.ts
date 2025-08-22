@@ -202,10 +202,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		this.applyDebounceTimer = window.setTimeout(async () => {
 			await plugin.saveSettings();
 
-			// Update TaskManager parsing configuration if it exists
-			if (plugin.taskManager) {
-				plugin.taskManager.updateParsingConfiguration();
-			}
+			// Parsing configuration is now handled by dataflow
 
 			// Trigger view updates to reflect setting changes
 			await plugin.triggerViewUpdate();

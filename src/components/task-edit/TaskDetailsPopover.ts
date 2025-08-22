@@ -46,7 +46,18 @@ export class TaskDetailsPopover
 	}
 
 	debounceUpdateTask = debounce(async (task: Task) => {
-		await this.plugin.taskManager.updateTask(task);
+		// Use WriteAPI if dataflow is enabled
+		if (this.plugin.writeAPI) {
+			const result = await this.plugin.writeAPI.updateTask({
+				taskId: task.id,
+				updates: task
+			});
+			if (!result.success) {
+				console.error("Failed to update task:", result.error);
+			}
+		} else {
+			console.error("WriteAPI not available");
+		}
 	}, 200);
 
 	/**

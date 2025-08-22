@@ -110,8 +110,11 @@ const showTaskDetails = (
 ) => {
 	// Task update callback function
 	const onTaskUpdated = async (updatedTask: Task) => {
-		if (plugin.taskManager) {
-			await plugin.taskManager.updateTask(updatedTask);
+		if (plugin.writeAPI) {
+			await plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
 		}
 	};
 
@@ -143,13 +146,18 @@ const getTaskFromLine = (
 	lineNum: number
 ): Task | null => {
 	try {
-		// Try to get the task from TaskManager's index first
-		if (plugin.taskManager && plugin.settings.projectConfig?.enableEnhancedProject) {
-			// Try to find the task by ID in the existing index
-			const taskId = `${filePath}-L${lineNum}`;
-			const existingTask = plugin.taskManager['indexer'].getTaskById(taskId);
-			if (existingTask) {
-				return existingTask;
+		// Try to get the task from dataflow index first
+		if (plugin.dataflowOrchestrator && plugin.settings.projectConfig?.enableEnhancedProject) {
+			try {
+				// Try to find the task by ID in the existing index
+				const taskId = `${filePath}-L${lineNum}`;
+				const queryAPI = plugin.dataflowOrchestrator.getQueryAPI();
+				const existingTask = queryAPI.getTaskByIdSync(taskId);
+				if (existingTask) {
+					return existingTask;
+				}
+			} catch (error) {
+				console.warn("Failed to get task from dataflow:", error);
 			}
 		}
 
@@ -162,9 +170,9 @@ const getTaskFromLine = (
 
 		const task = taskParser.parseTask(line, filePath, lineNum);
 		
-		// If we have a task and enhanced project is enabled, ensure the ID matches what TaskManager expects
-		if (task && plugin.taskManager && plugin.settings.projectConfig?.enableEnhancedProject) {
-			// Ensure the task ID matches the format used by TaskManager
+		// If we have a task and enhanced project is enabled, ensure the ID matches what Dataflow expects
+		if (task && plugin.dataflowOrchestrator && plugin.settings.projectConfig?.enableEnhancedProject) {
+			// Ensure the task ID matches the format used by Dataflow
 			task.id = `${filePath}-L${lineNum}`;
 		}
 		

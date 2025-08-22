@@ -5,7 +5,6 @@
 
 import { IncomingMessage, ServerResponse } from "http";
 import { AuthMiddleware } from "./auth/AuthMiddleware";
-import { TaskManagerBridge } from "./bridge/TaskManagerBridge";
 import { DataflowBridge } from "./bridge/DataflowBridge";
 import { McpServerConfig } from "./types/mcp";
 import TaskProgressBarPlugin from "../index";
@@ -18,7 +17,7 @@ const url = require("url");
 export class McpServer {
 	private httpServer: any;
 	private authMiddleware: AuthMiddleware;
-	private taskBridge: TaskManagerBridge | DataflowBridge;
+	private taskBridge: DataflowBridge;
 	private isRunning: boolean = false;
 	private requestCount: number = 0;
 	private startTime?: Date;
@@ -30,20 +29,15 @@ export class McpServer {
 		private config: McpServerConfig
 	) {
 		this.authMiddleware = new AuthMiddleware(config.authToken);
-		// Choose bridge based on dataflow setting
-		if (plugin.settings?.experimental?.dataflowEnabled && (plugin as any).dataflowOrchestrator) {
-			const QueryAPI = require("../dataflow/api/QueryAPI").QueryAPI;
-			const WriteAPI = require("../dataflow/api/WriteAPI").WriteAPI;
-			const queryAPI = new QueryAPI(plugin.app, plugin.app.vault, plugin.app.metadataCache);
-			// Create WriteAPI with getTaskById function from repository
-			const getTaskById = (id: string) => queryAPI.getRepository().getTaskById(id);
-			const writeAPI = new WriteAPI(plugin.app, plugin.app.vault, plugin.app.metadataCache, plugin, getTaskById);
-			this.taskBridge = new DataflowBridge(plugin, queryAPI, writeAPI);
-			console.log("MCP Server: Using DataflowBridge");
-		} else {
-			this.taskBridge = new TaskManagerBridge(plugin, (plugin as any).taskManager);
-			console.log("MCP Server: Using TaskManagerBridge");
-		}
+		// Always use DataflowBridge now
+		const QueryAPI = require("../dataflow/api/QueryAPI").QueryAPI;
+		const WriteAPI = require("../dataflow/api/WriteAPI").WriteAPI;
+		const queryAPI = new QueryAPI(plugin.app, plugin.app.vault, plugin.app.metadataCache);
+		// Create WriteAPI with getTaskById function from repository
+		const getTaskById = (id: string) => queryAPI.getRepository().getTaskById(id);
+		const writeAPI = new WriteAPI(plugin.app, plugin.app.vault, plugin.app.metadataCache, plugin, getTaskById);
+		this.taskBridge = new DataflowBridge(plugin, queryAPI, writeAPI);
+		console.log("MCP Server: Using DataflowBridge");
 	}
 
 	/**
@@ -622,17 +616,6 @@ export class McpServer {
 					const getTaskById = (id: string) => queryAPI.getRepository().getTaskById(id);
 					const writeAPI = new WriteAPI(this.plugin.app, this.plugin.app.vault, this.plugin.app.metadataCache, this.plugin, getTaskById);
 					this.taskBridge = new DataflowBridge(this.plugin, queryAPI, writeAPI);
-				}
-			} else {
-				if (!this.plugin.taskManager) {
-					return {
-						content: [{ type: "text", text: "Error: TaskManager not initialized. Please enable the main view or wait for plugin initialization." }],
-						isError: true,
-					};
-				}
-				// Rebind bridge if it's not initialized yet
-				if (!this.taskBridge) {
-					this.taskBridge = new TaskManagerBridge(this.plugin, this.plugin.taskManager);
 				}
 			}
 			let result: any;

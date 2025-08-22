@@ -111,6 +111,7 @@ export abstract class BaseActionExecutor {
 	protected getCanvasTaskUpdater(
 		context: OnCompletionExecutionContext
 	): CanvasTaskUpdater {
-		return context.plugin.taskManager.getCanvasTaskUpdater();
+		// Create CanvasTaskUpdater directly without TaskManager
+		return new CanvasTaskUpdater(context.app.vault, context.plugin);
 	}
 }

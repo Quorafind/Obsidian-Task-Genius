@@ -447,21 +447,30 @@ const createMockPlugin = (
 	const mockApp = createMockApp();
 
 	// Create mock task manager with Canvas task updater
-	const mockTaskManager = {
-		getCanvasTaskUpdater: jest.fn(() => createMockCanvasTaskUpdater()),
-		// Add other TaskManager methods as needed
-		refreshTasks: jest.fn(),
-		getTasks: jest.fn(() => []),
-		addTask: jest.fn(),
-		updateTask: jest.fn(),
-		deleteTask: jest.fn(),
+	// Mock dataflowOrchestrator and writeAPI instead of taskManager
+	const mockDataflowOrchestrator = {
+		getQueryAPI: jest.fn(() => ({
+			getAllTasks: jest.fn(async () => []),
+			getAllTasksSync: jest.fn(() => []),
+			getTaskById: jest.fn(async (id: string) => null),
+			getTaskByIdSync: jest.fn((id: string) => null),
+			ensureCache: jest.fn(async () => {}),
+		})),
+		rebuild: jest.fn(async () => {}),
+	};
+
+	const mockWriteAPI = {
+		updateTask: jest.fn(async () => ({ success: true })),
+		createTask: jest.fn(async () => ({ success: true })),
+		deleteTask: jest.fn(async () => ({ success: true })),
 	};
 
 	// Return the plugin with all necessary properties
 	return {
 		settings: mergedSettings as TaskProgressBarSettings,
 		app: mockApp,
-		taskManager: mockTaskManager,
+		dataflowOrchestrator: mockDataflowOrchestrator,
+		writeAPI: mockWriteAPI,
 		rewardManager: {
 			// Mock RewardManager
 			showReward: jest.fn(),

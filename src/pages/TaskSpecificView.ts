@@ -640,7 +640,7 @@ export class TaskSpecificView extends ItemView {
 		// No sidebar component handlers needed
 	}
 
-	private switchView(viewId: ViewMode, project?: string | null) {
+	private switchView(viewId: ViewMode, project?: string | null, forceRefresh: boolean = false) {
 		this.currentViewId = viewId;
 		this.currentProject = project;
 		console.log("Switching view to:", viewId, "Project:", project);
@@ -762,7 +762,8 @@ export class TaskSpecificView extends ItemView {
 
 				targetComponent.setTasks(
 					filterTasks(this.tasks, viewId, this.plugin, filterOptions),
-					this.tasks
+					this.tasks,
+					forceRefresh
 				);
 			}
 
@@ -999,26 +1000,23 @@ export class TaskSpecificView extends ItemView {
 		forceSync: boolean = false,
 		skipViewUpdate: boolean = false
 	) {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		let newTasks: Task[];
-		if (forceSync) {
-			// Use sync method for initial load to ensure ICS data is available
-			newTasks = await taskManager.getAllTasksWithSync();
+		// Only use dataflow - TaskManager is deprecated
+		if (!this.plugin.dataflowOrchestrator) {
+			console.warn("[TaskSpecificView] Dataflow orchestrator not available, waiting for initialization...");
+			this.tasks = [];
 		} else {
-			// Use regular method for subsequent updates
-			newTasks = taskManager.getAllTasks();
+			try {
+				console.log("[TaskSpecificView] Loading tasks from dataflow orchestrator...");
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				this.tasks = await queryAPI.getAllTasks();
+				console.log(`[TaskSpecificView] Loaded ${this.tasks.length} tasks from dataflow`);
+			} catch (error) {
+				console.error("[TaskSpecificView] Error loading tasks from dataflow:", error);
+				this.tasks = [];
+			}
 		}
-		console.log(`TaskSpecificView loaded ${newTasks.length} tasks`);
 
-		// 检查任务数量是否有变化（简单的优化，可以根据需要改进比较逻辑）
-		const hasChanged = this.tasks.length !== newTasks.length;
-
-		this.tasks = newTasks;
-
-		// 只有在数据有变化时才更新视图
-		if (!skipViewUpdate && hasChanged) {
+		if (!skipViewUpdate) {
 			// 直接切换到当前视图
 			if (this.currentViewId) {
 				this.switchView(this.currentViewId, this.currentProject);
@@ -1033,19 +1031,24 @@ export class TaskSpecificView extends ItemView {
 	 * Load tasks fast using cached data - for UI initialization
 	 */
 	private async loadTasksFast(skipViewUpdate: boolean = false) {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
+		// Only use dataflow
+		if (!this.plugin.dataflowOrchestrator) {
+			console.warn("[TaskSpecificView] Dataflow orchestrator not available for fast load");
+			this.tasks = [];
+		} else {
+			try {
+				console.log("[TaskSpecificView] Loading tasks fast from dataflow orchestrator...");
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				// For fast loading, use regular getAllTasks (it should be cached)
+				this.tasks = await queryAPI.getAllTasks();
+				console.log(`[TaskSpecificView] Loaded ${this.tasks.length} tasks (fast from dataflow)`);
+			} catch (error) {
+				console.error("[TaskSpecificView] Error loading tasks fast from dataflow:", error);
+				this.tasks = [];
+			}
+		}
 
-		// Use fast method to get cached data immediately
-		const newTasks = taskManager.getAllTasksFast();
-		console.log(`TaskSpecificView loaded ${newTasks.length} tasks (fast)`);
-
-		// 检查任务数量是否有变化
-		const hasChanged = this.tasks.length !== newTasks.length;
-		this.tasks = newTasks;
-
-		// 只有在数据有变化时才更新视图
-		if (!skipViewUpdate && hasChanged) {
+		if (!skipViewUpdate) {
 			// 直接切换到当前视图
 			if (this.currentViewId) {
 				this.switchView(this.currentViewId, this.currentProject);
@@ -1059,34 +1062,23 @@ export class TaskSpecificView extends ItemView {
 	/**
 	 * Load tasks with sync in background - non-blocking
 	 */
-	private loadTasksWithSyncInBackground() {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		// Start background sync without blocking UI
-		taskManager
-			.getAllTasksWithSync()
-			.then((tasks) => {
-				// Only update if we got different data
-				if (tasks.length !== this.tasks.length) {
-					this.tasks = tasks;
-					console.log(
-						`TaskSpecificView updated with ${this.tasks.length} tasks (background sync)`
-					);
-
-					// Update the view with new data
-					if (this.currentViewId) {
-						this.switchView(
-							this.currentViewId,
-							this.currentProject
-						);
-					}
-					this.updateActionButtons();
-				}
-			})
-			.catch((error) => {
-				console.warn("Background task sync failed:", error);
-			});
+	private async loadTasksWithSyncInBackground() {
+		// Only use dataflow, ICS events are handled through dataflow architecture
+		try {
+			const queryAPI = this.plugin.dataflowOrchestrator?.getQueryAPI();
+			if (!queryAPI) {
+				console.warn("[TaskSpecificView] QueryAPI not available");
+				return;
+			}
+			const tasks = await queryAPI.getAllTasks();
+			if (tasks.length !== this.tasks.length || tasks.length === 0) {
+				this.tasks = tasks;
+				console.log(`TaskSpecificView updated with ${this.tasks.length} tasks (dataflow sync)`);
+				// Don't trigger view update here as it will be handled by events
+			}
+		} catch (error) {
+			console.warn("Background task sync failed:", error);
+		}
 	}
 
 	// 添加应用当前过滤器状态的方法
@@ -1161,27 +1153,27 @@ export class TaskSpecificView extends ItemView {
 			}
 		}
 
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
+		// Always use WriteAPI
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available");
+			return;
+		}
 
-		// Use WriteAPI if dataflow is enabled
-		if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-			const result = await this.plugin.writeAPI.updateTask({
-				taskId: updatedTask.id,
-				updates: updatedTask
-			});
-			if (!result.success) {
-				throw new Error(result.error || "Failed to update task");
-			}
-		} else {
-			await taskManager.updateTask(updatedTask);
+		const result = await this.plugin.writeAPI.updateTask({
+			taskId: updatedTask.id,
+			updates: updatedTask
+		});
+		if (!result.success) {
+			throw new Error(result.error || "Failed to update task");
 		}
 		// Task cache listener will trigger loadTasks -> triggerViewUpdate
 	}
 
 	private async handleTaskUpdate(originalTask: Task, updatedTask: Task) {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available");
+			return;
+		}
 
 		console.log(
 			"handleTaskUpdate",
@@ -1194,21 +1186,51 @@ export class TaskSpecificView extends ItemView {
 		);
 
 		try {
-			// Use WriteAPI if dataflow is enabled
-			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				const result = await this.plugin.writeAPI.updateTask({
-					taskId: updatedTask.id,
-					updates: updatedTask
-				});
-				if (!result.success) {
-					throw new Error(result.error || "Failed to update task");
-				}
+			// Always use WriteAPI
+			const writeResult = await this.plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
+			if (!writeResult.success) {
+				throw new Error(writeResult.error || "Failed to update task");
+			}
+			// Prefer the authoritative task returned by WriteAPI (includes updated originalMarkdown)
+			if (writeResult.task) {
+				updatedTask = writeResult.task;
+			}
+
+			console.log(`Task ${updatedTask.id} updated successfully via handleTaskUpdate.`);
+
+			// Update local task list immediately
+			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
+			if (index !== -1) {
+				// Create a new array to ensure ContentComponent detects the change
+				this.tasks = [...this.tasks];
+				this.tasks[index] = updatedTask;
 			} else {
-				await taskManager.updateTask(updatedTask);
+				console.warn(
+					"Updated task not found in local list, might reload."
+				);
+			}
+
+			// Always refresh the view after a successful update
+			// The update operation itself means editing is complete
+			// Force refresh since we know the task has been updated
+			this.switchView(this.currentViewId, this.currentProject, true);
+
+			// Update details component if the updated task is currently selected
+			if (this.currentSelectedTaskId === updatedTask.id) {
+				if (this.detailsComponent.isCurrentlyEditing()) {
+					// Update the current task reference without re-rendering UI
+					this.detailsComponent.currentTask = updatedTask;
+				} else {
+					this.detailsComponent.showTaskDetails(updatedTask);
+				}
 			}
 		} catch (error) {
 			console.error("Failed to update task:", error);
-			// You might want to show a notice to the user here
+			// Re-throw the error so that the InlineEditor can handle it properly
+			throw error;
 		}
 	}
 
@@ -1216,41 +1238,41 @@ export class TaskSpecificView extends ItemView {
 		originalTask: Task,
 		updatedTask: Task
 	): Promise<Task> {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) {
-			console.error("Task manager not available for updateTask");
-			throw new Error("Task manager not available");
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available for updateTask");
+			throw new Error("WriteAPI not available");
 		}
 		try {
-			// Use WriteAPI if dataflow is enabled
-			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				const result = await this.plugin.writeAPI.updateTask({
-					taskId: updatedTask.id,
-					updates: updatedTask
-				});
-				if (!result.success) {
-					throw new Error(result.error || "Failed to update task");
-				}
-			} else {
-				await taskManager.updateTask(updatedTask);
+			// Always use WriteAPI
+			const writeResult = await this.plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
+			if (!writeResult.success) {
+				throw new Error(writeResult.error || "Failed to update task");
+			}
+			if (writeResult.task) {
+				updatedTask = writeResult.task;
 			}
 			console.log(`Task ${updatedTask.id} updated successfully.`);
 
-			// Update task in local list immediately for responsiveness
+			// 立即更新本地任务列表
 			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
 			if (index !== -1) {
+				// Create a new array to ensure ContentComponent detects the change
+				this.tasks = [...this.tasks];
 				this.tasks[index] = updatedTask;
 			} else {
 				console.warn(
-					"Updated task not found in local list, might reload fully later."
+					"Updated task not found in local list, might reload."
 				);
-				// Optionally force a full reload if this happens often
-				// await this.loadTasks();
-				// return updatedTask; // Return early if we reloaded
 			}
 
-			// If the updated task is the currently selected one, refresh details view
-			// Only refresh if not currently editing to prevent UI disruption
+			// Always refresh the view after a successful update
+			// The update operation itself means editing is complete
+			// Force refresh since we know the task has been updated
+			this.switchView(this.currentViewId, this.currentProject, true);
+
 			if (this.currentSelectedTaskId === updatedTask.id) {
 				if (this.detailsComponent.isCurrentlyEditing()) {
 					// Update the current task reference without re-rendering UI
@@ -1260,16 +1282,9 @@ export class TaskSpecificView extends ItemView {
 				}
 			}
 
-			// Always refresh the view after a successful update
-			// The update operation itself means editing is complete
-			if (this.currentViewId) {
-				this.switchView(this.currentViewId, this.currentProject);
-			}
-
 			return updatedTask;
 		} catch (error) {
 			console.error(`Failed to update task ${originalTask.id}:`, error);
-			// Potentially add user notification here
 			throw error;
 		}
 	}

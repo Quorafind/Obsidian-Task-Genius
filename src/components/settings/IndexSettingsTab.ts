@@ -434,14 +434,14 @@ export function renderIndexSettingsTab(
 				settingTab.applySettingsUpdate();
 
 				// If file metadata parsing was just enabled, trigger a full reindex
-				if (!previousValue && value && settingTab.plugin.taskManager) {
+				if (!previousValue && value && settingTab.plugin.dataflowOrchestrator) {
 					try {
 						new Notice(
 							t(
 								"File metadata parsing enabled. Rebuilding task index...",
 							),
 						);
-						await settingTab.plugin.taskManager.forceReindex();
+						await settingTab.plugin.dataflowOrchestrator.rebuild();
 						new Notice(t("Task index rebuilt successfully"));
 					} catch (error) {
 						console.error(
@@ -696,7 +696,9 @@ export function renderIndexSettingsTab(
 									"Clearing task cache and rebuilding index...",
 								),
 							);
-							await settingTab.plugin.taskManager.forceReindex();
+							if (settingTab.plugin.dataflowOrchestrator) {
+								await settingTab.plugin.dataflowOrchestrator.rebuild();
+							}
 							new Notice(t("Task index completely rebuilt"));
 						} catch (error) {
 							console.error(

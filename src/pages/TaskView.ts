@@ -778,7 +778,11 @@ export class TaskView extends ItemView {
 						onConfirm: async (confirmed) => {
 							if (!confirmed) return;
 							try {
-								await this.plugin.taskManager.forceReindex();
+								if (this.plugin.dataflowOrchestrator) {
+									await this.plugin.dataflowOrchestrator.rebuild();
+								} else {
+									throw new Error("Dataflow orchestrator not available");
+								}
 							} catch (error) {
 								console.error(
 									"Failed to force reindex tasks:",
@@ -1192,24 +1196,20 @@ export class TaskView extends ItemView {
 		forceSync: boolean = false,
 		skipViewUpdate: boolean = false
 	) {
-		// Check if dataflow is enabled and available
-		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+		// Only use dataflow - TaskManager is deprecated
+		if (!this.plugin.dataflowOrchestrator) {
+			console.warn("[TaskView] Dataflow orchestrator not available, waiting for initialization...");
+			this.tasks = [];
+		} else {
 			try {
 				console.log("[TaskView] Loading tasks from dataflow orchestrator...");
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				this.tasks = await queryAPI.getAllTasks();
 				console.log(`[TaskView] Loaded ${this.tasks.length} tasks from dataflow`);
 			} catch (error) {
-				console.error("[TaskView] Error loading tasks from dataflow, falling back to TaskManager:", error);
-				// Fall back to TaskManager
-				await this.loadTasksFromTaskManager(forceSync);
+				console.error("[TaskView] Error loading tasks from dataflow:", error);
+				this.tasks = [];
 			}
-		} else {
-			// Use traditional TaskManager or wait for dataflow initialization
-			if (isDataflowEnabled(this.plugin)) {
-				console.log("[TaskView] Dataflow enabled but not ready yet, using TaskManager");
-			}
-			await this.loadTasksFromTaskManager(forceSync);
 		}
 
 		if (!skipViewUpdate) {
@@ -1217,29 +1217,16 @@ export class TaskView extends ItemView {
 		}
 	}
 
-	/**
-	 * Load tasks from traditional TaskManager
-	 */
-	private async loadTasksFromTaskManager(forceSync: boolean = false) {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		if (forceSync) {
-			// Use sync method for initial load to ensure ICS data is available
-			this.tasks = await taskManager.getAllTasksWithSync();
-		} else {
-			// Use regular method for subsequent updates
-			this.tasks = taskManager.getAllTasks();
-		}
-		console.log(`TaskView loaded ${this.tasks.length} tasks from TaskManager`);
-	}
 
 	/**
 	 * Load tasks fast using cached data - for UI initialization
 	 */
 	private async loadTasksFast(skipViewUpdate: boolean = false) {
-		// Check if dataflow is enabled and available
-		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+		// Only use dataflow
+		if (!this.plugin.dataflowOrchestrator) {
+			console.warn("[TaskView] Dataflow orchestrator not available for fast load");
+			this.tasks = [];
+		} else {
 			try {
 				console.log("[TaskView] Loading tasks fast from dataflow orchestrator...");
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
@@ -1247,13 +1234,9 @@ export class TaskView extends ItemView {
 				this.tasks = await queryAPI.getAllTasks();
 				console.log(`[TaskView] Loaded ${this.tasks.length} tasks (fast from dataflow)`);
 			} catch (error) {
-				console.error("[TaskView] Error loading tasks fast from dataflow, falling back to TaskManager:", error);
-				// Fall back to TaskManager
-				this.loadTasksFastFromTaskManager();
+				console.error("[TaskView] Error loading tasks fast from dataflow:", error);
+				this.tasks = [];
 			}
-		} else {
-			// Use traditional TaskManager
-			this.loadTasksFastFromTaskManager();
 		}
 
 		if (!skipViewUpdate) {
@@ -1262,56 +1245,21 @@ export class TaskView extends ItemView {
 	}
 
 	/**
-	 * Load tasks fast from traditional TaskManager
-	 */
-	private loadTasksFastFromTaskManager() {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		// Use fast method to get cached data immediately
-		this.tasks = taskManager.getAllTasksFast();
-		console.log(`TaskView loaded ${this.tasks.length} tasks (fast from TaskManager)`);
-	}
-
-	/**
 	 * Load tasks with sync in background - non-blocking
 	 */
 	private async loadTasksWithSyncInBackground() {
-		// When dataflow is enabled, ICS events are handled through dataflow architecture
-		// Just do a single sync load and return
-		if (isDataflowEnabled(this.plugin)) {
-			try {
-				const queryAPI = this.plugin.dataflowOrchestrator?.getQueryAPI();
-				if (!queryAPI) {
-					console.warn("[TaskView] QueryAPI not available");
-					return;
-				}
-				const tasks = await queryAPI.getAllTasks();
-				if (tasks.length !== this.tasks.length || tasks.length === 0) {
-					this.tasks = tasks;
-					console.log(`TaskView updated with ${this.tasks.length} tasks (dataflow sync)`);
-					return; // Don't trigger view update here as it will be handled by events
-				}
-			} catch (error) {
-				console.warn("Dataflow background sync failed:", error);
-			}
-			return;
-		}
-		
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
-
-		// Start background sync without blocking UI (for legacy mode)
+		// Only use dataflow, ICS events are handled through dataflow architecture
 		try {
-			const tasks = await taskManager.getAllTasksWithSync();
-			// Only update if we got different data
-			if (tasks.length !== this.tasks.length) {
+			const queryAPI = this.plugin.dataflowOrchestrator?.getQueryAPI();
+			if (!queryAPI) {
+				console.warn("[TaskView] QueryAPI not available");
+				return;
+			}
+			const tasks = await queryAPI.getAllTasks();
+			if (tasks.length !== this.tasks.length || tasks.length === 0) {
 				this.tasks = tasks;
-				console.log(
-					`TaskView updated with ${this.tasks.length} tasks (background sync)`
-				);
-				// Update the view with new data
-				this.triggerViewUpdate();
+				console.log(`TaskView updated with ${this.tasks.length} tasks (dataflow sync)`);
+				// Don't trigger view update here as it will be handled by events
 			}
 		} catch (error) {
 			console.warn("Background task sync failed:", error);
@@ -1372,8 +1320,10 @@ export class TaskView extends ItemView {
 	}
 
 	private async handleTaskUpdate(originalTask: Task, updatedTask: Task) {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) return;
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available");
+			return;
+		}
 
 		console.log(
 			"handleTaskUpdate",
@@ -1386,22 +1336,17 @@ export class TaskView extends ItemView {
 		);
 
 		try {
-			// Use WriteAPI if dataflow is enabled
-			let writeResult: { success: boolean; task?: Task; error?: string } | undefined;
-			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				writeResult = await this.plugin.writeAPI.updateTask({
-					taskId: updatedTask.id,
-					updates: updatedTask
-				});
-				if (!writeResult.success) {
-					throw new Error(writeResult.error || "Failed to update task");
-				}
-				// Prefer the authoritative task returned by WriteAPI (includes updated originalMarkdown)
-				if (writeResult.task) {
-					updatedTask = writeResult.task;
-				}
-			} else {
-				await taskManager.updateTask(updatedTask);
+			// Always use WriteAPI
+			const writeResult = await this.plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
+			if (!writeResult.success) {
+				throw new Error(writeResult.error || "Failed to update task");
+			}
+			// Prefer the authoritative task returned by WriteAPI (includes updated originalMarkdown)
+			if (writeResult.task) {
+				updatedTask = writeResult.task;
 			}
 
 			console.log(`Task ${updatedTask.id} updated successfully via handleTaskUpdate.`);
@@ -1443,27 +1388,21 @@ export class TaskView extends ItemView {
 		originalTask: Task,
 		updatedTask: Task
 	): Promise<Task> {
-		const taskManager = this.plugin.taskManager;
-		if (!taskManager) {
-			console.error("Task manager not available for updateTask");
-			throw new Error("Task manager not available");
+		if (!this.plugin.writeAPI) {
+			console.error("WriteAPI not available for updateTask");
+			throw new Error("WriteAPI not available");
 		}
 		try {
-			// Use WriteAPI if dataflow is enabled
-			let writeResult: { success: boolean; task?: Task; error?: string } | undefined;
-			if (this.plugin.settings?.experimental?.dataflowEnabled && this.plugin.writeAPI) {
-				writeResult = await this.plugin.writeAPI.updateTask({
-					taskId: updatedTask.id,
-					updates: updatedTask
-				});
-				if (!writeResult.success) {
-					throw new Error(writeResult.error || "Failed to update task");
-				}
-				if (writeResult.task) {
-					updatedTask = writeResult.task;
-				}
-			} else {
-				await taskManager.updateTask(updatedTask);
+			// Always use WriteAPI
+			const writeResult = await this.plugin.writeAPI.updateTask({
+				taskId: updatedTask.id,
+				updates: updatedTask
+			});
+			if (!writeResult.success) {
+				throw new Error(writeResult.error || "Failed to update task");
+			}
+			if (writeResult.task) {
+				updatedTask = writeResult.task;
 			}
 			console.log(`Task ${updatedTask.id} updated successfully.`);
 

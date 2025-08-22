@@ -413,10 +413,8 @@ export class MonthView extends CalendarViewComponent {
 		// Use optimized date parsing for better performance
 		const targetDate = parseDateString(targetDateStr).getTime();
 
-		const taskManager = this.plugin.taskManager;
-
-		if (!taskManager) {
-			throw new Error("Task manager not available");
+		if (!this.plugin.writeAPI) {
+			throw new Error("WriteAPI not available");
 		}
 
 		// Create updated task with new date
@@ -435,7 +433,14 @@ export class MonthView extends CalendarViewComponent {
 		}
 
 		// Update the task
-		await taskManager.updateTask(updatedTask);
+		const result = await this.plugin.writeAPI.updateTask({
+			taskId: calendarEvent.id,
+			updates: updatedTask,
+		});
+		
+		if (!result.success) {
+			throw new Error(`Failed to update task: ${result.error}`);
+		}
 	}
 
 	/**

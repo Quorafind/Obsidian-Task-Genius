@@ -106,6 +106,9 @@ export class DataflowOrchestrator {
 				"[DataflowOrchestrator] Initializing QueryAPI and Repository..."
 			);
 			await this.queryAPI.initialize();
+			
+			// Ensure cache is populated for synchronous access
+			await this.queryAPI.ensureCache();
 
 			// Check if we have cached data
 			const taskCount = (await this.queryAPI.getAllTasks()).length;

@@ -98,7 +98,7 @@ export class TableRenderer extends Component {
 	/**
 	 * Get cached autocomplete data or fetch if expired
 	 */
-	private getAutoCompleteData(): AutoCompleteCache {
+	private async getAutoCompleteData(): Promise<AutoCompleteCache> {
 		const now = Date.now();
 
 		if (
@@ -112,11 +112,30 @@ export class TableRenderer extends Component {
 				(tag) => tag.substring(1) // Remove # prefix
 			);
 
-			const { projects, contexts } =
-				this.plugin.taskManager?.getAvailableContextOrProjects() || {
-					projects: [],
-					contexts: [],
-				};
+			// Get projects and contexts from dataflow
+			let projects: string[] = [];
+			let contexts: string[] = [];
+			
+			if (this.plugin.dataflowOrchestrator) {
+				try {
+					const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+					const allTasks = await queryAPI.getAllTasks();
+					
+					// Extract unique projects and contexts from tasks
+					const projectSet = new Set<string>();
+					const contextSet = new Set<string>();
+					
+					allTasks.forEach((task: any) => {
+						if (task.project) projectSet.add(task.project);
+						if (task.context) contextSet.add(task.context);
+					});
+					
+					projects = Array.from(projectSet).sort();
+					contexts = Array.from(contextSet).sort();
+				} catch (error) {
+					console.warn("Failed to get projects/contexts from dataflow:", error);
+				}
+			}
 
 			this.autoCompleteCache = {
 				tags,
@@ -132,16 +151,16 @@ export class TableRenderer extends Component {
 	/**
 	 * Create or reuse autocomplete suggest for input
 	 */
-	private setupAutoComplete(
+	private async setupAutoComplete(
 		input: HTMLInputElement,
 		type: "tags" | "project" | "context"
-	): void {
+	): Promise<void> {
 		// Check if this input already has a suggest
 		if (this.activeSuggests.has(input)) {
 			return;
 		}
 
-		const data = this.getAutoCompleteData();
+		const data = await this.getAutoCompleteData();
 		let suggest: ContextSuggest | ProjectSuggest | TagSuggest;
 
 		switch (type) {
@@ -1528,14 +1547,23 @@ export class TableRenderer extends Component {
 	private async getAllValues(columnType: string): Promise<string[]> {
 		if (!this.plugin) return [];
 
-		// Get all tasks from the plugin
-		const allTasks = this.plugin.taskManager?.getAllTasks() || [];
+		// Get all tasks from dataflow
+		let allTasks: any[] = [];
+		if (this.plugin.dataflowOrchestrator) {
+			try {
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				allTasks = await queryAPI.getAllTasks();
+			} catch (error) {
+				console.warn("Failed to get tasks from dataflow:", error);
+				allTasks = [];
+			}
+		}
 		const values = new Set<string>();
 
-		allTasks.forEach((task) => {
+		allTasks.forEach((task: any) => {
 			switch (columnType) {
 				case "tags":
-					task.metadata.tags?.forEach((tag) => {
+					task.metadata.tags?.forEach((tag: string) => {
 						if (tag && tag.trim()) {
 							// Remove # prefix if present
 							const cleanTag = tag.startsWith("#")
