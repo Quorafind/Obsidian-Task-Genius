@@ -27,3 +27,163 @@
 	border-radius: 6px;
 	background-color: var(--background-secondary);
 }
+
+/* File Task dynamic configuration styles */
+.task-genius-metadata-fields-container,
+.task-genius-tags-container,
+.task-genius-paths-container,
+.task-genius-date-formats-container {
+	margin: 1rem 0;
+	padding: 1rem;
+	background: var(--background-secondary);
+	border-radius: 8px;
+}
+
+.task-genius-fields-header,
+.task-genius-tags-header,
+.task-genius-paths-header,
+.task-genius-formats-header,
+.task-genius-examples-header {
+	font-size: 0.95em;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+	color: var(--text-normal);
+}
+
+.task-genius-field-list,
+.task-genius-tag-list,
+.task-genius-path-list,
+.task-genius-format-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.task-genius-field-item,
+.task-genius-tag-item,
+.task-genius-path-item,
+.task-genius-format-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	background: var(--background-primary);
+	padding: 0.5rem;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	transition: border-color 0.2s;
+}
+
+.task-genius-field-item:hover,
+.task-genius-tag-item:hover,
+.task-genius-path-item:hover,
+.task-genius-format-item:hover {
+	border-color: var(--interactive-accent);
+}
+
+.task-genius-field-input,
+.task-genius-tag-input,
+.task-genius-path-input,
+.task-genius-format-input {
+	flex: 1;
+	padding: 0.4rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+	font-size: 0.9em;
+}
+
+.task-genius-field-input:focus,
+.task-genius-tag-input:focus,
+.task-genius-path-input:focus,
+.task-genius-format-input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.task-genius-field-delete-btn,
+.task-genius-tag-delete-btn,
+.task-genius-path-delete-btn,
+.task-genius-format-delete-btn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: var(--background-modifier-error);
+	color: var(--text-on-accent);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 1.2em;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.2s;
+}
+
+.task-genius-field-delete-btn:hover,
+.task-genius-tag-delete-btn:hover,
+.task-genius-path-delete-btn:hover,
+.task-genius-format-delete-btn:hover {
+	background: var(--background-modifier-error-hover);
+}
+
+.task-genius-add-field-btn,
+.task-genius-add-tag-btn,
+.task-genius-add-path-btn,
+.task-genius-add-format-btn {
+	padding: 0.5rem 1rem;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.9em;
+	transition: all 0.2s;
+}
+
+.task-genius-add-field-btn:hover,
+.task-genius-add-tag-btn:hover,
+.task-genius-add-path-btn:hover,
+.task-genius-add-format-btn:hover {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
+}
+
+/* Date format examples table */
+.task-genius-date-examples {
+	margin-top: 1rem;
+	padding: 1rem;
+	background: var(--background-secondary);
+	border-radius: 8px;
+}
+
+.task-genius-date-examples-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+
+.task-genius-date-examples-table th {
+	text-align: left;
+	padding: 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.task-genius-date-examples-table td {
+	padding: 0.4rem 0.5rem;
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+	color: var(--text-normal);
+}
+
+.task-genius-date-examples-table tr:last-child td {
+	border-bottom: none;
+}
+
+.task-genius-date-examples-table tr:hover td {
+	background: var(--background-primary-alt);
+}

@@ -1,5 +1,5 @@
 /**
- * FileSourceSettings - UI component for File as Task configuration
+ * FileTaskSettings - UI component for File Task configuration
  *
  * Provides a settings interface for configuring how files can be recognized
  * and treated as tasks with various strategies and options.
@@ -11,7 +11,7 @@ import type { FileSourceConfiguration } from "../../types/file-source";
 import { t } from "../../translations/helper";
 
 /**
- * Create File as Task settings UI
+ * Create File Task settings UI
  */
 export function createFileSourceSettings(
 	containerEl: HTMLElement,
@@ -49,21 +49,12 @@ function createEnableToggle(
 	config: FileSourceConfiguration,
 ): void {
 	// Don't create duplicate header since we're now embedded in IndexSettingsTab
-	const desc = containerEl.createEl("p");
-	desc.innerHTML =
-		t(
-			"Enable files to be recognized as tasks based on their metadata properties. ",
-		) +
-		`<strong>${t("Note:")}</strong> ` +
-		t(
-			"This is an advanced feature that extends file metadata parsing with multiple recognition strategies.",
-		);
 
 	new Setting(containerEl)
-		.setName(t("Enable File as Task"))
+		.setName(t("Enable File Task"))
 		.setDesc(
 			t(
-				"Allow files to be recognized and treated as tasks based on their properties",
+				"Allow files to be recognized and treated as tasks based on their metadata, tags, or file paths. This provides advanced recognition strategies beyond simple metadata parsing.",
 			),
 		)
 		.addToggle((toggle) =>
@@ -114,34 +105,109 @@ function createRecognitionStrategiesSection(
 					plugin.settings.fileSource.recognitionStrategies.metadata.enabled =
 						value;
 					await plugin.saveSettings();
+					// Refresh to show/hide fields
+					containerEl.empty();
+					createFileSourceSettings(containerEl, plugin);
 				}),
 		);
 
 	if (config.recognitionStrategies.metadata.enabled) {
-		new Setting(metadataContainer)
-			.setName(t("Task Fields"))
-			.setDesc(
-				t(
-					"Comma-separated list of metadata fields that indicate a task",
-				),
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("dueDate, status, priority, assigned")
-					.setValue(
-						config.recognitionStrategies.metadata.taskFields.join(
-							", ",
-						),
-					)
-					.onChange(async (value) => {
-						plugin.settings.fileSource.recognitionStrategies.metadata.taskFields =
-							value
-								.split(",")
-								.map((s) => s.trim())
-								.filter((s) => s.length > 0);
-						await plugin.saveSettings();
-					}),
-			);
+		// Container for metadata fields list
+		const fieldsContainer = metadataContainer.createDiv({
+			cls: "task-genius-metadata-fields-container",
+		});
+
+		fieldsContainer.createEl("h4", {
+			text: t("Task Fields"),
+			cls: "task-genius-fields-header",
+		});
+
+		fieldsContainer.createEl("p", {
+			text: t(
+				"Add metadata fields that indicate a file should be treated as a task (e.g., dueDate, status, priority)",
+			),
+			cls: "setting-item-description",
+		});
+
+		// Container for field list
+		const fieldListContainer = fieldsContainer.createDiv({
+			cls: "task-genius-field-list",
+		});
+
+		// Function to render the field list
+		const renderFieldList = () => {
+			fieldListContainer.empty();
+
+			const fields = config.recognitionStrategies.metadata.taskFields ?? [];
+
+			// Render existing fields
+			fields.forEach((field, index) => {
+				const fieldItem = fieldListContainer.createDiv({
+					cls: "task-genius-field-item",
+				});
+
+				// Field input
+				const fieldInput = fieldItem.createEl("input", {
+					type: "text",
+					value: field,
+					cls: "task-genius-field-input",
+					placeholder: t("Enter metadata field name"),
+				});
+
+				fieldInput.addEventListener("input", async (e) => {
+					const target = e.target as HTMLInputElement;
+					plugin.settings.fileSource.recognitionStrategies.metadata.taskFields[index] =
+						target.value.trim();
+					await plugin.saveSettings();
+				});
+
+				// Delete button
+				const deleteBtn = fieldItem.createEl("button", {
+					cls: "task-genius-field-delete-btn",
+					text: "×",
+					attr: {
+						"aria-label": t("Delete field"),
+						title: t("Delete this field"),
+					},
+				});
+
+				deleteBtn.addEventListener("click", async () => {
+					plugin.settings.fileSource.recognitionStrategies.metadata.taskFields.splice(
+						index,
+						1,
+					);
+					await plugin.saveSettings();
+					renderFieldList();
+				});
+			});
+
+			// Add new field button
+			const addFieldBtn = fieldListContainer.createEl("button", {
+				cls: "task-genius-add-field-btn",
+				text: t("+ Add Metadata Field"),
+			});
+
+			addFieldBtn.addEventListener("click", async () => {
+				if (!plugin.settings.fileSource.recognitionStrategies.metadata.taskFields) {
+					plugin.settings.fileSource.recognitionStrategies.metadata.taskFields = [];
+				}
+				plugin.settings.fileSource.recognitionStrategies.metadata.taskFields.push("");
+				await plugin.saveSettings();
+				renderFieldList();
+
+				// Focus on the new input
+				const inputs = fieldListContainer.querySelectorAll(
+					".task-genius-field-input",
+				);
+				const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+				if (lastInput) {
+					lastInput.focus();
+				}
+			});
+		};
+
+		// Initial render
+		renderFieldList();
 
 		new Setting(metadataContainer)
 			.setName(t("Require All Fields"))
@@ -178,28 +244,109 @@ function createRecognitionStrategiesSection(
 					plugin.settings.fileSource.recognitionStrategies.tags.enabled =
 						value;
 					await plugin.saveSettings();
+					// Refresh to show/hide fields
+					containerEl.empty();
+					createFileSourceSettings(containerEl, plugin);
 				}),
 		);
 
 	if (config.recognitionStrategies.tags.enabled) {
-		new Setting(tagContainer)
-			.setName(t("Task Tags"))
-			.setDesc(t("Comma-separated list of tags that indicate a task"))
-			.addText((text) =>
-				text
-					.setPlaceholder("#task, #actionable, #todo")
-					.setValue(
-						config.recognitionStrategies.tags.taskTags.join(", "),
-					)
-					.onChange(async (value) => {
-						plugin.settings.fileSource.recognitionStrategies.tags.taskTags =
-							value
-								.split(",")
-								.map((s) => s.trim())
-								.filter((s) => s.length > 0);
-						await plugin.saveSettings();
-					}),
-			);
+		// Container for tags list
+		const tagsContainer = tagContainer.createDiv({
+			cls: "task-genius-tags-container",
+		});
+
+		tagsContainer.createEl("h4", {
+			text: t("Task Tags"),
+			cls: "task-genius-tags-header",
+		});
+
+		tagsContainer.createEl("p", {
+			text: t(
+				"Add tags that indicate a file should be treated as a task (e.g., #task, #todo, #actionable)",
+			),
+			cls: "setting-item-description",
+		});
+
+		// Container for tag list
+		const tagListContainer = tagsContainer.createDiv({
+			cls: "task-genius-tag-list",
+		});
+
+		// Function to render the tag list
+		const renderTagList = () => {
+			tagListContainer.empty();
+
+			const tags = config.recognitionStrategies.tags.taskTags ?? [];
+
+			// Render existing tags
+			tags.forEach((tag, index) => {
+				const tagItem = tagListContainer.createDiv({
+					cls: "task-genius-tag-item",
+				});
+
+				// Tag input
+				const tagInput = tagItem.createEl("input", {
+					type: "text",
+					value: tag,
+					cls: "task-genius-tag-input",
+					placeholder: t("Enter tag (e.g., #task)"),
+				});
+
+				tagInput.addEventListener("input", async (e) => {
+					const target = e.target as HTMLInputElement;
+					plugin.settings.fileSource.recognitionStrategies.tags.taskTags[index] =
+						target.value.trim();
+					await plugin.saveSettings();
+				});
+
+				// Delete button
+				const deleteBtn = tagItem.createEl("button", {
+					cls: "task-genius-tag-delete-btn",
+					text: "×",
+					attr: {
+						"aria-label": t("Delete tag"),
+						title: t("Delete this tag"),
+					},
+				});
+
+				deleteBtn.addEventListener("click", async () => {
+					plugin.settings.fileSource.recognitionStrategies.tags.taskTags.splice(
+						index,
+						1,
+					);
+					await plugin.saveSettings();
+					renderTagList();
+				});
+			});
+
+			// Add new tag button
+			const addTagBtn = tagListContainer.createEl("button", {
+				cls: "task-genius-add-tag-btn",
+				text: t("+ Add Tag"),
+			});
+
+			addTagBtn.addEventListener("click", async () => {
+				if (!plugin.settings.fileSource.recognitionStrategies.tags.taskTags) {
+					plugin.settings.fileSource.recognitionStrategies.tags.taskTags = [];
+				}
+				plugin.settings.fileSource.recognitionStrategies.tags.taskTags.push("");
+				await plugin.saveSettings();
+				renderTagList();
+
+				// Focus on the new input
+				const inputs = tagListContainer.querySelectorAll(
+					".task-genius-tag-input",
+				);
+				const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+				if (lastInput) {
+					lastInput.focus();
+				}
+			});
+		};
+
+		// Initial render
+		renderTagList();
 
 		new Setting(tagContainer)
 			.setName(t("Tag Matching Mode"))
@@ -232,7 +379,8 @@ function createRecognitionStrategiesSection(
 			toggle
 				.setValue(config.recognitionStrategies.paths.enabled)
 				.onChange(async (value) => {
-					plugin.settings.fileSource.recognitionStrategies.paths.enabled = value;
+					plugin.settings.fileSource.recognitionStrategies.paths.enabled =
+						value;
 					await plugin.saveSettings();
 					// Refresh settings interface
 					containerEl.empty();
@@ -241,38 +389,121 @@ function createRecognitionStrategiesSection(
 		);
 
 	if (config.recognitionStrategies.paths.enabled) {
-		new Setting(pathContainer)
-			.setName(t("Task Paths"))
-			.setDesc(
-				t("Paths that contain task files. One per line. Examples: Projects/, Tasks/2024/, Work/TODO/")
-			)
-			.addTextArea((text) => {
-				text
-					.setPlaceholder("Projects/\nTasks/\nWork/TODO/")
-					.setValue(config.recognitionStrategies.paths.taskPaths.join("\n"))
-					.onChange(async (value) => {
-						plugin.settings.fileSource.recognitionStrategies.paths.taskPaths = 
-							value
-								.split("\n")
-								.map((s) => s.trim())
-								.filter((s) => s.length > 0);
-						await plugin.saveSettings();
-					});
-				text.inputEl.rows = 4;
-				text.inputEl.cols = 40;
+		// Container for paths list
+		const pathsContainer = pathContainer.createDiv({
+			cls: "task-genius-paths-container",
+		});
+
+		pathsContainer.createEl("h4", {
+			text: t("Task Paths"),
+			cls: "task-genius-paths-header",
+		});
+
+		pathsContainer.createEl("p", {
+			text: t(
+				"Add paths that contain task files (e.g., Projects/, Tasks/2024/, Work/TODO/)",
+			),
+			cls: "setting-item-description",
+		});
+
+		// Container for path list
+		const pathListContainer = pathsContainer.createDiv({
+			cls: "task-genius-path-list",
+		});
+
+		// Function to render the path list
+		const renderPathList = () => {
+			pathListContainer.empty();
+
+			const paths = config.recognitionStrategies.paths.taskPaths ?? [];
+
+			// Render existing paths
+			paths.forEach((path, index) => {
+				const pathItem = pathListContainer.createDiv({
+					cls: "task-genius-path-item",
+				});
+
+				// Path input
+				const pathInput = pathItem.createEl("input", {
+					type: "text",
+					value: path,
+					cls: "task-genius-path-input",
+					placeholder: t("Enter path (e.g., Projects/, Tasks/**/*.md)"),
+				});
+
+				pathInput.addEventListener("input", async (e) => {
+					const target = e.target as HTMLInputElement;
+					plugin.settings.fileSource.recognitionStrategies.paths.taskPaths[index] =
+						target.value.trim();
+					await plugin.saveSettings();
+				});
+
+				// Delete button
+				const deleteBtn = pathItem.createEl("button", {
+					cls: "task-genius-path-delete-btn",
+					text: "×",
+					attr: {
+						"aria-label": t("Delete path"),
+						title: t("Delete this path"),
+					},
+				});
+
+				deleteBtn.addEventListener("click", async () => {
+					plugin.settings.fileSource.recognitionStrategies.paths.taskPaths.splice(
+						index,
+						1,
+					);
+					await plugin.saveSettings();
+					renderPathList();
+				});
 			});
+
+			// Add new path button
+			const addPathBtn = pathListContainer.createEl("button", {
+				cls: "task-genius-add-path-btn",
+				text: t("+ Add Path"),
+			});
+
+			addPathBtn.addEventListener("click", async () => {
+				if (!plugin.settings.fileSource.recognitionStrategies.paths.taskPaths) {
+					plugin.settings.fileSource.recognitionStrategies.paths.taskPaths = [];
+				}
+				plugin.settings.fileSource.recognitionStrategies.paths.taskPaths.push("");
+				await plugin.saveSettings();
+				renderPathList();
+
+				// Focus on the new input
+				const inputs = pathListContainer.querySelectorAll(
+					".task-genius-path-input",
+				);
+				const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+				if (lastInput) {
+					lastInput.focus();
+				}
+			});
+		};
+
+		// Initial render
+		renderPathList();
 
 		new Setting(pathContainer)
 			.setName(t("Path Matching Mode"))
 			.setDesc(t("How paths should be matched"))
 			.addDropdown((dropdown) =>
 				dropdown
-					.addOption("prefix", t("Prefix (e.g., Projects/ matches Projects/App.md)"))
-					.addOption("glob", t("Glob pattern (e.g., Projects/**/*.md)"))
+					.addOption(
+						"prefix",
+						t("Prefix (e.g., Projects/ matches Projects/App.md)"),
+					)
+					.addOption(
+						"glob",
+						t("Glob pattern (e.g., Projects/**/*.md)"),
+					)
 					.addOption("regex", t("Regular expression (advanced)"))
 					.setValue(config.recognitionStrategies.paths.matchMode)
 					.onChange(async (value: "prefix" | "regex" | "glob") => {
-						plugin.settings.fileSource.recognitionStrategies.paths.matchMode = value;
+						plugin.settings.fileSource.recognitionStrategies.paths.matchMode =
+							value;
 						await plugin.saveSettings();
 						// Refresh to show updated examples
 						containerEl.empty();
@@ -283,43 +514,51 @@ function createRecognitionStrategiesSection(
 		// Add examples based on current mode
 		const examples = pathContainer.createDiv("setting-item-description");
 		examples.style.marginTop = "10px";
-		
+
 		const currentMode = config.recognitionStrategies.paths.matchMode;
 		let exampleText = "";
-		
+
 		switch (currentMode) {
 			case "prefix":
-				exampleText = t("Examples:") + "\n" +
-					"• Projects/ → " + t("matches all files under Projects folder") + "\n" +
-					"• Tasks/2024/ → " + t("matches all files under Tasks/2024 folder");
+				exampleText =
+					t("Examples:") +
+					"\n" +
+					"• Projects/ → " +
+					t("matches all files under Projects folder") +
+					"\n" +
+					"• Tasks/2024/ → " +
+					t("matches all files under Tasks/2024 folder");
 				break;
 			case "glob":
-				exampleText = t("Examples:") + "\n" +
-					"• Projects/**/*.md → " + t("all .md files in Projects and subfolders") + "\n" +
-					"• Tasks/*.task.md → " + t("files ending with .task.md in Tasks folder") + "\n" +
-					"• Work/*/TODO.md → " + t("TODO.md in any direct subfolder of Work");
+				exampleText =
+					t("Examples:") +
+					"\n" +
+					"• Projects/**/*.md → " +
+					t("all .md files in Projects and subfolders") +
+					"\n" +
+					"• Tasks/*.task.md → " +
+					t("files ending with .task.md in Tasks folder") +
+					"\n" +
+					"• Work/*/TODO.md → " +
+					t("TODO.md in any direct subfolder of Work");
 				break;
 			case "regex":
-				exampleText = t("Examples:") + "\n" +
-					"• ^Projects/.*\\.md$ → " + t("all .md files in Projects folder") + "\n" +
-					"• ^Tasks/\\d{4}-\\d{2}-\\d{2} → " + t("files starting with date in Tasks");
+				exampleText =
+					t("Examples:") +
+					"\n" +
+					"• ^Projects/.*\\.md$ → " +
+					t("all .md files in Projects folder") +
+					"\n" +
+					"• ^Tasks/\\d{4}-\\d{2}-\\d{2} → " +
+					t("files starting with date in Tasks");
 				break;
 		}
-		
+
 		examples.createEl("pre", {
 			text: exampleText,
-			attr: { style: "font-size: 0.9em; color: var(--text-muted);" }
+			attr: { style: "font-size: 0.9em; color: var(--text-muted);" },
 		});
 	}
-
-	// Template strategy placeholder (keep for future)
-	const templateContainer = containerEl.createDiv(
-		"file-source-future-strategies",
-	);
-	templateContainer.createEl("p", {
-		text: t("Template-based recognition strategy will be available in a future update."),
-		attr: { style: "color: var(--text-muted); font-style: italic;" },
-	});
 }
 
 /**
@@ -667,11 +906,11 @@ function createAdvancedSection(
 
 	// Statistics section
 	const statsContainer = containerEl.createDiv("file-source-stats");
-	statsContainer.createEl("h5", { text: t("File as Task Status") });
+	statsContainer.createEl("h5", { text: t("File Task Status") });
 
 	const statusText = config.enabled
-		? t("File as Task is enabled and monitoring files")
-		: t("File as Task is disabled");
+		? t("File Task is enabled and monitoring files")
+		: t("File Task is disabled");
 
 	statsContainer.createEl("p", { text: statusText });
 

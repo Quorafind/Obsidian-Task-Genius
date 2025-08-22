@@ -31,12 +31,12 @@ export class IcsManager extends Component {
 	private onEventsUpdated?: (sourceId: string, events: IcsEvent[]) => void;
 	private pluginSettings: TaskProgressBarSettings;
 
-	private plugin: TaskProgressBarPlugin;
+	private plugin?: TaskProgressBarPlugin;
 
 	constructor(
 		config: IcsManagerConfig,
 		pluginSettings: TaskProgressBarSettings,
-		plugin: TaskProgressBarPlugin,
+		plugin?: TaskProgressBarPlugin,
 	) {
 		super();
 		this.config = config;
