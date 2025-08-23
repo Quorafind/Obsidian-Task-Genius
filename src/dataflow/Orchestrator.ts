@@ -107,35 +107,6 @@ export class DataflowOrchestrator {
 		}
 	}
 
-		private migrateExcludePatternsToRules(settings: any) {
-			try {
-				const patterns: string[] = settings?.fileSource?.advanced?.excludePatterns || [];
-				if (!patterns.length) return;
-				settings.fileSource = settings.fileSource || {};
-				settings.fileFilter = settings.fileFilter || { enabled: true, mode: "blacklist", rules: [] };
-				settings.fileFilter.rules = settings.fileFilter.rules || [];
-				const existing = new Set(
-					(settings.fileFilter.rules as any[]).filter(Boolean).map((r) => `${r.type}:${r.path}`)
-				);
-				for (const p of patterns) {
-					const key = `pattern:${p}`;
-					if (!existing.has(key)) {
-						settings.fileFilter.rules.push({ type: "pattern", path: p, enabled: true, scope: "file" });
-						existing.add(key);
-					}
-				}
-				// Clear migrated patterns so they don’t keep reappearing
-				settings.fileSource.advanced = settings.fileSource.advanced || {};
-				settings.fileSource.advanced.excludePatterns = [];
-				// Migrate legacy excludePatterns to File Filter rules (pattern, scope=file)
-				this.migrateExcludePatternsToRules(this.plugin.settings);
-
-				console.info("[DataflowOrchestrator] Migrated fileSource.advanced.excludePatterns to fileFilter.pattern rules (scope=file)");
-			} catch (e) {
-				console.warn("[DataflowOrchestrator] Failed to migrate excludePatterns", e);
-			}
-		}
-
 
 	/**
 	 * Initialize the orchestrator (load persisted data)
