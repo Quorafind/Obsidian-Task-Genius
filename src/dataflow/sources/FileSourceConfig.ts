@@ -14,7 +14,6 @@ import type {
   FileTaskPropertiesConfig,
   RelationshipsConfig,
   PerformanceConfig,
-  AdvancedConfig,
   StatusMappingConfig
 } from "../../types/file-source";
 
@@ -51,7 +50,8 @@ export const DEFAULT_FILE_TASK_PROPERTIES: FileTaskPropertiesConfig = {
   contentSource: "filename",
   stripExtension: true,
   defaultStatus: " ",
-  defaultPriority: undefined
+  defaultPriority: undefined,
+  preferFrontmatterTitle: true
 };
 
 /** Default configuration for relationships */
@@ -66,12 +66,6 @@ export const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = {
   enableWorkerProcessing: true,
   enableCaching: true,
   cacheTTL: 300000 // 5 minutes
-};
-
-/** Default configuration for advanced features */
-export const DEFAULT_ADVANCED_CONFIG: AdvancedConfig = {
-  excludePatterns: ["**/.obsidian/**", "**/node_modules/**"],
-  maxFileSize: 1048576 // 1MB
 };
 
 /** Default status mapping configuration */
@@ -157,7 +151,6 @@ export const DEFAULT_FILE_SOURCE_CONFIG: FileSourceConfiguration = {
   fileTaskProperties: DEFAULT_FILE_TASK_PROPERTIES,
   relationships: DEFAULT_RELATIONSHIPS_CONFIG,
   performance: DEFAULT_PERFORMANCE_CONFIG,
-  advanced: DEFAULT_ADVANCED_CONFIG,
   statusMapping: DEFAULT_STATUS_MAPPING_CONFIG
 };
 
@@ -286,25 +279,6 @@ export class FileSourceConfig {
       }
     }
 
-    // Validate advanced config
-    if (config.advanced) {
-      const advanced = config.advanced;
-      
-      if (advanced.maxFileSize && advanced.maxFileSize < 1024) {
-        errors.push("Maximum file size must be at least 1KB");
-      }
-      
-      if (advanced.customRecognitionFunction) {
-        // Basic validation for custom function
-        try {
-          // Check if it's valid JavaScript function syntax
-          new Function('filePath', 'fileContent', 'fileCache', advanced.customRecognitionFunction);
-        } catch (error) {
-          errors.push("Custom recognition function has invalid syntax");
-        }
-      }
-    }
-
     // Validate status mapping config
     if (config.statusMapping?.enabled) {
       const mapping = config.statusMapping;
@@ -356,10 +330,6 @@ export class FileSourceConfig {
       performance: {
         ...DEFAULT_PERFORMANCE_CONFIG,
         ...partial.performance
-      },
-      advanced: {
-        ...DEFAULT_ADVANCED_CONFIG,
-        ...partial.advanced
       },
       statusMapping: {
         ...DEFAULT_STATUS_MAPPING_CONFIG,

@@ -63,6 +63,10 @@ export function renderFileFilterSettingsTab(
 				})
 		);
 
+		// Filter scope selection has been deprecated; use per-rule scope instead
+		// This block intentionally left as a no-op to maintain layout spacing.
+
+
 	// Filter rules section
 	new Setting(containerEl)
 		.setName(t("File Filter Rules"))
@@ -104,6 +108,20 @@ export function renderFileFilterSettingsTab(
 					debouncedUpdateStats();
 					// Re-render rules to update suggest components
 					renderRules();
+				});
+
+			// Rule scope dropdown (per-rule)
+			const scopeContainer = ruleContainer.createDiv({ cls: "file-filter-rule-scope" });
+			scopeContainer.createEl("label", { text: t("Scope:") });
+			new DropdownComponent(scopeContainer)
+				.addOption("both", t("Both"))
+				.addOption("inline", t("Inline"))
+				.addOption("file", t("File"))
+				.setValue((rule as any).scope || "both")
+				.onChange(async (value: "both" | "inline" | "file") => {
+					(rule as any).scope = value;
+					await settingTab.plugin.saveSettings();
+					debouncedUpdateStats();
 				});
 
 			// Path input
@@ -238,6 +256,8 @@ export function renderFileFilterSettingsTab(
 		);
 
 	// Manual refresh button for statistics
+
+
 	new Setting(containerEl)
 		.setName(t("Refresh Statistics"))
 		.setDesc(t("Manually refresh filter statistics to see current data"))

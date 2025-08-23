@@ -25,6 +25,7 @@
 
 .file-filter-rule-type,
 .file-filter-rule-path,
+.file-filter-rule-scope,
 .file-filter-rule-enabled {
 	display: flex;
 	flex-direction: column;
