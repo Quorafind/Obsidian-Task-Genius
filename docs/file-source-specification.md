@@ -216,16 +216,6 @@ interface FileSourceConfiguration {
     /** Cache TTL in milliseconds */
     cacheTTL: number; // Default: 300000 (5 minutes)
   };
-  
-  /** Advanced configuration */
-  advanced: {
-    /** Custom recognition function */
-    customRecognitionFunction?: string; // JavaScript function as string
-    /** Exclude patterns */
-    excludePatterns: string[]; // Default: ["**/.obsidian/**", "**/node_modules/**"]
-    /** Maximum file size to process (bytes) */
-    maxFileSize: number; // Default: 1048576 (1MB)
-  };
 }
 ```
 
@@ -272,10 +262,6 @@ const DEFAULT_FILE_SOURCE_CONFIG: FileSourceConfiguration = {
     enableCaching: true,
     cacheTTL: 300000
   },
-  advanced: {
-    excludePatterns: ["**/.obsidian/**", "**/node_modules/**"],
-    maxFileSize: 1048576
-  }
 };
 ```
 

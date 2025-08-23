@@ -94,12 +94,13 @@ src/dataflow/
 - Syncs with IcsManager
 - Converts calendar events to task format
 
-#### FileSource (New - Pending Integration)
+#### FileSource (Integrated - Bug Fixed)
 - Recognizes files as tasks based on configurable strategies
 - Supports metadata, tag, template, and path-based recognition
 - Emits file-task-updated events for file-level tasks
 - Manages file task caching and deduplication
 - Integrates with status mapping for flexible task states
+- **Status**: Fully integrated with configuration path fix applied
 
 ### QueryAPI
 - Public interface for all data queries
@@ -298,13 +299,16 @@ app.plugins.plugins['task-genius'].dataflowOrchestrator.rebuild()
 5. Extend Repository if needed
 6. Update Storage for persistence
 
-### FileSource Integration (Pending)
-The FileSource component has been implemented but requires integration into the Orchestrator:
-1. Initialize FileSource in Orchestrator constructor
-2. Subscribe to FILE_TASK_UPDATED and FILE_TASK_REMOVED events
-3. Extend Repository to handle file tasks separately from regular tasks
-4. Update QueryAPI to merge file tasks in query results
-5. Consider caching strategy to avoid redundant project resolution
+### FileSource Integration (Completed)
+The FileSource component has been fully integrated into the Orchestrator:
+1. ✅ Initialize FileSource in Orchestrator constructor
+2. ✅ Subscribe to FILE_TASK_UPDATED and FILE_TASK_REMOVED events
+3. ✅ Extend Repository to handle file tasks separately from regular tasks
+4. ✅ Update QueryAPI to merge file tasks in query results
+5. ✅ Implement caching strategy to avoid redundant project resolution
+
+**Bug Fix Applied**: Fixed configuration path mismatch where Orchestrator was checking 
+`fileSourceConfig` instead of `fileSource` in settings (fixed in Orchestrator.ts lines 88-91)
 
 ### Adding New Features
 1. Implement in dataflow architecture first
@@ -353,6 +357,15 @@ The FileSource component has been implemented but requires integration into the 
 - **Migration**: Gradual transition for large vaults
 - **Testing**: A/B comparison capability
 - **Confidence**: Users can always revert
+
+## Bug Fixes and Updates
+
+### FileSource Configuration Path Fix (2025-08-22)
+**Problem**: FileSource was not initializing despite being enabled in settings.
+- **Root Cause**: Configuration path mismatch between settings structure (`fileSource`) and Orchestrator code (`fileSourceConfig`)
+- **Files Modified**: `src/dataflow/Orchestrator.ts` (lines 88-91)
+- **Resolution**: Updated Orchestrator to use correct settings path `plugin.settings.fileSource`
+- **Impact**: FileSource now properly initializes when enabled and can recognize files as tasks
 
 ## Conclusion
 

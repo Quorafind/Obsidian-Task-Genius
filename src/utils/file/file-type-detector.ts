@@ -25,7 +25,8 @@ export function isSupportedFile(file: TFile): boolean {
  */
 export function isSupportedFileWithFilter(
 	file: TFile,
-	filterManager?: FileFilterManager
+	filterManager?: FileFilterManager,
+	scope: "both" | "inline" | "file" = "both"
 ): boolean {
 	// First check if the file type is supported
 	if (!isSupportedFileExtension(file.extension)) {
@@ -34,7 +35,7 @@ export function isSupportedFileWithFilter(
 
 	// Then check if the file passes the filter
 	if (filterManager) {
-		return filterManager.shouldIncludeFile(file);
+		return filterManager.shouldIncludeFile(file, scope);
 	}
 
 	return true;
