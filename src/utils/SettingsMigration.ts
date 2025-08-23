@@ -227,7 +227,8 @@ function createDefaultFileSourceConfig(): FileSourceConfiguration {
       contentSource: "filename",
       stripExtension: true,
       defaultStatus: " ",
-      defaultPriority: undefined
+      defaultPriority: undefined,
+      preferFrontmatterTitle: true
     },
     relationships: {
       enableChildRelationships: true,
@@ -238,10 +239,6 @@ function createDefaultFileSourceConfig(): FileSourceConfiguration {
       enableWorkerProcessing: true,
       enableCaching: true,
       cacheTTL: 300000
-    },
-    advanced: {
-      excludePatterns: ["**/.obsidian/**", "**/node_modules/**"],
-      maxFileSize: 1048576
     },
     statusMapping: {
       enabled: true,

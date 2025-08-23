@@ -436,7 +436,7 @@ export interface ProjectDetectionMethod {
 	/** Type of detection method */
 	type: "metadata" | "tag" | "link";
 	/** For metadata: the property key (e.g., "project")
-	 *  For tag: the tag name (e.g., "project") 
+	 *  For tag: the tag name (e.g., "project")
 	 *  For link: the property key that contains links (e.g., "kind", "category") */
 	propertyKey: string;
 	/** For link type: optional filter for link values (e.g., only links containing "Project") */
@@ -572,7 +572,10 @@ export interface FileFilterRule {
 	type: "file" | "folder" | "pattern";
 	path: string;
 	enabled: boolean;
+	scope?: "both" | "inline" | "file"; // per-rule scope (default both)
 }
+
+
 
 export enum FilterMode {
 	WHITELIST = "whitelist",
@@ -647,7 +650,7 @@ export interface TaskProgressBarSettings {
 	enablePriorityPicker: boolean;
 	enablePriorityKeyboardShortcuts: boolean;
 	enableDatePicker: boolean;
-	
+
 	// Date Parsing Settings
 	customDateFormats: string[];
 	enableCustomDateFormats: boolean;
@@ -1476,7 +1479,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	// Custom Date Format Defaults
 	enableCustomDateFormats: false,
 	customDateFormats: [],
-	
+
 	// Experimental Defaults
 	experimental: {
 		dataflowEnabled: false
@@ -1520,7 +1523,8 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 			contentSource: "filename",
 			stripExtension: true,
 			defaultStatus: " ",
-			defaultPriority: undefined
+			defaultPriority: undefined,
+			preferFrontmatterTitle: true
 		},
 		relationships: {
 			enableChildRelationships: true,
@@ -1532,46 +1536,20 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 			enableCaching: true,
 			cacheTTL: 300000
 		},
-		advanced: {
-			excludePatterns: ["**/.obsidian/**", "**/node_modules/**"],
-			maxFileSize: 1048576
-		},
 		statusMapping: {
 			enabled: true,
 			metadataToSymbol: {
-				// Completed variants
 				'completed': 'x',
 				'done': 'x',
 				'finished': 'x',
-				'complete': 'x',
-				'checked': 'x',
-				'x': 'x',
-				
-				// In Progress variants
 				'in-progress': '/',
 				'in progress': '/',
-				'inprogress': '/',
 				'doing': '/',
-				'working': '/',
-				'/': '/',
-				
-				// Planned variants
 				'planned': '?',
 				'todo': '?',
-				'pending': '?',
-				'?': '?',
-				
-				// Abandoned variants
 				'cancelled': '-',
-				'canceled': '-',
-				'abandoned': '-',
-				'-': '-',
-				
-				// Not Started variants
 				'not-started': ' ',
-				'not started': ' ',
-				'new': ' ',
-				' ': ' '
+				'not started': ' '
 			},
 			symbolToMetadata: {
 				'x': 'completed',

@@ -3,7 +3,6 @@ import { TaskProgressBarSettingTab } from "../../setting";
 import { t } from "../../translations/helper";
 import { SingleFolderSuggest } from "../AutoComplete";
 import { ConfirmModal } from "../ConfirmModal";
-import { createFileSourceSettings } from "./FileSourceSettings";
 
 /**
  * Renders the Index Settings tab that consolidates all indexing-related settings
@@ -414,9 +413,7 @@ export function renderIndexSettingsTab(
 		)
 		.setHeading();
 	
-	// Create a dedicated container for File Task settings
-	const fileTaskContainer = containerEl.createDiv("file-task-settings-container");
-	createFileSourceSettings(fileTaskContainer, settingTab.plugin);
+	// File Task settings have been migrated to File Filter tab for central management.
 
 	// ========================================
 	// SECTION 3: Performance Settings
@@ -431,16 +428,42 @@ export function renderIndexSettingsTab(
 		.setDesc(
 			t(
 				"Use background worker for file parsing to improve performance. Recommended for large vaults.",
-			),
+			), 
 		)
 		.addToggle((toggle) => {
+			// Use the new fileSource.performance.enableWorkerProcessing setting
 			toggle.setValue(
-				settingTab.plugin.settings.fileParsingConfig
-					.enableWorkerProcessing,
+				settingTab.plugin.settings.fileSource?.performance
+					?.enableWorkerProcessing ?? true,
 			);
 			toggle.onChange((value) => {
-				settingTab.plugin.settings.fileParsingConfig.enableWorkerProcessing =
-					value;
+				// Ensure fileSource and performance objects exist
+				if (!settingTab.plugin.settings.fileSource) {
+					// Initialize with minimal required properties
+					settingTab.plugin.settings.fileSource = {
+						enabled: false,
+						performance: {
+							enableWorkerProcessing: true,
+							enableCaching: true,
+							cacheTTL: 300000
+						}
+					} as any;
+				}
+				if (!settingTab.plugin.settings.fileSource.performance) {
+					settingTab.plugin.settings.fileSource.performance = {
+						enableWorkerProcessing: true,
+						enableCaching: true,
+						cacheTTL: 300000
+					};
+				}
+				// Update the setting
+				settingTab.plugin.settings.fileSource.performance.enableWorkerProcessing = value;
+				
+				// Also update the legacy fileParsingConfig for backward compatibility
+				if (settingTab.plugin.settings.fileParsingConfig) {
+					settingTab.plugin.settings.fileParsingConfig.enableWorkerProcessing = value;
+				}
+				
 				settingTab.applySettingsUpdate();
 			});
 		});

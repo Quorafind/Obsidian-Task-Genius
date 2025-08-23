@@ -638,6 +638,23 @@ function createFileTaskPropertiesSection(
 	}
 
 	new Setting(containerEl)
+		.setName(t("Prefer Frontmatter Title"))
+		.setDesc(
+			t(
+				"When updating task content, prefer updating frontmatter title over renaming the file. This protects the original filename.",
+			),
+		)
+		.addToggle((toggle) =>
+			toggle
+				.setValue(config.fileTaskProperties.preferFrontmatterTitle)
+				.onChange(async (value) => {
+					plugin.settings.fileSource.fileTaskProperties.preferFrontmatterTitle =
+						value;
+					await plugin.saveSettings();
+				}),
+		);
+
+	new Setting(containerEl)
 		.setName(t("Default Task Status"))
 		.setDesc(t("Default status for newly created file tasks"))
 		.addText((text) =>
@@ -677,8 +694,18 @@ function createStatusMappingSection(
 		)
 		.addToggle((toggle) =>
 			toggle
-				.setValue(config.statusMapping.enabled)
+				.setValue(config.statusMapping?.enabled || false)
 				.onChange(async (value) => {
+					if(!config.statusMapping) {
+						config.statusMapping = {
+							enabled: false,
+							metadataToSymbol: {},
+							symbolToMetadata: {},
+							autoDetect: false,
+							caseSensitive: false,
+						};
+					}
+
 					plugin.settings.fileSource.statusMapping.enabled = value;
 					await plugin.saveSettings();
 
@@ -688,7 +715,7 @@ function createStatusMappingSection(
 				}),
 		);
 
-	if (config.statusMapping.enabled) {
+	if (config.statusMapping && config.statusMapping.enabled) {
 		new Setting(containerEl)
 			.setName(t("Case Sensitive Matching"))
 			.setDesc(t("Enable case-sensitive matching for status values"))
@@ -841,20 +868,19 @@ function createPerformanceSection(
 				}),
 		);
 
+	// Note: Worker Processing setting has been moved to IndexSettingsTab.ts > Performance Configuration section
+	// This avoids duplication and provides centralized control for all worker processing
+	
 	new Setting(containerEl)
-		.setName(t("Enable Worker Processing"))
-		.setDesc(
-			t(
-				"Use background workers for better performance (will be implemented in Phase 4)",
-			),
-		)
-		.addToggle((toggle) =>
-			toggle
-				.setValue(config.performance.enableWorkerProcessing)
-				.setDisabled(true) // Disabled until Phase 4
+		.setName(t("Cache TTL"))
+		.setDesc(t("Time-to-live for cached results in milliseconds (default: 300000 = 5 minutes)"))
+		.addText((text) =>
+			text
+				.setPlaceholder("300000")
+				.setValue(String(config.performance.cacheTTL || 300000))
 				.onChange(async (value) => {
-					plugin.settings.fileSource.performance.enableWorkerProcessing =
-						value;
+					const ttl = parseInt(value) || 300000;
+					plugin.settings.fileSource.performance.cacheTTL = ttl;
 					await plugin.saveSettings();
 				}),
 		);
@@ -869,40 +895,6 @@ function createAdvancedSection(
 	config: FileSourceConfiguration,
 ): void {
 	new Setting(containerEl).setHeading().setName(t("Advanced"));
-
-	new Setting(containerEl)
-		.setName(t("Exclude Patterns"))
-		.setDesc(
-			t(
-				"Comma-separated patterns for files to exclude from being recognized as tasks",
-			),
-		)
-		.addText((text) =>
-			text
-				.setPlaceholder("**/.obsidian/**, **/node_modules/**")
-				.setValue(config.advanced.excludePatterns.join(", "))
-				.onChange(async (value) => {
-					plugin.settings.fileSource.advanced.excludePatterns = value
-						.split(",")
-						.map((s) => s.trim())
-						.filter((s) => s.length > 0);
-					await plugin.saveSettings();
-				}),
-		);
-
-	new Setting(containerEl)
-		.setName(t("Maximum File Size"))
-		.setDesc(t("Maximum file size in bytes to process (default: 1MB)"))
-		.addText((text) =>
-			text
-				.setPlaceholder("1048576")
-				.setValue(config.advanced.maxFileSize.toString())
-				.onChange(async (value) => {
-					const size = parseInt(value) || 1048576;
-					plugin.settings.fileSource.advanced.maxFileSize = size;
-					await plugin.saveSettings();
-				}),
-		);
 
 	// Statistics section
 	const statsContainer = containerEl.createDiv("file-source-stats");
