@@ -12,6 +12,7 @@ import {
 	FileTaskViewConfig,
 } from "../types/file-task";
 import { TFile } from "obsidian";
+import { FileSourceConfiguration } from "../types/file-source";
 
 // BasesEntry interface (copied from types to avoid import issues)
 interface BasesEntry {
@@ -70,7 +71,10 @@ export const DEFAULT_FILE_TASK_MAPPING: FileTaskPropertyMapping = {
 };
 
 export class FileTaskManagerImpl implements FileTaskManager {
-	constructor(private app: App) {}
+	constructor(
+		private app: App,
+		private fileSourceConfig?: FileSourceConfiguration
+	) {}
 
 	/**
 	 * Convert a BasesEntry to a FileTask
@@ -197,8 +201,17 @@ export class FileTaskManagerImpl implements FileTaskManager {
 	): Record<string, any> {
 		const updates: Record<string, any> = {};
 
-		// Don't update content property as it should be handled by file renaming
-		// updates[mapping.contentProperty] = task.content;
+		// Update content property based on configuration
+		const config = this.fileSourceConfig?.fileTaskProperties;
+		if (config?.contentSource && config.contentSource !== 'filename') {
+			// Only update content property if it's not handled by file renaming
+			const shouldUpdateProperty = this.shouldUpdateContentProperty(config);
+			if (shouldUpdateProperty) {
+				updates[mapping.contentProperty] = task.content;
+			}
+		}
+		// Note: If contentSource is 'filename', content updates are handled by file renaming
+
 		updates[mapping.statusProperty] = task.status;
 		updates[mapping.completedProperty] = task.completed;
 
@@ -285,12 +298,12 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		// Merge updates into the task
 		const updatedTask = { ...task, ...updates };
 
-		// Handle file renaming if content changed
+		// Handle content changes
 		if (updates.content && updates.content !== task.content) {
-			await this.updateFileName(task, updates.content);
+			await this.handleContentUpdate(task, updates.content);
 		}
 
-		// Convert to property updates (excluding content which is handled by file renaming)
+		// Convert to property updates (excluding content which is handled separately)
 		const propertyUpdates = this.fileTaskToPropertyUpdates(updatedTask);
 
 		console.log(
@@ -305,6 +318,165 @@ export class FileTaskManagerImpl implements FileTaskManager {
 			} catch (error) {
 				console.error(`Failed to update property ${key}:`, error);
 			}
+		}
+	}
+
+	/**
+	 * Determine if content should be updated via property update vs file operations
+	 */
+	private shouldUpdateContentProperty(config: any): boolean {
+		switch (config.contentSource) {
+			case 'title':
+				// Only update property if preferFrontmatterTitle is enabled
+				return config.preferFrontmatterTitle === true;
+			case 'h1':
+				// H1 updates are handled by file content modification, not property updates
+				return false;
+			case 'custom':
+				// Custom fields are always updated via properties
+				return true;
+			case 'filename':
+			default:
+				// Filename updates are handled by file renaming
+				return false;
+		}
+	}
+
+	/**
+	 * Handle content update - update frontmatter property, rename file, or update custom field
+	 */
+	private async handleContentUpdate(
+		task: FileTask,
+		newContent: string
+	): Promise<void> {
+		const config = this.fileSourceConfig?.fileTaskProperties;
+
+		if (!config) {
+			console.warn('[FileTaskManager] No file source config available, skipping content update');
+			return;
+		}
+
+		switch (config.contentSource) {
+			case 'title':
+				if (config.preferFrontmatterTitle) {
+					await this.updateFrontmatterTitle(task, newContent);
+				} else {
+					await this.updateFileName(task, newContent);
+				}
+				break;
+
+			case 'h1':
+				// For H1 content source, we need to update the first heading in the file
+				await this.updateH1Heading(task, newContent);
+				break;
+
+			case 'custom':
+				// For custom content source, update the custom field in frontmatter
+				if (config.customContentField) {
+					await this.updateCustomContentField(task, newContent, config.customContentField);
+				} else {
+					console.warn('[FileTaskManager] Custom content source specified but no customContentField configured');
+				}
+				break;
+
+			case 'filename':
+			default:
+				// For filename content source, rename the file
+				await this.updateFileName(task, newContent);
+				break;
+		}
+	}
+
+	/**
+	 * Update frontmatter title property
+	 */
+	private async updateFrontmatterTitle(
+		task: FileTask,
+		newTitle: string
+	): Promise<void> {
+		try {
+			// Update the title property in frontmatter through the source entry
+			task.sourceEntry.updateProperty('title', newTitle);
+			console.log(
+				`[FileTaskManager] Updated frontmatter title for ${task.filePath} to: ${newTitle}`
+			);
+		} catch (error) {
+			console.error(`[FileTaskManager] Failed to update frontmatter title:`, error);
+			// Fallback to file renaming if frontmatter update fails
+			await this.updateFileName(task, newTitle);
+		}
+	}
+
+	/**
+	 * Update H1 heading in the file content
+	 */
+	private async updateH1Heading(
+		task: FileTask,
+		newHeading: string
+	): Promise<void> {
+		try {
+			const file = this.app.vault.getFileByPath(task.filePath);
+			if (!file) {
+				console.error(`[FileTaskManager] File not found: ${task.filePath}`);
+				return;
+			}
+
+			const content = await this.app.vault.read(file);
+			const lines = content.split('\n');
+
+			// Find the first H1 heading
+			let h1LineIndex = -1;
+			for (let i = 0; i < lines.length; i++) {
+				if (lines[i].startsWith('# ')) {
+					h1LineIndex = i;
+					break;
+				}
+			}
+
+			if (h1LineIndex >= 0) {
+				// Update existing H1
+				lines[h1LineIndex] = `# ${newHeading}`;
+			} else {
+				// Add new H1 at the beginning (after frontmatter if present)
+				let insertIndex = 0;
+				if (content.startsWith('---')) {
+					// Skip frontmatter
+					const frontmatterEnd = content.indexOf('\n---\n', 3);
+					if (frontmatterEnd >= 0) {
+						const frontmatterLines = content.substring(0, frontmatterEnd + 5).split('\n').length - 1;
+						insertIndex = frontmatterLines;
+					}
+				}
+				lines.splice(insertIndex, 0, `# ${newHeading}`, '');
+			}
+
+			const newContent = lines.join('\n');
+			await this.app.vault.modify(file, newContent);
+
+			console.log(
+				`[FileTaskManager] Updated H1 heading for ${task.filePath} to: ${newHeading}`
+			);
+		} catch (error) {
+			console.error(`[FileTaskManager] Failed to update H1 heading:`, error);
+		}
+	}
+
+	/**
+	 * Update custom content field in frontmatter
+	 */
+	private async updateCustomContentField(
+		task: FileTask,
+		newContent: string,
+		fieldName: string
+	): Promise<void> {
+		try {
+			// Update the custom field in frontmatter through the source entry
+			task.sourceEntry.updateProperty(fieldName, newContent);
+			console.log(
+				`[FileTaskManager] Updated custom field '${fieldName}' for ${task.filePath} to: ${newContent}`
+			);
+		} catch (error) {
+			console.error(`[FileTaskManager] Failed to update custom field '${fieldName}':`, error);
 		}
 	}
 

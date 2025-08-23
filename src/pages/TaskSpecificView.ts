@@ -95,7 +95,10 @@ export class TaskSpecificView extends ItemView {
 	// Data management
 	tasks: Task[] = [];
 
-	constructor(leaf: WorkspaceLeaf, private plugin: TaskProgressBarPlugin) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private plugin: TaskProgressBarPlugin,
+	) {
 		super(leaf);
 
 		// 使用预加载的任务进行快速初始显示
@@ -138,7 +141,7 @@ export class TaskSpecificView extends ItemView {
 					if (this.currentViewId) {
 						this.switchView(
 							this.currentViewId,
-							this.currentProject
+							this.currentProject,
 						);
 					}
 				});
@@ -155,7 +158,7 @@ export class TaskSpecificView extends ItemView {
 	getDisplayText(): string {
 		const currentViewConfig = getViewSettingOrDefault(
 			this.plugin,
-			this.currentViewId
+			this.currentViewId,
 		);
 		// Potentially add project name if relevant for 'projects' view?
 		return currentViewConfig.name;
@@ -164,7 +167,7 @@ export class TaskSpecificView extends ItemView {
 	getIcon(): string {
 		const currentViewConfig = getViewSettingOrDefault(
 			this.plugin,
-			this.currentViewId
+			this.currentViewId,
 		);
 		return currentViewConfig.icon;
 	}
@@ -183,25 +186,28 @@ export class TaskSpecificView extends ItemView {
 		}, 150); // 150ms debounce delay
 
 		// 1. 首先注册事件监听器，确保不会错过任何更新
-		if (isDataflowEnabled(this.plugin) && this.plugin.dataflowOrchestrator) {
+		if (
+			isDataflowEnabled(this.plugin) &&
+			this.plugin.dataflowOrchestrator
+		) {
 			// Dataflow: 订阅统一事件
 			const { on, Events } = await import("../dataflow/events/Events");
 			this.registerEvent(
 				on(this.app, Events.CACHE_READY, async () => {
 					// 冷启动就绪，从快照加载
 					await this.loadTasksFast(true);
-				})
+				}),
 			);
 			this.registerEvent(
-				on(this.app, Events.TASK_CACHE_UPDATED, debouncedViewUpdate)
+				on(this.app, Events.TASK_CACHE_UPDATED, debouncedViewUpdate),
 			);
 		} else {
 			// Legacy: 兼容旧事件
 			this.registerEvent(
 				this.app.workspace.on(
 					"task-genius:task-cache-updated",
-					debouncedViewUpdate
-				)
+					debouncedViewUpdate,
+				),
 			);
 		}
 
@@ -213,7 +219,7 @@ export class TaskSpecificView extends ItemView {
 						"TaskSpecificView 过滤器实时变更:",
 						filterState,
 						"leafId:",
-						leafId
+						leafId,
 					);
 
 					// 只处理来自当前视图的过滤器变更
@@ -225,8 +231,8 @@ export class TaskSpecificView extends ItemView {
 						this.debouncedApplyFilter();
 					}
 					// 忽略来自其他leafId的变更，包括基础过滤器（view-config-开头）
-				}
-			)
+				},
+			),
 		);
 
 		// 2. 初始化组件（但先不传入数据）
@@ -256,7 +262,7 @@ export class TaskSpecificView extends ItemView {
 		(this.leaf.tabHeaderStatusContainerEl as HTMLElement)?.empty();
 		(this.leaf.tabHeaderEl as HTMLElement)?.toggleClass(
 			"task-genius-tab-header",
-			true
+			true,
 		);
 		this.tabActionButton = (
 			this.leaf.tabHeaderStatusContainerEl as HTMLElement
@@ -274,11 +280,11 @@ export class TaskSpecificView extends ItemView {
 							this.plugin.app,
 							this.plugin,
 							{},
-							true
+							true,
 						);
 						modal.open();
 					});
-			}
+			},
 		);
 		if (this.tabActionButton) {
 			this.register(() => {
@@ -311,7 +317,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.addChild(this.contentComponent);
 		this.contentComponent.load();
@@ -333,7 +339,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.addChild(this.forecastComponent);
 		this.forecastComponent.load();
@@ -353,7 +359,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.addChild(this.tagsComponent);
 		this.tagsComponent.load();
@@ -373,7 +379,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.addChild(this.projectsComponent);
 		this.projectsComponent.load();
@@ -393,7 +399,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.addChild(this.reviewComponent);
 		this.reviewComponent.load();
@@ -414,7 +420,7 @@ export class TaskSpecificView extends ItemView {
 				onEventContextMenu: (ev: MouseEvent, event: CalendarEvent) => {
 					this.handleTaskContextMenu(ev, event);
 				},
-			}
+			},
 		);
 		this.addChild(this.calendarComponent);
 		this.calendarComponent.load();
@@ -432,7 +438,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskSelected: this.handleTaskSelection.bind(this),
 				onTaskCompleted: this.toggleTaskCompletion.bind(this),
 				onTaskContextMenu: this.handleTaskContextMenu.bind(this),
-			}
+			},
 		);
 		this.addChild(this.kanbanComponent);
 		this.kanbanComponent.containerEl.hide();
@@ -444,21 +450,21 @@ export class TaskSpecificView extends ItemView {
 				onTaskSelected: this.handleTaskSelection.bind(this),
 				onTaskCompleted: this.toggleTaskCompletion.bind(this),
 				onTaskContextMenu: this.handleTaskContextMenu.bind(this),
-			}
+			},
 		);
 		this.addChild(this.ganttComponent);
 		this.ganttComponent.containerEl.hide();
 
 		this.habitsComponent = new HabitsComponent(
 			this.plugin,
-			this.rootContainerEl
+			this.rootContainerEl,
 		);
 		this.addChild(this.habitsComponent);
 		this.habitsComponent.containerEl.hide();
 		this.detailsComponent = new TaskDetailsComponent(
 			this.rootContainerEl,
 			this.app,
-			this.plugin
+			this.plugin,
 		);
 		this.addChild(this.detailsComponent);
 		this.detailsComponent.load();
@@ -476,7 +482,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskStatusUpdate:
 					this.handleKanbanTaskStatusUpdate.bind(this),
 				onEventContextMenu: this.handleTaskContextMenu.bind(this),
-			}
+			},
 		);
 
 		this.addChild(this.viewComponentManager);
@@ -492,7 +498,7 @@ export class TaskSpecificView extends ItemView {
 			t("Details"),
 			() => {
 				this.toggleDetailsVisibility(!this.isDetailsVisible);
-			}
+			},
 		);
 
 		this.detailsToggleBtn.toggleClass("panel-toggle-btn", true);
@@ -504,7 +510,7 @@ export class TaskSpecificView extends ItemView {
 				this.plugin.app,
 				this.plugin,
 				{},
-				true
+				true,
 			);
 			modal.open();
 		});
@@ -514,7 +520,7 @@ export class TaskSpecificView extends ItemView {
 				const popover = new ViewTaskFilterPopover(
 					this.plugin.app,
 					this.leaf.id,
-					this.plugin
+					this.plugin,
 				);
 
 				// 设置关闭回调 - 现在主要用于处理取消操作
@@ -534,7 +540,7 @@ export class TaskSpecificView extends ItemView {
 							const filterState = this
 								.liveFilterState as RootFilterState;
 							popover.taskFilterComponent.loadFilterState(
-								filterState
+								filterState,
 							);
 						}
 					}, 100);
@@ -545,7 +551,7 @@ export class TaskSpecificView extends ItemView {
 				const modal = new ViewTaskFilterModal(
 					this.plugin.app,
 					this.leaf.id,
-					this.plugin
+					this.plugin,
 				);
 
 				// 设置关闭回调 - 现在主要用于处理取消操作
@@ -611,7 +617,7 @@ export class TaskSpecificView extends ItemView {
 			this.detailsToggleBtn.toggleClass("is-active", visible);
 			this.detailsToggleBtn.setAttribute(
 				"aria-label",
-				visible ? t("Hide Details") : t("Show Details")
+				visible ? t("Hide Details") : t("Show Details"),
 			);
 		}
 
@@ -629,7 +635,7 @@ export class TaskSpecificView extends ItemView {
 		this.detailsComponent.onTaskEdit = (task: Task) => this.editTask(task);
 		this.detailsComponent.onTaskUpdate = async (
 			originalTask: Task,
-			updatedTask: Task
+			updatedTask: Task,
 		) => {
 			await this.updateTask(originalTask, updatedTask);
 		};
@@ -640,7 +646,11 @@ export class TaskSpecificView extends ItemView {
 		// No sidebar component handlers needed
 	}
 
-	private switchView(viewId: ViewMode, project?: string | null, forceRefresh: boolean = false) {
+	private switchView(
+		viewId: ViewMode,
+		project?: string | null,
+		forceRefresh: boolean = false,
+	) {
 		this.currentViewId = viewId;
 		this.currentProject = project;
 		console.log("Switching view to:", viewId, "Project:", project);
@@ -680,7 +690,7 @@ export class TaskSpecificView extends ItemView {
 					this.app,
 					this.plugin,
 					twoColumnConfig,
-					viewId
+					viewId,
 				);
 				this.addChild(twoColumnComponent);
 
@@ -742,7 +752,7 @@ export class TaskSpecificView extends ItemView {
 		if (targetComponent) {
 			console.log(
 				`Activating component for view ${viewId}`,
-				targetComponent.constructor.name
+				targetComponent.constructor.name,
 			);
 			targetComponent.containerEl.show();
 			if (typeof targetComponent.setTasks === "function") {
@@ -760,17 +770,24 @@ export class TaskSpecificView extends ItemView {
 					filterOptions.advancedFilter = this.currentFilterState;
 				}
 
-				let filteredTasks = filterTasks(this.tasks, viewId, this.plugin, filterOptions);
-				
+				let filteredTasks = filterTasks(
+					this.tasks,
+					viewId,
+					this.plugin,
+					filterOptions,
+				);
+
 				// Filter out badge tasks for forecast view - they should only appear in event view
 				if (viewId === "forecast") {
-					filteredTasks = filteredTasks.filter(task => !(task as any).badge);
+					filteredTasks = filteredTasks.filter(
+						(task) => !(task as any).badge,
+					);
 				}
-				
+
 				targetComponent.setTasks(
 					filteredTasks,
 					this.tasks,
-					forceRefresh
+					forceRefresh,
 				);
 			}
 
@@ -790,13 +807,13 @@ export class TaskSpecificView extends ItemView {
 				}
 
 				targetComponent.updateTasks(
-					filterTasks(this.tasks, viewId, this.plugin, filterOptions)
+					filterTasks(this.tasks, viewId, this.plugin, filterOptions),
 				);
 			}
 
 			if (typeof targetComponent.setViewMode === "function") {
 				console.log(
-					`Setting view mode for ${viewId} to ${modeForComponent} with project ${project}`
+					`Setting view mode for ${viewId} to ${modeForComponent} with project ${project}`,
 				);
 				targetComponent.setViewMode(modeForComponent, project);
 			}
@@ -823,14 +840,16 @@ export class TaskSpecificView extends ItemView {
 						this.tasks,
 						component.getViewId(),
 						this.plugin,
-						filterOptions
+						filterOptions,
 					);
-					
+
 					// Filter out badge tasks for forecast view - they should only appear in event view
 					if (component.getViewId() === "forecast") {
-						filteredTasks = filteredTasks.filter(task => !(task as any).badge);
+						filteredTasks = filteredTasks.filter(
+							(task) => !(task as any).badge,
+						);
 					}
-					
+
 					component.setTasks(filteredTasks);
 				}
 			});
@@ -855,8 +874,11 @@ export class TaskSpecificView extends ItemView {
 		if (!this.currentViewId) return null;
 
 		// Check for special view types first
-		const viewConfig = getViewSettingOrDefault(this.plugin, this.currentViewId);
-		
+		const viewConfig = getViewSettingOrDefault(
+			this.plugin,
+			this.currentViewId,
+		);
+
 		// Handle TwoColumn views
 		if (viewConfig.specificConfig?.viewType === "twocolumn") {
 			return this.twoColumnViewComponents.get(this.currentViewId);
@@ -871,7 +893,10 @@ export class TaskSpecificView extends ItemView {
 
 		// Handle forecast views
 		const specificViewType = viewConfig.specificConfig?.viewType;
-		if (specificViewType === "forecast" || this.currentViewId === "forecast") {
+		if (
+			specificViewType === "forecast" ||
+			this.currentViewId === "forecast"
+		) {
 			return this.forecastComponent;
 		}
 
@@ -938,7 +963,7 @@ export class TaskSpecificView extends ItemView {
 							},
 							(el) => {
 								createTaskCheckbox(mark, task, el);
-							}
+							},
 						);
 						item.titleEl.createEl("span", {
 							cls: "status-option",
@@ -1010,20 +1035,29 @@ export class TaskSpecificView extends ItemView {
 
 	private async loadTasks(
 		forceSync: boolean = false,
-		skipViewUpdate: boolean = false
+		skipViewUpdate: boolean = false,
 	) {
 		// Only use dataflow - TaskManager is deprecated
 		if (!this.plugin.dataflowOrchestrator) {
-			console.warn("[TaskSpecificView] Dataflow orchestrator not available, waiting for initialization...");
+			console.warn(
+				"[TaskSpecificView] Dataflow orchestrator not available, waiting for initialization...",
+			);
 			this.tasks = [];
 		} else {
 			try {
-				console.log("[TaskSpecificView] Loading tasks from dataflow orchestrator...");
+				console.log(
+					"[TaskSpecificView] Loading tasks from dataflow orchestrator...",
+				);
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				this.tasks = await queryAPI.getAllTasks();
-				console.log(`[TaskSpecificView] Loaded ${this.tasks.length} tasks from dataflow`);
+				console.log(
+					`[TaskSpecificView] Loaded ${this.tasks.length} tasks from dataflow`,
+				);
 			} catch (error) {
-				console.error("[TaskSpecificView] Error loading tasks from dataflow:", error);
+				console.error(
+					"[TaskSpecificView] Error loading tasks from dataflow:",
+					error,
+				);
 				this.tasks = [];
 			}
 		}
@@ -1045,17 +1079,26 @@ export class TaskSpecificView extends ItemView {
 	private async loadTasksFast(skipViewUpdate: boolean = false) {
 		// Only use dataflow
 		if (!this.plugin.dataflowOrchestrator) {
-			console.warn("[TaskSpecificView] Dataflow orchestrator not available for fast load");
+			console.warn(
+				"[TaskSpecificView] Dataflow orchestrator not available for fast load",
+			);
 			this.tasks = [];
 		} else {
 			try {
-				console.log("[TaskSpecificView] Loading tasks fast from dataflow orchestrator...");
+				console.log(
+					"[TaskSpecificView] Loading tasks fast from dataflow orchestrator...",
+				);
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				// For fast loading, use regular getAllTasks (it should be cached)
 				this.tasks = await queryAPI.getAllTasks();
-				console.log(`[TaskSpecificView] Loaded ${this.tasks.length} tasks (fast from dataflow)`);
+				console.log(
+					`[TaskSpecificView] Loaded ${this.tasks.length} tasks (fast from dataflow)`,
+				);
 			} catch (error) {
-				console.error("[TaskSpecificView] Error loading tasks fast from dataflow:", error);
+				console.error(
+					"[TaskSpecificView] Error loading tasks fast from dataflow:",
+					error,
+				);
 				this.tasks = [];
 			}
 		}
@@ -1085,7 +1128,9 @@ export class TaskSpecificView extends ItemView {
 			const tasks = await queryAPI.getAllTasks();
 			if (tasks.length !== this.tasks.length || tasks.length === 0) {
 				this.tasks = tasks;
-				console.log(`TaskSpecificView updated with ${this.tasks.length} tasks (dataflow sync)`);
+				console.log(
+					`TaskSpecificView updated with ${this.tasks.length} tasks (dataflow sync)`,
+				);
 				// Don't trigger view update here as it will be handled by events
 			}
 		} catch (error) {
@@ -1098,7 +1143,7 @@ export class TaskSpecificView extends ItemView {
 		console.log(
 			"应用 TaskSpecificView 当前过滤状态:",
 			this.liveFilterState ? "有实时筛选器" : "无实时筛选器",
-			this.currentFilterState ? "有过滤器" : "无过滤器"
+			this.currentFilterState ? "有过滤器" : "无过滤器",
 		);
 		// 通过 loadTasks 重新加载任务
 		this.loadTasks();
@@ -1112,7 +1157,7 @@ export class TaskSpecificView extends ItemView {
 			this.updateActionButtons();
 		} else {
 			console.warn(
-				"TaskSpecificView: Cannot trigger update, currentViewId is not set."
+				"TaskSpecificView: Cannot trigger update, currentViewId is not set.",
 			);
 		}
 	}
@@ -1120,7 +1165,7 @@ export class TaskSpecificView extends ItemView {
 	private updateActionButtons() {
 		// 移除过滤器重置按钮（如果存在）
 		const resetButton = this.leaf.view.containerEl.querySelector(
-			".view-action.task-filter-reset"
+			".view-action.task-filter-reset",
 		);
 		if (resetButton) {
 			resetButton.remove();
@@ -1173,7 +1218,7 @@ export class TaskSpecificView extends ItemView {
 
 		const result = await this.plugin.writeAPI.updateTask({
 			taskId: updatedTask.id,
-			updates: updatedTask
+			updates: updatedTask,
 		});
 		if (!result.success) {
 			throw new Error(result.error || "Failed to update task");
@@ -1194,14 +1239,14 @@ export class TaskSpecificView extends ItemView {
 			originalTask.id,
 			updatedTask.id,
 			updatedTask,
-			originalTask
+			originalTask,
 		);
 
 		try {
 			// Always use WriteAPI
 			const writeResult = await this.plugin.writeAPI.updateTask({
 				taskId: updatedTask.id,
-				updates: updatedTask
+				updates: updatedTask,
 			});
 			if (!writeResult.success) {
 				throw new Error(writeResult.error || "Failed to update task");
@@ -1211,7 +1256,9 @@ export class TaskSpecificView extends ItemView {
 				updatedTask = writeResult.task;
 			}
 
-			console.log(`Task ${updatedTask.id} updated successfully via handleTaskUpdate.`);
+			console.log(
+				`Task ${updatedTask.id} updated successfully via handleTaskUpdate.`,
+			);
 
 			// Update local task list immediately
 			const index = this.tasks.findIndex((t) => t.id === originalTask.id);
@@ -1221,7 +1268,7 @@ export class TaskSpecificView extends ItemView {
 				this.tasks[index] = updatedTask;
 			} else {
 				console.warn(
-					"Updated task not found in local list, might reload."
+					"Updated task not found in local list, might reload.",
 				);
 			}
 
@@ -1248,7 +1295,7 @@ export class TaskSpecificView extends ItemView {
 
 	private async updateTask(
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
 	): Promise<Task> {
 		if (!this.plugin.writeAPI) {
 			console.error("WriteAPI not available for updateTask");
@@ -1258,7 +1305,7 @@ export class TaskSpecificView extends ItemView {
 			// Always use WriteAPI
 			const writeResult = await this.plugin.writeAPI.updateTask({
 				taskId: updatedTask.id,
-				updates: updatedTask
+				updates: updatedTask,
 			});
 			if (!writeResult.success) {
 				throw new Error(writeResult.error || "Failed to update task");
@@ -1276,7 +1323,7 @@ export class TaskSpecificView extends ItemView {
 				this.tasks[index] = updatedTask;
 			} else {
 				console.warn(
-					"Updated task not found in local list, might reload."
+					"Updated task not found in local list, might reload.",
 				);
 			}
 
@@ -1309,7 +1356,7 @@ export class TaskSpecificView extends ItemView {
 		const existingLeaf = this.app.workspace
 			.getLeavesOfType("markdown")
 			.find(
-				(leaf) => (leaf.view as any).file === file // Type assertion needed here
+				(leaf) => (leaf.view as any).file === file, // Type assertion needed here
 			);
 
 		const leafToUse = existingLeaf || this.app.workspace.getLeaf("tab"); // Open in new tab if not open
@@ -1353,10 +1400,10 @@ export class TaskSpecificView extends ItemView {
 	// Method to handle status updates originating from Kanban drag-and-drop
 	private handleKanbanTaskStatusUpdate = async (
 		taskId: string,
-		newStatusMark: string
+		newStatusMark: string,
 	) => {
 		console.log(
-			`TaskSpecificView handling Kanban status update request for ${taskId} to mark ${newStatusMark}`
+			`TaskSpecificView handling Kanban status update request for ${taskId} to mark ${newStatusMark}`,
 		);
 		const taskToUpdate = this.tasks.find((t) => t.id === taskId);
 
@@ -1388,22 +1435,22 @@ export class TaskSpecificView extends ItemView {
 					// Use updateTask to ensure consistency and UI updates
 					await this.updateTask(taskToUpdate, updatedTaskData);
 					console.log(
-						`Task ${taskId} status update processed by TaskSpecificView.`
+						`Task ${taskId} status update processed by TaskSpecificView.`,
 					);
 				} catch (error) {
 					console.error(
 						`TaskSpecificView failed to update task status from Kanban callback for task ${taskId}:`,
-						error
+						error,
 					);
 				}
 			} else {
 				console.log(
-					`Task ${taskId} status (${newStatusMark}) already matches, no update needed.`
+					`Task ${taskId} status (${newStatusMark}) already matches, no update needed.`,
 				);
 			}
 		} else {
 			console.warn(
-				`TaskSpecificView could not find task with ID ${taskId} for Kanban status update.`
+				`TaskSpecificView could not find task with ID ${taskId} for Kanban status update.`,
 			);
 		}
 	};
@@ -1415,7 +1462,7 @@ export class TaskSpecificView extends ItemView {
 		this.currentFilterState = null;
 		this.app.saveLocalStorage(
 			`task-genius-view-filter-${this.leaf.id}`,
-			null
+			null,
 		);
 		this.applyCurrentFilter();
 		this.updateActionButtons();

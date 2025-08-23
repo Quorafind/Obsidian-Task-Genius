@@ -146,7 +146,7 @@ export class FileTaskView extends Component implements BasesView {
 		this.containerEl = containerEl;
 		this.app = app;
 		this.plugin = plugin;
-		this.fileTaskManager = new FileTaskManagerImpl(app);
+		this.fileTaskManager = new FileTaskManagerImpl(app, plugin.settings?.fileSource);
 
 		if (propertyMapping) {
 			this.propertyMapping = propertyMapping;
