@@ -74,7 +74,8 @@ describe('FileSourceConfig', () => {
           fileTaskProperties: {
             contentSource: 'title',
             stripExtension: false,
-            defaultStatus: 'x'
+            defaultStatus: 'x',
+            preferFrontmatterTitle: true
           }
         };
 
@@ -241,7 +242,8 @@ describe('FileSourceConfig', () => {
         fileTaskProperties: {
           contentSource: 'custom',
           stripExtension: true,
-          defaultStatus: ' '
+          defaultStatus: ' ',
+          preferFrontmatterTitle: true
           // Missing customContentField
         }
       };
@@ -261,31 +263,6 @@ describe('FileSourceConfig', () => {
 
       const errors = config.validateConfig(invalidConfig);
       expect(errors).toContain('Cache TTL must be a positive number');
-    });
-
-    it('should validate maximum file size', () => {
-      const invalidConfig: Partial<FileSourceConfiguration> = {
-        advanced: {
-          excludePatterns: [],
-          maxFileSize: 100 // Too small
-        }
-      };
-
-      const errors = config.validateConfig(invalidConfig);
-      expect(errors).toContain('Maximum file size must be at least 1KB');
-    });
-
-    it('should validate custom recognition function syntax', () => {
-      const invalidConfig: Partial<FileSourceConfiguration> = {
-        advanced: {
-          excludePatterns: [],
-          maxFileSize: 1024,
-          customRecognitionFunction: 'invalid javascript syntax {'
-        }
-      };
-
-      const errors = config.validateConfig(invalidConfig);
-      expect(errors).toContain('Custom recognition function has invalid syntax');
     });
   });
 

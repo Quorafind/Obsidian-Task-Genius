@@ -1,6 +1,6 @@
 /**
  * WriteAPI - Handles all write operations in the Dataflow architecture
- * 
+ *
  * This API provides methods for creating, updating, and deleting tasks
  * by directly modifying vault files. Changes trigger ObsidianSource events
  * which automatically update the index through the Orchestrator.
@@ -75,7 +75,7 @@ export interface BatchCreateSubtasksArgs {
 
 export class WriteAPI {
 	private canvasTaskUpdater: CanvasTaskUpdater;
-	
+
 	constructor(
 		private app: App,
 		private vault: Vault,
@@ -150,7 +150,7 @@ export class WriteAPI {
 			}
 
 			lines[task.line] = taskLine;
-			
+
 			// Notify about write operation
 			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 			await this.vault.modify(file, lines.join("\n"));
@@ -182,6 +182,12 @@ export class WriteAPI {
 			// Check if this is a Canvas task
 			if (CanvasTaskUpdater.isCanvasTask(originalTask)) {
 				return this.updateCanvasTask(args);
+			}
+
+			// Handle FileSource (file-level) tasks differently
+			const isFileSourceTask = (originalTask as any)?.metadata?.source === "file-source" || originalTask.id.startsWith("file-source:");
+			if (isFileSourceTask) {
+				return this.updateFileSourceTask(originalTask, args.updates, args.taskId);
 			}
 
 			const file = this.vault.getAbstractFileByPath(originalTask.filePath) as TFile;
@@ -236,26 +242,26 @@ export class WriteAPI {
 			}
 
 			lines[originalTask.line] = taskLine;
-			
+
 			// Notify about write operation
 			emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 			await this.vault.modify(file, lines.join("\n"));
-			
+
 			// Create the updated task object with the new content
 			const updatedTaskObj: Task = {
 				...originalTask,
 				...args.updates,
 				originalMarkdown: taskLine.replace(/^\s*[-*+]\s*\[[^\]]*\]\s*/, ""), // Remove checkbox prefix
 			};
-			
+
 			// Emit task updated event for direct update in dataflow
 			emit(this.app, Events.TASK_UPDATED, { task: updatedTaskObj });
-			
+
 			// Trigger task-completed event if task was just completed
 			if (args.updates.completed === true && !originalTask.completed) {
 				this.app.workspace.trigger("task-genius:task-completed", updatedTaskObj);
 			}
-			
+
 			// Still emit write operation complete for compatibility
 			emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: file.path, taskId: args.taskId });
 
@@ -265,6 +271,132 @@ export class WriteAPI {
 			return { success: false, error: String(error) };
 		}
 	}
+
+
+		/**
+		 * Update a FileSource (file-level) task. This updates frontmatter title, H1, or filename
+		 * depending on settings, instead of trying to edit a markdown checkbox line.
+		 */
+		private async updateFileSourceTask(
+			originalTask: Task,
+			updates: Partial<Task>,
+			taskId: string
+		): Promise<{ success: boolean; task?: Task; error?: string }> {
+			const file = this.vault.getAbstractFileByPath(originalTask.filePath) as TFile;
+			if (!file) {
+				return { success: false, error: "File not found" };
+			}
+
+			let newFilePath = originalTask.filePath;
+			const cfg = this.plugin.settings?.fileSource?.fileTaskProperties;
+			const contentSource: "filename" | "title" | "h1" | "custom" = cfg?.contentSource ?? "filename";
+			const preferFrontmatterTitle = cfg?.preferFrontmatterTitle ?? true;
+			const customContentField = (this.plugin.settings?.fileSource?.fileTaskProperties as any)?.customContentField as string | undefined;
+
+			// Handle content/title change
+			if (updates.content && updates.content !== originalTask.content) {
+				try {
+					// Announce start of a write operation
+					emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId });
+
+					switch (contentSource) {
+						case "title": {
+							if (preferFrontmatterTitle) {
+								await this.app.fileManager.processFrontMatter(file, (fm) => {
+									(fm as any).title = updates.content;
+								});
+							} else {
+								newFilePath = await this.renameFile(file, updates.content!);
+							}
+							break;
+						}
+						case "h1": {
+							await this.updateH1Heading(file, updates.content!);
+							break;
+						}
+						case "custom": {
+							if (customContentField) {
+								await this.app.fileManager.processFrontMatter(file, (fm) => {
+									(fm as any)[customContentField] = updates.content;
+								});
+							} else {
+								newFilePath = await this.renameFile(file, updates.content!);
+							}
+							break;
+						}
+						case "filename":
+						default: {
+							newFilePath = await this.renameFile(file, updates.content!);
+							break;
+						}
+					}
+
+					// Announce completion of write operation
+					emit(this.app, Events.WRITE_OPERATION_COMPLETE, { path: newFilePath, taskId });
+				} catch (error) {
+					console.error("WriteAPI: Error updating file-source task content:", error);
+					return { success: false, error: String(error) };
+				}
+			}
+
+			// Build the updated task object
+			const updatedTaskObj: Task = {
+				...originalTask,
+				...updates,
+				filePath: newFilePath,
+				// Keep id in sync with FileSource convention when path changes
+				id: (originalTask.id.startsWith("file-source:") && newFilePath !== originalTask.filePath)
+					? `file-source:${newFilePath}`
+					: originalTask.id,
+				originalMarkdown: `[${updates.content ?? originalTask.content}](${newFilePath})`,
+			};
+
+			// Emit file-task update so repository updates fileTasks map directly
+			emit(this.app, Events.FILE_TASK_UPDATED, { task: updatedTaskObj });
+
+			return { success: true, task: updatedTaskObj };
+		}
+
+		private async updateH1Heading(file: TFile, newHeading: string): Promise<void> {
+			const content = await this.vault.read(file);
+			const lines = content.split("\n");
+			// Find first H1 after optional frontmatter
+			let h1Index = -1;
+			for (let i = 0; i < lines.length; i++) {
+				if (lines[i].startsWith("# ")) { h1Index = i; break; }
+			}
+			if (h1Index >= 0) {
+				lines[h1Index] = `# ${newHeading}`;
+			} else {
+				let insertIndex = 0;
+				if (content.startsWith("---")) {
+					const fmEnd = content.indexOf("\n---\n", 3);
+					if (fmEnd >= 0) {
+						const fmLines = content.substring(0, fmEnd + 5).split("\n").length - 1;
+						insertIndex = fmLines;
+					}
+				}
+				lines.splice(insertIndex, 0, `# ${newHeading}`, "");
+			}
+			await this.vault.modify(file, lines.join("\n"));
+		}
+
+		private async renameFile(file: TFile, newTitle: string): Promise<string> {
+			const currentPath = file.path;
+			const lastSlash = currentPath.lastIndexOf("/");
+			const directory = lastSlash > 0 ? currentPath.substring(0, lastSlash) : "";
+			const extension = currentPath.substring(currentPath.lastIndexOf("."));
+			const sanitized = this.sanitizeFileName(newTitle);
+			const newPath = directory ? `${directory}/${sanitized}${extension}` : `${sanitized}${extension}`;
+			if (newPath !== currentPath) {
+				await this.vault.rename(file, newPath);
+			}
+			return newPath;
+		}
+
+		private sanitizeFileName(name: string): string {
+			return name.replace(/[<>:"/\\|?*]/g, "_");
+		}
 
 	/**
 	 * Create a new task
@@ -320,7 +452,7 @@ export class WriteAPI {
 				const newContent = args.parent
 					? this.insertSubtask(content, args.parent, taskContent)
 					: (content ? content + "\n" : "") + taskContent;
-				
+
 				// Notify about write operation
 				emit(this.app, Events.WRITE_OPERATION_START, { path: file.path });
 				await this.vault.modify(file, newContent);
@@ -359,7 +491,7 @@ export class WriteAPI {
 
 			if (task.line >= 0 && task.line < lines.length) {
 				lines.splice(task.line, 1);
-				
+
 				// Notify about write operation
 				emit(this.app, Events.WRITE_OPERATION_START, { path: file.path, taskId: args.taskId });
 				await this.vault.modify(file, lines.join("\n"));
@@ -500,7 +632,7 @@ export class WriteAPI {
 		try {
 			// Try using Daily Notes plugin if available
 			let dailyNoteFile: TFile | null = null;
-			
+
 			if (appHasDailyNotesPluginLoaded()) {
 				const date = moment().set("hour", 12);
 				const existing = getDailyNote(date, getAllDailyNotes());
@@ -685,7 +817,7 @@ export class WriteAPI {
 				metadata.push(`[tags:: ${args.tags.join(", ")}]`);
 			} else {
 				// Ensure tags don't already have # prefix before adding one
-				metadata.push(...args.tags.map(tag => 
+				metadata.push(...args.tags.map(tag =>
 					tag.startsWith("#") ? tag : `#${tag}`
 				));
 			}
@@ -884,12 +1016,12 @@ export class WriteAPI {
 			if (result.success) {
 				// Emit task updated event for dataflow
 				emit(this.app, Events.TASK_UPDATED, { task: updatedTask });
-				
+
 				// Trigger task-completed event if task was just completed
 				if (args.updates.completed === true && !originalTask.completed) {
 					this.app.workspace.trigger("task-genius:task-completed", updatedTask);
 				}
-				
+
 				return { success: true, task: updatedTask };
 			} else {
 				return { success: false, error: result.error };

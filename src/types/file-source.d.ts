@@ -94,6 +94,8 @@ export interface FileTaskPropertiesConfig {
   defaultStatus: string;
   /** Default priority for new file tasks */
   defaultPriority?: number;
+  /** Prefer frontmatter title over file renaming when updating task content */
+  preferFrontmatterTitle: boolean;
 }
 
 /** Relationship configuration */
@@ -114,16 +116,6 @@ export interface PerformanceConfig {
   enableCaching: boolean;
   /** Cache TTL in milliseconds */
   cacheTTL: number;
-}
-
-/** Advanced configuration */
-export interface AdvancedConfig {
-  /** Custom recognition function */
-  customRecognitionFunction?: string;
-  /** Exclude patterns */
-  excludePatterns: string[];
-  /** Maximum file size to process (bytes) */
-  maxFileSize: number;
 }
 
 /**
@@ -164,9 +156,6 @@ export interface FileSourceConfiguration {
   
   /** Performance configuration */
   performance: PerformanceConfig;
-  
-  /** Advanced configuration */
-  advanced: AdvancedConfig;
   
   /** Status mapping configuration */
   statusMapping: StatusMappingConfig;

@@ -1,16 +1,16 @@
 /**
  * FileSource - Main implementation for FileSource feature
- * 
+ *
  * This source integrates files as tasks into the dataflow architecture.
  * It follows the same patterns as ObsidianSource and IcsSource.
  */
 
 import type { App, TFile, EventRef, CachedMetadata } from "obsidian";
 import type { Task } from "../../types/task";
-import type { 
-  FileSourceConfiguration, 
-  FileSourceTaskMetadata, 
-  FileSourceStats, 
+import type {
+  FileSourceConfiguration,
+  FileSourceTaskMetadata,
+  FileSourceStats,
   UpdateDecision,
   FileTaskCache,
   RecognitionStrategy,
@@ -20,9 +20,11 @@ import type {
 import { Events, emit, Seq, on } from "../events/Events";
 import { FileSourceConfig } from "./FileSourceConfig";
 
+import { FileFilterManager } from "../../managers/file-filter-manager";
+
 /**
  * FileSource - Independent event source for file-based tasks
- * 
+ *
  * Subscribes to file events and transforms qualifying files into tasks
  * following the established dataflow patterns.
  */
@@ -30,17 +32,17 @@ export class FileSource {
   private config: FileSourceConfig;
   private isInitialized = false;
   private lastUpdateSeq = 0;
-  
+
   // Event references for cleanup
   private eventRefs: EventRef[] = [];
-  
+
   // Cache for tracking file task state
   private fileTaskCache = new Map<string, FileTaskCache>();
-  
+
   // Debouncing for rapid changes
   private pendingUpdates = new Map<string, NodeJS.Timeout>();
   private readonly DEBOUNCE_DELAY = 300; // ms
-  
+
   // Statistics tracking
   private stats: FileSourceStats = {
     initialized: false,
@@ -57,7 +59,8 @@ export class FileSource {
 
   constructor(
     private app: App,
-    initialConfig?: Partial<FileSourceConfiguration>
+    initialConfig?: Partial<FileSourceConfiguration>,
+    private fileFilterManager?: FileFilterManager
   ) {
     this.config = new FileSourceConfig(initialConfig);
   }
@@ -70,21 +73,23 @@ export class FileSource {
     if (!this.config.isEnabled()) return;
 
     console.log("[FileSource] Initializing FileSource...");
-    
+
     // Subscribe to configuration changes
     this.config.onChange((newConfig) => {
       this.handleConfigChange(newConfig);
     });
-    
+
     // Subscribe to file events
     this.subscribeToFileEvents();
-    
-    // Perform initial scan of existing files
-    this.performInitialScan();
-    
+
+    // Delay initial scan to ensure vault is fully loaded
+    setTimeout(() => {
+      this.performInitialScan();
+    }, 1000); // 1 second delay
+
     this.isInitialized = true;
     this.stats.initialized = true;
-    
+
     console.log(`[FileSource] Initialized with strategies: ${this.config.getEnabledStrategies().join(', ')}`);
   }
 
@@ -136,7 +141,7 @@ export class FileSource {
     // Set new debounced timeout
     const timeout = setTimeout(async () => {
       this.pendingUpdates.delete(filePath);
-      
+
       try {
         await this.processFileUpdate(filePath, reason);
       } catch (error) {
@@ -172,6 +177,10 @@ export class FileSource {
       return;
     }
 
+    // Apply centralized file filter manager for file-scope rules
+    if (this.fileFilterManager && !this.fileFilterManager.shouldIncludePath(filePath, "file")) {
+      return;
+    }
     const shouldBeTask = await this.shouldCreateFileTask(filePath);
     const existingCache = this.fileTaskCache.get(filePath);
     const wasTask = existingCache?.fileTaskExists ?? false;
@@ -201,7 +210,7 @@ export class FileSource {
     try {
       const fileContent = await this.app.vault.cachedRead(file);
       const fileCache = this.app.metadataCache.getFileCache(file);
-      
+
       return this.evaluateRecognitionStrategies(filePath, fileContent, fileCache);
     } catch (error) {
       console.error(`[FileSource] Error reading file ${filePath}:`, error);
@@ -213,8 +222,8 @@ export class FileSource {
    * Evaluate all enabled recognition strategies
    */
   private evaluateRecognitionStrategies(
-    filePath: string, 
-    fileContent: string, 
+    filePath: string,
+    fileContent: string,
     fileCache: CachedMetadata | null
   ): boolean {
     const config = this.config.getConfig();
@@ -265,7 +274,7 @@ export class FileSource {
     const { taskFields, requireAllFields } = config;
     const frontmatter = fileCache.frontmatter;
 
-    const matchingFields = taskFields.filter((field: string) => 
+    const matchingFields = taskFields.filter((field: string) =>
       frontmatter.hasOwnProperty(field) && frontmatter[field] !== undefined
     );
 
@@ -331,14 +340,14 @@ export class FileSource {
     if (!config.enabled || !config.taskPaths || config.taskPaths.length === 0) {
       return false;
     }
-    
+
     // Normalize path (use forward slashes)
     const normalizedPath = filePath.replace(/\\/g, '/');
-    
+
     // Check each configured path pattern
     for (const pattern of config.taskPaths) {
       const normalizedPattern = pattern.replace(/\\/g, '/');
-      
+
       switch (config.matchMode) {
         case 'prefix':
           if (normalizedPath.startsWith(normalizedPattern)) {
@@ -346,7 +355,7 @@ export class FileSource {
             return true;
           }
           break;
-          
+
         case 'regex':
           try {
             const regex = new RegExp(normalizedPattern);
@@ -358,7 +367,7 @@ export class FileSource {
             console.warn(`[FileSource] Invalid regex pattern: ${pattern}`, e);
           }
           break;
-          
+
         case 'glob':
           if (this.matchGlobPattern(normalizedPath, normalizedPattern)) {
             console.log(`[FileSource] Path matches glob pattern: ${pattern} for ${filePath}`);
@@ -367,7 +376,7 @@ export class FileSource {
           break;
       }
     }
-    
+
     return false;
   }
 
@@ -383,14 +392,14 @@ export class FileSource {
       .replace(/\*/g, '[^/]*') // * matches any chars except /
       .replace(/§§§/g, '.*') // ** matches any chars
       .replace(/\?/g, '[^/]'); // ? matches single char
-    
+
     // If pattern ends with /, match all files in that directory
     if (pattern.endsWith('/')) {
       regexPattern = `^${regexPattern}.*`;
     } else {
       regexPattern = `^${regexPattern}$`;
     }
-    
+
     try {
       const regex = new RegExp(regexPattern);
       return regex.test(path);
@@ -410,19 +419,19 @@ export class FileSource {
     try {
       const fileContent = await this.app.vault.cachedRead(file);
       const fileCache = this.app.metadataCache.getFileCache(file);
-      
+
       const fileTask = await this.buildFileTask(filePath, fileContent, fileCache);
       if (!fileTask) return null;
 
       // Update cache
       this.updateFileTaskCache(filePath, fileTask);
-      
+
       // Update statistics
       this.updateStatistics(fileTask.metadata.recognitionStrategy, 1);
-      
+
       // Emit file task event
       this.emitFileTaskUpdate('created', fileTask);
-      
+
       return fileTask;
     } catch (error) {
       console.error(`[FileSource] Error creating file task for ${filePath}:`, error);
@@ -448,20 +457,20 @@ export class FileSource {
 
     // Remove from cache
     this.fileTaskCache.delete(filePath);
-    
+
     // Update statistics
     this.stats.trackedFileCount = Math.max(0, this.stats.trackedFileCount - 1);
-    
+
     // Emit removal event
     const seq = Seq.next();
     this.lastUpdateSeq = seq;
-    
+
     emit(this.app, Events.FILE_TASK_REMOVED, {
       filePath,
       timestamp: Date.now(),
       seq
     });
-    
+
     console.log(`[FileSource] Removed file task: ${filePath}`);
   }
 
@@ -524,25 +533,25 @@ export class FileSource {
     fileCache: CachedMetadata | null
   ): { name: RecognitionStrategy; criteria: string } | null {
     const config = this.config.getConfig();
-    
-    if (config.recognitionStrategies.metadata.enabled && 
+
+    if (config.recognitionStrategies.metadata.enabled &&
         this.matchesMetadataStrategy(filePath, fileContent, fileCache, config.recognitionStrategies.metadata)) {
       return { name: "metadata", criteria: "frontmatter" };
     }
-    
-    if (config.recognitionStrategies.tags.enabled && 
+
+    if (config.recognitionStrategies.tags.enabled &&
         this.matchesTagStrategy(filePath, fileContent, fileCache, config.recognitionStrategies.tags)) {
       return { name: "tag", criteria: "file-tags" };
     }
-    
+
     // Check path strategy
-    if (config.recognitionStrategies.paths.enabled && 
+    if (config.recognitionStrategies.paths.enabled &&
         this.matchesPathStrategy(filePath, fileContent, fileCache, config.recognitionStrategies.paths)) {
       return { name: "path", criteria: config.recognitionStrategies.paths.taskPaths.join(", ") };
     }
-    
+
     // TODO: Add template strategy in Phase 2
-    
+
     return null;
   }
 
@@ -556,27 +565,28 @@ export class FileSource {
   ): string {
     const config = this.config.getConfig().fileTaskProperties;
     const fileName = filePath.split('/').pop() || filePath;
-    
+    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+
     switch (config.contentSource) {
       case 'filename':
-        return config.stripExtension ? 
-          fileName.replace(/\.[^/.]+$/, "") : fileName;
-      
+        return config.stripExtension ? fileNameWithoutExt : fileName;
+
       case 'title':
-        return fileCache?.frontmatter?.title || fileName;
-      
+        // Always prefer frontmatter title if available, fallback to filename without extension
+        return fileCache?.frontmatter?.title || fileNameWithoutExt;
+
       case 'h1':
         const h1 = fileCache?.headings?.find(h => h.level === 1);
-        return h1?.heading || fileName;
-      
+        return h1?.heading || fileNameWithoutExt;
+
       case 'custom':
         if (config.customContentField && fileCache?.frontmatter) {
-          return fileCache.frontmatter[config.customContentField] || fileName;
+          return fileCache.frontmatter[config.customContentField] || fileNameWithoutExt;
         }
-        return fileName;
-      
+        return fileNameWithoutExt;
+
       default:
-        return fileName;
+        return config.stripExtension ? fileNameWithoutExt : fileName;
     }
   }
 
@@ -591,12 +601,12 @@ export class FileSource {
   ): Partial<FileSourceTaskMetadata> {
     const config = this.config.getConfig();
     const frontmatter = fileCache?.frontmatter || {};
-    
+
     // Get status from frontmatter and map it to symbol if needed
     let status = frontmatter.status || config.fileTaskProperties.defaultStatus;
-    
+
     // Apply status mapping if enabled
-    if (config.statusMapping.enabled && frontmatter.status) {
+    if (config.statusMapping && config.statusMapping.enabled && frontmatter.status) {
       // Try to map the metadata value to a symbol
       const mappedStatus = this.config.mapMetadataToSymbol(frontmatter.status);
       if (mappedStatus !== frontmatter.status) {
@@ -605,7 +615,7 @@ export class FileSource {
         console.log(`[FileSource] Mapped status '${frontmatter.status}' to '${mappedStatus}' for ${filePath}`);
       }
     }
-    
+
     // Extract standard task metadata
     const metadata: Partial<FileSourceTaskMetadata> = {
       dueDate: this.parseDate(frontmatter.dueDate || frontmatter.due),
@@ -619,7 +629,7 @@ export class FileSource {
       status: status,
       children: []
     };
-    
+
     return metadata;
   }
 
@@ -629,34 +639,34 @@ export class FileSource {
    */
   private mapSymbolToFileMetadata(symbol: string): string {
     const config = this.config.getConfig();
-    
+
     if (!config.statusMapping.enabled) {
       return symbol;
     }
-    
+
     // Map symbol back to preferred metadata value
     return this.config.mapSymbolToMetadata(symbol);
   }
-  
+
   /**
    * Parse date from various formats
    */
   private parseDate(dateValue: any): number | undefined {
     if (!dateValue) return undefined;
-    
+
     if (typeof dateValue === 'number') {
       return dateValue;
     }
-    
+
     if (typeof dateValue === 'string') {
       const parsed = Date.parse(dateValue);
       return isNaN(parsed) ? undefined : parsed;
     }
-    
+
     if (dateValue instanceof Date) {
       return dateValue.getTime();
     }
-    
+
     return undefined;
   }
 
@@ -665,7 +675,7 @@ export class FileSource {
    */
   private updateFileTaskCache(filePath: string, task: Task<FileSourceTaskMetadata>): void {
     const frontmatterHash = this.generateFrontmatterHash(filePath);
-    
+
     this.fileTaskCache.set(filePath, {
       fileTaskExists: true,
       frontmatterHash,
@@ -680,10 +690,10 @@ export class FileSource {
   private generateFrontmatterHash(filePath: string): string {
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     if (!file) return '';
-    
+
     const fileCache = this.app.metadataCache.getFileCache(file);
     if (!fileCache?.frontmatter) return '';
-    
+
     // Simple hash of frontmatter JSON
     const frontmatterStr = JSON.stringify(fileCache.frontmatter, Object.keys(fileCache.frontmatter).sort());
     return this.simpleHash(frontmatterStr);
@@ -724,19 +734,19 @@ export class FileSource {
    * Emit file task update event
    */
   private emitFileTaskUpdate(
-    action: 'created' | 'updated' | 'removed', 
+    action: 'created' | 'updated' | 'removed',
     task: Task<FileSourceTaskMetadata>
   ): void {
     const seq = Seq.next();
     this.lastUpdateSeq = seq;
-    
+
     emit(this.app, Events.FILE_TASK_UPDATED, {
       action,
       task,
       timestamp: Date.now(),
       seq
     });
-    
+
     console.log(`[FileSource] File task ${action}: ${task.filePath}`);
   }
 
@@ -744,26 +754,21 @@ export class FileSource {
    * Check if file is relevant for processing
    */
   private isRelevantFile(filePath: string): boolean {
-    const config = this.config.getConfig().advanced;
-    
-    // Check exclude patterns
-    for (const pattern of config.excludePatterns) {
-      // Simple pattern matching (could be enhanced with glob patterns in Phase 2)
-      if (filePath.includes(pattern.replace('**/', '').replace('/**', ''))) {
-        return false;
-      }
+    // Use centralized FileFilterManager for 'file' scope filtering if available
+    if (this.fileFilterManager && !this.fileFilterManager.shouldIncludePath(filePath, "file")) {
+      return false;
     }
-    
-    // Only process markdown files for now
+
+    // Only process markdown files for now (additional file type support can be added later)
     if (!filePath.endsWith('.md')) {
       return false;
     }
-    
+
     // Skip system/hidden files
     if (filePath.startsWith('.') || filePath.includes('/.')) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -772,18 +777,24 @@ export class FileSource {
    */
   private async performInitialScan(): Promise<void> {
     console.log("[FileSource] Performing initial scan...");
-    
+
     const mdFiles = this.app.vault.getMarkdownFiles();
+    console.log(`[FileSource] Found ${mdFiles.length} markdown files to check`);
+
     let scannedCount = 0;
     let taskCount = 0;
-    
+    let relevantCount = 0;
+
     for (const file of mdFiles) {
       if (this.isRelevantFile(file.path)) {
+        relevantCount++;
         try {
           const shouldBeTask = await this.shouldCreateFileTask(file.path);
           if (shouldBeTask) {
-            await this.createFileTask(file.path);
-            taskCount++;
+            const task = await this.createFileTask(file.path);
+            if (task) {
+              taskCount++;
+            }
           }
           scannedCount++;
         } catch (error) {
@@ -791,8 +802,22 @@ export class FileSource {
         }
       }
     }
-    
-    console.log(`[FileSource] Initial scan complete: ${scannedCount} files scanned, ${taskCount} file tasks created`);
+
+    console.log(`[FileSource] Initial scan complete: ${mdFiles.length} total files, ${relevantCount} relevant, ${scannedCount} scanned, ${taskCount} file tasks created`);
+
+    if (taskCount === 0 && relevantCount > 0) {
+      console.log(`[FileSource] No file tasks created. Check if your files match the configured recognition strategies:`);
+      const config = this.config.getConfig();
+      if (config.recognitionStrategies.metadata.enabled) {
+        console.log(`[FileSource] - Metadata strategy: requires frontmatter with fields: ${config.recognitionStrategies.metadata.taskFields.join(', ')}`);
+      }
+      if (config.recognitionStrategies.tags.enabled) {
+        console.log(`[FileSource] - Tag strategy: requires tags: ${config.recognitionStrategies.tags.taskTags.join(', ')}`);
+      }
+      if (config.recognitionStrategies.paths.enabled) {
+        console.log(`[FileSource] - Path strategy: requires files in paths: ${config.recognitionStrategies.paths.taskPaths.join(', ')}`);
+      }
+    }
   }
 
   /**
@@ -804,13 +829,13 @@ export class FileSource {
       this.destroy();
       return;
     }
-    
+
     if (newConfig.enabled && !this.isInitialized) {
       // FileSource is being enabled
       this.initialize();
       return;
     }
-    
+
     // Configuration changed while active - might need to rescan
     // This is a Phase 2 enhancement
     console.log("[FileSource] Configuration updated");
@@ -839,18 +864,25 @@ export class FileSource {
   }
 
   /**
+   * Alias for updateConfiguration to match expected interface
+   */
+  updateConfig(config: Partial<FileSourceConfiguration>): void {
+    this.updateConfiguration(config);
+  }
+
+  /**
    * Force refresh of all file tasks
    */
   async refresh(): Promise<void> {
     if (!this.isInitialized || !this.config.isEnabled()) return;
-    
+
     console.log("[FileSource] Manual refresh triggered");
-    
+
     // Clear cache and re-scan
     this.fileTaskCache.clear();
     this.stats.trackedFileCount = 0;
     this.stats.recognitionBreakdown = { metadata: 0, tag: 0, template: 0, path: 0 };
-    
+
     await this.performInitialScan();
   }
 
@@ -859,24 +891,24 @@ export class FileSource {
    */
   destroy(): void {
     if (!this.isInitialized) return;
-    
+
     console.log("[FileSource] Destroying FileSource...");
-    
+
     // Clear all debouncing timeouts
     for (const timeout of this.pendingUpdates.values()) {
       clearTimeout(timeout);
     }
     this.pendingUpdates.clear();
-    
+
     // Clear event listeners
     for (const ref of this.eventRefs) {
       this.app.vault.offref(ref);
     }
     this.eventRefs = [];
-    
+
     // Clear cache
     this.fileTaskCache.clear();
-    
+
     // Reset statistics
     this.stats = {
       initialized: false,
@@ -885,7 +917,7 @@ export class FileSource {
       lastUpdate: 0,
       lastUpdateSeq: 0
     };
-    
+
     // Emit cleanup event
     emit(this.app, Events.FILE_TASK_REMOVED, {
       filePath: null, // Indicates all file tasks removed
@@ -893,9 +925,35 @@ export class FileSource {
       seq: Seq.next(),
       destroyed: true
     });
-    
+
     this.isInitialized = false;
-    
+
     console.log("[FileSource] Cleanup complete");
+  }
+
+  /**
+   * Cleanup resources and stop listening to events
+   */
+  cleanup(): void {
+    // Unsubscribe from all events
+    this.eventRefs.forEach(ref => {
+      if (this.app.workspace && typeof this.app.workspace.offref === 'function') {
+        this.app.workspace.offref(ref);
+      }
+    });
+    this.eventRefs = [];
+
+    // Clear pending updates
+    this.pendingUpdates.forEach(timeout => clearTimeout(timeout));
+    this.pendingUpdates.clear();
+
+    // Clear cache
+    this.fileTaskCache.clear();
+
+    // Reset state
+    this.isInitialized = false;
+    this.stats.initialized = false;
+
+    console.log("[FileSource] Cleaned up and stopped");
   }
 }

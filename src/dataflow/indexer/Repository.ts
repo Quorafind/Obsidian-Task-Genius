@@ -15,7 +15,7 @@ export class Repository {
   private sourceSeq: number = 0; // Track source sequence to differentiate events
   private icsEvents: Task[] = []; // Store ICS events separately
   private fileTasks = new Map<string, Task>(); // Store file-level tasks
-  
+
   // Persistence queue management
   private persistQueue = new Set<string>();
   private persistTimer: NodeJS.Timeout | null = null;
@@ -34,27 +34,34 @@ export class Repository {
     this.storage = new Storage(app.appId || "obsidian-task-genius", "1.0.0");
   }
 
+	  /** Allow orchestrator to pass a central FileFilterManager down to indexer */
+	  public setFileFilterManager(filterManager: any) {
+		// TaskIndexer has setFileFilterManager API
+		(this.indexer as any).setFileFilterManager?.(filterManager);
+	  }
+
+
   /**
    * Initialize the repository (load persisted data if available)
    */
   async initialize(): Promise<void> {
     console.log("[Repository] Initializing repository...");
-    
+
     try {
       // Try to load consolidated index from storage
       console.log("[Repository] Attempting to load consolidated index from storage...");
       const consolidated = await this.storage.loadConsolidated();
-      
+
       if (consolidated && consolidated.data) {
         // Restore the index from persisted data
-        const snapshotTaskCount = consolidated.data?.tasks ? 
+        const snapshotTaskCount = consolidated.data?.tasks ?
           (consolidated.data.tasks instanceof Map ? consolidated.data.tasks.size : Object.keys(consolidated.data.tasks).length) : 0;
         console.log(`[Repository] Found persisted snapshot with ${snapshotTaskCount} tasks, restoring...`);
         await this.indexer.restoreFromSnapshot(consolidated.data);
-        
+
         const taskCount = await this.indexer.getTotalTaskCount();
         console.log(`[Repository] Index restored successfully with ${taskCount} tasks`);
-        
+
         // Emit cache ready event
         emit(this.app, Events.CACHE_READY, {
           initial: true,
@@ -64,7 +71,7 @@ export class Repository {
       } else {
         console.log("[Repository] No persisted data found, starting with empty index");
       }
-      
+
       // Load ICS events from storage
       console.log("[Repository] Loading ICS events from storage...");
       this.icsEvents = await this.storage.loadIcsEvents();
@@ -85,20 +92,20 @@ export class Repository {
   async updateFile(filePath: string, tasks: Task[], sourceSeq?: number): Promise<void> {
     // Check if tasks have actually changed
     const existingAugmented = await this.storage.loadAugmented(filePath);
-    const hasChanges = !existingAugmented || 
+    const hasChanges = !existingAugmented ||
       JSON.stringify(tasks) !== JSON.stringify(existingAugmented.data);
-    
+
     // Always update the in-memory index for consistency
     await this.indexer.updateIndexWithTasks(filePath, tasks);
-    
+
     // Always store augmented tasks to cache
     await this.storage.storeAugmented(filePath, tasks);
-    
+
     // Schedule persist operation for single file updates
     if (hasChanges) {
       this.schedulePersist(filePath);
     }
-    
+
     // Only emit update event if there are actual changes
     if (hasChanges) {
       this.lastSequence = Seq.next();
@@ -129,12 +136,12 @@ export class Repository {
     for (const [filePath, tasks] of updates) {
       // Check if tasks have actually changed
       const existingAugmented = await this.storage.loadAugmented(filePath);
-      const hasChanges = !existingAugmented || 
+      const hasChanges = !existingAugmented ||
         JSON.stringify(tasks) !== JSON.stringify(existingAugmented.data);
-      
+
       await this.indexer.updateIndexWithTasks(filePath, tasks);
       await this.storage.storeAugmented(filePath, tasks);
-      
+
       if (hasChanges) {
         changedFiles.push(filePath);
         totalChanged += tasks.length;
@@ -170,10 +177,10 @@ export class Repository {
    */
   async removeFile(filePath: string): Promise<void> {
     await this.indexer.removeTasksFromFile(filePath);
-    
+
     // Clear storage for this file
     await this.storage.clearFile(filePath);
-    
+
     // Emit update event
     this.lastSequence = Seq.next();
     emit(this.app, Events.TASK_CACHE_UPDATED, {
@@ -192,13 +199,13 @@ export class Repository {
    */
   async updateIcsEvents(events: Task[], sourceSeq?: number): Promise<void> {
     console.log(`[Repository] Updating ${events.length} ICS events`);
-    
+
     // Store the new ICS events
     this.icsEvents = events;
-    
+
     // Store ICS events to persistence
     await this.storage.storeIcsEvents(events);
-    
+
     // Emit update event to notify views
     this.lastSequence = Seq.next();
     emit(this.app, Events.TASK_CACHE_UPDATED, {
@@ -238,12 +245,12 @@ export class Repository {
   async byProject(project: string): Promise<Task[]> {
     const taskIds = await this.indexer.getTaskIdsByProject(project);
     const fileTasks = await this.getTasksByIds(taskIds);
-    
+
     // Also filter ICS events by project if they have one
-    const icsProjectTasks = this.icsEvents.filter(task => 
+    const icsProjectTasks = this.icsEvents.filter(task =>
       task.metadata?.project === project
     );
-    
+
     return [...fileTasks, ...icsProjectTasks];
   }
 
@@ -254,15 +261,15 @@ export class Repository {
     const taskIdSets = await Promise.all(
       tags.map(tag => this.indexer.getTaskIdsByTag(tag))
     );
-    
+
     // Find intersection of all tag sets
     if (taskIdSets.length === 0) return [];
-    
+
     let intersection = new Set(taskIdSets[0]);
     for (let i = 1; i < taskIdSets.length; i++) {
       intersection = new Set([...intersection].filter(id => taskIdSets[i].has(id)));
     }
-    
+
     return this.getTasksByIds(intersection);
   }
 
@@ -277,31 +284,31 @@ export class Repository {
   /**
    * Get tasks by date range
    */
-  async byDateRange(opts: { 
-    from?: number; 
-    to?: number; 
-    field?: "due" | "start" | "scheduled" 
+  async byDateRange(opts: {
+    from?: number;
+    to?: number;
+    field?: "due" | "start" | "scheduled"
   }): Promise<Task[]> {
     const field = opts.field || "due";
     const cache = await this.indexer.getCache();
-    
+
     const dateIndex = field === "due" ? cache.dueDate :
                      field === "start" ? cache.startDate :
                      cache.scheduledDate;
-    
+
     const taskIds = new Set<string>();
-    
+
     for (const [dateStr, ids] of dateIndex) {
       const date = new Date(dateStr).getTime();
-      
+
       if (opts.from && date < opts.from) continue;
       if (opts.to && date > opts.to) continue;
-      
+
       for (const id of ids) {
         taskIds.add(id);
       }
     }
-    
+
     return this.getTasksByIds(taskIds);
   }
 
@@ -330,22 +337,22 @@ export class Repository {
     byStatus: Map<boolean, number>;
   }> {
     const cache = await this.indexer.getCache();
-    
+
     const byProject = new Map<string, number>();
     for (const [project, ids] of cache.projects) {
       byProject.set(project, ids.size);
     }
-    
+
     const byTag = new Map<string, number>();
     for (const [tag, ids] of cache.tags) {
       byTag.set(tag, ids.size);
     }
-    
+
     const byStatus = new Map<boolean, number>();
     for (const [status, ids] of cache.completed) {
       byStatus.set(status, ids.size);
     }
-    
+
     return {
       total: cache.tasks.size,
       byProject,
@@ -367,12 +374,12 @@ export class Repository {
    */
   private schedulePersist(source: string): void {
     this.persistQueue.add(source);
-    
+
     // Check if we should persist immediately
-    const shouldPersistNow = 
+    const shouldPersistNow =
       this.persistQueue.size >= this.MAX_QUEUE_SIZE ||
       (Date.now() - this.lastPersistTime) > this.MAX_PERSIST_INTERVAL;
-    
+
     if (shouldPersistNow) {
       this.executePersist();
     } else {
@@ -394,7 +401,7 @@ export class Repository {
       clearTimeout(this.persistTimer);
       this.persistTimer = null;
     }
-    
+
     if (this.persistQueue.size > 0) {
       const queueSize = this.persistQueue.size;
       console.log(`[Repository] Persisting after ${queueSize} changes`);
@@ -439,14 +446,14 @@ export class Repository {
   private async getTasksByIds(taskIds: Set<string> | string[]): Promise<Task[]> {
     const tasks: Task[] = [];
     const ids = Array.isArray(taskIds) ? taskIds : Array.from(taskIds);
-    
+
     for (const id of ids) {
       const task = await this.indexer.getTaskById(id);
       if (task) {
         tasks.push(task);
       }
     }
-    
+
     return tasks;
   }
 
@@ -464,13 +471,13 @@ export class Repository {
   async updateFileTask(task: Task): Promise<void> {
     const filePath = task.filePath;
     if (!filePath) return;
-    
+
     // Store the file task
     this.fileTasks.set(filePath, task);
-    
+
     // Schedule persist for file tasks
     this.schedulePersist(`file-task:${filePath}`);
-    
+
     // Emit update event
     this.lastSequence = Seq.next();
     emit(this.app, Events.TASK_CACHE_UPDATED, {
@@ -491,10 +498,10 @@ export class Repository {
   async getTaskById(taskId: string): Promise<Task | undefined> {
     // Get all tasks from the repository
     const allTasks = await this.all();
-    
+
     // Find the task by ID
     const task = allTasks.find(t => t.id === taskId);
-    
+
     return task;
   }
 
@@ -505,35 +512,35 @@ export class Repository {
   async updateSingleTask(updatedTask: Task): Promise<void> {
     const filePath = updatedTask.filePath;
     if (!filePath) return;
-    
+
     console.log(`[Repository] Updating single task: ${updatedTask.id} in ${filePath}`);
-    
+
     // Load existing augmented tasks for the file
     const existingAugmented = await this.storage.loadAugmented(filePath);
     if (!existingAugmented) {
       console.warn(`[Repository] No existing tasks found for ${filePath}, cannot update single task`);
       return;
     }
-    
+
     // Find and replace the task in the array
     const tasks = existingAugmented.data;
     const taskIndex = tasks.findIndex(t => t.id === updatedTask.id);
-    
+
     if (taskIndex === -1) {
       console.warn(`[Repository] Task ${updatedTask.id} not found in ${filePath}`);
       return;
     }
-    
+
     // Update the task
     tasks[taskIndex] = updatedTask;
-    
+
     // Update the index and storage
     await this.indexer.updateIndexWithTasks(filePath, tasks);
     await this.storage.storeAugmented(filePath, tasks);
-    
+
     // Schedule persist operation
     this.schedulePersist(filePath);
-    
+
     // Emit update event
     this.lastSequence = Seq.next();
     emit(this.app, Events.TASK_CACHE_UPDATED, {
@@ -546,7 +553,7 @@ export class Repository {
       seq: this.lastSequence,
       sourceSeq: undefined
     });
-    
+
     console.log(`[Repository] Single task ${updatedTask.id} updated successfully`);
   }
 }

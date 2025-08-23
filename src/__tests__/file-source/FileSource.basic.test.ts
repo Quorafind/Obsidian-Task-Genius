@@ -66,17 +66,14 @@ describe('FileSource', () => {
       fileTaskProperties: {
         contentSource: 'filename',
         stripExtension: true,
-        defaultStatus: ' '
+        defaultStatus: ' ',
+        preferFrontmatterTitle: true
       },
       performance: {
         enableWorkerProcessing: false,
         enableCaching: true,
         cacheTTL: 300000
       },
-      advanced: {
-        excludePatterns: ['**/.obsidian/**'],
-        maxFileSize: 1048576
-      }
     };
 
     fileSource = new FileSource(mockApp, config);
