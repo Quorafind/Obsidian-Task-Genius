@@ -39,13 +39,18 @@ export class WorkerOrchestrator {
   private workerFailureCount = 0;
   private readonly maxWorkerFailures = 10;
   private workersDisabled = false;
+  
+  // Configuration options
+  private enableWorkerProcessing = true;
 
   constructor(
     taskWorkerManager: TaskWorkerManager,
-    projectWorkerManager: ProjectDataWorkerManager
+    projectWorkerManager: ProjectDataWorkerManager,
+    options?: { enableWorkerProcessing?: boolean }
   ) {
     this.taskWorkerManager = taskWorkerManager;
     this.projectWorkerManager = projectWorkerManager;
+    this.enableWorkerProcessing = options?.enableWorkerProcessing ?? true;
   }
 
   /**
@@ -55,8 +60,8 @@ export class WorkerOrchestrator {
     const startTime = Date.now();
     
     try {
-      // Check if workers are available and not circuit-broken
-      if (this.workersDisabled) {
+      // Check if workers are enabled and available
+      if (!this.enableWorkerProcessing || this.workersDisabled) {
         return await this.parseFileTasksMainThread(file);
       }
 
@@ -92,7 +97,7 @@ export class WorkerOrchestrator {
     const startTime = Date.now();
     
     try {
-      if (this.workersDisabled || files.length === 0) {
+      if (!this.enableWorkerProcessing || this.workersDisabled || files.length === 0) {
         return await this.batchParseMainThread(files);
       }
 
@@ -272,6 +277,34 @@ export class WorkerOrchestrator {
   }
 
   /**
+   * Update worker processing enabled state
+   * Allows dynamic enabling/disabling of worker processing without restart
+   */
+  setWorkerProcessingEnabled(enabled: boolean): void {
+    this.enableWorkerProcessing = enabled;
+    if (!enabled) {
+      console.log("WorkerOrchestrator: Worker processing disabled, will use main thread parsing");
+    } else {
+      console.log("WorkerOrchestrator: Worker processing enabled");
+      // Reset circuit breaker if re-enabling
+      if (this.workersDisabled && this.workerFailureCount < this.maxWorkerFailures) {
+        this.workersDisabled = false;
+        this.workerFailureCount = 0;
+        console.log("WorkerOrchestrator: Circuit breaker reset");
+      }
+    }
+  }
+
+  /**
+   * Get current worker processing status
+   */
+  isWorkerProcessingEnabled(): boolean {
+    return this.enableWorkerProcessing && !this.workersDisabled;
+  }
+
+  // Removed duplicate getMetrics() - using the more comprehensive one below
+
+  /**
    * Fallback implementations for main thread processing
    */
   private async parseFileTasksMainThread(file: TFile): Promise<Task[]> {
@@ -394,7 +427,7 @@ export class WorkerOrchestrator {
   /**
    * Get performance metrics
    */
-  getMetrics() {
+  getMetrics(): any {
     const totalTasks = this.metrics.taskParsingSuccess + this.metrics.taskParsingFailures;
     const totalProjects = this.metrics.projectDataSuccess + this.metrics.projectDataFailures;
     

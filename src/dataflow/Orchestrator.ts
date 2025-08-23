@@ -14,6 +14,7 @@ import { IcsSource } from "./sources/IcsSource";
 import { FileSource } from "./sources/FileSource";
 import { TaskWorkerManager } from "./workers/TaskWorkerManager";
 import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
+import { FileFilterManager } from "../managers/file-filter-manager";
 
 // Parser imports
 import { parseMarkdown } from "./parsers/MarkdownEntry";
@@ -35,6 +36,10 @@ export class DataflowOrchestrator {
 	private workerOrchestrator: WorkerOrchestrator;
 	private obsidianSource: ObsidianSource;
 	public icsSource: IcsSource;
+
+		// Central file filter manager
+		private fileFilterManager?: FileFilterManager;
+
 	private fileSource: FileSource | null = null;
 
 	// Event references for cleanup
@@ -66,16 +71,24 @@ export class DataflowOrchestrator {
 		this.augmentor = new Augmentor();
 		this.storage = this.repository.getStorage();
 
-		// Initialize worker orchestrator
+		// Initialize worker orchestrator with settings
 		const taskWorkerManager = new TaskWorkerManager(vault, metadataCache);
 		const projectWorkerManager = new ProjectDataWorkerManager({
 			vault,
 			metadataCache,
 			projectConfigManager: this.projectResolver.getConfigManager(),
 		});
+
+		// Get worker processing setting from fileSource or fileParsingConfig
+		const enableWorkerProcessing =
+			this.plugin.settings?.fileSource?.performance?.enableWorkerProcessing ??
+			this.plugin.settings?.fileParsingConfig?.enableWorkerProcessing ??
+			true;
+
 		this.workerOrchestrator = new WorkerOrchestrator(
 			taskWorkerManager,
-			projectWorkerManager
+			projectWorkerManager,
+			{ enableWorkerProcessing }
 		);
 
 		// Initialize Obsidian event source
@@ -85,13 +98,44 @@ export class DataflowOrchestrator {
 		this.icsSource = new IcsSource(app, () => this.plugin.getIcsManager());
 
 		// Initialize FileSource (conditionally based on settings)
-		if (this.plugin.settings?.fileSourceConfig?.enabled) {
+		if (this.plugin.settings?.fileSource?.enabled) {
 			this.fileSource = new FileSource(
 				app,
-				this.plugin.settings.fileSourceConfig
+				this.plugin.settings.fileSource,
+				this.fileFilterManager
 			);
 		}
 	}
+
+		private migrateExcludePatternsToRules(settings: any) {
+			try {
+				const patterns: string[] = settings?.fileSource?.advanced?.excludePatterns || [];
+				if (!patterns.length) return;
+				settings.fileSource = settings.fileSource || {};
+				settings.fileFilter = settings.fileFilter || { enabled: true, mode: "blacklist", rules: [] };
+				settings.fileFilter.rules = settings.fileFilter.rules || [];
+				const existing = new Set(
+					(settings.fileFilter.rules as any[]).filter(Boolean).map((r) => `${r.type}:${r.path}`)
+				);
+				for (const p of patterns) {
+					const key = `pattern:${p}`;
+					if (!existing.has(key)) {
+						settings.fileFilter.rules.push({ type: "pattern", path: p, enabled: true, scope: "file" });
+						existing.add(key);
+					}
+				}
+				// Clear migrated patterns so they don’t keep reappearing
+				settings.fileSource.advanced = settings.fileSource.advanced || {};
+				settings.fileSource.advanced.excludePatterns = [];
+				// Migrate legacy excludePatterns to File Filter rules (pattern, scope=file)
+				this.migrateExcludePatternsToRules(this.plugin.settings);
+
+				console.info("[DataflowOrchestrator] Migrated fileSource.advanced.excludePatterns to fileFilter.pattern rules (scope=file)");
+			} catch (e) {
+				console.warn("[DataflowOrchestrator] Failed to migrate excludePatterns", e);
+			}
+		}
+
 
 	/**
 	 * Initialize the orchestrator (load persisted data)
@@ -102,11 +146,17 @@ export class DataflowOrchestrator {
 
 		try {
 			// Initialize QueryAPI and Repository
-			console.log(
-				"[DataflowOrchestrator] Initializing QueryAPI and Repository..."
-			);
+			console.log("[DataflowOrchestrator] Initializing QueryAPI and Repository...");
+
+			// Initialize FileFilterManager from settings
+			const ffSettings = this.plugin.settings?.fileFilter;
+			if (ffSettings) {
+				this.fileFilterManager = new FileFilterManager(ffSettings);
+				// Provide to repository's indexer for inline filtering
+				(this.repository as any).setFileFilterManager?.(this.fileFilterManager);
+			}
 			await this.queryAPI.initialize();
-			
+
 			// Ensure cache is populated for synchronous access
 			await this.queryAPI.ensureCache();
 
@@ -529,6 +579,61 @@ export class DataflowOrchestrator {
 	}
 
 	/**
+	 * Update settings and propagate to components
+	 */
+	updateSettings(settings: any): void {
+		// Update worker processing setting
+		const enableWorkerProcessing =
+			settings?.fileSource?.performance?.enableWorkerProcessing ??
+			settings?.fileParsingConfig?.enableWorkerProcessing ??
+			true;
+
+		if (this.workerOrchestrator) {
+			this.workerOrchestrator.setWorkerProcessingEnabled(enableWorkerProcessing);
+		}
+
+		// Update FileSource if needed
+		if (settings?.fileSource?.enabled && !this.fileSource) {
+			// Initialize FileSource if enabled but not yet created
+			this.fileSource = new FileSource(
+				this.app,
+				settings.fileSource,
+				this.fileFilterManager
+			);
+			this.fileSource.initialize();
+		} else if (!settings?.fileSource?.enabled && this.fileSource) {
+			// Disable FileSource if it exists but is disabled
+			this.fileSource.cleanup();
+			this.fileSource = null;
+		} else if (this.fileSource && settings?.fileSource) {
+			// Update existing FileSource configuration
+			this.fileSource.updateConfig(settings.fileSource);
+		}
+
+		// Update FileFilterManager
+		if (settings?.fileFilter) {
+			if (!this.fileFilterManager) {
+				this.fileFilterManager = new FileFilterManager(settings.fileFilter);
+			} else {
+				this.fileFilterManager.updateConfig(settings.fileFilter);
+			}
+		}
+	}
+	/**
+	 * Get worker processing status and metrics
+	 */
+	getWorkerStatus(): { enabled: boolean; metrics?: any } {
+		if (!this.workerOrchestrator) {
+			return { enabled: false };
+		}
+
+		return {
+			enabled: this.workerOrchestrator.isWorkerProcessingEnabled(),
+			metrics: this.workerOrchestrator.getMetrics()
+		};
+	}
+
+	/**
 	 * Parse a file based on its type using ConfigurableTaskParser
 	 */
 	private async parseFile(
@@ -838,10 +943,12 @@ export class DataflowOrchestrator {
 					const projectData = await this.projectResolver.get(
 						filePath
 					);
-					const rawTasks = await this.parseFile(
+						// Apply file filter scope: skip inline parsing when scope === 'file'
+						const shouldParseInline = !this.fileFilterManager || this.fileFilterManager.shouldIncludePath(filePath, "inline");
+					const rawTasks = shouldParseInline ? await this.parseFile(
 						file,
 						projectData.tgProject
-					);
+					) : [];
 
 					// Store raw tasks with mtime
 					await this.storage.storeRaw(

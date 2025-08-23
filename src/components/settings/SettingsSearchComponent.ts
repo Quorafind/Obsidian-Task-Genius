@@ -137,7 +137,7 @@ export class SettingsSearchComponent extends Component {
 	/**
 	 * 执行搜索
 	 */
-	private performSearch(query: string): void {
+	public performSearch(query: string): void {
 		console.log(`[SettingsSearch] Performing search for: "${query}"`);
 
 		if (query.length === 0) {
