@@ -98,6 +98,7 @@ import { autoDateManagerExtension } from "./editor-extensions/date-time/date-man
 import { taskMarkCleanupExtension } from "./editor-extensions/task-operations/mark-cleanup";
 import { ViewManager } from "./pages/ViewManager";
 import { IcsManager } from "./managers/ics-manager";
+import { ObsidianUriHandler } from "./utils/ObsidianUriHandler";
 import { VersionManager } from "./managers/version-manager";
 import { RebuildProgressManager } from "./managers/rebuild-progress-manager";
 import { OnboardingConfigManager } from "./managers/onboarding-manager";
@@ -245,6 +246,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// MCP Server manager instance (desktop only)
 	mcpServerManager?: McpServerManager;
 
+	// URI handler instance
+	uriHandler?: ObsidianUriHandler;
+
 	// OnCompletion manager instance
 	onCompletionManager?: OnCompletionManager;
 
@@ -269,6 +273,10 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		// Initialize global suggest manager
 		this.globalSuggestManager = new SuggestManager(this.app, this);
+
+		// Initialize URI handler
+		this.uriHandler = new ObsidianUriHandler(this);
+		this.uriHandler.register();
 
 		// Initialize rebuild progress manager
 		this.rebuildProgressManager = new RebuildProgressManager();

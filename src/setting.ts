@@ -44,6 +44,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 	// Tabs management
 	private currentTab: string = "general";
+	public containerEl: HTMLElement;
 	private tabs: Array<{
 		id: string;
 		name: string;
@@ -202,7 +203,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		this.applyDebounceTimer = window.setTimeout(async () => {
 			await plugin.saveSettings();
 
-			// Parsing configuration is now handled by dataflow
+			// Update dataflow orchestrator with new settings
+			if (plugin.dataflowOrchestrator) {
+				plugin.dataflowOrchestrator.updateSettings(plugin.settings);
+			}
 
 			// Trigger view updates to reflect setting changes
 			await plugin.triggerViewUpdate();
@@ -392,6 +396,57 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	public openTab(tabId: string) {
 		this.currentTab = tabId;
 		this.display();
+	}
+
+	/**
+	 * Navigate to a specific tab via URI
+	 */
+	public navigateToTab(tabId: string, section?: string, search?: string): void {
+		// Set the current tab
+		this.currentTab = tabId;
+		
+		// Re-display the settings
+		this.display();
+		
+		// Wait for display to complete
+		setTimeout(() => {
+			// If search is provided, perform search
+			if (search && this.searchComponent) {
+				this.searchComponent.performSearch(search);
+			}
+			
+			// If section is provided, scroll to it
+			if (section) {
+				this.scrollToSection(section);
+			}
+		}, 100);
+	}
+
+	/**
+	 * Scroll to a specific section within the current tab
+	 */
+	private scrollToSection(sectionId: string): void {
+		// Look for headers containing the section ID
+		const headers = this.containerEl.querySelectorAll("h3, h4");
+		headers.forEach((header: HTMLElement) => {
+			const headerText = header.textContent?.toLowerCase();
+			if (headerText && headerText.includes(sectionId.replace("-", " "))) {
+				header.scrollIntoView({ behavior: "smooth", block: "start" });
+			}
+		});
+
+		// Special handling for MCP sections
+		if (sectionId === "cursor" && this.currentTab === "mcp-integration") {
+			const cursorSection = this.containerEl.querySelector(".mcp-client-section");
+			if (cursorSection) {
+				const header = cursorSection.querySelector(".mcp-client-header");
+				if (header && header.textContent?.includes("Cursor")) {
+					// Click to expand
+					(header as HTMLElement).click();
+					cursorSection.scrollIntoView({ behavior: "smooth", block: "start" });
+				}
+			}
+		}
 	}
 
 	private createTabSection(tabId: string): HTMLElement {

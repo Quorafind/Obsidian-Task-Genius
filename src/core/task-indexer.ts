@@ -112,7 +112,8 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 			this.vault.on("modify", (file) => {
 				if (
 					file instanceof TFile &&
-					isSupportedFileWithFilter(file, this.fileFilterManager)
+					// Inline parsing scope for indexer (inline tasks)
+					isSupportedFileWithFilter(file, this.fileFilterManager, "inline")
 				) {
 					this.queueFileForIndexing(file);
 				}
@@ -124,7 +125,8 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 			this.vault.on("delete", (file) => {
 				if (
 					file instanceof TFile &&
-					isSupportedFileWithFilter(file, this.fileFilterManager)
+					// Inline parsing scope for indexer (inline tasks)
+					isSupportedFileWithFilter(file, this.fileFilterManager, "inline")
 				) {
 					this.removeFileFromIndex(file);
 				}
@@ -136,7 +138,8 @@ export class TaskIndexer extends Component implements TaskIndexerInterface {
 			this.vault.on("create", (file) => {
 				if (
 					file instanceof TFile &&
-					isSupportedFileWithFilter(file, this.fileFilterManager)
+					// Inline parsing scope for indexer (inline tasks)
+					isSupportedFileWithFilter(file, this.fileFilterManager, "inline")
 				) {
 					this.queueFileForIndexing(file);
 				}
