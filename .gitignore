@@ -42,3 +42,7 @@ CLAUDE.md
 
 dist
 dist/*
+
+# Documentation site (separate repository)
+docs-site
+

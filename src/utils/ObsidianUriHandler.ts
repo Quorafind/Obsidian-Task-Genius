@@ -26,19 +26,34 @@ export class ObsidianUriHandler {
 	 * Register the URI handler with Obsidian
 	 */
 	register(): void {
+		// Register the main handler
 		this.plugin.registerObsidianProtocolHandler(
 			"task-genius",
 			async (params: UriParams) => {
 				await this.handleUri(params);
 			}
 		);
+
+		// Register specific action handlers for direct path access
+		// This allows both formats: obsidian://task-genius?action=settings
+		// and obsidian://task-genius/settings
+		const actions = ["settings", "create-task", "open-view"];
+		for (const action of actions) {
+			this.plugin.registerObsidianProtocolHandler(
+				`task-genius/${action}`,
+				async (params: UriParams) => {
+					// Set the action explicitly since it's in the path
+					await this.handleUri({ ...params, action });
+				}
+			);
+		}
 	}
 
 	/**
 	 * Handle incoming URI requests
 	 */
 	private async handleUri(params: UriParams): Promise<void> {
-		const { action, tab, section, search } = params;
+		const { action } = params;
 
 		// Default to settings action if not specified
 		const uriAction = action || "settings";
@@ -349,6 +364,7 @@ export class ObsidianUriHandler {
 
 	/**
 	 * Generate URI for settings
+	 * Uses the cleaner path format: obsidian://task-genius/settings?tab=...
 	 */
 	static generateSettingsUri(
 		tab?: string,
@@ -368,6 +384,7 @@ export class ObsidianUriHandler {
 
 	/**
 	 * Generate URI for creating a task
+	 * Uses the cleaner path format: obsidian://task-genius/create-task?content=...
 	 */
 	static generateCreateTaskUri(
 		content: string,
@@ -395,6 +412,7 @@ export class ObsidianUriHandler {
 
 	/**
 	 * Generate URI for opening a view
+	 * Uses the cleaner path format: obsidian://task-genius/open-view?type=...
 	 */
 	static generateOpenViewUri(viewType: string): string {
 		return `obsidian://task-genius/open-view?type=${viewType}`;
