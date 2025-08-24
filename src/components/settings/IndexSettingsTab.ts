@@ -23,6 +23,35 @@ export function renderIndexSettingsTab(
 		.setHeading();
 
 	// ========================================
+	// SECTION 0: Core Architecture Configuration
+	// ========================================
+	new Setting(containerEl)
+		.setName(t("Core Architecture"))
+		.setDesc(t("Configure the core data processing architecture."))
+		.setHeading();
+
+	new Setting(containerEl)
+		.setName(t("Enable Dataflow Architecture"))
+		.setDesc(
+			t(
+				"Use the modern Dataflow architecture for improved performance and reliability. This is the recommended setting for all users.",
+			),
+		)
+		.addToggle((toggle) => {
+			toggle.setValue(settingTab.plugin.settings.dataflowEnabled ?? true);
+			toggle.onChange(async (value) => {
+				settingTab.plugin.settings.dataflowEnabled = value;
+				await settingTab.plugin.saveSettings();
+
+				// Show restart notice
+				const restartNotice = new Notice(
+					t("Please restart Obsidian for the architecture change to take effect."),
+					8000
+				);
+			});
+		});
+
+	// ========================================
 	// SECTION 1: Inline Task Configuration
 	// ========================================
 	new Setting(containerEl)

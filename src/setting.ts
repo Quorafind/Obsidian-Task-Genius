@@ -36,6 +36,7 @@ import { renderFileFilterSettingsTab } from "./components/settings/FileFilterSet
 import { renderTimeParsingSettingsTab } from "./components/settings/TimeParsingSettingsTab";
 import { SettingsSearchComponent } from "./components/settings/SettingsSearchComponent";
 import { renderMcpIntegrationSettingsTab } from "./components/settings/McpIntegrationSettingsTab";
+import { IframeModal } from "./components/IframeModal";
 
 export class TaskProgressBarSettingTab extends PluginSettingTab {
 	plugin: TaskProgressBarPlugin;
@@ -404,17 +405,17 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	public navigateToTab(tabId: string, section?: string, search?: string): void {
 		// Set the current tab
 		this.currentTab = tabId;
-		
+
 		// Re-display the settings
 		this.display();
-		
+
 		// Wait for display to complete
 		setTimeout(() => {
 			// If search is provided, perform search
 			if (search && this.searchComponent) {
 				this.searchComponent.performSearch(search);
 			}
-			
+
 			// If section is provided, scroll to it
 			if (section) {
 				this.scrollToSection(section);
@@ -475,18 +476,43 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			const headerEl = section.createDiv();
 			headerEl.addClass("settings-tab-section-header");
 
-			const button = new ButtonComponent(headerEl)
+			// Left: How to use button (opens iframe modal with docs)
+			const howToBtn = new ButtonComponent(headerEl);
+			howToBtn.setClass("header-button");
+			howToBtn.setClass("how-to-button");
+			howToBtn
+				.onClick(() => {
+					const url = this.getHowToUseUrl(tabId);
+					try {
+						new IframeModal(this.app, url, `How to use — ${tabInfo?.name ?? tabId}`)
+							.open();
+					} catch (e) {
+						window.open(url);
+					}
+				});
+
+				const howToIconEl = howToBtn.buttonEl.createEl("span");
+				howToIconEl.addClass("header-button-icon");
+				setIcon(howToIconEl, "book");
+
+				const howToTextEl = howToBtn.buttonEl.createEl("span");
+				howToTextEl.addClass("header-button-text");
+				howToTextEl.setText(t("How to use"));
+
+			// Right: Back to main settings
+			const backBtn = new ButtonComponent(headerEl)
 				.setClass("header-button")
 				.onClick(() => {
 					this.currentTab = "general";
 					this.display();
 				});
+			backBtn.setClass("header-button-back");
 
-			const iconEl = button.buttonEl.createEl("span");
+			const iconEl = backBtn.buttonEl.createEl("span");
 			iconEl.addClass("header-button-icon");
 			setIcon(iconEl, "arrow-left");
 
-			const textEl = button.buttonEl.createEl("span");
+			const textEl = backBtn.buttonEl.createEl("span");
 			textEl.addClass("header-button-text");
 			textEl.setText(t("Back to main settings"));
 		}
@@ -601,6 +627,57 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// Initialize the correct tab state
 		this.switchToTab(this.currentTab);
 	}
+
+		private getHowToUseUrl(tabId: string): string {
+			const base = "https://taskgenius.md/docs";
+			switch (tabId) {
+				case "index":
+					return `${base}/task-view/indexer`;
+				case "view-settings":
+					return `${base}/task-view`;
+				case "file-filter":
+					return `${base}/file-filter`;
+				case "progress-bar":
+					return `${base}/progress-bars`;
+				case "task-status":
+					return `${base}/task-status`;
+				case "task-handler":
+					return `${base}/task-gutter`;
+				case "task-filter":
+					return `${base}/filtering`;
+				case "project":
+					return `${base}/project`;
+				case "date-priority":
+					return `${base}/date-priority`;
+				case "quick-capture":
+					return `${base}/quick-capture`;
+				case "task-timer":
+					return `${base}/task-timer`;
+				case "time-parsing":
+					return `${base}/time-parsing`;
+				case "workflow":
+					return `${base}/workflows`;
+				case "timeline-sidebar":
+					return `${base}/task-view/timeline-sidebar-view`;
+				case "reward":
+					return `${base}/reward`;
+				case "habit":
+					return `${base}/habit`;
+				case "ics-integration":
+					return `${base}/ics-support`;
+				case "mcp-integration":
+					return `${base}/mcp-integration`;
+				case "beta-test":
+					return `${base}/getting-started`;
+				case "experimental":
+					return `${base}/getting-started`;
+				case "about":
+					return `${base}/getting-started`;
+				default:
+					return `${base}/getting-started`;
+			}
+		}
+
 
 	private displayGeneralSettings(containerEl: HTMLElement): void {}
 
@@ -964,54 +1041,11 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			"These features are experimental and may not be stable. Use at your own risk.",
 		);
 
-		// Dataflow Settings
-		const dataflowSection = experimentalSection.createDiv();
-		dataflowSection.addClass("experimental-dataflow-section");
-
-		const dataflowHeading = dataflowSection.createEl("h3");
-		dataflowHeading.setText("New Dataflow Architecture");
-		dataflowHeading.addClass("experimental-subsection-heading");
-
-		// Enable dataflow setting
-		new Setting(dataflowSection)
-			.setName("Enable Dataflow Architecture")
-			.setDesc(
-				"Enable the new dataflow-based task processing system. This is an experimental feature that replaces the current TaskManager.",
-			)
-			.addToggle((toggle) => {
-				toggle
-					.setValue(
-						this.plugin.settings.experimental?.dataflowEnabled ||
-							false,
-					)
-					.onChange(async (value) => {
-						if (!this.plugin.settings.experimental) {
-							this.plugin.settings.experimental = {
-								dataflowEnabled: false,
-							};
-						}
-						this.plugin.settings.experimental.dataflowEnabled =
-							value;
-						await this.plugin.saveSettings();
-
-						// Show restart notice
-						if (value) {
-							const restartNotice = dataflowSection.createDiv();
-							restartNotice.addClass(
-								"experimental-restart-notice",
-							);
-							restartNotice.setText(
-								"⚠️ A restart may be required for the dataflow architecture to take full effect.",
-							);
-						}
-					});
-			});
-
-		// Dataflow info
-		const infoEl = dataflowSection.createDiv();
-		infoEl.addClass("experimental-info");
-		infoEl.setText(
-			"The new dataflow architecture provides improved performance and scalability for task processing. It includes better caching, worker-based processing, and more efficient data structures.",
+		// Future experimental features will be added here
+		const placeholderEl = experimentalSection.createDiv();
+		placeholderEl.addClass("experimental-placeholder");
+		placeholderEl.setText(
+			"No experimental features are currently available. Check back in future updates for new experimental functionality.",
 		);
 	}
 }

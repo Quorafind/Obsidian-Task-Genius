@@ -46,5 +46,5 @@ export async function createDataflow(
  * Check if dataflow is enabled in settings
  */
 export function isDataflowEnabled(plugin: TaskProgressBarPlugin): boolean {
-  return plugin.settings.experimental?.dataflowEnabled ?? false;
+  return plugin.settings.dataflowEnabled ?? true;
 }

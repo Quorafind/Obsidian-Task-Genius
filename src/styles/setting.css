@@ -397,8 +397,9 @@
 
 .task-genius-settings .settings-tab-section-header {
 	display: flex;
+	flex-direction: row-reverse;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
 	margin-top: var(--size-4-2);
 	margin-bottom: var(--size-4-2);
 }

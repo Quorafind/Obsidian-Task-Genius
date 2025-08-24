@@ -600,6 +600,9 @@ export interface McpServerConfig {
 
 /** Define the main settings structure */
 export interface TaskProgressBarSettings {
+	// Core Architecture Settings
+	dataflowEnabled: boolean;
+
 	// General Settings (Example)
 	progressBarDisplayMode: "none" | "graphical" | "text" | "both";
 	supportHoverToShowProgressInfo: boolean;
@@ -754,7 +757,7 @@ export interface TaskProgressBarSettings {
 
 	// Experimental Settings
 	experimental?: {
-		dataflowEnabled: boolean;
+		// Reserved for future experimental features
 	};
 
 	// Onboarding Settings
@@ -772,6 +775,9 @@ export interface TaskProgressBarSettings {
 
 /** Define the default settings */
 export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
+	// Core Architecture Defaults
+	dataflowEnabled: true,
+
 	// General Defaults
 	progressBarDisplayMode: "both",
 	supportHoverToShowProgressInfo: false,
@@ -1482,7 +1488,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 
 	// Experimental Defaults
 	experimental: {
-		dataflowEnabled: false
+		// Reserved for future experimental features
 	},
 
 	// Onboarding Defaults

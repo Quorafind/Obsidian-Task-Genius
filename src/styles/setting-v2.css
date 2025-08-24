@@ -187,3 +187,11 @@
 .task-genius-date-examples-table tr:hover td {
 	background: var(--background-primary-alt);
 }
+
+
+.task-genius-iframe-modal {
+	width: 90%;
+	max-width: 1000px;
+	max-height: 90vh;
+	overflow-y: auto;
+}

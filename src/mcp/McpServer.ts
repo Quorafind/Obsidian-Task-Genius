@@ -608,7 +608,7 @@ export class McpServer {
 	private async executeTool(toolName: string, args: any): Promise<any> {
 		try {
 			// Ensure data source is available before executing tools
-			if (this.plugin.settings?.experimental?.dataflowEnabled) {
+			if (this.plugin.settings?.dataflowEnabled) {
 				const queryAPI = new (require("../dataflow/api/QueryAPI").QueryAPI)(this.plugin.app, this.plugin.app.vault, this.plugin.app.metadataCache);
 				// Rebind bridge if it's not initialized yet
 				if (!this.taskBridge) {

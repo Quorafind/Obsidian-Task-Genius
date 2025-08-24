@@ -61,10 +61,10 @@ src/dataflow/
 - Decoupled components communicate via events
 - Event sequence tracking prevents circular updates
 
-### 3. Progressive Migration
-- Feature flag (`dataflowEnabled`) for safe rollout
-- Backward compatibility maintained
-- Gradual view migration support
+### 3. Production Ready
+- Core setting (`dataflowEnabled`) enabled by default
+- Full backward compatibility maintained
+- Complete feature parity achieved
 
 ### 4. Unified Data Pipeline
 - All data sources flow through the same architecture
@@ -207,10 +207,10 @@ OR (pending integration)
 - ✅ Phase F: ICS integration through dataflow
 
 ### Current Architecture State
-- **Default Mode**: Dataflow is now the default
-- **Legacy Support**: TaskManager available for fallback
+- **Default Mode**: Dataflow is now the default (enabled by default)
+- **Legacy Support**: TaskManager fully replaced by Dataflow
 - **External Data**: ICS events integrated seamlessly
-- **File Recognition**: FileSource implemented but pending integration
+- **File Recognition**: FileSource fully integrated and operational
 - **Performance**: Optimized with caching and workers
 - **Stability**: Loop prevention and error handling
 
@@ -219,9 +219,7 @@ OR (pending integration)
 ### Enabling Dataflow
 ```typescript
 // In settings (now default)
-experimental: {
-  dataflowEnabled: true
-}
+dataflowEnabled: true
 ```
 
 ### Querying Tasks
@@ -306,9 +304,13 @@ The FileSource component has been fully integrated into the Orchestrator:
 3. ✅ Extend Repository to handle file tasks separately from regular tasks
 4. ✅ Update QueryAPI to merge file tasks in query results
 5. ✅ Implement caching strategy to avoid redundant project resolution
+6. ✅ Complete template and path recognition strategies
+7. ✅ Add removeFileTask method to Repository
 
-**Bug Fix Applied**: Fixed configuration path mismatch where Orchestrator was checking 
-`fileSourceConfig` instead of `fileSource` in settings (fixed in Orchestrator.ts lines 88-91)
+**Bug Fixes Applied**: 
+- Fixed configuration path mismatch where Orchestrator was checking `fileSourceConfig` instead of `fileSource` in settings
+- Added missing removeFileTask method to Repository for proper file task cleanup
+- Completed template recognition strategy implementation
 
 ### Adding New Features
 1. Implement in dataflow architecture first

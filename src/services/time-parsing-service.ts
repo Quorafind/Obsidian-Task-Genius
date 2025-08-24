@@ -1,5 +1,12 @@
 // Use require for chrono-node to avoid import issues in browser environment
 import * as chrono from "chrono-node";
+import type {
+	TimeComponent,
+	EnhancedParsedTimeResult,
+	EnhancedTimeExpression,
+	EnhancedTimeParsingConfig,
+	TimeParsingError,
+} from "../types/time-parsing";
 
 export interface ParsedTimeResult {
 	startDate?: Date;
@@ -45,11 +52,23 @@ export interface TimeParsingConfig {
 }
 
 export class TimeParsingService {
-	private config: TimeParsingConfig;
-	private parseCache: Map<string, ParsedTimeResult> = new Map();
+	private config: TimeParsingConfig | EnhancedTimeParsingConfig;
+	private parseCache: Map<string, ParsedTimeResult | EnhancedParsedTimeResult> = new Map();
 	private maxCacheSize: number = 100;
+	
+	// Time pattern regexes
+	private readonly TIME_PATTERNS = {
+		// 24-hour format: 12:00, 12:00:00
+		TIME_24H: /\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g,
+		// 12-hour format: 1:30 PM, 1:30:00 PM
+		TIME_12H: /\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g,
+		// Time range: 12:00-13:00, 12:00~13:00, 12:00 - 13:00
+		TIME_RANGE: /\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*[-~～]\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g,
+		// Time range with 12-hour format
+		TIME_RANGE_12H: /\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)?\s*[-~～]\s*(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g,
+	};
 
-	constructor(config: TimeParsingConfig) {
+	constructor(config: TimeParsingConfig | EnhancedTimeParsingConfig) {
 		this.config = config;
 	}
 
@@ -80,11 +99,214 @@ export class TimeParsingService {
 	}
 
 	/**
+	 * Parse time component from text (e.g., "12:00", "1:30 PM")
+	 * @param timeText - Time text to parse
+	 * @returns TimeComponent or null if invalid
+	 */
+	private parseTimeComponent(timeText: string): TimeComponent | null {
+		// Try 24-hour format first
+		const match24h = timeText.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+		if (match24h) {
+			return {
+				hour: parseInt(match24h[1], 10),
+				minute: parseInt(match24h[2], 10),
+				second: match24h[3] ? parseInt(match24h[3], 10) : undefined,
+				originalText: timeText,
+				isRange: false,
+			};
+		}
+
+		// Try 12-hour format
+		const match12h = timeText.match(/^(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)$/);
+		if (match12h) {
+			let hour = parseInt(match12h[1], 10);
+			const minute = parseInt(match12h[2], 10);
+			const second = match12h[3] ? parseInt(match12h[3], 10) : undefined;
+			const period = match12h[4].toUpperCase();
+
+			// Convert to 24-hour format
+			if (period === "PM" && hour !== 12) {
+				hour += 12;
+			} else if (period === "AM" && hour === 12) {
+				hour = 0;
+			}
+
+			return {
+				hour,
+				minute,
+				second,
+				originalText: timeText,
+				isRange: false,
+			};
+		}
+
+		return null;
+	}
+
+	/**
+	 * Extract time components from text
+	 * @param text - Text containing time expressions
+	 * @returns Object with extracted time components
+	 */
+	private extractTimeComponents(text: string): {
+		timeComponents: EnhancedParsedTimeResult["timeComponents"];
+		timeExpressions: Array<{
+			text: string;
+			index: number;
+			timeComponent?: TimeComponent;
+			isRange: boolean;
+			rangeStart?: TimeComponent;
+			rangeEnd?: TimeComponent;
+		}>;
+	} {
+		const timeComponents: EnhancedParsedTimeResult["timeComponents"] = {};
+		const timeExpressions: Array<{
+			text: string;
+			index: number;
+			timeComponent?: TimeComponent;
+			isRange: boolean;
+			rangeStart?: TimeComponent;
+			rangeEnd?: TimeComponent;
+		}> = [];
+
+		// Check for time ranges first (they contain single times too)
+		const rangeMatches = [...text.matchAll(this.TIME_PATTERNS.TIME_RANGE)];
+		const range12hMatches = [...text.matchAll(this.TIME_PATTERNS.TIME_RANGE_12H)];
+		
+		for (const match of [...rangeMatches, ...range12hMatches]) {
+			const fullMatch = match[0];
+			const index = match.index || 0;
+
+			// Parse start and end times
+			const parts = fullMatch.split(/\s*[-~\uff5e]\s*/);
+			if (parts.length === 2) {
+				const startTime = this.parseTimeComponent(parts[0]);
+				const endTime = this.parseTimeComponent(parts[1]);
+
+				if (startTime && endTime) {
+					startTime.isRange = true;
+					endTime.isRange = true;
+					startTime.rangePartner = endTime;
+					endTime.rangePartner = startTime;
+
+					timeExpressions.push({
+						text: fullMatch,
+						index,
+						isRange: true,
+						rangeStart: startTime,
+						rangeEnd: endTime,
+					});
+
+					// Determine context for time range
+					const context = this.determineTimeContext(text, fullMatch, index);
+					if (context === "start" || !timeComponents.startTime) {
+						timeComponents.startTime = startTime;
+						timeComponents.endTime = endTime;
+					}
+				}
+			}
+		}
+
+		// Check for single times (not part of ranges)
+		const time24hMatches = [...text.matchAll(this.TIME_PATTERNS.TIME_24H)];
+		const time12hMatches = [...text.matchAll(this.TIME_PATTERNS.TIME_12H)];
+
+		for (const match of [...time24hMatches, ...time12hMatches]) {
+			const fullMatch = match[0];
+			const index = match.index || 0;
+
+			// Skip if this time is part of a range we already found
+			const isPartOfRange = timeExpressions.some(expr => 
+				expr.isRange && 
+				index >= expr.index && 
+				index < expr.index + expr.text.length
+			);
+
+			if (!isPartOfRange) {
+				const timeComponent = this.parseTimeComponent(fullMatch);
+				if (timeComponent) {
+					timeExpressions.push({
+						text: fullMatch,
+						index,
+						timeComponent,
+						isRange: false,
+					});
+
+					// Determine context and assign to appropriate field
+					const context = this.determineTimeContext(text, fullMatch, index);
+					switch (context) {
+						case "start":
+							if (!timeComponents.startTime) timeComponents.startTime = timeComponent;
+							break;
+						case "due":
+							if (!timeComponents.dueTime) timeComponents.dueTime = timeComponent;
+							break;
+						case "scheduled":
+							if (!timeComponents.scheduledTime) timeComponents.scheduledTime = timeComponent;
+							break;
+					}
+				}
+			}
+		}
+
+		return { timeComponents, timeExpressions };
+	}
+
+	/**
+	 * Determine time context based on surrounding keywords
+	 */
+	private determineTimeContext(text: string, expression: string, index: number): "start" | "due" | "scheduled" {
+		// Get text before the expression (look back up to 20 characters)
+		const beforeText = text
+			.substring(Math.max(0, index - 20), index)
+			.toLowerCase();
+
+		// Get text after the expression (look ahead up to 20 characters)
+		const afterText = text
+			.substring(
+				index + expression.length,
+				Math.min(text.length, index + expression.length + 20)
+			)
+			.toLowerCase();
+
+		// Combine surrounding context
+		const context = beforeText + " " + afterText;
+
+		// Check for start keywords
+		for (const keyword of this.config.dateKeywords.start) {
+			if (context.includes(keyword.toLowerCase())) {
+				return "start";
+			}
+		}
+
+		// Check for due keywords
+		for (const keyword of this.config.dateKeywords.due) {
+			if (context.includes(keyword.toLowerCase())) {
+				return "due";
+			}
+		}
+
+		// Check for scheduled keywords
+		for (const keyword of this.config.dateKeywords.scheduled) {
+			if (context.includes(keyword.toLowerCase())) {
+				return "scheduled";
+			}
+		}
+
+		// Default based on common patterns
+		if (context.includes("at") || context.includes("@")) {
+			return "scheduled";
+		}
+
+		return "due";
+	}
+
+	/**
 	 * Parse time expressions from text and return structured result
 	 * @param text - Input text containing potential time expressions
 	 * @returns ParsedTimeResult with extracted dates and cleaned text
 	 */
-	parseTimeExpressions(text: string): ParsedTimeResult {
+	parseTimeExpressions(text: string): ParsedTimeResult | EnhancedParsedTimeResult {
 		if (!this.config.enabled) {
 			return {
 				originalText: text,
@@ -99,10 +321,15 @@ export class TimeParsingService {
 			return this.parseCache.get(cacheKey)!;
 		}
 
-		const result: ParsedTimeResult = {
+		// Extract time components first
+		const { timeComponents, timeExpressions } = this.extractTimeComponents(text);
+		
+		// Create enhanced result if time components found
+		const result: EnhancedParsedTimeResult = {
 			originalText: text,
 			cleanedText: text,
 			parsedExpressions: [],
+			timeComponents: timeComponents,
 		};
 
 		try {
@@ -237,12 +464,28 @@ export class TimeParsingService {
 						type = "due"; // Default fallback
 					}
 
-					const expression = {
+					// Check if this date expression has an associated time component
+					let matchingTimeExpr = timeExpressions.find(te => 
+						te.index >= index - 10 && te.index <= index + length + 10
+					);
+
+					// Check if time range crosses midnight
+					let crossesMidnight = false;
+					if (matchingTimeExpr?.rangeStart && matchingTimeExpr?.rangeEnd) {
+						crossesMidnight = matchingTimeExpr.rangeStart.hour > matchingTimeExpr.rangeEnd.hour;
+					}
+
+					const expression: EnhancedTimeExpression = {
 						text: expressionText,
 						date: date,
 						type: type,
 						index: index,
 						length: length,
+						timeComponent: matchingTimeExpr?.timeComponent,
+						isTimeRange: matchingTimeExpr?.isRange || false,
+						rangeStart: matchingTimeExpr?.rangeStart,
+						rangeEnd: matchingTimeExpr?.rangeEnd,
+						crossesMidnight: crossesMidnight || undefined,
 					};
 
 					result.parsedExpressions.push(expression);
@@ -725,7 +968,7 @@ export class TimeParsingService {
 }
 
 // Default configuration
-export const DEFAULT_TIME_PARSING_CONFIG: TimeParsingConfig = {
+export const DEFAULT_TIME_PARSING_CONFIG: TimeParsingConfig & Partial<EnhancedTimeParsingConfig> = {
 	enabled: true,
 	supportedLanguages: ["en", "zh"],
 	dateKeywords: {
@@ -778,4 +1021,21 @@ export const DEFAULT_TIME_PARSING_CONFIG: TimeParsingConfig = {
 	removeOriginalText: true,
 	perLineProcessing: true, // Enable per-line processing by default for better multiline support
 	realTimeReplacement: false, // Disable real-time replacement by default to avoid interfering with user input
+	// Enhanced time parsing configuration
+	timePatterns: {
+		singleTime: [
+			/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/,
+			/\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/,
+		],
+		timeRange: [
+			/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*[-~\uff5e]\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/,
+			/\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)?\s*[-~\uff5e]\s*(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/,
+		],
+		rangeSeparators: ["-", "~", "\uff5e", " - ", " ~ "],
+	},
+	timeDefaults: {
+		preferredFormat: "24h",
+		defaultPeriod: "PM",
+		midnightCrossing: "next-day",
+	},
 };

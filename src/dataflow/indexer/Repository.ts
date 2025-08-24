@@ -493,6 +493,32 @@ export class Repository {
   }
 
   /**
+   * Remove a file-level task (from FileSource)
+   */
+  async removeFileTask(filePath: string): Promise<void> {
+    if (!this.fileTasks.has(filePath)) return;
+
+    // Remove the file task
+    this.fileTasks.delete(filePath);
+
+    // Schedule persist for file tasks
+    this.schedulePersist(`file-task:${filePath}`);
+
+    // Emit update event
+    this.lastSequence = Seq.next();
+    emit(this.app, Events.TASK_CACHE_UPDATED, {
+      changedFiles: [`file-task:${filePath}`],
+      stats: {
+        total: await this.getTotalTaskCount(),
+        changed: -1,
+        fileTasks: this.fileTasks.size
+      },
+      timestamp: Date.now(),
+      seq: this.lastSequence
+    });
+  }
+
+  /**
    * Get a task by its ID
    */
   async getTaskById(taskId: string): Promise<Task | undefined> {

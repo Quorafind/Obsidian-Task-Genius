@@ -365,8 +365,9 @@ export class DataflowOrchestrator {
 						`[DataflowOrchestrator] FILE_TASK_REMOVED: ${filePath}`
 					);
 
-					// Handle file task removal if needed
-					// For now, just log it
+					if (filePath) {
+						await this.repository.removeFileTask(filePath);
+					}
 				})
 			);
 		}

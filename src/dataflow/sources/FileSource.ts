@@ -14,7 +14,8 @@ import type {
   UpdateDecision,
   FileTaskCache,
   RecognitionStrategy,
-  PathRecognitionConfig
+  PathRecognitionConfig,
+  TemplateRecognitionConfig
 } from "../../types/file-source";
 
 import { Events, emit, Seq, on } from "../events/Events";
@@ -316,16 +317,35 @@ export class FileSource {
   }
 
   /**
-   * Check if file matches template strategy (stub for Phase 2)
+   * Check if file matches template strategy
    */
   private matchesTemplateStrategy(
     filePath: string,
     fileContent: string,
     fileCache: CachedMetadata | null,
-    config: any
+    config: TemplateRecognitionConfig
   ): boolean {
-    // TODO: Implement in Phase 2
-    return false;
+    if (!config.enabled || !config.templatePaths || config.templatePaths.length === 0) {
+      return false;
+    }
+
+    // Check if file matches any template path
+    return config.templatePaths.some(templatePath => {
+      // Check direct path inclusion
+      if (filePath.includes(templatePath)) {
+        return true;
+      }
+
+      // Check frontmatter template references
+      if (config.checkTemplateMetadata && fileCache?.frontmatter) {
+        const frontmatter = fileCache.frontmatter;
+        return frontmatter.template === templatePath || 
+               frontmatter.templateFile === templatePath ||
+               frontmatter.templatePath === templatePath;
+      }
+
+      return false;
+    });
   }
 
   /**
@@ -550,7 +570,21 @@ export class FileSource {
       return { name: "path", criteria: config.recognitionStrategies.paths.taskPaths.join(", ") };
     }
 
-    // TODO: Add template strategy in Phase 2
+    // Template-based recognition
+    const templateConfig = config.recognitionStrategies.templates;
+    if (templateConfig.enabled && templateConfig.templatePaths.length > 0) {
+      // Check if file matches any template path
+      const matchesTemplate = templateConfig.templatePaths.some(templatePath => {
+        // Simple path matching - could be enhanced with more sophisticated matching
+        return filePath.includes(templatePath) || 
+               (fileCache?.frontmatter?.template === templatePath) ||
+               (fileCache?.frontmatter?.templateFile === templatePath);
+      });
+
+      if (matchesTemplate) {
+        return { name: "template", criteria: templateConfig.templatePaths.join(", ") };
+      }
+    }
 
     return null;
   }
