@@ -1,4 +1,5 @@
 import { ParsedTimeResult, TimeParsingConfig } from "../services/time-parsing-service";
+import { StandardTaskMetadata } from "./task";
 
 /**
  * Time component structure representing parsed time information
@@ -92,4 +93,33 @@ export interface EnhancedParseResult {
 	result?: EnhancedParsedTimeResult;
 	errors: TimeParsingError[];
 	warnings: string[];
+}
+
+/**
+ * Enhanced task metadata interface with time components
+ */
+export interface EnhancedStandardTaskMetadata extends StandardTaskMetadata {
+	/** Time-specific metadata (separate from date timestamps) */
+	timeComponents?: {
+		/** Start time component */
+		startTime?: TimeComponent;
+		/** End time component (for time ranges) */
+		endTime?: TimeComponent;
+		/** Due time component */
+		dueTime?: TimeComponent;
+		/** Scheduled time component */
+		scheduledTime?: TimeComponent;
+	};
+	
+	/** Enhanced date fields that combine date + time */
+	enhancedDates?: {
+		/** Full datetime for start (combines startDate + startTime) */
+		startDateTime?: Date;
+		/** Full datetime for end (combines date + endTime) */
+		endDateTime?: Date;
+		/** Full datetime for due (combines dueDate + dueTime) */
+		dueDateTime?: Date;
+		/** Full datetime for scheduled (combines scheduledDate + scheduledTime) */
+		scheduledDateTime?: Date;
+	};
 }

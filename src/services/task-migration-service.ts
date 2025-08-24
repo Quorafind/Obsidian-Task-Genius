@@ -170,7 +170,7 @@ export class TaskMigrationService {
 		if (hasTimeComponents(migratedMeta)) {
 			const timeComponents = migratedMeta.timeComponents!;
 			for (const [key, component] of Object.entries(timeComponents)) {
-				if (component && !validateTimeComponent(component)) {
+				if (component && !validateTimeComponent(component as TimeComponent)) {
 					return false;
 				}
 			}

@@ -164,7 +164,7 @@ export class DateInheritanceAugmentor {
 			(timeComponents.dueTime && !metadata.dueDate) ||
 			(timeComponents.scheduledTime && !metadata.scheduledDate);
 
-		return hasTimeWithoutDate;
+		return hasTimeWithoutDate || false;
 	}
 
 	/**
@@ -370,15 +370,12 @@ export class DateInheritanceAugmentor {
 			switch (type) {
 				case 'startDate':
 					updatedMetadata.startDate = timestamp;
-					updatedTask.startDate = timestamp; // Legacy field
 					break;
 				case 'dueDate':
 					updatedMetadata.dueDate = timestamp;
-					updatedTask.dueDate = timestamp; // Legacy field
 					break;
 				case 'scheduledDate':
 					updatedMetadata.scheduledDate = timestamp;
-					updatedTask.scheduledDate = timestamp; // Legacy field
 					break;
 			}
 

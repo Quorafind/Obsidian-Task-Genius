@@ -57,7 +57,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(updatedConfig);
 
 			// Verify the configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timeDefaults?.preferredFormat).toBe("12h");
 		});
 
@@ -74,7 +74,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(updatedConfig);
 
 			// Verify the configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timeDefaults?.defaultPeriod).toBe("PM");
 		});
 
@@ -91,7 +91,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(updatedConfig);
 
 			// Verify the configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timeDefaults?.midnightCrossing).toBe("same-day");
 		});
 
@@ -108,7 +108,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(updatedConfig);
 
 			// Verify the configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timePatterns?.rangeSeparators).toEqual(["-", "to", "until"]);
 		});
 
@@ -126,7 +126,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(updatedConfig);
 
 			// Verify the configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.dateKeywords.start).toEqual(["begin", "commence", "initiate"]);
 			expect(config.dateKeywords.due).toEqual(["deadline", "expires", "finish"]);
 			expect(config.dateKeywords.scheduled).toEqual(["planned", "arranged", "set"]);
@@ -211,7 +211,7 @@ describe("TimeParsingSettingsIntegration", () => {
 				enabled: false,
 			});
 
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.enabled).toBe(false);
 			// Other settings should remain unchanged
 			expect(config.supportedLanguages).toEqual(["en", "zh"]);
@@ -264,7 +264,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(config12h);
 
 			// Verify initial configuration
-			let config = service.getConfig();
+			let config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timeDefaults?.preferredFormat).toBe("12h");
 
 			// Switch to 24h format
@@ -279,7 +279,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(config24h);
 
 			// Verify configuration was updated
-			config = service.getConfig();
+			config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timeDefaults?.preferredFormat).toBe("24h");
 		});
 
@@ -296,7 +296,7 @@ describe("TimeParsingSettingsIntegration", () => {
 			service.updateConfig(customConfig);
 
 			// Verify configuration was updated
-			const config = service.getConfig();
+			const config = service.getConfig() as EnhancedTimeParsingConfig;
 			expect(config.timePatterns?.rangeSeparators).toEqual(["-", "~", "to", "until", "through"]);
 		});
 

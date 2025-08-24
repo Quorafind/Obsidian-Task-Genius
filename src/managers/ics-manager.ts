@@ -361,7 +361,10 @@ export class IcsManager extends Component {
 		);
 
 		// Extract time components from event description and preserve original ICS time information
-		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, processedEvent);
+		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, {
+			...event,
+			...processedEvent,
+		});
 
 		const task: IcsTask = {
 			id: `ics-${event.source.id}-${event.uid}`,
@@ -437,7 +440,10 @@ export class IcsManager extends Component {
 		);
 
 		// Extract time components from event description and preserve original ICS time information
-		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, processedEvent);
+		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, {
+			...event,
+			...processedEvent,
+		});
 
 		const task: IcsTask = {
 			id: `ics-${event.source.id}-${event.uid}`,

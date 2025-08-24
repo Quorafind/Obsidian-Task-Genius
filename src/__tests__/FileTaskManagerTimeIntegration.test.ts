@@ -100,7 +100,7 @@ describe("FileTaskManager Time Integration", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Meeting at 2:30 PM";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -159,7 +159,7 @@ describe("FileTaskManager Time Integration", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Workshop 9:00-17:00";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -209,7 +209,7 @@ describe("FileTaskManager Time Integration", () => {
 					completed: false,
 					due: "2025-08-25", // Date in YYYY-MM-DD format
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Doctor appointment at 3:30 PM";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -269,7 +269,7 @@ describe("FileTaskManager Time Integration", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Simple task without time";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -315,7 +315,7 @@ describe("FileTaskManager Time Integration", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Meeting at 2:00 PM";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -375,7 +375,7 @@ describe("FileTaskManager Time Integration", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Task with invalid time 25:99";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;

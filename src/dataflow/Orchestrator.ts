@@ -599,6 +599,11 @@ export class DataflowOrchestrator {
 			this.workerOrchestrator.setWorkerProcessingEnabled(enableWorkerProcessing);
 		}
 
+		// Update TimeParsingService configuration
+		if (settings.timeParsing && this.timeParsingService) {
+			this.timeParsingService.updateConfig(settings.timeParsing);
+		}
+
 		// Update FileSource if needed
 		if (settings?.fileSource?.enabled && !this.fileSource) {
 			// Initialize FileSource if enabled but not yet created
@@ -1086,18 +1091,6 @@ export class DataflowOrchestrator {
 		this.projectResolver.updateOptions(options);
 	}
 
-	/**
-	 * Update settings for all components
-	 */
-	updateSettings(settings: any): void {
-		// Update TimeParsingService configuration
-		if (settings.timeParsing) {
-			this.timeParsingService.updateConfig(settings.timeParsing);
-		}
-
-		// Update other components as needed
-		// This method can be extended to update other services when their settings change
-	}
 
 	/**
 	 * Get the query API for external access

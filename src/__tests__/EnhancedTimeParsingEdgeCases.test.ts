@@ -180,6 +180,11 @@ describe("Enhanced Time Parsing Edge Cases", () => {
 		test("should respect configuration for ambiguous time handling", () => {
 			const config: EnhancedTimeParsingConfig = {
 				...DEFAULT_TIME_PARSING_CONFIG,
+				timePatterns: {
+					singleTime: [/\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:AM|PM|am|pm))?/],
+					timeRange: [/\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?\s*[-–—~]\s*\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?/],
+					rangeSeparators: ["-", "–", "—", "~"],
+				},
 				timeDefaults: {
 					preferredFormat: "12h",
 					defaultPeriod: "PM",
@@ -382,6 +387,11 @@ describe("Enhanced Time Parsing Edge Cases", () => {
 		test("should respect midnight crossing configuration", () => {
 			const nextDayConfig: EnhancedTimeParsingConfig = {
 				...DEFAULT_TIME_PARSING_CONFIG,
+				timePatterns: {
+					singleTime: [/\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:AM|PM|am|pm))?/],
+					timeRange: [/\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?\s*[-–—~]\s*\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?/],
+					rangeSeparators: ["-", "–", "—", "~"],
+				},
 				timeDefaults: {
 					preferredFormat: "24h",
 					defaultPeriod: "PM",
@@ -391,6 +401,11 @@ describe("Enhanced Time Parsing Edge Cases", () => {
 
 			const sameDayConfig: EnhancedTimeParsingConfig = {
 				...DEFAULT_TIME_PARSING_CONFIG,
+				timePatterns: {
+					singleTime: [/\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:AM|PM|am|pm))?/],
+					timeRange: [/\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?\s*[-–—~]\s*\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?/],
+					rangeSeparators: ["-", "–", "—", "~"],
+				},
 				timeDefaults: {
 					preferredFormat: "24h",
 					defaultPeriod: "PM",
@@ -413,9 +428,19 @@ describe("Enhanced Time Parsing Edge Cases", () => {
 		});
 
 		test("should handle disabled time parsing", () => {
-			const disabledConfig = {
+			const disabledConfig: EnhancedTimeParsingConfig = {
 				...DEFAULT_TIME_PARSING_CONFIG,
 				enabled: false,
+				timePatterns: {
+					singleTime: [/\d{1,2}:\d{2}(?::\d{2})?(?:\s*(?:AM|PM|am|pm))?/],
+					timeRange: [/\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?\s*[-–—~]\s*\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?/],
+					rangeSeparators: ["-", "–", "—", "~"],
+				},
+				timeDefaults: {
+					preferredFormat: "24h",
+					defaultPeriod: "PM",
+					midnightCrossing: "next-day",
+				},
 			};
 
 			const disabledService = new TimeParsingService(disabledConfig);
@@ -436,6 +461,11 @@ describe("Enhanced Time Parsing Edge Cases", () => {
 					singleTime: [/\d{1,2}h\d{2}/], // Custom format like "14h30"
 					timeRange: [/\d{1,2}h\d{2}-\d{1,2}h\d{2}/], // Custom range format
 					rangeSeparators: ["-"],
+				},
+				timeDefaults: {
+					preferredFormat: "24h",
+					defaultPeriod: "PM",
+					midnightCrossing: "next-day",
 				},
 			};
 

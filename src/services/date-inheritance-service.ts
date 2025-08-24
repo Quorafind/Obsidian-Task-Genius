@@ -264,7 +264,7 @@ export class DateInheritanceService {
 			// Return default info for non-existent files
 			return {
 				ctime: new Date(),
-				dailyNoteDate: null,
+				dailyNoteDate: undefined,
 				metadataDate: undefined,
 				isDailyNote: false,
 				cachedAt: new Date(),
@@ -277,11 +277,13 @@ export class DateInheritanceService {
 		const mtime = fileStat?.mtime || 0;
 
 		// Extract daily note date from file path/title
-		const dailyNoteDate = this.extractDailyNoteDate(filePath);
-		const isDailyNote = dailyNoteDate !== null;
+		const dailyNoteDateResult = this.extractDailyNoteDate(filePath);
+		const dailyNoteDate = dailyNoteDateResult ?? undefined;
+		const isDailyNote = dailyNoteDateResult !== null;
 
 		// Extract metadata date from frontmatter
-		const metadataDate = await this.extractMetadataDate(file);
+		const metadataDateResult = await this.extractMetadataDate(file);
+		const metadataDate = metadataDateResult ?? undefined;
 
 		const fileDateInfo: FileDateInfo = {
 			ctime,

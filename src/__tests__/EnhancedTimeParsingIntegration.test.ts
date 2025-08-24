@@ -177,7 +177,7 @@ describe("Enhanced Time Parsing Integration Tests", () => {
 					completed: false,
 					due: "2025-08-25",
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Team meeting 14:00-16:00 tomorrow";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -205,7 +205,7 @@ describe("Enhanced Time Parsing Integration Tests", () => {
 				id: fileTask.id,
 				title: fileTask.content,
 				date: new Date(fileTask.metadata.dueDate!),
-				task: fileTask,
+				task: fileTask as any,
 				timeInfo: {
 					primaryTime: fileTask.metadata.enhancedDates!.startDateTime!,
 					endTime: fileTask.metadata.enhancedDates!.endDateTime,
@@ -324,7 +324,7 @@ describe("Enhanced Time Parsing Integration Tests", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return "Doctor appointment at 2:00 PM";
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -588,8 +588,8 @@ END:VCALENDAR`;
 
 			// Should have original ICS time information
 			expect(task.icsEvent).toBeDefined();
-			expect(task.icsEvent?.start).toBeDefined();
-			expect(task.icsEvent?.end).toBeDefined();
+			expect(task.icsEvent?.dtstart).toBeDefined();
+			expect(task.icsEvent?.dtend).toBeDefined();
 
 			// Should have enhanced time components from ICS times
 			expect(metadata.timeComponents).toBeDefined();

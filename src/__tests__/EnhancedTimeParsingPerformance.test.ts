@@ -271,7 +271,7 @@ describe("Enhanced Time Parsing Performance Tests", () => {
 					status: " ",
 					completed: false,
 				},
-				getValue: jest.fn((prop) => {
+				getValue: jest.fn((prop: any) => {
 					if (prop.name === "title") return `Task ${index} at ${9 + (index % 8)}:${(index % 4) * 15} AM`;
 					if (prop.name === "status") return " ";
 					if (prop.name === "completed") return false;
@@ -331,7 +331,13 @@ describe("Enhanced Time Parsing Performance Tests", () => {
 
 			batchSizes.forEach(batchSize => {
 				const mockEntries = Array.from({ length: batchSize }, (_, i) => ({
-					ctx: {},
+					ctx: {
+						_local: {},
+						app: {} as any,
+						filter: {},
+						formulas: {},
+						localUsed: false
+					},
 					file: {
 						parent: null,
 						deleted: false,
@@ -355,7 +361,7 @@ describe("Enhanced Time Parsing Performance Tests", () => {
 						status: " ",
 						completed: false,
 					},
-					getValue: jest.fn((prop) => {
+					getValue: jest.fn((prop: any) => {
 						if (prop.name === "title") return `Batch task ${i} at ${10 + (i % 6)}:${(i % 4) * 15}`;
 						if (prop.name === "status") return " ";
 						if (prop.name === "completed") return false;
@@ -714,7 +720,7 @@ describe("Enhanced Time Parsing Performance Tests", () => {
 			// Benchmark parsing tasks without time
 			const startTime = performance.now();
 			tasksWithoutTime.forEach(taskText => {
-				const result = enhancedTimeParsingService.parseTimeExpressions(taskText);
+				const result = enhancedTimeParsingService.parseTimeExpressions(taskText) as EnhancedParsedTimeResult;
 				// Access the result to ensure it's computed
 				const hasTime = result.timeComponents && Object.keys(result.timeComponents).length > 0;
 			});
@@ -744,7 +750,7 @@ describe("Enhanced Time Parsing Performance Tests", () => {
 			for (let i = 0; i < iterations; i++) {
 				edgeCases.forEach(edgeCase => {
 					try {
-						const result = enhancedTimeParsingService.parseTimeExpressions(edgeCase);
+						const result = enhancedTimeParsingService.parseTimeExpressions(edgeCase) as EnhancedParsedTimeResult;
 						// Access the result
 						const hasTime = result.timeComponents && Object.keys(result.timeComponents).length > 0;
 					} catch (error) {
