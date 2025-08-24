@@ -313,8 +313,7 @@ export class WorkerOrchestrator {
     
     // Import and use ConfigurableTaskParser for fallback
     const { ConfigurableTaskParser } = await import("../core/ConfigurableTaskParser");
-    const { parseCanvas } = await import("../parsers/CanvasEntry");
-    const { parseFileMeta } = await import("../parsers/FileMetaEntry");
+    const { CanvasParser } = await import("../core/CanvasParser");
     
     const extension = file.extension.toLowerCase();
     let tasks: Task[] = [];
