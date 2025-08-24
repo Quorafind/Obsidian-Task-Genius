@@ -215,18 +215,26 @@ div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-t
 div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-range::after {
 	content: "⏱";
 	position: absolute;
-	top: -3px;
-	right: -3px;
+	top: -6px;
+	right: -6px;
 	font-size: 10px;
 	background-color: var(--background-primary);
-	border-radius: 50%;
-	width: 16px;
+	border-radius: 999px;
+	min-width: 18px;
 	height: 16px;
-	display: flex;
+	padding: 0 4px;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	border: 2px solid var(--interactive-accent);
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	line-height: 1;
+	white-space: nowrap;
+}
+
+/* When duration is provided, show it instead of the icon */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-range[data-duration]::after {
+	content: attr(data-duration);
 }
 
 div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-default {
@@ -294,6 +302,10 @@ div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-section {
 	padding-top: var(--size-4-3);
 	border-top: 2px dashed var(--background-modifier-border);
 }
+
+
+/* Hide per-event time labels inside All day section as safety net */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-section .timeline-event .timeline-event-time { display: none !important; }
 
 div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-header {
 	display: flex;

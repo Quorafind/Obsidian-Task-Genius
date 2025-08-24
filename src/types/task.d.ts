@@ -263,25 +263,6 @@ export interface SortingCriteria {
 	direction: "asc" | "desc";
 }
 
-/** Task parsing configuration */
-export interface TaskParserConfig {
-	/** Regular expression to match task items */
-	taskRegex: RegExp;
-	/** Start date format for parsing */
-	startDateFormat?: string;
-	/** Due date format for parsing */
-	dueDateFormat?: string;
-	/** Scheduled date format for parsing */
-	scheduledDateFormat?: string;
-	/** Project tag prefix */
-	projectPrefix?: string;
-	/** Context tag prefix */
-	contextPrefix?: string;
-	/** Task priority markers */
-	priorityMarkers?: Record<string, number>;
-	/** Prefer metadata format */
-	preferMetadataFormat?: "dataview" | "tasks";
-}
 
 /** Task indexer interface */
 export interface TaskIndexer extends Component {

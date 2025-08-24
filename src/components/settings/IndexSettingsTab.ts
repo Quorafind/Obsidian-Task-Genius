@@ -3,6 +3,7 @@ import { TaskProgressBarSettingTab } from "../../setting";
 import { t } from "../../translations/helper";
 import { SingleFolderSuggest } from "../AutoComplete";
 import { ConfirmModal } from "../ConfirmModal";
+import { createFileSourceSettings } from "./FileSourceSettings";
 
 /**
  * Renders the Index Settings tab that consolidates all indexing-related settings
@@ -26,26 +27,17 @@ export function renderIndexSettingsTab(
 	// SECTION 0: Core Architecture Configuration
 	// ========================================
 	new Setting(containerEl)
-		.setName(t("Core Architecture"))
-		.setDesc(t("Configure the core data processing architecture."))
-		.setHeading();
-
-	new Setting(containerEl)
-		.setName(t("Enable Dataflow Architecture"))
-		.setDesc(
-			t(
-				"Use the modern Dataflow architecture for improved performance and reliability. This is the recommended setting for all users.",
-			),
-		)
+		.setName(t("Enable Indexer"))
 		.addToggle((toggle) => {
 			toggle.setValue(settingTab.plugin.settings.dataflowEnabled ?? true);
 			toggle.onChange(async (value) => {
-				settingTab.plugin.settings.dataflowEnabled = value;
-				await settingTab.plugin.saveSettings();
+				settingTab.plugin.settings.enableIndexer = value;
+								settingTab.applySettingsUpdate();
+				settingTab.display(); // Refresh settings display
 
 				// Show restart notice
-				const restartNotice = new Notice(
-					t("Please restart Obsidian for the architecture change to take effect."),
+				new Notice(
+					t("Please restart Obsidian for the Indexer change to take effect."),
 					8000
 				);
 			});
@@ -58,26 +50,6 @@ export function renderIndexSettingsTab(
 		.setName(t("Inline task parsing"))
 		.setDesc(t("Configure how tasks are parsed from markdown content."))
 		.setHeading();
-
-	new Setting(containerEl)
-		.setName(t("Enable Task Genius indexer"))
-		.setDesc(
-			t(
-				"Enable the Task Genius indexer to scan and index tasks from your entire vault. This is required for task views and search functionality.",
-			),
-		)
-		.addToggle((toggle) => {
-			toggle.setValue(settingTab.plugin.settings.enableIndexer);
-			toggle.onChange((value) => {
-				settingTab.plugin.settings.enableIndexer = value;
-				if (!value) {
-					// If indexer is disabled, also disable views
-					settingTab.plugin.settings.enableView = false;
-				}
-				settingTab.applySettingsUpdate();
-				settingTab.display(); // Refresh settings display
-			});
-		});
 
 	new Setting(containerEl)
 		.setName(t("Prefer metadata format of task"))
@@ -441,8 +413,8 @@ export function renderIndexSettingsTab(
 			t("Configure how files can be recognized and treated as tasks with various strategies."),
 		)
 		.setHeading();
-	
-	// File Task settings have been migrated to File Filter tab for central management.
+
+	createFileSourceSettings(containerEl, settingTab.plugin);
 
 	// ========================================
 	// SECTION 3: Performance Settings

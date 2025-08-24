@@ -17,7 +17,7 @@ export function createFileSourceSettings(
 	containerEl: HTMLElement,
 	plugin: TaskProgressBarPlugin,
 ): void {
-	const config = plugin.settings.fileSource;
+	const config = plugin.settings?.fileSource;
 
 	// Main FileSource enable/disable toggle
 	createEnableToggle(containerEl, plugin, config);

@@ -490,8 +490,9 @@ export class TimelineSidebarView extends ItemView {
 		}
 
 		// Create enhanced datetime by combining date and time component
+		// Use local time (setHours) instead of UTC to match the parsed time components
 		const enhancedDateTime = new Date(date);
-		enhancedDateTime.setUTCHours(
+		enhancedDateTime.setHours(
 			relevantTimeComponent.hour,
 			relevantTimeComponent.minute,
 			relevantTimeComponent.second || 0,
@@ -506,7 +507,8 @@ export class TimelineSidebarView extends ItemView {
 		// create the end time from the range partner
 		if (relevantTimeComponent.isRange && !relevantEndTime && relevantTimeComponent.rangePartner) {
 			const endDateTime = new Date(date);
-			endDateTime.setUTCHours(
+			// Use local time (setHours) instead of UTC to match the parsed time components
+			endDateTime.setHours(
 				relevantTimeComponent.rangePartner.hour,
 				relevantTimeComponent.rangePartner.minute,
 				relevantTimeComponent.rangePartner.second || 0,
@@ -678,21 +680,69 @@ export class TimelineSidebarView extends ItemView {
 		if (event.timeInfo?.timeComponent) {
 			// Use parsed time component for accurate display
 			const { timeComponent, isRange, endTime } = event.timeInfo;
-			
+
 			if (isRange && endTime) {
 				// Display time range
 				const startTimeStr = this.formatTimeComponent(timeComponent);
 				const endTimeStr = moment(endTime).format("HH:mm");
 				timeEl.setText(`${startTimeStr}-${endTimeStr}`);
 				timeEl.addClass("timeline-event-time-range");
+				// Add duration badge attribute for CSS ::after to render
+				try {
+					const start = event.timeInfo?.primaryTime;
+					if (start && endTime.getTime() > start.getTime()) {
+						const minutes = Math.round((endTime.getTime() - start.getTime()) / 60000);
+						const duration = minutes >= 60
+							? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
+							: `${minutes}m`;
+						timeEl.setAttribute("data-duration", duration);
+					}
+				} catch (_) {}
 			} else {
 				// Display single time
 				timeEl.setText(this.formatTimeComponent(timeComponent));
 				timeEl.addClass("timeline-event-time-single");
 			}
 		} else {
-			// Fallback to default time display
-			timeEl.setText(moment(event.time).format("HH:mm"));
+			// Try to parse time directly from content as a fallback to avoid 00:00 mismatches
+			const content = event.content || "";
+			// Detect time range first (e.g., 15:00-16:00)
+			const rangeRegex = /([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*[-~～]\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?/;
+			const rangeMatch = content.match(rangeRegex);
+			if (rangeMatch) {
+				const start = `${rangeMatch[1].padStart(2, '0')}:${rangeMatch[2]}${rangeMatch[3] ? `:${rangeMatch[3]}` : ''}`;
+				const end = `${rangeMatch[4].padStart(2, '0')}:${rangeMatch[5]}${rangeMatch[6] ? `:${rangeMatch[6]}` : ''}`;
+				timeEl.setText(`${start}-${end}`);
+				timeEl.addClass("timeline-event-time-range");
+				return;
+			}
+			// Detect 12-hour format (e.g., 3:30 PM)
+			const pattern12h = /(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)/;
+			const m12 = content.match(pattern12h);
+			if (m12) {
+				let hour = parseInt(m12[1], 10);
+				const minute = m12[2];
+				const second = m12[3];
+				const period = m12[4].toUpperCase();
+				if (period === 'PM' && hour !== 12) hour += 12;
+				if (period === 'AM' && hour === 12) hour = 0;
+				const display = `${hour.toString().padStart(2, '0')}:${minute}${second ? `:${second}` : ''}`;
+				timeEl.setText(display);
+				timeEl.addClass("timeline-event-time-single");
+				return;
+			}
+			// Detect 24-hour single time (e.g., 15:00)
+			const pattern24h = /([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?/;
+			const m24 = content.match(pattern24h);
+			if (m24) {
+				const display = `${m24[1].padStart(2, '0')}:${m24[2]}${m24[3] ? `:${m24[3]}` : ''}`;
+				timeEl.setText(display);
+				timeEl.addClass("timeline-event-time-single");
+				return;
+			}
+			// Fallback to default time display - prefer enhanced primaryTime when available
+			const fallbackTime = event.timeInfo?.primaryTime || event.time;
+			timeEl.setText(moment(fallbackTime).format("HH:mm"));
 			timeEl.addClass("timeline-event-time-default");
 		}
 	}
@@ -769,9 +819,19 @@ export class TimelineSidebarView extends ItemView {
 			return true;
 		}
 
+		// Heuristic: detect explicit time patterns in the content (e.g., "15:00", "3:30 PM")
+		if (event.content) {
+			const timePattern24h = /(^|[^0-9])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?/;
+			const timePattern12h = /(^|\s)(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)/;
+			if (timePattern24h.test(event.content) || timePattern12h.test(event.content)) {
+				return true;
+			}
+		}
+
 		// Check if the original time has non-zero hours/minutes (not just midnight)
+		// Use local time (getHours) to check for specific time
 		const time = event.timeInfo?.primaryTime || event.time;
-		return time.getUTCHours() !== 0 || time.getUTCMinutes() !== 0 || time.getUTCSeconds() !== 0;
+		return time.getHours() !== 0 || time.getMinutes() !== 0 || time.getSeconds() !== 0;
 	}
 
 	/**
@@ -942,21 +1002,21 @@ export class TimelineSidebarView extends ItemView {
 
 		// Create a section for date-only events
 		const dateOnlySection = containerEl.createDiv("timeline-date-only-section");
-		
+
 		const sectionHeaderEl = dateOnlySection.createDiv("timeline-date-only-header");
 		const headerTimeEl = sectionHeaderEl.createDiv("timeline-event-time timeline-event-time-date-only");
 		headerTimeEl.setText("All day");
-		
+
 		const headerTextEl = sectionHeaderEl.createDiv("timeline-date-only-title");
 		headerTextEl.setText(`${events.length} all-day event${events.length > 1 ? 's' : ''}`);
 
-		// Render each date-only event
+		// Render each date-only event (hide individual time labels)
 		events.forEach((event) => {
-			this.renderEvent(dateOnlySection, event);
+			this.renderEvent(dateOnlySection, event, false);
 		});
 	}
 
-	private renderEvent(containerEl: HTMLElement, event: EnhancedTimelineEvent): void {
+	private renderEvent(containerEl: HTMLElement, event: EnhancedTimelineEvent, showTime: boolean = true): void {
 		const eventEl = containerEl.createDiv("timeline-event");
 		eventEl.setAttribute("data-event-id", event.id);
 
@@ -965,8 +1025,10 @@ export class TimelineSidebarView extends ItemView {
 		}
 
 		// Event time - use enhanced time information if available
-		const timeEl = eventEl.createDiv("timeline-event-time");
-		this.renderEventTime(timeEl, event);
+		if (showTime) {
+			const timeEl = eventEl.createDiv("timeline-event-time");
+			this.renderEventTime(timeEl, event);
+		}
 
 		// Event content
 		const contentEl = eventEl.createDiv("timeline-event-content");

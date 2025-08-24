@@ -401,7 +401,7 @@
 	align-items: center;
 	justify-content: space-between;
 	margin-top: var(--size-4-2);
-	margin-bottom: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
 }
 
 .task-genius-settings .settings-tab-section-header .header-button {

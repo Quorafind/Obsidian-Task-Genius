@@ -3,7 +3,7 @@
  */
 
 import { isSupportedFile, getFileType, SupportedFileType } from '../utils/file/file-type-detector';
-import { CanvasParser } from '../parsers/canvas-parser';
+import { CanvasParser } from '../dataflow/core/CanvasParser';
 import { getConfig } from '../common/task-parser-config';
 
 // Mock TFile for testing

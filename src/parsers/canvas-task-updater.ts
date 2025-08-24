@@ -2,12 +2,12 @@
  * Canvas task updater for modifying tasks within Canvas files
  */
 
-import { TFile, Vault } from "obsidian";
+import { Vault } from "obsidian";
 import { Task, CanvasTaskMetadata } from "../types/task";
 import { CanvasData, CanvasTextData } from "../types/canvas";
 import type TaskProgressBarPlugin from "../index";
-import { MetadataFormat } from "../utils/task/task-operations";
 import { Events, emit } from "../dataflow/events/Events";
+import { CanvasParser } from "../dataflow/core/CanvasParser";
 
 /**
  * Result of a Canvas task update operation
@@ -43,14 +43,13 @@ export class CanvasTaskUpdater {
 
 			// Read the Canvas file content
 			const content = await this.vault.read(file);
-			let canvasData: CanvasData;
 
-			try {
-				canvasData = JSON.parse(content);
-			} catch (parseError) {
+			// Use CanvasParser utility to parse JSON
+			const canvasData = CanvasParser.parseCanvasJSON(content);
+			if (!canvasData) {
 				return {
 					success: false,
-					error: `Failed to parse Canvas JSON: ${parseError.message}`,
+					error: "Failed to parse Canvas JSON",
 				};
 			}
 
@@ -63,10 +62,8 @@ export class CanvasTaskUpdater {
 				};
 			}
 
-			const textNode = canvasData.nodes.find(
-				(node): node is CanvasTextData =>
-					node.type === "text" && node.id === nodeId
-			);
+			// Use CanvasParser utility to find the text node
+			const textNode = CanvasParser.findTextNode(canvasData, nodeId);
 
 			if (!textNode) {
 				return {
@@ -682,14 +679,13 @@ export class CanvasTaskUpdater {
 
 			// Read the Canvas file content
 			const content = await this.vault.read(file);
-			let canvasData: CanvasData;
 
-			try {
-				canvasData = JSON.parse(content);
-			} catch (parseError) {
+			// Use CanvasParser utility to parse JSON
+			const canvasData = CanvasParser.parseCanvasJSON(content);
+			if (!canvasData) {
 				return {
 					success: false,
-					error: `Failed to parse Canvas JSON: ${parseError.message}`,
+					error: "Failed to parse Canvas JSON",
 				};
 			}
 
@@ -702,10 +698,8 @@ export class CanvasTaskUpdater {
 				};
 			}
 
-			const textNode = canvasData.nodes.find(
-				(node): node is CanvasTextData =>
-					node.type === "text" && node.id === nodeId
-			);
+			// Use CanvasParser utility to find the text node
+			const textNode = CanvasParser.findTextNode(canvasData, nodeId);
 
 			if (!textNode) {
 				return {
@@ -844,14 +838,13 @@ export class CanvasTaskUpdater {
 
 			// Read the Canvas file content
 			const content = await this.vault.read(file);
-			let canvasData: CanvasData;
 
-			try {
-				canvasData = JSON.parse(content);
-			} catch (parseError) {
+			// Use CanvasParser utility to parse JSON
+			const canvasData = CanvasParser.parseCanvasJSON(content);
+			if (!canvasData) {
 				return {
 					success: false,
-					error: `Failed to parse Canvas JSON: ${parseError.message}`,
+					error: "Failed to parse Canvas JSON",
 				};
 			}
 

@@ -195,3 +195,14 @@
 	max-height: 90vh;
 	overflow-y: auto;
 }
+
+.time-parsing-example {
+    padding: var(--size-2-2);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    margin-top: var(--size-2-2);
+    margin-bottom: var(--size-2-2);
+    padding-left: var(--size-4-2);
+    padding-right: var(--size-4-2);
+    font-size: var(--font-ui-small);
+}

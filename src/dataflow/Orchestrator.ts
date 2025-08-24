@@ -17,8 +17,7 @@ import { ProjectDataWorkerManager } from "./workers/ProjectDataWorkerManager";
 import { FileFilterManager } from "../managers/file-filter-manager";
 
 // Parser imports
-import { parseMarkdown } from "./parsers/MarkdownEntry";
-import { parseCanvas } from "./parsers/CanvasEntry";
+import { CanvasParser } from "./core/CanvasParser";
 import { parseFileMeta } from "./parsers/FileMetaEntry";
 import { ConfigurableTaskParser } from "./core/ConfigurableTaskParser";
 import { MetadataParseMode } from "../types/TaskParserConfig";
@@ -717,8 +716,8 @@ export class DataflowOrchestrator {
 			const fileMetaTasks = await parseFileMeta(this.plugin, file.path);
 			tasks.push(...fileMetaTasks);
 		} else if (extension === "canvas") {
-			// Parse canvas tasks
-			const canvasTasks = await parseCanvas(this.plugin, file);
+			// Parse canvas tasks using the static method
+			const canvasTasks = await CanvasParser.parseCanvas(this.plugin, file);
 			tasks.push(...canvasTasks);
 		}
 

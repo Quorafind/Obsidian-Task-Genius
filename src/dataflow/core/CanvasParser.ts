@@ -12,6 +12,8 @@ import {
 } from "../../types/canvas";
 import { MarkdownTaskParser } from "./ConfigurableTaskParser";
 import { TaskParserConfig } from "../../types/TaskParserConfig";
+import { getConfig } from "../../common/task-parser-config";
+import type TaskProgressBarPlugin from "../../index";
 
 /**
  * Default options for canvas parsing
@@ -258,5 +260,63 @@ export class CanvasParser {
 			console.error("Error extracting text from canvas:", error);
 			return "";
 		}
+	}
+
+	/**
+	 * Parse Canvas JSON content safely
+	 * @param canvasContent Raw Canvas file content
+	 * @returns Parsed CanvasData or null if parsing fails
+	 */
+	public static parseCanvasJSON(canvasContent: string): CanvasData | null {
+		try {
+			return JSON.parse(canvasContent);
+		} catch (error) {
+			console.error("Error parsing Canvas JSON:", error);
+			return null;
+		}
+	}
+
+	/**
+	 * Find a text node by ID in Canvas data
+	 * @param canvasData Parsed Canvas data
+	 * @param nodeId The node ID to find
+	 * @returns The text node or null if not found
+	 */
+	public static findTextNode(canvasData: CanvasData, nodeId: string): CanvasTextData | null {
+		const node = canvasData.nodes.find(
+			(n): n is CanvasTextData => n.type === "text" && n.id === nodeId
+		);
+		return node || null;
+	}
+
+	/**
+	 * Get all text nodes from Canvas data
+	 * @param canvasData Parsed Canvas data
+	 * @returns Array of text nodes
+	 */
+	public static getTextNodes(canvasData: CanvasData): CanvasTextData[] {
+		return canvasData.nodes.filter(
+			(node): node is CanvasTextData => node.type === "text"
+		);
+	}
+
+	/**
+	 * Static method for parsing Canvas files with plugin context
+	 * This replaces the separate parseCanvas function from CanvasEntry
+	 * @param plugin - The TaskProgressBarPlugin instance
+	 * @param file - File object with path property
+	 * @param content - Optional file content (if not provided, will be read from vault)
+	 * @returns Array of parsed tasks
+	 */
+	public static async parseCanvas(
+		plugin: TaskProgressBarPlugin,
+		file: { path: string },
+		content?: string
+	): Promise<Task[]> {
+		const config = getConfig(plugin.settings.preferMetadataFormat, plugin);
+		const parser = new CanvasParser(config);
+		const filePath = file.path;
+		const text = content ?? await plugin.app.vault.cachedRead(file as any);
+		return parser.parseCanvasFile(text, filePath);
 	}
 }
