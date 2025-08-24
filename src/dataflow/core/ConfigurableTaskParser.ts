@@ -3,7 +3,7 @@
  * Based on Rust implementation design with TypeScript adaptation
  */
 
-import { Task, TgProject } from "../../types/task";
+import { Task, TgProject, EnhancedStandardTaskMetadata } from "../../types/task";
 import {
 	TaskParserConfig,
 	EnhancedTask,
@@ -12,6 +12,8 @@ import {
 import { parseLocalDate } from "../../utils/date/date-formatter";
 import { TASK_REGEX } from "../../common/regex-define";
 import { ContextDetector } from "../../parsers/context-detector";
+import { TimeParsingService } from "../../services/time-parsing-service";
+import { TimeComponent } from "../../types/time-parsing";
 
 export class MarkdownTaskParser {
 	private config: TaskParserConfig;
@@ -26,15 +28,17 @@ export class MarkdownTaskParser {
 	private fileMetadata?: Record<string, any>; // Store file frontmatter metadata
 	private projectConfigCache?: Record<string, any>; // Cache for project config files
 	private customDateFormats?: string[]; // Store custom date formats from settings
+	private timeParsingService?: TimeParsingService; // Enhanced time parsing service
 
 	// Date parsing cache to improve performance for large-scale parsing
 	private static dateCache = new Map<string, number | undefined>();
 	private static readonly MAX_CACHE_SIZE = 10000; // Limit cache size to prevent memory issues
 
-	constructor(config: TaskParserConfig) {
+	constructor(config: TaskParserConfig, timeParsingService?: TimeParsingService) {
 		this.config = config;
 		// Extract custom date formats if available
 		this.customDateFormats = config.customDateFormats;
+		this.timeParsingService = timeParsingService;
 	}
 
 	// Public alias for extractMetadataAndTags
@@ -50,9 +54,10 @@ export class MarkdownTaskParser {
 	static createWithStatusMapping(
 		config: TaskParserConfig,
 		statusMapping: Record<string, string>,
+		timeParsingService?: TimeParsingService,
 	): MarkdownTaskParser {
 		const newConfig = { ...config, statusMapping };
-		return new MarkdownTaskParser(newConfig);
+		return new MarkdownTaskParser(newConfig, timeParsingService);
 	}
 
 	/**
@@ -137,6 +142,9 @@ export class MarkdownTaskParser {
 					isSubtask,
 				);
 
+				// Extract time components from task content using enhanced time parsing
+				const enhancedMetadata = this.extractTimeComponents(taskContent, inheritedMetadata);
+
 				// Process inherited tags and merge with task's own tags
 				let finalTags = tags;
 				if (inheritedMetadata.tags) {
@@ -184,7 +192,7 @@ export class MarkdownTaskParser {
 					indentLevel,
 					parentId,
 					childrenIds: [],
-					metadata: inheritedMetadata,
+					metadata: enhancedMetadata,
 					tags: finalTags,
 					comment,
 					lineNumber: i + 1,
@@ -201,28 +209,28 @@ export class MarkdownTaskParser {
 					children: [],
 					priority: extractedPriority,
 					startDate: this.extractLegacyDate(
-						inheritedMetadata,
+						enhancedMetadata,
 						"startDate",
 					),
 					dueDate: this.extractLegacyDate(
-						inheritedMetadata,
+						enhancedMetadata,
 						"dueDate",
 					),
 					scheduledDate: this.extractLegacyDate(
-						inheritedMetadata,
+						enhancedMetadata,
 						"scheduledDate",
 					),
 					completedDate: this.extractLegacyDate(
-						inheritedMetadata,
+						enhancedMetadata,
 						"completedDate",
 					),
 					createdDate: this.extractLegacyDate(
-						inheritedMetadata,
+						enhancedMetadata,
 						"createdDate",
 					),
-					recurrence: inheritedMetadata.recurrence,
-					project: inheritedMetadata.project,
-					context: inheritedMetadata.context,
+					recurrence: enhancedMetadata.recurrence,
+					project: enhancedMetadata.project,
+					context: enhancedMetadata.context,
 				};
 
 				if (parentId && this.tasks.length > 0) {
@@ -481,6 +489,160 @@ export class MarkdownTaskParser {
 		}
 
 		return [cleanedContent.trim(), metadata, tags];
+	}
+
+	/**
+	 * Extract time components from task content and merge with existing metadata
+	 */
+	private extractTimeComponents(
+		taskContent: string,
+		existingMetadata: Record<string, string>
+	): EnhancedStandardTaskMetadata {
+		if (!this.timeParsingService) {
+			// Return existing metadata as EnhancedStandardTaskMetadata without time components
+			return {
+				...existingMetadata,
+				tags: existingMetadata.tags ? JSON.parse(existingMetadata.tags) : [],
+				children: [],
+			} as EnhancedStandardTaskMetadata;
+		}
+
+		try {
+			// Parse time components from task content
+			const { timeComponents, errors, warnings } = this.timeParsingService.parseTimeComponents(taskContent);
+
+			// Log warnings if any
+			if (warnings.length > 0) {
+				console.warn(`[MarkdownTaskParser] Time parsing warnings for "${taskContent}":`, warnings);
+			}
+
+			// Log errors if any (but don't fail)
+			if (errors.length > 0) {
+				console.warn(`[MarkdownTaskParser] Time parsing errors for "${taskContent}":`, errors);
+			}
+
+			// Create enhanced metadata
+			const enhancedMetadata: EnhancedStandardTaskMetadata = {
+				...existingMetadata,
+				tags: existingMetadata.tags ? JSON.parse(existingMetadata.tags) : [],
+				children: [],
+			} as EnhancedStandardTaskMetadata;
+
+			// Add time components if found
+			if (Object.keys(timeComponents).length > 0) {
+				enhancedMetadata.timeComponents = timeComponents;
+
+				// Create enhanced datetime objects by combining existing dates with time components
+				enhancedMetadata.enhancedDates = this.combineTimestampsWithTimeComponents(
+					{
+						startDate: existingMetadata.startDate,
+						dueDate: existingMetadata.dueDate,
+						scheduledDate: existingMetadata.scheduledDate,
+						completedDate: existingMetadata.completedDate,
+					},
+					timeComponents
+				);
+			}
+
+			return enhancedMetadata;
+		} catch (error) {
+			console.error(`[MarkdownTaskParser] Failed to extract time components from "${taskContent}":`, error);
+			// Return existing metadata without time components on error
+			return {
+				...existingMetadata,
+				tags: existingMetadata.tags ? JSON.parse(existingMetadata.tags) : [],
+				children: [],
+			} as EnhancedStandardTaskMetadata;
+		}
+	}
+
+	/**
+	 * Combine date timestamps with time components to create enhanced datetime objects
+	 */
+	private combineTimestampsWithTimeComponents(
+		dates: {
+			startDate?: number | string;
+			dueDate?: number | string;
+			scheduledDate?: number | string;
+			completedDate?: number | string;
+		},
+		timeComponents: EnhancedStandardTaskMetadata["timeComponents"]
+	): EnhancedStandardTaskMetadata["enhancedDates"] {
+		if (!timeComponents) {
+			return undefined;
+		}
+
+		const enhancedDates: EnhancedStandardTaskMetadata["enhancedDates"] = {};
+
+		// Helper function to combine date and time component
+		const combineDateTime = (dateValue: number | string | undefined, timeComponent: TimeComponent | undefined): Date | undefined => {
+			if (!dateValue || !timeComponent) {
+				return undefined;
+			}
+
+			let date: Date;
+			if (typeof dateValue === 'string') {
+				// Handle date strings like "2025-08-25"
+				if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+					const [year, month, day] = dateValue.split("-").map(Number);
+					date = new Date(year, month - 1, day); // month is 0-based
+				} else {
+					date = new Date(dateValue);
+				}
+			} else {
+				// Handle timestamp numbers
+				date = new Date(dateValue);
+			}
+
+			if (isNaN(date.getTime())) {
+				return undefined;
+			}
+
+			const combinedDate = new Date(
+				date.getFullYear(),
+				date.getMonth(),
+				date.getDate(),
+				timeComponent.hour,
+				timeComponent.minute,
+				timeComponent.second || 0
+			);
+
+			return combinedDate;
+		};
+
+		// Combine start date with start time
+		if (dates.startDate && timeComponents.startTime) {
+			enhancedDates.startDateTime = combineDateTime(dates.startDate, timeComponents.startTime);
+		}
+
+		// Combine due date with due time
+		if (dates.dueDate && timeComponents.dueTime) {
+			enhancedDates.dueDateTime = combineDateTime(dates.dueDate, timeComponents.dueTime);
+		}
+
+		// Combine scheduled date with scheduled time
+		if (dates.scheduledDate && timeComponents.scheduledTime) {
+			enhancedDates.scheduledDateTime = combineDateTime(dates.scheduledDate, timeComponents.scheduledTime);
+		}
+
+		// Handle end time - if we have start date and end time, create end datetime
+		if (dates.startDate && timeComponents.endTime) {
+			enhancedDates.endDateTime = combineDateTime(dates.startDate, timeComponents.endTime);
+		}
+
+		// If we have a due date but the time component is scheduledTime (common with "at" keyword), 
+		// create dueDateTime using scheduledTime
+		if (dates.dueDate && !timeComponents.dueTime && timeComponents.scheduledTime) {
+			enhancedDates.dueDateTime = combineDateTime(dates.dueDate, timeComponents.scheduledTime);
+		}
+
+		// If we have a scheduled date but the time component is dueTime, 
+		// create scheduledDateTime using dueTime
+		if (dates.scheduledDate && !timeComponents.scheduledTime && timeComponents.dueTime) {
+			enhancedDates.scheduledDateTime = combineDateTime(dates.scheduledDate, timeComponents.dueTime);
+		}
+
+		return Object.keys(enhancedDates).length > 0 ? enhancedDates : undefined;
 	}
 
 	private extractDataviewMetadata(
@@ -1630,7 +1792,7 @@ export class MarkdownTaskParser {
 }
 
 export class ConfigurableTaskParser extends MarkdownTaskParser {
-	constructor(config?: Partial<TaskParserConfig>) {
+	constructor(config?: Partial<TaskParserConfig>, timeParsingService?: TimeParsingService) {
 		// Default configuration
 		const defaultConfig: TaskParserConfig = {
 			parseMetadata: true,
@@ -1674,6 +1836,6 @@ export class ConfigurableTaskParser extends MarkdownTaskParser {
 			},
 		};
 
-		super({ ...defaultConfig, ...config });
+		super({ ...defaultConfig, ...config }, timeParsingService);
 	}
 }

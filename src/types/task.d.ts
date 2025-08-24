@@ -3,6 +3,7 @@
  */
 
 import { Component, EventRef, TFile } from "obsidian";
+import { TimeComponent } from "./time-parsing";
 
 /** Base task interface with only core required fields */
 export interface BaseTask {
@@ -78,6 +79,33 @@ export interface StandardTaskMetadata {
 	[key: string]: any;
 }
 
+/** Enhanced task metadata interface with time components */
+export interface EnhancedStandardTaskMetadata extends StandardTaskMetadata {
+	/** Time-specific metadata (separate from date timestamps) */
+	timeComponents?: {
+		/** Start time component */
+		startTime?: TimeComponent;
+		/** End time component (for time ranges) */
+		endTime?: TimeComponent;
+		/** Due time component */
+		dueTime?: TimeComponent;
+		/** Scheduled time component */
+		scheduledTime?: TimeComponent;
+	};
+	
+	/** Enhanced date fields that combine date + time */
+	enhancedDates?: {
+		/** Full datetime for start (combines startDate + startTime) */
+		startDateTime?: Date;
+		/** Full datetime for end (combines date + endTime) */
+		endDateTime?: Date;
+		/** Full datetime for due (combines dueDate + dueTime) */
+		dueDateTime?: Date;
+		/** Full datetime for scheduled (combines scheduledDate + scheduledTime) */
+		scheduledDateTime?: Date;
+	};
+}
+
 export interface StandardFileTaskMetadata extends StandardTaskMetadata {
 	/** Task source */
 	source: "file-metadata" | "file-tag";
@@ -130,6 +158,9 @@ export interface Task<
 	/** Task metadata */
 	metadata: TMetadata;
 }
+
+/** Task with enhanced time component support */
+export type EnhancedTask = Task<EnhancedStandardTaskMetadata>;
 
 /** Extended metadata interface for future expansion */
 export interface ExtendedMetadata extends StandardTaskMetadata {

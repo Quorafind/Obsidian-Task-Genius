@@ -172,6 +172,50 @@ export function migrateProjectSettings(settings: TaskProgressBarSettings): Migra
 }
 
 /**
+ * Migrate time parsing settings to enhanced configuration
+ */
+export function migrateTimeParsingSettings(settings: TaskProgressBarSettings): MigrationResult {
+  const result: MigrationResult = {
+    migrated: false,
+    details: [],
+    warnings: []
+  };
+
+  // Check if timeParsing exists but lacks enhanced configuration
+  if (settings.timeParsing && !settings.timeParsing.timePatterns) {
+    // Add enhanced time parsing configuration with defaults
+    settings.timeParsing.timePatterns = {
+      singleTime: [
+        /\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g, // 24-hour format
+        /\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g, // 12-hour format
+      ],
+      timeRange: [
+        /\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*[-~～]\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g, // 24-hour range
+        /\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)?\s*[-~～]\s*(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g, // 12-hour range
+      ],
+      rangeSeparators: ["-", "~", "～", " - ", " ~ ", " ～ "],
+    };
+    
+    result.migrated = true;
+    result.details.push("Added enhanced time parsing patterns configuration");
+  }
+
+  if (settings.timeParsing && !settings.timeParsing.timeDefaults) {
+    // Add time defaults configuration
+    settings.timeParsing.timeDefaults = {
+      preferredFormat: "24h",
+      defaultPeriod: "AM",
+      midnightCrossing: "next-day",
+    };
+    
+    result.migrated = true;
+    result.details.push("Added time parsing defaults configuration");
+  }
+
+  return result;
+}
+
+/**
  * Run all migrations
  */
 export function runAllMigrations(settings: TaskProgressBarSettings): MigrationResult {
@@ -180,6 +224,7 @@ export function runAllMigrations(settings: TaskProgressBarSettings): MigrationRe
   // Run individual migrations
   results.push(migrateFileParsingSettings(settings));
   results.push(migrateProjectSettings(settings));
+  results.push(migrateTimeParsingSettings(settings));
   
   // Only cleanup if migrations were successful
   const hasSuccessfulMigrations = results.some(r => r.migrated);

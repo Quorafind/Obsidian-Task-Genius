@@ -15,12 +15,14 @@ import {
 	IcsTextReplacement,
 	IcsEventWithHoliday,
 } from "../types/ics";
-import { Task, ExtendedMetadata } from "../types/task";
+import { Task, ExtendedMetadata, EnhancedStandardTaskMetadata } from "../types/task";
 import { IcsParser } from "../parsers/ics-parser";
 import { HolidayDetector } from "../parsers/holiday-detector";
 import { StatusMapper } from "../parsers/ics-status-mapper";
 import { WebcalUrlConverter } from "../parsers/webcal-converter";
 import { TaskProgressBarSettings } from "../common/setting-definition";
+import { TimeParsingService } from "../services/time-parsing-service";
+import { TimeComponent } from "../types/time-parsing";
 import TaskProgressBarPlugin from "src";
 
 export class IcsManager extends Component {
@@ -30,6 +32,7 @@ export class IcsManager extends Component {
 	private refreshIntervals: Map<string, number> = new Map();
 	private onEventsUpdated?: (sourceId: string, events: IcsEvent[]) => void;
 	private pluginSettings: TaskProgressBarSettings;
+	private timeParsingService?: TimeParsingService;
 
 	private plugin?: TaskProgressBarPlugin;
 
@@ -37,11 +40,13 @@ export class IcsManager extends Component {
 		config: IcsManagerConfig,
 		pluginSettings: TaskProgressBarSettings,
 		plugin?: TaskProgressBarPlugin,
+		timeParsingService?: TimeParsingService,
 	) {
 		super();
 		this.config = config;
 		this.pluginSettings = pluginSettings;
 		this.plugin = plugin;
+		this.timeParsingService = timeParsingService;
 	}
 
 	/**
@@ -355,6 +360,9 @@ export class IcsManager extends Component {
 			this.pluginSettings,
 		);
 
+		// Extract time components from event description and preserve original ICS time information
+		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, processedEvent);
+
 		const task: IcsTask = {
 			id: `ics-${event.source.id}-${event.uid}`,
 			content: processedEvent.summary,
@@ -376,6 +384,9 @@ export class IcsManager extends Component {
 				project: event.source.name,
 				context: processedEvent.location,
 				heading: [],
+				
+				// Enhanced time components
+				...enhancedMetadata,
 			},
 			icsEvent: {
 				...event,
@@ -425,6 +436,9 @@ export class IcsManager extends Component {
 			this.pluginSettings,
 		);
 
+		// Extract time components from event description and preserve original ICS time information
+		const enhancedMetadata = this.extractTimeComponentsFromIcsEvent(event, processedEvent);
+
 		const task: IcsTask = {
 			id: `ics-${event.source.id}-${event.uid}`,
 			content: displayTitle,
@@ -446,6 +460,9 @@ export class IcsManager extends Component {
 				project: event.source.name,
 				context: processedEvent.location,
 				heading: [],
+				
+				// Enhanced time components
+				...enhancedMetadata,
 			} as any, // Use any to allow additional holiday fields
 			icsEvent: {
 				...event,
@@ -463,6 +480,173 @@ export class IcsManager extends Component {
 		};
 
 		return task;
+	}
+
+	/**
+	 * Extract time components from ICS event and preserve original time information
+	 */
+	private extractTimeComponentsFromIcsEvent(
+		event: IcsEvent,
+		processedEvent: IcsEvent
+	): Partial<EnhancedStandardTaskMetadata> {
+		if (!this.timeParsingService) {
+			return {};
+		}
+
+		try {
+			// Create time components from ICS event times
+			const timeComponents: EnhancedStandardTaskMetadata["timeComponents"] = {};
+
+			// Extract time from ICS dtstart (start time)
+			if (event.dtstart && !event.allDay) {
+				const startTimeComponent = this.createTimeComponentFromDate(event.dtstart);
+				if (startTimeComponent) {
+					timeComponents.startTime = startTimeComponent;
+					timeComponents.scheduledTime = startTimeComponent; // ICS events are typically scheduled
+				}
+			}
+
+			// Extract time from ICS dtend (end time)
+			if (event.dtend && !event.allDay) {
+				const endTimeComponent = this.createTimeComponentFromDate(event.dtend);
+				if (endTimeComponent) {
+					timeComponents.endTime = endTimeComponent;
+					timeComponents.dueTime = endTimeComponent; // End time can be considered due time
+					
+					// Create range relationship if both start and end exist
+					if (timeComponents.startTime) {
+						timeComponents.startTime.isRange = true;
+						timeComponents.startTime.rangePartner = endTimeComponent;
+						endTimeComponent.isRange = true;
+						endTimeComponent.rangePartner = timeComponents.startTime;
+					}
+				}
+			}
+
+			// Also parse time components from event description and summary if available
+			let descriptionTimeComponents: EnhancedStandardTaskMetadata["timeComponents"] = {};
+			const textToParse = [processedEvent.summary, processedEvent.description, processedEvent.location]
+				.filter(Boolean)
+				.join(' ');
+			
+			if (textToParse.trim()) {
+				const { timeComponents: parsedComponents } = this.timeParsingService.parseTimeComponents(textToParse);
+				descriptionTimeComponents = parsedComponents;
+			}
+
+			// Merge ICS time components with parsed description components
+			// ICS times take precedence, but description can provide additional context
+			const mergedTimeComponents = {
+				...descriptionTimeComponents,
+				...timeComponents, // ICS times override description times
+			};
+
+			// Create enhanced datetime objects
+			const enhancedDates = this.createEnhancedDateTimesFromIcs(event, mergedTimeComponents);
+
+			const enhancedMetadata: Partial<EnhancedStandardTaskMetadata> = {};
+
+			if (Object.keys(mergedTimeComponents).length > 0) {
+				enhancedMetadata.timeComponents = mergedTimeComponents;
+			}
+
+			if (enhancedDates && Object.keys(enhancedDates).length > 0) {
+				enhancedMetadata.enhancedDates = enhancedDates;
+			}
+
+			return enhancedMetadata;
+		} catch (error) {
+			console.error(`[IcsManager] Failed to extract time components from ICS event ${event.uid}:`, error);
+			return {};
+		}
+	}
+
+	/**
+	 * Create TimeComponent from Date object
+	 */
+	private createTimeComponentFromDate(date: Date): TimeComponent | null {
+		if (!date || isNaN(date.getTime())) {
+			return null;
+		}
+
+		// Format time as HH:MM or HH:MM:SS depending on whether seconds are present
+		const hours = date.getHours().toString().padStart(2, '0');
+		const minutes = date.getMinutes().toString().padStart(2, '0');
+		const seconds = date.getSeconds();
+		
+		let originalText = `${hours}:${minutes}`;
+		if (seconds > 0) {
+			originalText += `:${seconds.toString().padStart(2, '0')}`;
+		}
+
+		return {
+			hour: date.getHours(),
+			minute: date.getMinutes(),
+			second: seconds > 0 ? seconds : undefined,
+			originalText,
+			isRange: false,
+		};
+	}
+
+	/**
+	 * Create enhanced datetime objects from ICS event and time components
+	 */
+	private createEnhancedDateTimesFromIcs(
+		event: IcsEvent,
+		timeComponents: EnhancedStandardTaskMetadata["timeComponents"]
+	): EnhancedStandardTaskMetadata["enhancedDates"] {
+		const enhancedDates: EnhancedStandardTaskMetadata["enhancedDates"] = {};
+
+		// Use ICS event dates directly as they already contain the correct date and time
+		if (event.dtstart) {
+			enhancedDates.startDateTime = new Date(event.dtstart);
+			enhancedDates.scheduledDateTime = new Date(event.dtstart); // ICS events are typically scheduled
+		}
+
+		if (event.dtend) {
+			enhancedDates.endDateTime = new Date(event.dtend);
+			enhancedDates.dueDateTime = new Date(event.dtend); // End time can be considered due time
+		}
+
+		// If we have time components from description parsing but no ICS times (all-day events),
+		// try to combine the date from ICS with the parsed time components
+		if (event.allDay && timeComponents) {
+			const eventDate = new Date(event.dtstart);
+			
+			if (timeComponents.startTime) {
+				const startDateTime = new Date(eventDate);
+				startDateTime.setHours(timeComponents.startTime.hour, timeComponents.startTime.minute, timeComponents.startTime.second || 0);
+				enhancedDates.startDateTime = startDateTime;
+				enhancedDates.scheduledDateTime = startDateTime;
+			}
+			
+			if (timeComponents.endTime) {
+				const endDateTime = new Date(eventDate);
+				endDateTime.setHours(timeComponents.endTime.hour, timeComponents.endTime.minute, timeComponents.endTime.second || 0);
+				
+				// Handle midnight crossing for time ranges
+				if (timeComponents.startTime && timeComponents.endTime.hour < timeComponents.startTime.hour) {
+					endDateTime.setDate(endDateTime.getDate() + 1);
+				}
+				
+				enhancedDates.endDateTime = endDateTime;
+				enhancedDates.dueDateTime = endDateTime;
+			}
+			
+			if (timeComponents.dueTime && !enhancedDates.dueDateTime) {
+				const dueDateTime = new Date(eventDate);
+				dueDateTime.setHours(timeComponents.dueTime.hour, timeComponents.dueTime.minute, timeComponents.dueTime.second || 0);
+				enhancedDates.dueDateTime = dueDateTime;
+			}
+			
+			if (timeComponents.scheduledTime && !enhancedDates.scheduledDateTime) {
+				const scheduledDateTime = new Date(eventDate);
+				scheduledDateTime.setHours(timeComponents.scheduledTime.hour, timeComponents.scheduledTime.minute, timeComponents.scheduledTime.second || 0);
+				enhancedDates.scheduledDateTime = scheduledDateTime;
+			}
+		}
+
+		return Object.keys(enhancedDates).length > 0 ? enhancedDates : undefined;
 	}
 
 	/**

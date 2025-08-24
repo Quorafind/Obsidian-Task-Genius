@@ -1,4 +1,6 @@
 import type { Task, TgProject } from "../../types/task";
+import { DateInheritanceAugmentor } from "./DateInheritanceAugmentor";
+import { App, Vault, MetadataCache } from "obsidian";
 
 export interface AugmentContext {
   filePath: string;
@@ -38,10 +40,14 @@ export interface InheritanceStrategy {
  */
 export class Augmentor {
   private strategy: InheritanceStrategy;
+  private dateInheritanceAugmentor?: DateInheritanceAugmentor;
 
   constructor(options?: { 
     inherit?: Record<string, "task" | "file" | "project" | "merge-array">;
     strategy?: Partial<InheritanceStrategy>;
+    app?: App;
+    vault?: Vault;
+    metadataCache?: MetadataCache;
   }) {
     // Default strategy based on refactor plan requirements
     this.strategy = {
@@ -64,13 +70,38 @@ export class Augmentor {
       },
       ...options?.strategy
     };
+
+    // Initialize date inheritance augmentor if Obsidian context is available
+    if (options?.app && options?.vault && options?.metadataCache) {
+      this.dateInheritanceAugmentor = new DateInheritanceAugmentor(
+        options.app,
+        options.vault,
+        options.metadataCache
+      );
+    }
   }
 
   /**
    * Main merge method with enhanced context support
    */
   async merge(ctx: AugmentContext): Promise<Task[]> {
-    return ctx.tasks.map(task => this.augmentTask(task, ctx));
+    // First apply standard augmentation
+    let augmentedTasks = ctx.tasks.map(task => this.augmentTask(task, ctx));
+
+    // Then apply date inheritance for time-only expressions if available
+    if (this.dateInheritanceAugmentor) {
+      try {
+        augmentedTasks = await this.dateInheritanceAugmentor.augmentTasksWithDateInheritance(
+          augmentedTasks,
+          ctx.filePath
+        );
+      } catch (error) {
+        console.warn('[Augmentor] Date inheritance augmentation failed:', error);
+        // Continue with standard augmentation if date inheritance fails
+      }
+    }
+
+    return augmentedTasks;
   }
 
   /**

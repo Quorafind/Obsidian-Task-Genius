@@ -193,6 +193,121 @@ div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time {
 	border-radius: var(--radius-s);
 	padding: var(--size-4-1) var(--size-4-2);
 	font-weight: 500;
+	position: relative;
+}
+
+/* Enhanced time display styles */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-single {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-weight: 600;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-range {
+	background: linear-gradient(135deg, var(--interactive-accent) 0%, var(--interactive-accent-hover) 100%);
+	color: var(--text-on-accent);
+	font-weight: 600;
+	min-width: 80px;
+	position: relative;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-range::after {
+	content: "⏱";
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	font-size: 10px;
+	background-color: var(--background-primary);
+	border-radius: 50%;
+	width: 14px;
+	height: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--interactive-accent);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-default {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-group {
+	background: linear-gradient(135deg, var(--text-accent) 0%, var(--interactive-accent) 100%);
+	color: var(--text-on-accent);
+	font-weight: 700;
+	min-width: 60px;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event-time.timeline-event-time-date-only {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-style: italic;
+	min-width: 60px;
+}
+
+/* Time Group Styles */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-time-group {
+	margin-bottom: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+	overflow: hidden;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-time-group-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	background-color: var(--background-modifier-hover);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-time-group-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-time-group-events {
+	padding: var(--size-4-2);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event.timeline-event-grouped {
+	margin-bottom: var(--size-4-2);
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-event.timeline-event-grouped:last-child {
+	margin-bottom: 0;
+}
+
+/* Date-only Events Section */
+div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-section {
+	margin-top: var(--size-4-4);
+	padding-top: var(--size-4-3);
+	border-top: 2px dashed var(--background-modifier-border);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	margin-bottom: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-s);
+}
+
+div[data-type^="tg-timeline-sidebar-view"] .timeline-date-only-title {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-weight: 500;
+	font-style: italic;
 }
 
 /* Event Content */

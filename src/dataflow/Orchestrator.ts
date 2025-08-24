@@ -22,6 +22,8 @@ import { parseCanvas } from "./parsers/CanvasEntry";
 import { parseFileMeta } from "./parsers/FileMetaEntry";
 import { ConfigurableTaskParser } from "./core/ConfigurableTaskParser";
 import { MetadataParseMode } from "../types/TaskParserConfig";
+import { TimeParsingService } from "../services/time-parsing-service";
+import type { EnhancedTimeParsingConfig } from "../types/time-parsing";
 
 /**
  * DataflowOrchestrator - Coordinates all dataflow components
@@ -41,6 +43,9 @@ export class DataflowOrchestrator {
 		private fileFilterManager?: FileFilterManager;
 
 	private fileSource: FileSource | null = null;
+
+	// Time parsing service for enhanced time recognition
+	private timeParsingService: TimeParsingService;
 
 	// Event references for cleanup
 	private eventRefs: EventRef[] = [];
@@ -68,7 +73,11 @@ export class DataflowOrchestrator {
 			metadataCache,
 			projectOptions
 		);
-		this.augmentor = new Augmentor();
+		this.augmentor = new Augmentor({
+			app,
+			vault,
+			metadataCache,
+		});
 		this.storage = this.repository.getStorage();
 
 		// Initialize worker orchestrator with settings
@@ -96,6 +105,32 @@ export class DataflowOrchestrator {
 
 		// Initialize ICS event source
 		this.icsSource = new IcsSource(app, () => this.plugin.getIcsManager());
+
+		// Initialize TimeParsingService with plugin settings
+		this.timeParsingService = new TimeParsingService(
+			this.plugin.settings?.timeParsing || {
+				enabled: true,
+				supportedLanguages: ["en", "zh"],
+				dateKeywords: {
+					start: ["start", "begin", "from"],
+					due: ["due", "deadline", "by", "until"],
+					scheduled: ["scheduled", "on", "at"],
+				},
+				removeOriginalText: true,
+				perLineProcessing: true,
+				realTimeReplacement: true,
+				timePatterns: {
+					singleTime: [],
+					timeRange: [],
+					rangeSeparators: ["-", "~", "～"],
+				},
+				timeDefaults: {
+					preferredFormat: "24h",
+					defaultPeriod: "AM",
+					midnightCrossing: "next-day",
+				},
+			} as EnhancedTimeParsingConfig
+		);
 
 		// Initialize FileSource (conditionally based on settings)
 		if (this.plugin.settings?.fileSource?.enabled) {
@@ -661,7 +696,7 @@ export class DataflowOrchestrator {
 				fileMetadataInheritance:
 					this.plugin.settings.fileMetadataInheritance,
 				projectConfig: this.plugin.settings.projectConfig,
-			});
+			}, this.timeParsingService);
 
 			// Parse tasks using ConfigurableTaskParser with tgProject
 			const markdownTasks = parser.parseLegacy(
@@ -1049,6 +1084,19 @@ export class DataflowOrchestrator {
 	 */
 	updateProjectOptions(options: Partial<ProjectConfigManagerOptions>): void {
 		this.projectResolver.updateOptions(options);
+	}
+
+	/**
+	 * Update settings for all components
+	 */
+	updateSettings(settings: any): void {
+		// Update TimeParsingService configuration
+		if (settings.timeParsing) {
+			this.timeParsingService.updateConfig(settings.timeParsing);
+		}
+
+		// Update other components as needed
+		// This method can be extended to update other services when their settings change
 	}
 
 	/**

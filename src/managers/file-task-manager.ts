@@ -4,7 +4,7 @@
  */
 
 import { App } from "obsidian";
-import { Task } from "../types/task";
+import { Task, EnhancedStandardTaskMetadata } from "../types/task";
 import {
 	FileTask,
 	FileTaskManager,
@@ -13,6 +13,8 @@ import {
 } from "../types/file-task";
 import { TFile } from "obsidian";
 import { FileSourceConfiguration } from "../types/file-source";
+import { TimeParsingService } from "../services/time-parsing-service";
+import { TimeComponent, EnhancedParsedTimeResult } from "../types/time-parsing";
 
 // BasesEntry interface (copied from types to avoid import issues)
 interface BasesEntry {
@@ -71,10 +73,15 @@ export const DEFAULT_FILE_TASK_MAPPING: FileTaskPropertyMapping = {
 };
 
 export class FileTaskManagerImpl implements FileTaskManager {
+	private timeParsingService?: TimeParsingService;
+
 	constructor(
 		private app: App,
-		private fileSourceConfig?: FileSourceConfiguration
-	) {}
+		private fileSourceConfig?: FileSourceConfiguration,
+		timeParsingService?: TimeParsingService
+	) {
+		this.timeParsingService = timeParsingService;
+	}
 
 	/**
 	 * Convert a BasesEntry to a FileTask
@@ -162,6 +169,15 @@ export class FileTaskManagerImpl implements FileTaskManager {
 			mapping.actualTimeProperty
 		);
 
+		// Extract time components from content using enhanced time parsing
+		const enhancedMetadata = this.extractTimeComponents(content);
+
+		// Combine dates with time components to create enhanced datetime objects
+		const enhancedDates = this.combineTimestampsWithTimeComponents(
+			{ startDate, dueDate, scheduledDate, completedDate },
+			enhancedMetadata.timeComponents
+		);
+
 		const fileTask: FileTask = {
 			id,
 			content,
@@ -184,6 +200,10 @@ export class FileTaskManagerImpl implements FileTaskManager {
 				...(priority && { priority }),
 				...(estimatedTime && { estimatedTime }),
 				...(actualTime && { actualTime }),
+
+				// Enhanced time components
+				...enhancedMetadata,
+				...(enhancedDates && { enhancedDates }),
 			},
 			sourceEntry: entry,
 			isFileTask: true,
@@ -298,9 +318,38 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		// Merge updates into the task
 		const updatedTask = { ...task, ...updates };
 
-		// Handle content changes
+		// Handle content changes - re-extract time components if content changed
 		if (updates.content && updates.content !== task.content) {
 			await this.handleContentUpdate(task, updates.content);
+			
+			// Re-extract time components from updated content
+			const enhancedMetadata = this.extractTimeComponents(updates.content);
+			
+			// Update the task's metadata with new time components
+			if (enhancedMetadata.timeComponents) {
+				updatedTask.metadata = {
+					...updatedTask.metadata,
+					timeComponents: enhancedMetadata.timeComponents,
+				};
+
+				// Recombine dates with new time components
+				const enhancedDates = this.combineTimestampsWithTimeComponents(
+					{
+						startDate: updatedTask.metadata.startDate,
+						dueDate: updatedTask.metadata.dueDate,
+						scheduledDate: updatedTask.metadata.scheduledDate,
+						completedDate: updatedTask.metadata.completedDate,
+					},
+					enhancedMetadata.timeComponents
+				);
+
+				if (enhancedDates) {
+					updatedTask.metadata.enhancedDates = enhancedDates;
+				}
+
+				// Update the original task object with the new metadata
+				task.metadata = updatedTask.metadata;
+			}
 		}
 
 		// Convert to property updates (excluding content which is handled separately)
@@ -763,6 +812,114 @@ export class FileTaskManagerImpl implements FileTaskManager {
 		const month = String(date.getMonth() + 1).padStart(2, "0");
 		const day = String(date.getDate()).padStart(2, "0");
 		return `${year}-${month}-${day}`;
+	}
+
+	/**
+	 * Extract time components from task content using enhanced time parsing
+	 */
+	private extractTimeComponents(content: string): Partial<EnhancedStandardTaskMetadata> {
+		if (!this.timeParsingService) {
+			return {};
+		}
+
+		try {
+			// Parse time components from content
+			const { timeComponents, errors, warnings } = this.timeParsingService.parseTimeComponents(content);
+
+			// Log warnings if any
+			if (warnings.length > 0) {
+				console.warn(`[FileTaskManager] Time parsing warnings for "${content}":`, warnings);
+			}
+
+			// Log errors if any (but don't fail)
+			if (errors.length > 0) {
+				console.warn(`[FileTaskManager] Time parsing errors for "${content}":`, errors);
+			}
+
+			// Return enhanced metadata with time components
+			const enhancedMetadata: Partial<EnhancedStandardTaskMetadata> = {};
+
+			if (Object.keys(timeComponents).length > 0) {
+				enhancedMetadata.timeComponents = timeComponents;
+			}
+
+			return enhancedMetadata;
+		} catch (error) {
+			console.error(`[FileTaskManager] Failed to extract time components from "${content}":`, error);
+			return {};
+		}
+	}
+
+	/**
+	 * Combine date timestamps with time components to create enhanced datetime objects
+	 */
+	private combineTimestampsWithTimeComponents(
+		dates: {
+			startDate?: number;
+			dueDate?: number;
+			scheduledDate?: number;
+			completedDate?: number;
+		},
+		timeComponents: EnhancedStandardTaskMetadata["timeComponents"]
+	): EnhancedStandardTaskMetadata["enhancedDates"] {
+		if (!timeComponents) {
+			return undefined;
+		}
+
+		const enhancedDates: EnhancedStandardTaskMetadata["enhancedDates"] = {};
+
+		// Helper function to combine date and time component
+		const combineDateTime = (dateTimestamp: number | undefined, timeComponent: TimeComponent | undefined): Date | undefined => {
+			if (!dateTimestamp || !timeComponent) {
+				return undefined;
+			}
+
+			const date = new Date(dateTimestamp);
+			const combinedDate = new Date(
+				date.getFullYear(),
+				date.getMonth(),
+				date.getDate(),
+				timeComponent.hour,
+				timeComponent.minute,
+				timeComponent.second || 0
+			);
+
+			return combinedDate;
+		};
+
+		// Combine start date with start time
+		if (dates.startDate && timeComponents.startTime) {
+			enhancedDates.startDateTime = combineDateTime(dates.startDate, timeComponents.startTime);
+		}
+
+		// Combine due date with due time
+		if (dates.dueDate && timeComponents.dueTime) {
+			enhancedDates.dueDateTime = combineDateTime(dates.dueDate, timeComponents.dueTime);
+		}
+
+		// Combine scheduled date with scheduled time
+		if (dates.scheduledDate && timeComponents.scheduledTime) {
+			enhancedDates.scheduledDateTime = combineDateTime(dates.scheduledDate, timeComponents.scheduledTime);
+		}
+
+		// If we have a due date but the time component is scheduledTime (common with "at" keyword), 
+		// create dueDateTime using scheduledTime
+		if (dates.dueDate && !timeComponents.dueTime && timeComponents.scheduledTime) {
+			enhancedDates.dueDateTime = combineDateTime(dates.dueDate, timeComponents.scheduledTime);
+		}
+
+		// If we have a scheduled date but the time component is dueTime, 
+		// create scheduledDateTime using dueTime
+		if (dates.scheduledDate && !timeComponents.scheduledTime && timeComponents.dueTime) {
+			enhancedDates.scheduledDateTime = combineDateTime(dates.scheduledDate, timeComponents.dueTime);
+		}
+
+		// Handle end time - if we have start date and end time, create end datetime
+		if (dates.startDate && timeComponents.endTime) {
+			enhancedDates.endDateTime = combineDateTime(dates.startDate, timeComponents.endTime);
+		}
+
+		return Object.keys(enhancedDates).length > 0 ? enhancedDates : undefined;
 	}
 
 	/**

@@ -1205,4 +1205,13 @@ export class QuickCaptureModal extends Modal {
 			this.markdownRenderer = null;
 		}
 	}
+
+	/**
+	 * Update TimeParsingService configuration when settings change
+	 */
+	updateTimeParsingSettings(timeParsingConfig: any): void {
+		if (this.timeParsingService) {
+			this.timeParsingService.updateConfig(timeParsingConfig);
+		}
+	}
 }

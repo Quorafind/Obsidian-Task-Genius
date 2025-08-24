@@ -10,6 +10,7 @@ import {
 	TFile,
 } from "obsidian";
 import { Task } from "../../types/task";
+import { TimeComponent } from "../../types/time-parsing";
 import { t } from "../../translations/helper";
 import TaskProgressBarPlugin from "../../index";
 import { QuickCaptureModal } from "../QuickCaptureModal";
@@ -42,6 +43,25 @@ interface TimelineEvent {
 	isToday?: boolean;
 }
 
+/**
+ * Enhanced TimelineEvent interface with time component support
+ */
+interface EnhancedTimelineEvent extends TimelineEvent {
+	/** Enhanced time information */
+	timeInfo?: {
+		/** Primary time for display and sorting */
+		primaryTime: Date;
+		/** End time for ranges */
+		endTime?: Date;
+		/** Whether this is a time range */
+		isRange: boolean;
+		/** Original time component from parsing */
+		timeComponent?: TimeComponent;
+		/** Display format preference */
+		displayFormat: "time-only" | "date-time" | "range";
+	};
+}
+
 export class TimelineSidebarView extends ItemView {
 	private plugin: TaskProgressBarPlugin;
 	public containerEl: HTMLElement;
@@ -49,7 +69,7 @@ export class TimelineSidebarView extends ItemView {
 	private quickInputContainerEl: HTMLElement;
 	private markdownEditor: EmbeddableMarkdownEditor | null = null;
 	private currentDate: moment.Moment = moment();
-	private events: TimelineEvent[] = [];
+	private events: EnhancedTimelineEvent[] = [];
 	private isAutoScrolling: boolean = false;
 
 	// Collapse state management
@@ -324,7 +344,7 @@ export class TimelineSidebarView extends ItemView {
 		timelineFilteredTasks.forEach((task) => {
 			const dates = this.extractDatesFromTask(task);
 			dates.forEach(({ date, type }) => {
-				const event: TimelineEvent = {
+				const event: EnhancedTimelineEvent = {
 					id: `${task.id}-${type}`,
 					content: task.content,
 					time: date,
@@ -332,6 +352,7 @@ export class TimelineSidebarView extends ItemView {
 					status: task.status,
 					task: task,
 					isToday: moment(date).isSame(moment(), "day"),
+					timeInfo: this.createTimeInfoFromTask(task, date, type),
 				};
 				this.events.push(event);
 			});
@@ -400,35 +421,151 @@ export class TimelineSidebarView extends ItemView {
 		return deduplicatedDates;
 	}
 
+	/**
+	 * Create time information from task metadata and enhanced time components
+	 */
+	private createTimeInfoFromTask(
+		task: Task,
+		date: Date,
+		type: string
+	): EnhancedTimelineEvent["timeInfo"] {
+		// Check if task has enhanced metadata with time components
+		const enhancedMetadata = task.metadata as any;
+		const timeComponents = enhancedMetadata?.timeComponents;
+		const enhancedDates = enhancedMetadata?.enhancedDates;
+
+		if (!timeComponents) {
+			// No time components available, use default time display
+			return {
+				primaryTime: date,
+				isRange: false,
+				displayFormat: "date-time",
+			};
+		}
+
+		// Determine which time component to use based on the date type
+		let relevantTimeComponent: TimeComponent | undefined;
+		let relevantEndTime: Date | undefined;
+
+		switch (type) {
+			case "start":
+				relevantTimeComponent = timeComponents.startTime;
+				if (timeComponents.endTime && enhancedDates?.endDateTime) {
+					relevantEndTime = enhancedDates.endDateTime;
+				}
+				break;
+			case "due":
+				relevantTimeComponent = timeComponents.dueTime;
+				break;
+			case "scheduled":
+				relevantTimeComponent = timeComponents.scheduledTime;
+				break;
+			default:
+				relevantTimeComponent = undefined;
+		}
+
+		// If no specific time component found for this date type, try to use any available time component
+		if (!relevantTimeComponent) {
+			// Priority order: startTime > dueTime > scheduledTime
+			if (timeComponents.startTime) {
+				relevantTimeComponent = timeComponents.startTime;
+				// If we have both start and end time, treat it as a range
+				if (timeComponents.endTime && enhancedDates?.endDateTime) {
+					relevantEndTime = enhancedDates.endDateTime;
+				}
+			} else if (timeComponents.dueTime) {
+				relevantTimeComponent = timeComponents.dueTime;
+			} else if (timeComponents.scheduledTime) {
+				relevantTimeComponent = timeComponents.scheduledTime;
+			}
+		}
+
+		if (!relevantTimeComponent) {
+			// No time components available at all
+			return {
+				primaryTime: date,
+				isRange: false,
+				displayFormat: "date-time",
+			};
+		}
+
+		// Create enhanced datetime by combining date and time component
+		const enhancedDateTime = new Date(date);
+		enhancedDateTime.setUTCHours(
+			relevantTimeComponent.hour,
+			relevantTimeComponent.minute,
+			relevantTimeComponent.second || 0,
+			0
+		);
+
+		// Determine if this is a time range
+		// Check if the time component is marked as a range OR if we have an explicit end time
+		const isRange = relevantTimeComponent.isRange || !!relevantEndTime;
+		
+		// If the time component is a range but we don't have enhancedDates.endDateTime,
+		// create the end time from the range partner
+		if (relevantTimeComponent.isRange && !relevantEndTime && relevantTimeComponent.rangePartner) {
+			const endDateTime = new Date(date);
+			endDateTime.setUTCHours(
+				relevantTimeComponent.rangePartner.hour,
+				relevantTimeComponent.rangePartner.minute,
+				relevantTimeComponent.rangePartner.second || 0,
+				0
+			);
+			relevantEndTime = endDateTime;
+		}
+
+		return {
+			primaryTime: enhancedDateTime,
+			endTime: relevantEndTime,
+			isRange,
+			timeComponent: relevantTimeComponent,
+			displayFormat: isRange ? "range" : "time-only",
+		};
+	}
+
 	private extractDatesFromTask(
 		task: Task
 	): Array<{ date: Date; type: string }> {
 		// Task-level deduplication: ensure each task appears only once in timeline
 		
+		// Check if task has enhanced metadata with time components
+		const enhancedMetadata = task.metadata as any;
+		const timeComponents = enhancedMetadata?.timeComponents;
+		const enhancedDates = enhancedMetadata?.enhancedDates;
+		
 		// For completed tasks: prioritize due date, fallback to completed date
 		if (task.completed) {
 			if (task.metadata.dueDate) {
-				return [{ date: new Date(task.metadata.dueDate), type: "due" }];
+				// Use enhanced due datetime if available, otherwise use original timestamp
+				const dueDate = enhancedDates?.dueDateTime || new Date(task.metadata.dueDate);
+				return [{ date: dueDate, type: "due" }];
 			} else if (task.metadata.completedDate) {
 				return [{ date: new Date(task.metadata.completedDate), type: "completed" }];
 			}
 		}
 		
-		// For non-completed tasks: select single highest priority date
+		// For non-completed tasks: select single highest priority date with enhanced datetime support
 		const dates: Array<{ date: Date; type: string }> = [];
 
 		if (task.metadata.dueDate) {
-			dates.push({ date: new Date(task.metadata.dueDate), type: "due" });
+			// Use enhanced due datetime if available
+			const dueDate = enhancedDates?.dueDateTime || new Date(task.metadata.dueDate);
+			dates.push({ date: dueDate, type: "due" });
 		}
 		if (task.metadata.scheduledDate) {
+			// Use enhanced scheduled datetime if available
+			const scheduledDate = enhancedDates?.scheduledDateTime || new Date(task.metadata.scheduledDate);
 			dates.push({
-				date: new Date(task.metadata.scheduledDate),
+				date: scheduledDate,
 				type: "scheduled",
 			});
 		}
 		if (task.metadata.startDate) {
+			// Use enhanced start datetime if available
+			const startDate = enhancedDates?.startDateTime || new Date(task.metadata.startDate);
 			dates.push({
-				date: new Date(task.metadata.startDate),
+				date: startDate,
 				type: "start",
 			});
 		}
@@ -474,8 +611,8 @@ export class TimelineSidebarView extends ItemView {
 		}
 	}
 
-	private groupEventsByDate(): Map<string, TimelineEvent[]> {
-		const grouped = new Map<string, TimelineEvent[]>();
+	private groupEventsByDate(): Map<string, EnhancedTimelineEvent[]> {
+		const grouped = new Map<string, EnhancedTimelineEvent[]>();
 
 		this.events.forEach((event) => {
 			const dateKey = moment(event.time).format("YYYY-MM-DD");
@@ -488,7 +625,7 @@ export class TimelineSidebarView extends ItemView {
 		return grouped;
 	}
 
-	private renderDateGroup(dateStr: string, events: TimelineEvent[]): void {
+	private renderDateGroup(dateStr: string, events: EnhancedTimelineEvent[]): void {
 		const dateGroupEl = this.timelineContainerEl.createDiv(
 			"timeline-date-group"
 		);
@@ -527,12 +664,299 @@ export class TimelineSidebarView extends ItemView {
 		// Events list
 		const eventsListEl = dateGroupEl.createDiv("timeline-events-list");
 
-		events.forEach((event) => {
-			this.renderEvent(eventsListEl, event);
+		// Sort events by time within the day for chronological ordering
+		const sortedEvents = this.sortEventsByTime(events);
+
+		// Group events by time and render them
+		this.renderGroupedEvents(eventsListEl, sortedEvents);
+	}
+
+	/**
+	 * Render time information for a timeline event
+	 */
+	private renderEventTime(timeEl: HTMLElement, event: EnhancedTimelineEvent): void {
+		if (event.timeInfo?.timeComponent) {
+			// Use parsed time component for accurate display
+			const { timeComponent, isRange, endTime } = event.timeInfo;
+			
+			if (isRange && endTime) {
+				// Display time range
+				const startTimeStr = this.formatTimeComponent(timeComponent);
+				const endTimeStr = moment(endTime).format("HH:mm");
+				timeEl.setText(`${startTimeStr}-${endTimeStr}`);
+				timeEl.addClass("timeline-event-time-range");
+			} else {
+				// Display single time
+				timeEl.setText(this.formatTimeComponent(timeComponent));
+				timeEl.addClass("timeline-event-time-single");
+			}
+		} else {
+			// Fallback to default time display
+			timeEl.setText(moment(event.time).format("HH:mm"));
+			timeEl.addClass("timeline-event-time-default");
+		}
+	}
+
+	/**
+	 * Format a time component for display
+	 */
+	private formatTimeComponent(timeComponent: TimeComponent): string {
+		const hour = timeComponent.hour.toString().padStart(2, '0');
+		const minute = timeComponent.minute.toString().padStart(2, '0');
+		
+		if (timeComponent.second !== undefined) {
+			const second = timeComponent.second.toString().padStart(2, '0');
+			return `${hour}:${minute}:${second}`;
+		}
+		
+		return `${hour}:${minute}`;
+	}
+
+	/**
+	 * Sort events by time within a day for chronological ordering
+	 */
+	private sortEventsByTime(events: EnhancedTimelineEvent[]): EnhancedTimelineEvent[] {
+		return events.sort((a, b) => {
+			// Get the primary time for sorting - use enhanced time if available
+			const timeA = a.timeInfo?.primaryTime || a.time;
+			const timeB = b.timeInfo?.primaryTime || b.time;
+			
+			// Sort by time of day (earlier times first)
+			const timeComparison = timeA.getTime() - timeB.getTime();
+			
+			if (timeComparison !== 0) {
+				return timeComparison;
+			}
+			
+			// If times are equal, sort by task content for consistent ordering
+			return a.content.localeCompare(b.content);
 		});
 	}
 
-	private renderEvent(containerEl: HTMLElement, event: TimelineEvent): void {
+	/**
+	 * Render events grouped by time, separating timed events from date-only events
+	 */
+	private renderGroupedEvents(containerEl: HTMLElement, events: EnhancedTimelineEvent[]): void {
+		// Separate events into timed and date-only categories
+		const timedEvents: EnhancedTimelineEvent[] = [];
+		const dateOnlyEvents: EnhancedTimelineEvent[] = [];
+
+		events.forEach((event) => {
+			if (this.hasSpecificTime(event)) {
+				timedEvents.push(event);
+			} else {
+				dateOnlyEvents.push(event);
+			}
+		});
+
+		// Render timed events first, grouped by time
+		if (timedEvents.length > 0) {
+			this.renderTimedEventsWithGrouping(containerEl, timedEvents);
+		}
+
+		// Render date-only events in a separate section
+		if (dateOnlyEvents.length > 0) {
+			this.renderDateOnlyEvents(containerEl, dateOnlyEvents);
+		}
+	}
+
+	/**
+	 * Check if an event has a specific time (not just a date)
+	 */
+	private hasSpecificTime(event: EnhancedTimelineEvent): boolean {
+		// Check if the event has enhanced time information
+		if (event.timeInfo?.timeComponent) {
+			return true;
+		}
+
+		// Check if the original time has non-zero hours/minutes (not just midnight)
+		const time = event.timeInfo?.primaryTime || event.time;
+		return time.getUTCHours() !== 0 || time.getUTCMinutes() !== 0 || time.getUTCSeconds() !== 0;
+	}
+
+	/**
+	 * Render timed events with grouping for events at the same time
+	 */
+	private renderTimedEventsWithGrouping(containerEl: HTMLElement, events: EnhancedTimelineEvent[]): void {
+		// Group events by their time
+		const timeGroups = new Map<string, EnhancedTimelineEvent[]>();
+
+		events.forEach((event) => {
+			const time = event.timeInfo?.primaryTime || event.time;
+			const timeKey = this.getTimeGroupKey(time, event);
+			
+			if (!timeGroups.has(timeKey)) {
+				timeGroups.set(timeKey, []);
+			}
+			timeGroups.get(timeKey)!.push(event);
+		});
+
+		// Render each time group
+		for (const [timeKey, groupEvents] of timeGroups) {
+			if (groupEvents.length === 1) {
+				// Single event - render normally
+				this.renderEvent(containerEl, groupEvents[0]);
+			} else {
+				// Multiple events at same time - render as a group
+				this.renderTimeGroup(containerEl, timeKey, groupEvents);
+			}
+		}
+	}
+
+	/**
+	 * Generate a time group key for grouping events
+	 */
+	private getTimeGroupKey(time: Date, event: EnhancedTimelineEvent): string {
+		if (event.timeInfo?.timeComponent) {
+			// Use the formatted time component for precise grouping
+			return this.formatTimeComponent(event.timeInfo.timeComponent);
+		}
+		
+		// Fallback to hour:minute format
+		return moment(time).format("HH:mm");
+	}
+
+	/**
+	 * Render a group of events that occur at the same time
+	 */
+	private renderTimeGroup(containerEl: HTMLElement, timeKey: string, events: EnhancedTimelineEvent[]): void {
+		const groupEl = containerEl.createDiv("timeline-time-group");
+		
+		// Time group header
+		const groupHeaderEl = groupEl.createDiv("timeline-time-group-header");
+		const timeEl = groupHeaderEl.createDiv("timeline-time-group-time");
+		timeEl.setText(timeKey);
+		timeEl.addClass("timeline-event-time");
+		timeEl.addClass("timeline-event-time-group");
+		
+		const countEl = groupHeaderEl.createDiv("timeline-time-group-count");
+		countEl.setText(`${events.length} events`);
+
+		// Events in the group
+		const groupEventsEl = groupEl.createDiv("timeline-time-group-events");
+		
+		events.forEach((event) => {
+			const eventEl = groupEventsEl.createDiv("timeline-event timeline-event-grouped");
+			eventEl.setAttribute("data-event-id", event.id);
+
+			if (event.task?.completed) {
+				eventEl.addClass("is-completed");
+			}
+
+			// Event content (no time display since it's in the group header)
+			const contentEl = eventEl.createDiv("timeline-event-content");
+
+			// Task checkbox if it's a task
+			if (event.task) {
+				const checkboxEl = contentEl.createDiv("timeline-event-checkbox");
+				checkboxEl.createEl(
+					"span",
+					{
+						cls: "status-option-checkbox",
+					},
+					(el) => {
+						const checkbox = createTaskCheckbox(
+							event.task?.status || " ",
+							event.task!,
+							el
+						);
+						this.registerDomEvent(checkbox, "change", async (e) => {
+							e.stopPropagation();
+							e.preventDefault();
+							if (event.task) {
+								await this.toggleTaskCompletion(event.task, event);
+							}
+						});
+					}
+				);
+			}
+
+			// Event text with markdown rendering
+			const textEl = contentEl.createDiv("timeline-event-text");
+			const contentContainer = textEl.createDiv("timeline-event-content-text");
+
+			// Use MarkdownRendererComponent to render the task content
+			if (event.task) {
+				const markdownRenderer = new MarkdownRendererComponent(
+					this.app,
+					contentContainer,
+					event.task.filePath,
+					true // hideMarks = true to clean up task metadata
+				);
+				this.addChild(markdownRenderer);
+
+				// Set the file context if available
+				const file = this.app.vault.getFileByPath(event.task.filePath);
+				if (file instanceof TFile) {
+					markdownRenderer.setFile(file);
+				}
+
+				// Render the content asynchronously
+				markdownRenderer.render(event.content, true).catch((error) => {
+					console.error("Failed to render markdown in timeline:", error);
+					// Fallback to plain text if rendering fails
+					contentContainer.setText(event.content);
+				});
+			} else {
+				// Fallback for non-task events
+				contentContainer.setText(event.content);
+			}
+
+			// Event actions
+			const actionsEl = eventEl.createDiv("timeline-event-actions");
+
+			if (event.task) {
+				// Go to task
+				const gotoBtn = actionsEl.createDiv("timeline-event-action");
+				setIcon(gotoBtn, "external-link");
+				gotoBtn.setAttribute("aria-label", t("Go to task"));
+				this.registerDomEvent(gotoBtn, "click", () => {
+					this.goToTask(event.task!);
+				});
+			}
+
+			// Click to focus (but not when clicking on checkbox or actions)
+			this.registerDomEvent(eventEl, "click", (e) => {
+				// Prevent navigation if clicking on checkbox or action buttons
+				const target = e.target as HTMLElement;
+				if (
+					target.closest(".timeline-event-checkbox") ||
+					target.closest(".timeline-event-actions") ||
+					target.closest('input[type="checkbox"]')
+				) {
+					return;
+				}
+
+				if (event.task) {
+					this.goToTask(event.task);
+				}
+			});
+		});
+	}
+
+	/**
+	 * Render date-only events (events without specific times)
+	 */
+	private renderDateOnlyEvents(containerEl: HTMLElement, events: EnhancedTimelineEvent[]): void {
+		if (events.length === 0) return;
+
+		// Create a section for date-only events
+		const dateOnlySection = containerEl.createDiv("timeline-date-only-section");
+		
+		const sectionHeaderEl = dateOnlySection.createDiv("timeline-date-only-header");
+		const headerTimeEl = sectionHeaderEl.createDiv("timeline-event-time timeline-event-time-date-only");
+		headerTimeEl.setText("All day");
+		
+		const headerTextEl = sectionHeaderEl.createDiv("timeline-date-only-title");
+		headerTextEl.setText(`${events.length} all-day event${events.length > 1 ? 's' : ''}`);
+
+		// Render each date-only event
+		events.forEach((event) => {
+			this.renderEvent(dateOnlySection, event);
+		});
+	}
+
+	private renderEvent(containerEl: HTMLElement, event: EnhancedTimelineEvent): void {
 		const eventEl = containerEl.createDiv("timeline-event");
 		eventEl.setAttribute("data-event-id", event.id);
 
@@ -540,9 +964,9 @@ export class TimelineSidebarView extends ItemView {
 			eventEl.addClass("is-completed");
 		}
 
-		// Event time
+		// Event time - use enhanced time information if available
 		const timeEl = eventEl.createDiv("timeline-event-time");
-		timeEl.setText(moment(event.time).format("HH:mm"));
+		this.renderEventTime(timeEl, event);
 
 		// Event content
 		const contentEl = eventEl.createDiv("timeline-event-content");
@@ -742,7 +1166,7 @@ export class TimelineSidebarView extends ItemView {
 
 	private async toggleTaskCompletion(
 		task: Task,
-		event?: TimelineEvent
+		event?: EnhancedTimelineEvent
 	): Promise<void> {
 		const updatedTask = { ...task, completed: !task.completed };
 

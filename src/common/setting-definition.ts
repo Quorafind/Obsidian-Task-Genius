@@ -4,6 +4,7 @@ import { BaseHabitData } from "../types/habit-card";
 import type { RootFilterState } from "../components/task-filter/ViewTaskFilter";
 import { IcsManagerConfig } from "../types/ics";
 import { TimeParsingConfig } from "../services/time-parsing-service";
+import type { EnhancedTimeParsingConfig } from "../types/time-parsing";
 import type { FileSourceConfiguration } from "../types/file-source";
 
 // Interface for individual project review settings (If still needed, otherwise remove)
@@ -747,7 +748,7 @@ export interface TaskProgressBarSettings {
 	onCompletion: OnCompletionSettings;
 
 	// Time Parsing Settings
-	timeParsing: TimeParsingConfig;
+	timeParsing: EnhancedTimeParsingConfig;
 
 	// Task Timer Settings
 	taskTimer: TaskTimerSettings;
@@ -1468,6 +1469,23 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		removeOriginalText: true,
 		perLineProcessing: true,
 		realTimeReplacement: true,
+		// Enhanced time parsing configuration
+		timePatterns: {
+			singleTime: [
+				/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g, // 24-hour format
+				/\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g, // 12-hour format
+			],
+			timeRange: [
+				/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*[-~～]\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/g, // 24-hour range
+				/\b(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)?\s*[-~～]\s*(1[0-2]|0?[1-9]):([0-5]\d)(?::([0-5]\d))?\s*(AM|PM|am|pm)\b/g, // 12-hour range
+			],
+			rangeSeparators: ["-", "~", "～", " - ", " ~ ", " ～ "],
+		},
+		timeDefaults: {
+			preferredFormat: "24h" as const,
+			defaultPeriod: "AM" as const,
+			midnightCrossing: "next-day" as const,
+		},
 	},
 
 	// Task Timer Defaults
