@@ -337,28 +337,18 @@ export class TaskMetadataEditor extends Component {
 		});
 
 		if (value) {
-			// Date format conversion using UTC to avoid timezone issues
+			// Date format conversion (should match date format used in the plugin)
 			try {
 				const date = new Date(value);
-				const year = date.getUTCFullYear();
-				const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-				const day = String(date.getUTCDate()).padStart(2, "0");
-				dateInput.value = `${year}-${month}-${day}`;
+				const formattedDate = date.toISOString().split("T")[0];
+				dateInput.value = formattedDate;
 			} catch (e) {
 				console.error(`Cannot parse date: ${value}`, e);
 			}
 		}
 
 		this.registerDomEvent(dateInput, "change", () => {
-			const dateValue = dateInput.value;
-			if (dateValue) {
-				// Create date at noon UTC to avoid timezone edge cases
-				const [year, month, day] = dateValue.split("-").map(Number);
-				const timestamp = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getTime();
-				this.notifyMetadataChange(field, timestamp);
-			} else {
-				this.notifyMetadataChange(field, undefined);
-			}
+			this.notifyMetadataChange(field, dateInput.value);
 		});
 	}
 
