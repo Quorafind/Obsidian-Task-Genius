@@ -13,7 +13,10 @@ import {
 	EmbeddableMarkdownEditor,
 } from "@/editor-extensions/core/markdown-editor";
 import TaskProgressBarPlugin from "@/index";
-import { saveCapture, processDateTemplates } from "@/utils/file/file-operations";
+import {
+	saveCapture,
+	processDateTemplates,
+} from "@/utils/file/file-operations";
 import { t } from "@/translations/helper";
 import { MinimalQuickCaptureSuggest } from "@/components/features/quick-capture/suggest/MinimalQuickCaptureSuggest";
 import {
@@ -71,8 +74,11 @@ export class MinimalQuickCaptureModal extends Modal {
 
 		// Load last used mode from local storage
 		try {
-			const stored = this.app.loadLocalStorage(LAST_USED_MODE_KEY) as string | null;
-			if (stored === "checkbox" || stored === "file") this.currentMode = stored;
+			const stored = this.app.loadLocalStorage(LAST_USED_MODE_KEY) as
+				| string
+				| null;
+			if (stored === "checkbox" || stored === "file")
+				this.currentMode = stored;
 		} catch {}
 
 		// Initialize default metadata with fallback
@@ -107,7 +113,7 @@ export class MinimalQuickCaptureModal extends Modal {
 			if (this.markdownEditor?.editor?.editor) {
 				this.universalSuggest =
 					this.suggestManager.enableForMinimalModal(
-						this.markdownEditor.editor.editor
+						this.markdownEditor.editor.editor,
 					);
 				this.universalSuggest.enable();
 			}
@@ -147,9 +153,17 @@ export class MinimalQuickCaptureModal extends Modal {
 		this.titleEl.setText(t("Minimal Quick Capture"));
 
 		// Mode tabs (checkbox | file)
-		this.modeTabsContainer = contentEl.createDiv({ cls: "quick-capture-minimal-tabs" });
-		const tabCheckbox = this.modeTabsContainer.createEl("button", { text: t("Task"), cls: "tab-btn" });
-		const tabFile = this.modeTabsContainer.createEl("button", { text: t("File"), cls: "tab-btn" });
+		this.modeTabsContainer = contentEl.createDiv({
+			cls: "quick-capture-minimal-tabs",
+		});
+		const tabCheckbox = this.modeTabsContainer.createEl("button", {
+			text: t("Task"),
+			cls: "tab-btn",
+		});
+		const tabFile = this.modeTabsContainer.createEl("button", {
+			text: t("File"),
+			cls: "tab-btn",
+		});
 		const refreshTabs = () => {
 			if (this.currentMode === "checkbox") {
 				tabCheckbox.addClass("active");
@@ -162,18 +176,24 @@ export class MinimalQuickCaptureModal extends Modal {
 		};
 		tabCheckbox.addEventListener("click", () => {
 			this.currentMode = "checkbox";
-			try { this.app.saveLocalStorage(LAST_USED_MODE_KEY, "checkbox"); } catch {}
+			try {
+				this.app.saveLocalStorage(LAST_USED_MODE_KEY, "checkbox");
+			} catch {}
 			refreshTabs();
 		});
 		tabFile.addEventListener("click", () => {
 			this.currentMode = "file";
-			try { this.app.saveLocalStorage(LAST_USED_MODE_KEY, "file"); } catch {}
+			try {
+				this.app.saveLocalStorage(LAST_USED_MODE_KEY, "file");
+			} catch {}
 			refreshTabs();
 		});
 		refreshTabs();
 
 		// Optional file name section (only for file mode)
-		this.fileNameSection = contentEl.createDiv({ cls: "quick-capture-minimal-filename" });
+		this.fileNameSection = contentEl.createDiv({
+			cls: "quick-capture-minimal-filename",
+		});
 
 		// Editor container
 		const editorContainer = contentEl.createDiv({
@@ -191,60 +211,77 @@ export class MinimalQuickCaptureModal extends Modal {
 		this.createMainButtons(buttonsContainer);
 	}
 
-
-		private updateModeUI() {
-			if (!this.fileNameSection) return;
-			this.fileNameSection.empty();
-			if (this.currentMode === "file") {
-				this.fileNameSection.createDiv({ text: t("Capture as:"), cls: "quick-capture-section-title" });
-				if (this.fileNameInput) {
-					this.fileNameInput.destroy();
-					this.fileNameInput = null;
-				}
-				this.fileNameInput = new FileNameInput(this.app, this.fileNameSection, {
+	private updateModeUI() {
+		if (!this.fileNameSection) return;
+		this.fileNameSection.empty();
+		if (this.currentMode === "file") {
+			this.fileNameSection.createDiv({
+				text: t("Capture as:"),
+				cls: "quick-capture-section-title",
+			});
+			if (this.fileNameInput) {
+				this.fileNameInput.destroy();
+				this.fileNameInput = null;
+			}
+			this.fileNameInput = new FileNameInput(
+				this.app,
+				this.plugin,
+				this.fileNameSection,
+				{
 					placeholder: t("Enter file name..."),
 					defaultValue:
-						this.plugin.settings.quickCapture.defaultFileNameTemplate ||
-						"{{DATE:YYYY-MM-DD}} - ",
+						this.plugin.settings.quickCapture
+							.defaultFileNameTemplate ||
+						"{{DATE:YYYY-MM-DD}} - Task",
 					currentFolder:
-						this.plugin.settings.quickCapture.createFileMode?.defaultFolder,
+						this.plugin.settings.quickCapture.createFileMode
+							?.defaultFolder,
 					onChange: (value) => {
 						this.taskMetadata.targetFile = undefined; // not used in file mode
 						(this.taskMetadata as any).customFileName = value;
 					},
-				});
-			} else {
-				if (this.fileNameInput) {
-					this.fileNameInput.destroy();
-					this.fileNameInput = null;
-				}
-			}
-		}
-
-		/** Extract #tags from content for frontmatter */
-		private extractTagsFromContentForFrontmatter(content: string): string[] {
-			if (!content) return [];
-			const tagRegex = /(^|\s)#([A-Za-z0-9_\/-]+)/g;
-			const results = new Set<string>();
-			let match: RegExpExecArray | null;
-			while ((match = tagRegex.exec(content)) !== null) {
-				const tag = match[2];
-				if (tag) results.add(tag);
-			}
-			return Array.from(results);
-		}
-
-		private sanitizeFilename(filename: string): string {
-			return filename.replace(/[<>:"|*?\\]/g, "-").replace(/\s+/g, " ").trim();
-		}
-
-		private sanitizeFilePath(filePath: string): string {
-			const parts = filePath.split("/");
-			const sanitized = parts.map((part, idx) =>
-				idx === parts.length - 1 ? this.sanitizeFilename(part) : part.replace(/[<>:"|*?\\]/g, "-").replace(/\s+/g, " ").trim()
+				},
 			);
-			return sanitized.join("/");
+		} else {
+			if (this.fileNameInput) {
+				this.fileNameInput.destroy();
+				this.fileNameInput = null;
+			}
 		}
+	}
+
+	/** Extract #tags from content for frontmatter */
+	private extractTagsFromContentForFrontmatter(content: string): string[] {
+		if (!content) return [];
+		const tagRegex = /(^|\s)#([A-Za-z0-9_\/-]+)/g;
+		const results = new Set<string>();
+		let match: RegExpExecArray | null;
+		while ((match = tagRegex.exec(content)) !== null) {
+			const tag = match[2];
+			if (tag) results.add(tag);
+		}
+		return Array.from(results);
+	}
+
+	private sanitizeFilename(filename: string): string {
+		return filename
+			.replace(/[<>:"|*?\\]/g, "-")
+			.replace(/\s+/g, " ")
+			.trim();
+	}
+
+	private sanitizeFilePath(filePath: string): string {
+		const parts = filePath.split("/");
+		const sanitized = parts.map((part, idx) =>
+			idx === parts.length - 1
+				? this.sanitizeFilename(part)
+				: part
+						.replace(/[<>:"|*?\\]/g, "-")
+						.replace(/\s+/g, " ")
+						.trim(),
+		);
+		return sanitized.join("/");
+	}
 
 	private setupMarkdownEditor(container: HTMLElement) {
 		setTimeout(() => {
@@ -252,7 +289,10 @@ export class MinimalQuickCaptureModal extends Modal {
 				this.app,
 				container,
 				{
-					placeholder: this.currentMode === "file" ? t("Enter file content...") : t("Enter your task..."),
+					placeholder:
+						this.currentMode === "file"
+							? t("Enter file content...")
+							: t("Enter your task..."),
 					singleLine: true, // Single line mode
 
 					onEnter: (editor, mod, shift) => {
@@ -275,7 +315,7 @@ export class MinimalQuickCaptureModal extends Modal {
 						// Parse content and update button states
 						this.parseContentAndUpdateButtons();
 					},
-				}
+				},
 			);
 
 			// Focus the editor
@@ -304,11 +344,11 @@ export class MinimalQuickCaptureModal extends Modal {
 		});
 		setIcon(this.priorityButton, "zap");
 		this.priorityButton.addEventListener("click", () =>
-			this.showPriorityMenu()
+			this.showPriorityMenu(),
 		);
 		this.updateButtonState(
 			this.priorityButton,
-			!!this.taskMetadata.priority
+			!!this.taskMetadata.priority,
 		);
 
 		this.locationButton = leftContainer.createEl("button", {
@@ -317,12 +357,12 @@ export class MinimalQuickCaptureModal extends Modal {
 		});
 		setIcon(this.locationButton, "folder");
 		this.locationButton.addEventListener("click", () =>
-			this.showLocationMenu()
+			this.showLocationMenu(),
 		);
 		this.updateButtonState(
 			this.locationButton,
 			this.taskMetadata.location !==
-				(this.plugin.settings.quickCapture.targetType || "fixed")
+				(this.plugin.settings.quickCapture.targetType || "fixed"),
 		);
 
 		this.tagButton = leftContainer.createEl("button", {
@@ -333,7 +373,7 @@ export class MinimalQuickCaptureModal extends Modal {
 		this.tagButton.addEventListener("click", () => {});
 		this.updateButtonState(
 			this.tagButton,
-			!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+			!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 		);
 	}
 
@@ -366,7 +406,7 @@ export class MinimalQuickCaptureModal extends Modal {
 			new MouseEvent("click", {
 				clientX: x,
 				clientY: y,
-			})
+			}),
 		);
 	}
 
@@ -400,7 +440,7 @@ export class MinimalQuickCaptureModal extends Modal {
 					if (cursor && this.markdownEditor) {
 						this.replaceAtCursor(
 							cursor,
-							this.formatDate(quickDate.date)
+							this.formatDate(quickDate.date),
 						);
 					}
 				});
@@ -483,7 +523,7 @@ export class MinimalQuickCaptureModal extends Modal {
 					this.locationButton!,
 					this.taskMetadata.location !==
 						(this.plugin.settings.quickCapture.targetType ||
-							"fixed")
+							"fixed"),
 				);
 
 				// If called from suggest, replace the 📁 with file text
@@ -503,7 +543,7 @@ export class MinimalQuickCaptureModal extends Modal {
 					this.locationButton!,
 					this.taskMetadata.location !==
 						(this.plugin.settings.quickCapture?.targetType ||
-							"fixed")
+							"fixed"),
 				);
 
 				// If called from suggest, replace the 📁 with daily note text
@@ -533,7 +573,7 @@ export class MinimalQuickCaptureModal extends Modal {
 			cm.replaceRange(
 				replacement,
 				{ line: cursor.line, ch: cursor.ch - 1 },
-				cursor
+				cursor,
 			);
 		}
 	}
@@ -653,8 +693,12 @@ export class MinimalQuickCaptureModal extends Modal {
 
 				const captureOptions = {
 					...this.plugin.settings.quickCapture,
-					targetFile: this.taskMetadata.targetFile || this.getTargetFile(),
-					targetType: (this.taskMetadata.location || "fixed") as "fixed" | "daily-note" | "custom-file",
+					targetFile:
+						this.taskMetadata.targetFile || this.getTargetFile(),
+					targetType: (this.taskMetadata.location || "fixed") as
+						| "fixed"
+						| "daily-note"
+						| "custom-file",
 				};
 				await saveCapture(this.app, processedContent, captureOptions);
 				new Notice(t("Captured successfully"));
@@ -663,8 +707,11 @@ export class MinimalQuickCaptureModal extends Modal {
 			}
 
 			// File mode: save as a new file (replace content) with frontmatter mirror logic
-			const useTemplate = !!this.plugin.settings.quickCapture.createFileMode?.useTemplate;
-			const hasFrontmatter = processedContent.trimStart().startsWith("---");
+			const useTemplate =
+				!!this.plugin.settings.quickCapture.createFileMode?.useTemplate;
+			const hasFrontmatter = processedContent
+				.trimStart()
+				.startsWith("---");
 			if (useTemplate) {
 				if (!hasFrontmatter) {
 					processedContent = `---\nstatus: ${JSON.stringify("not-started")}\n---\n\n${processedContent}`;
@@ -674,16 +721,25 @@ export class MinimalQuickCaptureModal extends Modal {
 					const yamlLines: string[] = [];
 					yamlLines.push(`status: ${JSON.stringify("not-started")}`);
 					if (this.taskMetadata.dueDate) {
-						yamlLines.push(`dueDate: ${JSON.stringify(this.formatDate(this.taskMetadata.dueDate))}`);
+						yamlLines.push(
+							`dueDate: ${JSON.stringify(this.formatDate(this.taskMetadata.dueDate))}`,
+						);
 					}
 					if (this.taskMetadata.priority != null) {
-						yamlLines.push(`priority: ${JSON.stringify(String(this.taskMetadata.priority))}`);
+						yamlLines.push(
+							`priority: ${JSON.stringify(String(this.taskMetadata.priority))}`,
+						);
 					}
-					const writeContentTags = !!this.plugin.settings.quickCapture.createFileMode?.writeContentTagsToFrontmatter;
+					const writeContentTags =
+						!!this.plugin.settings.quickCapture.createFileMode
+							?.writeContentTagsToFrontmatter;
 					if (writeContentTags) {
-						const tags = this.extractTagsFromContentForFrontmatter(content);
+						const tags =
+							this.extractTagsFromContentForFrontmatter(content);
 						if (tags.length > 0) {
-							yamlLines.push(`tags: [${tags.map((t) => JSON.stringify(t)).join(", ")}]`);
+							yamlLines.push(
+								`tags: [${tags.map((t) => JSON.stringify(t)).join(", ")}]`,
+							);
 						}
 					}
 					processedContent = `---\n${yamlLines.join("\n")}\n---\n\n${processedContent}`;
@@ -691,15 +747,22 @@ export class MinimalQuickCaptureModal extends Modal {
 			}
 
 			// Build target file path
-			let targetFilePath = (this.taskMetadata as any).customFileName as string | undefined;
+			let targetFilePath = (this.taskMetadata as any).customFileName as
+				| string
+				| undefined;
 			if (!targetFilePath || !targetFilePath.trim()) {
-				targetFilePath = this.plugin.settings.quickCapture.defaultFileNameTemplate || "{{DATE:YYYY-MM-DD}} - ";
+				targetFilePath =
+					this.plugin.settings.quickCapture.defaultFileNameTemplate ||
+					"{{DATE:YYYY-MM-DD}} - Task";
 			}
 			targetFilePath = processDateTemplates(targetFilePath);
 			if (!targetFilePath.endsWith(".md")) targetFilePath += ".md";
-			const defaultFolder = this.plugin.settings.quickCapture.createFileMode?.defaultFolder?.trim();
+			const defaultFolder =
+				this.plugin.settings.quickCapture.createFileMode?.defaultFolder?.trim();
 			if (defaultFolder && !targetFilePath.includes("/")) {
-				targetFilePath = this.sanitizeFilePath(`${defaultFolder}/${targetFilePath}`);
+				targetFilePath = this.sanitizeFilePath(
+					`${defaultFolder}/${targetFilePath}`,
+				);
 			}
 
 			const captureOptions = {
@@ -728,25 +791,25 @@ export class MinimalQuickCaptureModal extends Modal {
 				// Update button states based on existing taskMetadata
 				this.updateButtonState(
 					this.dateButton!,
-					!!this.taskMetadata.dueDate
+					!!this.taskMetadata.dueDate,
 				);
 				this.updateButtonState(
 					this.priorityButton!,
-					!!this.taskMetadata.priority
+					!!this.taskMetadata.priority,
 				);
 				this.updateButtonState(
 					this.tagButton!,
 					!!(
 						this.taskMetadata.tags &&
 						this.taskMetadata.tags.length > 0
-					)
+					),
 				);
 				this.updateButtonState(
 					this.locationButton!,
 					!!(
 						this.taskMetadata.location ||
 						this.taskMetadata.targetFile
-					)
+					),
 				);
 				return;
 			}
@@ -799,15 +862,15 @@ export class MinimalQuickCaptureModal extends Modal {
 			// Update button states based on current taskMetadata
 			this.updateButtonState(
 				this.dateButton!,
-				!!this.taskMetadata.dueDate
+				!!this.taskMetadata.dueDate,
 			);
 			this.updateButtonState(
 				this.priorityButton!,
-				!!this.taskMetadata.priority
+				!!this.taskMetadata.priority,
 			);
 			this.updateButtonState(
 				this.tagButton!,
-				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 			);
 			this.updateButtonState(
 				this.locationButton!,
@@ -816,26 +879,26 @@ export class MinimalQuickCaptureModal extends Modal {
 					this.taskMetadata.targetFile ||
 					metadata.project ||
 					metadata.location
-				)
+				),
 			);
 		} catch (error) {
 			console.error("Error parsing content:", error);
 			// On error, still update button states based on existing taskMetadata
 			this.updateButtonState(
 				this.dateButton!,
-				!!this.taskMetadata.dueDate
+				!!this.taskMetadata.dueDate,
 			);
 			this.updateButtonState(
 				this.priorityButton!,
-				!!this.taskMetadata.priority
+				!!this.taskMetadata.priority,
 			);
 			this.updateButtonState(
 				this.tagButton!,
-				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 			);
 			this.updateButtonState(
 				this.locationButton!,
-				!!(this.taskMetadata.location || this.taskMetadata.targetFile)
+				!!(this.taskMetadata.location || this.taskMetadata.targetFile),
 			);
 		}
 	}

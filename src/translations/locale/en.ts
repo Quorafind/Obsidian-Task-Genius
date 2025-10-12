@@ -2024,7 +2024,17 @@ const translations = {
   "Enter value": "Enter value",
   "Delete item": "Delete item",
   "Delete this item": "Delete this item",
-  "Add Item": "Add Item"
+  "Add Item": "Add Item",
+
+  // Quick Capture File Name Templates
+  "Quick Name Templates": "Quick Name Templates",
+  "Quick Name Templates:": "Quick Name Templates:",
+  "Manage file name templates for quick selection in File mode": "Manage file name templates for quick selection in File mode",
+  "Enter template...": "Enter template...",
+  "Add Template": "Add Template",
+  "Select a template...": "Select a template...",
+  "Enter file name...": "Enter file name...",
+  "File Name": "File Name"
 };
 
 export default translations;

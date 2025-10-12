@@ -2,10 +2,11 @@ import { Setting, Notice, TFile, TFolder } from "obsidian";
 import { TaskProgressBarSettingTab } from "@/setting";
 import { t } from "@/translations/helper";
 import { FolderSuggest } from "@/components/ui/inputs/AutoComplete";
+import type { QuickCaptureTemplateDefinition } from "@/common/setting-definition";
 
 export function renderQuickCaptureSettingsTab(
 	settingTab: TaskProgressBarSettingTab,
-	containerEl: HTMLElement
+	containerEl: HTMLElement,
 ) {
 	new Setting(containerEl).setName(t("Quick capture")).setHeading();
 
@@ -15,7 +16,7 @@ export function renderQuickCaptureSettingsTab(
 		.addToggle((toggle) =>
 			toggle
 				.setValue(
-					settingTab.plugin.settings.quickCapture.enableQuickCapture
+					settingTab.plugin.settings.quickCapture.enableQuickCapture,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.enableQuickCapture =
@@ -25,7 +26,7 @@ export function renderQuickCaptureSettingsTab(
 					setTimeout(() => {
 						settingTab.display();
 					}, 200);
-				})
+				}),
 		);
 
 	if (!settingTab.plugin.settings.quickCapture.enableQuickCapture) return;
@@ -47,7 +48,7 @@ export function renderQuickCaptureSettingsTab(
 					setTimeout(() => {
 						settingTab.display();
 					}, 100);
-				})
+				}),
 		);
 
 	// Fixed file settings
@@ -56,19 +57,19 @@ export function renderQuickCaptureSettingsTab(
 			.setName(t("Target file"))
 			.setDesc(
 				t(
-					"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'. Supports date templates like {{DATE:YYYY-MM-DD}} or {{date:YYYY-MM-DD-HHmm}}"
-				)
+					"The file where captured text will be saved. You can include a path, e.g., 'folder/Quick Capture.md'. Supports date templates like {{DATE:YYYY-MM-DD}} or {{date:YYYY-MM-DD-HHmm}}",
+				),
 			)
 			.addText((text) =>
 				text
 					.setValue(
-						settingTab.plugin.settings.quickCapture.targetFile
+						settingTab.plugin.settings.quickCapture.targetFile,
 					)
 					.onChange(async (value) => {
 						settingTab.plugin.settings.quickCapture.targetFile =
 							value;
 						settingTab.applySettingsUpdate();
-					})
+					}),
 			);
 	}
 
@@ -78,7 +79,7 @@ export function renderQuickCaptureSettingsTab(
 		new Setting(containerEl)
 			.setName(t("Sync with Daily Notes plugin"))
 			.setDesc(
-				t("Automatically sync settings from the Daily Notes plugin")
+				t("Automatically sync settings from the Daily Notes plugin"),
 			)
 			.addButton((button) =>
 				button.setButtonText(t("Sync now")).onClick(async () => {
@@ -109,7 +110,7 @@ export function renderQuickCaptureSettingsTab(
 							}, 200);
 
 							new Notice(
-								t("Daily notes settings synced successfully")
+								t("Daily notes settings synced successfully"),
 							);
 						} else {
 							new Notice(t("Daily Notes plugin is not enabled"));
@@ -117,11 +118,11 @@ export function renderQuickCaptureSettingsTab(
 					} catch (error) {
 						console.error(
 							"Failed to sync daily notes settings:",
-							error
+							error,
 						);
 						new Notice(t("Failed to sync daily notes settings"));
 					}
-				})
+				}),
 			);
 
 		new Setting(containerEl)
@@ -131,13 +132,13 @@ export function renderQuickCaptureSettingsTab(
 				text
 					.setValue(
 						settingTab.plugin.settings.quickCapture
-							.dailyNoteSettings?.format || "YYYY-MM-DD"
+							.dailyNoteSettings?.format || "YYYY-MM-DD",
 					)
 					.onChange(async (value) => {
 						settingTab.plugin.settings.quickCapture.dailyNoteSettings.format =
 							value;
 						settingTab.applySettingsUpdate();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -147,13 +148,13 @@ export function renderQuickCaptureSettingsTab(
 				text
 					.setValue(
 						settingTab.plugin.settings.quickCapture
-							.dailyNoteSettings?.folder || ""
+							.dailyNoteSettings?.folder || "",
 					)
 					.onChange(async (value) => {
 						settingTab.plugin.settings.quickCapture.dailyNoteSettings.folder =
 							value;
 						settingTab.applySettingsUpdate();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -163,13 +164,13 @@ export function renderQuickCaptureSettingsTab(
 				text
 					.setValue(
 						settingTab.plugin.settings.quickCapture
-							.dailyNoteSettings?.template || ""
+							.dailyNoteSettings?.template || "",
 					)
 					.onChange(async (value) => {
 						settingTab.plugin.settings.quickCapture.dailyNoteSettings.template =
 							value;
 						settingTab.applySettingsUpdate();
-					})
+					}),
 			);
 	}
 
@@ -178,19 +179,19 @@ export function renderQuickCaptureSettingsTab(
 		.setName(t("Target heading"))
 		.setDesc(
 			t(
-				"Optional heading to append content under (leave empty to append to file)"
-			)
+				"Optional heading to append content under (leave empty to append to file)",
+			),
 		)
 		.addText((text) =>
 			text
 				.setValue(
-					settingTab.plugin.settings.quickCapture.targetHeading || ""
+					settingTab.plugin.settings.quickCapture.targetHeading || "",
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.targetHeading =
 						value;
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	new Setting(containerEl)
@@ -202,7 +203,7 @@ export function renderQuickCaptureSettingsTab(
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.placeholder = value;
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	new Setting(containerEl)
@@ -218,20 +219,20 @@ export function renderQuickCaptureSettingsTab(
 					settingTab.plugin.settings.quickCapture.appendToFile =
 						value as "append" | "prepend" | "replace";
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	// Task prefix setting
 	new Setting(containerEl)
 		.setName(t("Auto-add task prefix"))
 		.setDesc(
-			t("Automatically add task checkbox prefix to captured content")
+			t("Automatically add task checkbox prefix to captured content"),
 		)
 		.addToggle((toggle) =>
 			toggle
 				.setValue(
 					settingTab.plugin.settings.quickCapture.autoAddTaskPrefix ??
-						true
+						true,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.autoAddTaskPrefix =
@@ -241,7 +242,7 @@ export function renderQuickCaptureSettingsTab(
 					setTimeout(() => {
 						settingTab.display();
 					}, 100);
-				})
+				}),
 		);
 
 	// Custom task prefix
@@ -250,20 +251,20 @@ export function renderQuickCaptureSettingsTab(
 			.setName(t("Task prefix format"))
 			.setDesc(
 				t(
-					"The prefix to add before captured content (e.g., '- [ ]' for task, '- ' for list item)"
-				)
+					"The prefix to add before captured content (e.g., '- [ ]' for task, '- ' for list item)",
+				),
 			)
 			.addText((text) =>
 				text
 					.setValue(
 						settingTab.plugin.settings.quickCapture.taskPrefix ||
-							"- [ ]"
+							"- [ ]",
 					)
 					.onChange(async (value) => {
 						settingTab.plugin.settings.quickCapture.taskPrefix =
 							value || "- [ ]";
 						settingTab.applySettingsUpdate();
-					})
+					}),
 			);
 	}
 
@@ -277,13 +278,13 @@ export function renderQuickCaptureSettingsTab(
 			toggle
 				.setValue(
 					settingTab.plugin.settings.quickCapture
-						.keepOpenAfterCapture || false
+						.keepOpenAfterCapture || false,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.keepOpenAfterCapture =
 						value;
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	// Remember last mode
@@ -294,13 +295,13 @@ export function renderQuickCaptureSettingsTab(
 			toggle
 				.setValue(
 					settingTab.plugin.settings.quickCapture.rememberLastMode ??
-						true
+						true,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.rememberLastMode =
 						value;
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	// File creation mode settings
@@ -319,8 +320,8 @@ export function renderQuickCaptureSettingsTab(
 		.setName(t("Default folder for new files"))
 		.setDesc(
 			t(
-				"Used by File mode (requires FileSource). Leave empty for vault root."
-			)
+				"Used by File mode (requires FileSource). Leave empty for vault root.",
+			),
 		)
 		.addText((text) =>
 			text
@@ -328,7 +329,7 @@ export function renderQuickCaptureSettingsTab(
 				.onChange(async (value) => {
 					createFileMode.defaultFolder = value;
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 
 	// Use template for new files
@@ -336,8 +337,8 @@ export function renderQuickCaptureSettingsTab(
 		.setName(t("Use template for new files"))
 		.setDesc(
 			t(
-				"When File mode is used, create the new note from a template and then insert the captured content."
-			)
+				"When File mode is used, create the new note from a template and then insert the captured content.",
+			),
 		)
 		.addToggle((toggle) =>
 			toggle
@@ -349,49 +350,9 @@ export function renderQuickCaptureSettingsTab(
 					setTimeout(() => {
 						settingTab.display();
 					}, 100);
-				})
+				}),
 		);
 
-		// Write content tags (#tags) to frontmatter
-		new Setting(containerEl)
-			.setName(t("Write content tags to frontmatter"))
-			.setDesc(
-				t(
-					"If enabled, #tags in the editor content are written into YAML frontmatter tags (merged and deduplicated)"
-				)
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(createFileMode.writeContentTagsToFrontmatter || false)
-					.onChange(async (value) => {
-						createFileMode.writeContentTagsToFrontmatter = value;
-						settingTab.applySettingsUpdate();
-					})
-			);
-
-
-	// Default file name template (File mode)
-	new Setting(containerEl)
-		.setName(t("Default file name template"))
-		.setDesc(
-			t(
-				"Used by File mode to prefill the file name input (supports date templates like {{DATE:YYYY-MM-DD}})"
-			)
-		)
-		.addText((text) =>
-			text
-				.setValue(
-					settingTab.plugin.settings.quickCapture
-						.defaultFileNameTemplate || "{{DATE:YYYY-MM-DD}} - "
-				)
-				.onChange(async (value) => {
-					settingTab.plugin.settings.quickCapture.defaultFileNameTemplate =
-						value;
-					settingTab.applySettingsUpdate();
-				})
-		);
-
-	// Template file path
 	if (createFileMode.useTemplate) {
 		const templateFolderPath = (createFileMode.templateFolder || "").trim();
 		const folderFile = templateFolderPath
@@ -421,12 +382,13 @@ export function renderQuickCaptureSettingsTab(
 			.setName(t("Template folder"))
 			.setDesc(
 				folderExists || !templateFolderPath
-					? t("Folder that contains Quick Capture templates for File mode.")
-					: t("Selected folder was not found in the vault.")
+					? t(
+							"Folder that contains Quick Capture templates for File mode.",
+						)
+					: t("Selected folder was not found in the vault."),
 			)
 			.addText((text) => {
-				text
-					.setPlaceholder(t("Templates/Quick Capture"))
+				text.setPlaceholder(t("Templates/Quick Capture"))
 					.setValue(createFileMode.templateFolder || "")
 					.onChange(async (value) => {
 						const previous = createFileMode.templateFolder || "";
@@ -445,7 +407,7 @@ export function renderQuickCaptureSettingsTab(
 					settingTab.app,
 					text.inputEl,
 					settingTab.plugin,
-					"single"
+					"single",
 				);
 			});
 
@@ -453,14 +415,20 @@ export function renderQuickCaptureSettingsTab(
 			.setName(t("Template note"))
 			.setDesc(
 				!templateFolderPath
-					? t("Select a template folder above to enable the dropdown.")
-					: !folderExists
-					? t("Template folder is invalid; update the folder to continue.")
-					: templateFiles.length > 0
 					? t(
-							"Choose the note that should be copied; {{CONTENT}} placeholders are replaced, otherwise the captured text is appended."
+							"Select a template folder above to enable the dropdown.",
 						)
-					: t("No markdown notes were found in the selected folder.")
+					: !folderExists
+						? t(
+								"Template folder is invalid; update the folder to continue.",
+							)
+						: templateFiles.length > 0
+							? t(
+									"Choose the note that should be copied; {{CONTENT}} placeholders are replaced, otherwise the captured text is appended.",
+								)
+							: t(
+									"No markdown notes were found in the selected folder.",
+								),
 			)
 			.addDropdown((dropdown) => {
 				dropdown.addOption("", t("None"));
@@ -468,7 +436,9 @@ export function renderQuickCaptureSettingsTab(
 				const existingTemplate = createFileMode.templateFile || "";
 				if (
 					existingTemplate &&
-					!templateFiles.some((file) => file.path === existingTemplate)
+					!templateFiles.some(
+						(file) => file.path === existingTemplate,
+					)
 				) {
 					dropdown.addOption(existingTemplate, existingTemplate);
 				}
@@ -489,6 +459,166 @@ export function renderQuickCaptureSettingsTab(
 			});
 	}
 
+	// Write content tags (#tags) to frontmatter
+	new Setting(containerEl)
+		.setName(t("Write content tags to frontmatter"))
+		.setDesc(
+			t(
+				"If enabled, #tags in the editor content are written into YAML frontmatter tags (merged and deduplicated)",
+			),
+		)
+		.addToggle((toggle) =>
+			toggle
+				.setValue(createFileMode.writeContentTagsToFrontmatter || false)
+				.onChange(async (value) => {
+					createFileMode.writeContentTagsToFrontmatter = value;
+					settingTab.applySettingsUpdate();
+				}),
+		);
+
+	// Default file name template (File mode)
+	new Setting(containerEl)
+		.setName(t("Default file name template"))
+		.setDesc(
+			t(
+				"Used by File mode to prefill the file name input (supports date templates like {{DATE:YYYY-MM-DD}})",
+			),
+		)
+		.addText((text) =>
+			text
+				.setValue(
+					settingTab.plugin.settings.quickCapture
+						.defaultFileNameTemplate ||
+						"{{DATE:YYYY-MM-DD}} - Task",
+				)
+				.onChange(async (value) => {
+					settingTab.plugin.settings.quickCapture.defaultFileNameTemplate =
+						value;
+					settingTab.applySettingsUpdate();
+				}),
+		);
+
+	// File name templates management
+	new Setting(containerEl)
+		.setName(t("Quick Name Templates"))
+		.setDesc(
+			t("Manage file name templates for quick selection in File mode"),
+		);
+
+	const defaultTemplates: QuickCaptureTemplateDefinition[] = [
+		{ name: "Daily Note", template: "{{DATE:YYYY-MM-DD}}" },
+		{ name: "Meeting", template: "{{DATE:YYYY-MM-DD}} - Meeting" },
+		{ name: "Task", template: "{{DATE:YYYY-MM-DD}} - Task" },
+		{ name: "Project", template: "Project - {{DATE:YYYY-MM}}" },
+		{ name: "Notes", template: "Notes - {{DATE:YYYY-MM-DD-HHmm}}" },
+	];
+
+	const rawTemplates = settingTab.plugin.settings.quickCapture
+		.fileNameTemplates as unknown;
+	let templates: QuickCaptureTemplateDefinition[];
+	let templatesUpdated = false;
+
+	if (Array.isArray(rawTemplates)) {
+		const hasInvalidEntries = rawTemplates.some(
+			(item) =>
+				!item ||
+				typeof item !== "object" ||
+				typeof (item as { template?: unknown }).template !== "string",
+		);
+
+		if (hasInvalidEntries) {
+			templates = (rawTemplates as unknown[]).map((item) => {
+				if (typeof item === "string") {
+					return { name: item, template: item };
+				}
+
+				const rawTemplate = (item as { template?: unknown }).template;
+				const templateValue =
+					typeof rawTemplate === "string" ? rawTemplate : "";
+
+				const rawName = (item as { name?: unknown }).name;
+				const nameValue =
+					typeof rawName === "string" && rawName.length > 0
+						? rawName
+						: templateValue;
+
+				return { name: nameValue, template: templateValue };
+			});
+			templatesUpdated = true;
+		} else {
+			templates = rawTemplates as QuickCaptureTemplateDefinition[];
+		}
+	} else {
+		templates = defaultTemplates.map((item) => ({ ...item }));
+		templatesUpdated = true;
+	}
+
+	if (templatesUpdated) {
+		settingTab.plugin.settings.quickCapture.fileNameTemplates = templates;
+		settingTab.applySettingsUpdate();
+	}
+
+	const templatesContainer = containerEl.createDiv({
+		cls: "file-name-templates-container",
+	});
+
+	const saveTemplates = () => {
+		settingTab.plugin.settings.quickCapture.fileNameTemplates = templates;
+		settingTab.applySettingsUpdate();
+	};
+
+	const refreshTemplates = () => {
+		templatesContainer.empty();
+
+		templates.forEach((template, index) => {
+			const templateSetting = new Setting(templatesContainer);
+
+			templateSetting.addText((text) => {
+				text.setValue(template.name || "")
+					.setPlaceholder(t("Enter file name..."))
+					.onChange(async (value) => {
+						template.name = value;
+						saveTemplates();
+					});
+			});
+
+			templateSetting.addText((text) => {
+				text.setValue(template.template || "")
+					.setPlaceholder(t("Enter template..."))
+					.onChange(async (value) => {
+						template.template = value;
+						saveTemplates();
+					});
+			});
+
+			templateSetting.addExtraButton((button) =>
+				button
+					.setIcon("trash")
+					.setTooltip(t("Remove"))
+					.onClick(async () => {
+						templates.splice(index, 1);
+						saveTemplates();
+						refreshTemplates();
+					}),
+			);
+		});
+
+		new Setting(templatesContainer).addButton((button) =>
+			button.setButtonText(t("Add Template")).onClick(async () => {
+				templates.push({
+					name: "",
+					template: "{{DATE:YYYY-MM-DD}} - Task",
+				});
+				saveTemplates();
+				refreshTemplates();
+			}),
+		);
+	};
+
+	refreshTemplates();
+
+	// Template file path
+
 	// Minimal mode settings
 	new Setting(containerEl).setName(t("Minimal Mode")).setHeading();
 
@@ -496,13 +626,13 @@ export function renderQuickCaptureSettingsTab(
 		.setName(t("Enable minimal mode"))
 		.setDesc(
 			t(
-				"Enable simplified single-line quick capture with inline suggestions"
-			)
+				"Enable simplified single-line quick capture with inline suggestions",
+			),
 		)
 		.addToggle((toggle) =>
 			toggle
 				.setValue(
-					settingTab.plugin.settings.quickCapture.enableMinimalMode
+					settingTab.plugin.settings.quickCapture.enableMinimalMode,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.enableMinimalMode =
@@ -512,7 +642,7 @@ export function renderQuickCaptureSettingsTab(
 					setTimeout(() => {
 						settingTab.display();
 					}, 100);
-				})
+				}),
 		);
 
 	if (!settingTab.plugin.settings.quickCapture.enableMinimalMode) return;
@@ -531,12 +661,12 @@ export function renderQuickCaptureSettingsTab(
 			text
 				.setValue(
 					settingTab.plugin.settings.quickCapture.minimalModeSettings
-						.suggestTrigger
+						.suggestTrigger,
 				)
 				.onChange(async (value) => {
 					settingTab.plugin.settings.quickCapture.minimalModeSettings.suggestTrigger =
 						value || "/";
 					settingTab.applySettingsUpdate();
-				})
+				}),
 		);
 }

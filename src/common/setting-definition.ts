@@ -275,6 +275,11 @@ export interface CompletedTaskMoverSettings {
 	incompletedDefaultHeadingName: string;
 }
 
+export interface QuickCaptureTemplateDefinition {
+	name: string;
+	template: string;
+}
+
 /** Define the structure for quick capture settings */
 export interface QuickCaptureSettings {
 	enableQuickCapture: boolean;
@@ -304,6 +309,7 @@ export interface QuickCaptureSettings {
 	lastUsedMode?: "checkbox" | "file"; // Last used save strategy mode
 	defaultFileNameTemplate?: string; // Default template for file names
 	defaultFileLocation?: string; // Default folder for new files
+	fileNameTemplates?: QuickCaptureTemplateDefinition[]; // List of file name templates for quick selection
 	createFileMode?: {
 		defaultFolder: string; // Default folder for file creation
 		useTemplate: boolean; // Whether to use a template for new files
@@ -1031,8 +1037,27 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		keepOpenAfterCapture: false,
 		rememberLastMode: true,
 		lastUsedMode: "checkbox",
-		defaultFileNameTemplate: "{{DATE:YYYY-MM-DD}} - ",
+		defaultFileNameTemplate: "{{DATE:YYYY-MM-DD}} - Task",
 		defaultFileLocation: "",
+		fileNameTemplates: [
+			{ name: "{{DATE:YYYY-MM-DD}}", template: "{{DATE:YYYY-MM-DD}}" },
+			{
+				name: "{{DATE:YYYY-MM-DD}} - Meeting",
+				template: "{{DATE:YYYY-MM-DD}} - Meeting",
+			},
+			{
+				name: "{{DATE:YYYY-MM-DD}} - Task",
+				template: "{{DATE:YYYY-MM-DD}} - Task",
+			},
+			{
+				name: "Project - {{DATE:YYYY-MM}}",
+				template: "Project - {{DATE:YYYY-MM}}",
+			},
+			{
+				name: "Notes - {{DATE:YYYY-MM-DD-HHmm}}",
+				template: "Notes - {{DATE:YYYY-MM-DD-HHmm}}",
+			},
+		],
 		createFileMode: {
 			defaultFolder: "",
 			useTemplate: false,
