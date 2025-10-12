@@ -50,7 +50,9 @@ export class ChangelogView extends ItemView {
 		}
 
 		const isBeta = manifestVersion.toLowerCase().includes("beta");
-		const cached = getCachedChangelog(manifestVersion, isBeta);
+		const cached = getCachedChangelog(manifestVersion, isBeta, this.app);
+
+		console.log("[TG]", cached);
 		if (!cached) {
 			return;
 		}
