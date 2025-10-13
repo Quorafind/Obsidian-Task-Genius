@@ -222,7 +222,6 @@
 	padding-top: var(--size-4-4);
 }
 
-
 .fluent-view-tabs.tg-index-task-source-switcher {
 	display: flex;
 	align-items: stretch;
@@ -273,4 +272,12 @@
 .tg-index-task-source-switcher .fluent-view-tab-label {
 	display: inline-flex;
 	align-items: center;
+}
+
+.file-name-templates-container input {
+	flex: 1;
+}
+
+.file-name-templates-container .setting-item-info {
+	display: none;
 }

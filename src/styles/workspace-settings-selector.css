@@ -55,7 +55,6 @@
 .workspace-settings-selector-button .workspace-icon svg {
 	width: 16px;
 	height: 16px;
-	fill: var(--text-muted);
 }
 
 /* Workspace name */
@@ -127,4 +126,10 @@
 	.tg-settings-header-bar .tg-settings-search-container {
 		width: 100%;
 	}
+}
+
+.task-genius-settings .tg-workspace-selector-container .workspace-icon {
+	width: unset;
+	height: unset;
+	color: inherit;
 }

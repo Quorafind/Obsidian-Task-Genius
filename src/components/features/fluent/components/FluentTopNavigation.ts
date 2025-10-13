@@ -30,7 +30,7 @@ export class TopNavigation extends Component {
 		private onSortClick: () => void,
 		private onSettingsClick: () => void,
 		availableModes?: ViewMode[],
-		private onToggleSidebar?: () => void
+		private onToggleSidebar?: () => void,
 	) {
 		super();
 		this.containerEl = containerEl;
@@ -75,12 +75,12 @@ export class TopNavigation extends Component {
 
 		// Hide entire navigation if no view modes are available
 		if (this.availableModes.length === 0) {
-			this.containerEl.style.display = "none";
+			this.containerEl.hide();
 			return;
 		}
 
 		// Show navigation when modes are available
-		this.containerEl.style.display = "";
+		this.containerEl.show();
 
 		// Left section - Hamburger menu (mobile) and Search
 		const leftSection = this.containerEl.createDiv({
@@ -125,8 +125,8 @@ export class TopNavigation extends Component {
 		if (this.notificationCount === 0) {
 			badge.hide();
 		}
-		notificationBtn.addEventListener("click", (e) =>
-			this.showNotifications(e)
+		this.registerDomEvent(notificationBtn, "click", (e) =>
+			this.showNotifications(e),
 		);
 
 		// Settings button
@@ -134,14 +134,14 @@ export class TopNavigation extends Component {
 			cls: "fluent-nav-icon-button",
 		});
 		setIcon(settingsBtn, "settings");
-		settingsBtn.addEventListener("click", () => this.onSettingsClick());
+		this.registerDomEvent(settingsBtn, "click", () => this.onSettingsClick());
 	}
 
 	private createViewTab(
 		container: HTMLElement,
 		mode: ViewMode,
 		icon: string,
-		label: string
+		label: string,
 	) {
 		const tab = container.createEl("button", {
 			cls: ["fluent-view-tab", "clickable-icon"],
@@ -155,7 +155,7 @@ export class TopNavigation extends Component {
 		setIcon(tab.createDiv({ cls: "fluent-view-tab-icon" }), icon);
 		tab.createSpan({ text: label });
 
-		tab.addEventListener("click", () => {
+		this.registerDomEvent(tab, "click", () => {
 			this.setViewMode(mode);
 			this.onViewModeChange(mode);
 		});
@@ -169,7 +169,7 @@ export class TopNavigation extends Component {
 		});
 
 		const activeTab = this.containerEl.querySelector(
-			`[data-mode="${mode}"]`
+			`[data-mode="${mode}"]`,
 		);
 		if (activeTab) {
 			activeTab.addClass("is-active");
@@ -206,7 +206,7 @@ export class TopNavigation extends Component {
 		} else {
 			menu.addItem((item) => {
 				item.setTitle(
-					`${overdueTasks.length} overdue tasks`
+					`${overdueTasks.length} overdue tasks`,
 				).setDisabled(true);
 			});
 
@@ -220,7 +220,7 @@ export class TopNavigation extends Component {
 							new Notice(
 								t("Task: {{content}}", {
 									content: task.content || "",
-								})
+								}),
 							);
 						});
 				});
@@ -232,7 +232,7 @@ export class TopNavigation extends Component {
 
 	private updateNotificationBadge() {
 		const badge = this.containerEl.querySelector(
-			".fluent-notification-badge"
+			".fluent-notification-badge",
 		);
 		if (badge instanceof HTMLElement) {
 			badge.textContent = String(this.notificationCount);
@@ -278,7 +278,7 @@ export class TopNavigation extends Component {
 					this.viewTabsContainer,
 					mode,
 					config.icon,
-					config.label
+					config.label,
 				);
 			}
 		}
@@ -289,12 +289,12 @@ export class TopNavigation extends Component {
 
 		// Hide entire navigation if no modes available
 		if (modes.length === 0) {
-			this.containerEl.style.display = "none";
+			this.containerEl.hide();
 			return;
 		}
 
 		// Show navigation when modes are available
-		this.containerEl.style.display = "";
+		this.containerEl.show();
 
 		// If current mode is no longer available, switch to first available mode
 		if (!modes.includes(this.currentViewMode)) {
@@ -305,10 +305,10 @@ export class TopNavigation extends Component {
 
 		// Update center section visibility (this should always be visible now since we handle empty modes above)
 		const centerSection = this.containerEl.querySelector(
-			".fluent-nav-center"
+			".fluent-nav-center",
 		) as HTMLElement;
 		if (centerSection) {
-			centerSection.style.display = "";
+			centerSection.show();
 			// Re-render the view tabs
 			if (!this.viewTabsContainer) {
 				this.viewTabsContainer = centerSection.createDiv({

@@ -45,7 +45,7 @@ class TaskStatusWidget extends WidgetType {
 		readonly from: number,
 		readonly to: number,
 		readonly currentState: TaskState,
-		readonly listPrefix: string
+		readonly listPrefix: string,
 	) {
 		super();
 		const config = this.getStatusConfig();
@@ -69,7 +69,7 @@ class TaskStatusWidget extends WidgetType {
 		let nextState = this.currentState;
 
 		const remainingCycle = cycle.filter(
-			(state) => !excludeMarksFromCycle.includes(state)
+			(state) => !excludeMarksFromCycle.includes(state),
 		);
 
 		if (remainingCycle.length > 0) {
@@ -101,7 +101,7 @@ class TaskStatusWidget extends WidgetType {
 						cls: isNumberedList ? "list-number" : "list-bullet",
 						text: this.bulletText,
 					});
-				}
+				},
 			);
 		}
 
@@ -111,7 +111,7 @@ class TaskStatusWidget extends WidgetType {
 				"task-state",
 				this.isLivePreview ? "live-preview-mode" : "source-mode",
 			],
-			true
+			true,
 		);
 
 		// Add a specific class based on the mode
@@ -253,7 +253,7 @@ class TaskStatusWidget extends WidgetType {
 		const { cycle, marks, excludeMarksFromCycle } = this.getStatusConfig();
 
 		const remainingCycle = cycle.filter(
-			(state) => !excludeMarksFromCycle.includes(state)
+			(state) => !excludeMarksFromCycle.includes(state),
 		);
 
 		if (remainingCycle.length === 0) {
@@ -265,7 +265,7 @@ class TaskStatusWidget extends WidgetType {
 			}
 			// If no cycle is available, trigger the default editor:toggle-checklist-status command
 			this.app.commands.executeCommandById(
-				"editor:toggle-checklist-status"
+				"editor:toggle-checklist-status",
 			);
 			return;
 		}
@@ -292,20 +292,6 @@ class TaskStatusWidget extends WidgetType {
 		// Replace text
 		const newText = currentText.replace(/\[(.)]/, `[${nextMark}]`);
 
-		// if (nextMark === "x" || nextMark === "X") {
-		// 	const line = this.view.state.doc.lineAt(this.from);
-		// 	const path =
-		// 		this.view.state.field(editorInfoField)?.file?.path || "";
-		// 	const task = parseTaskLine(
-		// 		path,
-		// 		line.text,
-		// 		line.number,
-		// 		this.plugin.settings.preferMetadataFormat
-		// 	);
-		// 	task &&
-		// 		this.app.workspace.trigger("task-genius:task-completed", task);
-		// }
-
 		this.view.dispatch({
 			changes: {
 				from: this.from,
@@ -320,12 +306,12 @@ class TaskStatusWidget extends WidgetType {
 
 export function taskStatusSwitcherExtension(
 	app: App,
-	plugin: TaskProgressBarPlugin
+	plugin: TaskProgressBarPlugin,
 ) {
 	class TaskStatusViewPluginValue implements PluginValue {
 		public readonly view: EditorView;
 		decorations: DecorationSet = Decoration.none;
-		private lastUpdate: number = 0;
+		private lastUpdate = 0;
 		private readonly updateThreshold: number = 50;
 		private readonly match = new MatchDecorator({
 			regexp: /^(\s*)((?:[-*+]|\d+[.)])\s)(\[(.)]\s)/g,
@@ -334,7 +320,7 @@ export function taskStatusSwitcherExtension(
 				from: number,
 				to: number,
 				match: RegExpExecArray,
-				view: EditorView
+				view: EditorView,
 			) => {
 				if (!this.shouldRender(view, from, to)) {
 					return;
@@ -351,7 +337,7 @@ export function taskStatusSwitcherExtension(
 				const excludeMarksFromCycle =
 					plugin.settings.excludeMarksFromCycle || [];
 				const remainingCycle = cycle.filter(
-					(state) => !excludeMarksFromCycle.includes(state)
+					(state) => !excludeMarksFromCycle.includes(state),
 				);
 
 				if (
@@ -385,9 +371,9 @@ export function taskStatusSwitcherExtension(
 								checkboxStart,
 								checkboxEnd,
 								currentState,
-								bulletText
+								bulletText,
 							),
-						})
+						}),
 					);
 				} else {
 					// In Live Preview mode, replace the whole bullet point + checkbox
@@ -408,9 +394,9 @@ export function taskStatusSwitcherExtension(
 									bulletWithSpace.length +
 									checkbox.length,
 								currentState,
-								bulletText
+								bulletText,
 							),
-						})
+						}),
 					);
 				}
 			},
@@ -449,7 +435,7 @@ export function taskStatusSwitcherExtension(
 			} else {
 				this.decorations = this.match.updateDeco(
 					update,
-					this.decorations
+					this.decorations,
 				);
 			}
 		}
@@ -461,10 +447,10 @@ export function taskStatusSwitcherExtension(
 		shouldRender(
 			view: EditorView,
 			decorationFrom: number,
-			decorationTo: number
+			decorationTo: number,
 		) {
 			const syntaxNode = syntaxTree(view.state).resolveInner(
-				decorationFrom + 1
+				decorationFrom + 1,
 			);
 			const nodeProps = syntaxNode.type.prop(tokenClassNodeProp);
 
@@ -498,7 +484,7 @@ export function taskStatusSwitcherExtension(
 				filter: (
 					rangeFrom: number,
 					rangeTo: number,
-					deco: Decoration
+					deco: Decoration,
 				) => {
 					const widget = deco.spec?.widget;
 					if ((widget as any).error) {
@@ -521,6 +507,6 @@ export function taskStatusSwitcherExtension(
 
 	return ViewPlugin.fromClass(
 		TaskStatusViewPluginValue,
-		TaskStatusViewPluginSpec
+		TaskStatusViewPluginSpec,
 	);
 }

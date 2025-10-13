@@ -168,7 +168,7 @@ export const getCachedChangelog = (
 
 export const getLatestCachedChangelog = (
 	isBeta: boolean,
-	app?: App,
+	app: App,
 ): ChangelogCacheEntry | null => {
 	const cache = loadCache(app);
 	const channel = getChannelKey(isBeta);
@@ -179,7 +179,7 @@ export const cacheChangelog = (
 	version: string,
 	isBeta: boolean,
 	data: Pick<ChangelogCacheEntry, "markdown" | "sourceUrl">,
-	app?: App,
+	app: App,
 ): void => {
 	const cache = loadCache(app);
 	const channel = getChannelKey(isBeta);

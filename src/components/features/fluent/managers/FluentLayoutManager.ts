@@ -1,4 +1,11 @@
-import { App, ButtonComponent, Component, ItemView, Platform, WorkspaceLeaf, } from "obsidian";
+import {
+	App,
+	ButtonComponent,
+	Component,
+	ItemView,
+	Platform,
+	WorkspaceLeaf,
+} from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { FluentSidebar } from "../components/FluentSidebar";
 import { TaskDetailsComponent } from "@/components/features/task/view/details";
@@ -6,7 +13,10 @@ import { Task } from "@/types/task";
 import { t } from "@/translations/helper";
 import { TG_LEFT_SIDEBAR_VIEW_TYPE } from "../../../../pages/LeftSidebarView";
 import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
-import { ViewTaskFilterModal, ViewTaskFilterPopover, } from "@/components/features/task/filter";
+import {
+	ViewTaskFilterModal,
+	ViewTaskFilterPopover,
+} from "@/components/features/task/filter";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 
 /**
@@ -47,7 +57,7 @@ export class FluentLayoutManager extends Component {
 	private onTaskEdit?: (task: Task) => void;
 	private onTaskUpdate?: (
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
 	) => Promise<void>;
 	private onFilterReset?: () => void;
 	private getLiveFilterState?: () => RootFilterState | null;
@@ -60,7 +70,7 @@ export class FluentLayoutManager extends Component {
 		private rootContainerEl: HTMLElement,
 		private headerEl: HTMLElement,
 		private titleEl: HTMLElement,
-		private getTaskCount: () => number
+		private getTaskCount: () => number,
 	) {
 		super();
 
@@ -109,7 +119,7 @@ export class FluentLayoutManager extends Component {
 	 * Check if using workspace side leaves mode
 	 */
 	private useSideLeaves(): boolean {
-		return !!(this.plugin.settings.fluentView)?.useWorkspaceSideLeaves;
+		return !!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
 	}
 
 	/**
@@ -119,7 +129,7 @@ export class FluentLayoutManager extends Component {
 		if (this.useSideLeaves()) {
 			containerEl.hide();
 			console.log(
-				"[FluentLayout] Using workspace side leaves: skip in-view sidebar"
+				"[FluentLayout] Using workspace side leaves: skip in-view sidebar",
 			);
 			return;
 		}
@@ -146,7 +156,7 @@ export class FluentLayoutManager extends Component {
 					this.closeMobileDrawer();
 				}
 			},
-			initialCollapsedState
+			initialCollapsedState,
 		);
 
 		// Add sidebar as a child component for proper lifecycle management
@@ -159,7 +169,7 @@ export class FluentLayoutManager extends Component {
 	initializeDetailsComponent(): void {
 		if (this.useSideLeaves()) {
 			console.log(
-				"[FluentLayout] Using workspace side leaves: skip in-view details panel"
+				"[FluentLayout] Using workspace side leaves: skip in-view details panel",
 			);
 			return;
 		}
@@ -168,7 +178,7 @@ export class FluentLayoutManager extends Component {
 		this.detailsComponent = new TaskDetailsComponent(
 			this.rootContainerEl,
 			this.app,
-			this.plugin
+			this.plugin,
 		);
 		this.addChild(this.detailsComponent);
 		this.detailsComponent.load();
@@ -180,7 +190,7 @@ export class FluentLayoutManager extends Component {
 			this.onTaskEdit?.(task);
 		this.detailsComponent.onTaskUpdate = async (
 			originalTask: Task,
-			updatedTask: Task
+			updatedTask: Task,
 		) => {
 			await this.onTaskUpdate?.(originalTask, updatedTask);
 		};
@@ -196,11 +206,11 @@ export class FluentLayoutManager extends Component {
 	createSidebarToggle(): void {
 		const headerBtns = !Platform.isPhone
 			? (this.headerEl?.querySelector(
-				".view-header-nav-buttons"
-			) as HTMLElement | null)
+					".view-header-nav-buttons",
+				) as HTMLElement | null)
 			: (this.headerEl?.querySelector(
-				".view-header-left"
-			) as HTMLElement);
+					".view-header-left",
+				) as HTMLElement);
 
 		if (!headerBtns) {
 			console.warn("[FluentLayout] header buttons container not found");
@@ -238,7 +248,7 @@ export class FluentLayoutManager extends Component {
 				interpolation: {
 					num: this.getTaskCount(),
 				},
-			})
+			}),
 		);
 	}
 
@@ -286,7 +296,7 @@ export class FluentLayoutManager extends Component {
 			this.sidebar?.setCollapsed(this.isSidebarCollapsed);
 			this.rootContainerEl?.toggleClass(
 				"fluent-sidebar-collapsed",
-				this.isSidebarCollapsed
+				this.isSidebarCollapsed,
 			);
 		}
 	}
@@ -298,7 +308,7 @@ export class FluentLayoutManager extends Component {
 		this.isMobileDrawerOpen = true;
 		this.rootContainerEl?.addClass("drawer-open");
 		if (this.drawerOverlay) {
-			this.drawerOverlay.style.display = "block";
+			this.drawerOverlay.show();
 		}
 		// Show the sidebar
 		this.sidebar?.setCollapsed(false);
@@ -311,7 +321,7 @@ export class FluentLayoutManager extends Component {
 		this.isMobileDrawerOpen = false;
 		this.rootContainerEl?.removeClass("drawer-open");
 		if (this.drawerOverlay) {
-			this.drawerOverlay.style.display = "none";
+			this.drawerOverlay.hide();
 		}
 		// Hide the sidebar
 		this.sidebar?.setCollapsed(true);
@@ -326,10 +336,17 @@ export class FluentLayoutManager extends Component {
 		this.drawerOverlay = layoutContainer.createDiv({
 			cls: "drawer-overlay",
 		});
-		this.drawerOverlay.style.display = "none";
-		this.drawerOverlay.addEventListener("click", () => {
-			this.closeMobileDrawer();
-		});
+		this.drawerOverlay.hide();
+		this.registerDomEvent(
+			this.drawerOverlay,
+			"click",
+			() => {
+				this.closeMobileDrawer();
+			},
+			{
+				once: true,
+			},
+		);
 	}
 
 	/**
@@ -359,7 +376,7 @@ export class FluentLayoutManager extends Component {
 				this.detailsToggleBtn.toggleClass("is-active", visible);
 				this.detailsToggleBtn.setAttribute(
 					"aria-label",
-					visible ? t("Hide Details") : t("Show Details")
+					visible ? t("Hide Details") : t("Show Details"),
 				);
 			}
 			return;
@@ -377,7 +394,7 @@ export class FluentLayoutManager extends Component {
 			this.detailsToggleBtn.toggleClass("is-active", visible);
 			this.detailsToggleBtn.setAttribute(
 				"aria-label",
-				visible ? t("Hide Details") : t("Show Details")
+				visible ? t("Hide Details") : t("Show Details"),
 			);
 		}
 
@@ -393,7 +410,7 @@ export class FluentLayoutManager extends Component {
 						this.toggleDetailsVisibility(false);
 						document.removeEventListener(
 							"click",
-							overlayClickHandler
+							overlayClickHandler,
 						);
 					}
 				};
@@ -407,7 +424,7 @@ export class FluentLayoutManager extends Component {
 		) {
 			document.removeEventListener(
 				"click",
-				this.mobileDetailsOverlayHandler
+				this.mobileDetailsOverlayHandler,
 			);
 			delete this.mobileDetailsOverlayHandler;
 		}
@@ -501,14 +518,14 @@ export class FluentLayoutManager extends Component {
 			t("Details"),
 			() => {
 				this.toggleDetailsVisibility(!this.isDetailsVisible);
-			}
+			},
 		);
 
 		if (this.detailsToggleBtn) {
 			this.detailsToggleBtn.toggleClass("panel-toggle-btn", true);
 			this.detailsToggleBtn.toggleClass(
 				"is-active",
-				this.isDetailsVisible
+				this.isDetailsVisible,
 			);
 		}
 
@@ -518,7 +535,7 @@ export class FluentLayoutManager extends Component {
 				this.app,
 				this.plugin,
 				{},
-				true
+				true,
 			);
 			modal.open();
 		});
@@ -529,7 +546,7 @@ export class FluentLayoutManager extends Component {
 				const popover = new ViewTaskFilterPopover(
 					this.app,
 					undefined,
-					this.plugin
+					this.plugin,
 				);
 
 				// Set up filter state when opening
@@ -538,18 +555,18 @@ export class FluentLayoutManager extends Component {
 						const liveFilterState = this.getLiveFilterState?.();
 						if (liveFilterState && popover.taskFilterComponent) {
 							popover.taskFilterComponent.loadFilterState(
-								liveFilterState
+								liveFilterState,
 							);
 						}
 					}, 100);
 				});
 
-				popover.showAtPosition({x: e.clientX, y: e.clientY});
+				popover.showAtPosition({ x: e.clientX, y: e.clientY });
 			} else {
 				const modal = new ViewTaskFilterModal(
 					this.app,
 					this.leaf.id,
-					this.plugin
+					this.plugin,
 				);
 
 				modal.open();
@@ -559,7 +576,7 @@ export class FluentLayoutManager extends Component {
 				if (liveFilterState && modal.taskFilterComponent) {
 					setTimeout(() => {
 						modal.taskFilterComponent.loadFilterState(
-							liveFilterState
+							liveFilterState,
 						);
 					}, 100);
 				}
@@ -576,7 +593,7 @@ export class FluentLayoutManager extends Component {
 	updateActionButtons(): void {
 		// Remove reset filter button if exists
 		const resetButton = this.headerEl.querySelector(
-			".view-action.task-filter-reset"
+			".view-action.task-filter-reset",
 		);
 		if (resetButton) {
 			resetButton.remove();
@@ -604,7 +621,7 @@ export class FluentLayoutManager extends Component {
 		if (Platform.isPhone && (this as any).mobileDetailsOverlayHandler) {
 			document.removeEventListener(
 				"click",
-				(this as any).mobileDetailsOverlayHandler
+				(this as any).mobileDetailsOverlayHandler,
 			);
 			delete (this as any).mobileDetailsOverlayHandler;
 		}

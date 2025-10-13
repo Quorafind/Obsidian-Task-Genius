@@ -65,7 +65,7 @@ function getIndentation(text: string): string {
 function removeTrailingIndentation(
 	indentation: string,
 	app: App,
-	levels: number = 1,
+	levels: number = 1
 ): string {
 	const indentUnit = buildIndentString(app);
 	const removal = indentUnit.repeat(levels);
@@ -73,7 +73,7 @@ function removeTrailingIndentation(
 	if (indentation.endsWith(removal)) {
 		return indentation.slice(
 			0,
-			Math.max(0, indentation.length - removal.length),
+			Math.max(0, indentation.length - removal.length)
 		);
 	}
 
@@ -81,7 +81,7 @@ function removeTrailingIndentation(
 	const fallbackLength = indentUnit.length * levels;
 	return indentation.slice(
 		0,
-		Math.max(0, indentation.length - fallbackLength),
+		Math.max(0, indentation.length - fallbackLength)
 	);
 }
 
@@ -118,7 +118,7 @@ interface TextRange {
  */
 function calculateRangeForTransform(
 	state: EditorState,
-	pos: number,
+	pos: number
 ): TextRange | null {
 	const line = state.doc.lineAt(pos);
 	const foldRange = foldable(state, line.from, line.to);
@@ -226,7 +226,7 @@ export function findParentWorkflow(doc: Text, lineNum: number): string | null {
 export function handleWorkflowTransaction(
 	tr: Transaction,
 	app: App,
-	plugin: TaskProgressBarPlugin,
+	plugin: TaskProgressBarPlugin
 ): TransactionSpec {
 	// Only process if workflow feature is enabled
 	if (!plugin.settings.workflow.enableWorkflow) {
@@ -239,12 +239,14 @@ export function handleWorkflowTransaction(
 	}
 
 	// Skip if this transaction already has a workflow or task status annotation
+	const tsAnn = tr.annotation(taskStatusChangeAnnotation) as
+		| string
+		| undefined;
 	if (
 		tr.annotation(workflowChangeAnnotation) ||
 		tr.annotation(priorityChangeAnnotation) ||
-		(tr.annotation(taskStatusChangeAnnotation) as string)?.startsWith(
-			"workflowChange",
-		)
+		tsAnn?.startsWith("workflowChange") ||
+		tsAnn?.startsWith("autoDateManager")
 	) {
 		return tr;
 	}
@@ -271,7 +273,7 @@ export function handleWorkflowTransaction(
 	const isCompletionChange = (text: string) =>
 		completedStatuses.includes(text) ||
 		completedStatuses.some(
-			(status) => text === `- [${status}]` || text === `[${status}]`,
+			(status) => text === `- [${status}]` || text === `[${status}]`
 		);
 
 	if (!changes.some((c) => isCompletionChange(c.text))) {
@@ -297,7 +299,7 @@ export function handleWorkflowTransaction(
 			lineText,
 			tr.newDoc,
 			line.number,
-			plugin,
+			plugin
 		);
 
 		if (resolvedInfo) {
@@ -308,6 +310,21 @@ export function handleWorkflowTransaction(
 			});
 		}
 	}
+
+	// Check if there are existing changes from other transaction filters
+	// (e.g., date manager) and adjust our calculations accordingly
+	let existingChangeAdjustment = 0;
+	let hasExistingChanges = false;
+
+	tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+		// Calculate how much the document has grown from existing changes
+		const insertedLength = inserted.length;
+		const deletedLength = toA - fromA;
+		existingChangeAdjustment += insertedLength - deletedLength;
+		hasExistingChanges = true;
+	});
+
+	// Logging moved to where it's used
 
 	const newChanges: { from: number; to: number; insert: string }[] = [];
 	// Process each workflow update
@@ -334,22 +351,36 @@ export function handleWorkflowTransaction(
 				line.from,
 				line.number,
 				workflowType,
-				plugin,
+				plugin
 			);
-			newChanges.push(...timeChanges);
+
+			// Adjust time change positions if there are existing changes
+			const adjustedTimeChanges = timeChanges;
+
+			for (const change of adjustedTimeChanges) {
+				newChanges.push(change);
+			}
+
+			let stageRemovalChange: {
+				from: number;
+				to: number;
+				insert: string;
+			} | null = null;
 
 			// Remove the [stage::] marker from the current line
 			if (plugin.settings.workflow.autoRemoveLastStageMarker) {
 				const stageMarker = safelyFindStageMarker(line.text);
 				if (stageMarker) {
-					newChanges.push({
-						from: line.from + stageMarker.index,
-						to:
-							line.from +
-							stageMarker.index +
-							stageMarker[0].length,
+					let fromPos = line.from + stageMarker.index;
+					let toPos =
+						line.from + stageMarker.index + stageMarker[0].length;
+
+					stageRemovalChange = {
+						from: fromPos,
+						to: toPos,
 						insert: "",
-					});
+					};
+					newChanges.push(stageRemovalChange);
 				}
 			}
 
@@ -376,9 +407,18 @@ export function handleWorkflowTransaction(
 						if (rootTaskMatch) {
 							const rootTaskStatus = rootTaskMatch[3];
 							if (!completedStatuses.includes(rootTaskStatus)) {
-								const rootTaskStart =
+								let rootTaskStart =
 									checkLine.from +
 									rootTaskMatch[0].indexOf("[");
+
+								// Adjust positions if there are existing changes
+								if (hasExistingChanges) {
+									rootTaskStart = Math.max(
+										0,
+										rootTaskStart - existingChangeAdjustment
+									);
+								}
+
 								newChanges.push({
 									from: rootTaskStart + 1,
 									to: rootTaskStart + 2,
@@ -395,8 +435,24 @@ export function handleWorkflowTransaction(
 			const { nextStageId, nextSubStageId } = determineNextStage(
 				currentStage,
 				workflow,
-				currentSubStage,
+				currentSubStage
 			);
+
+			// Guard: If completing a parent cycle stage (no currentSubStage) and there's no explicit
+			// next main stage configured (nextStageId remains current), skip auto-creating the first
+			// substage to avoid unintended child looping when advancing parent via menu.
+			if (
+				currentStage.type === "cycle" &&
+				!currentSubStage &&
+				nextStageId === currentStage.id
+			) {
+				// Optional debug
+				console.debug(
+					"[WorkflowHandler] Skip auto-substage creation for parent cycle stage completion",
+					{ line: line.number, stage: currentStage.id }
+				);
+				continue;
+			}
 
 			const nextStage = workflow.stages.find((s) => s.id === nextStageId);
 			if (!nextStage) continue;
@@ -404,7 +460,7 @@ export function handleWorkflowTransaction(
 			let nextSubStage: WorkflowSubStage | undefined;
 			if (nextSubStageId && nextStage.subStages) {
 				nextSubStage = nextStage.subStages.find(
-					(ss) => ss.id === nextSubStageId,
+					(ss) => ss.id === nextSubStageId
 				);
 			}
 
@@ -419,14 +475,33 @@ export function handleWorkflowTransaction(
 				newTaskIndentation,
 				plugin,
 				true,
-				nextSubStage,
+				nextSubStage
 			);
 
 			const insertionPoint = determineTaskInsertionPoint(
 				line,
 				tr.newDoc,
-				indentation,
+				indentation
 			);
+
+			const insertionAdjustment = calculateInsertionAdjustment(
+				insertionPoint,
+				line.from,
+				[
+					...timeChanges,
+					...(stageRemovalChange ? [stageRemovalChange] : []),
+				]
+			);
+
+			// Calculate the adjusted insertion point
+			let adjustedInsertionPoint = insertionPoint + insertionAdjustment;
+
+			// Ensure the insertion point is within the new document bounds (after original changes)
+			adjustedInsertionPoint = Math.min(
+				adjustedInsertionPoint,
+				tr.newDoc.length
+			);
+			adjustedInsertionPoint = Math.max(0, adjustedInsertionPoint);
 
 			if (
 				!(
@@ -435,8 +510,8 @@ export function handleWorkflowTransaction(
 				)
 			) {
 				newChanges.push({
-					from: insertionPoint,
-					to: insertionPoint,
+					from: adjustedInsertionPoint,
+					to: adjustedInsertionPoint,
 					insert: `\n${completeTaskText}`,
 				});
 			}
@@ -444,8 +519,33 @@ export function handleWorkflowTransaction(
 	}
 
 	if (newChanges.length > 0) {
+		// Log only if processing with existing changes
+		if (hasExistingChanges) {
+			console.log(
+				`[WorkflowHandler] Applied ${newChanges.length} changes (adjusted for existing changes)`
+			);
+		}
+
+		// Rebuild a single combined change list relative to the ORIGINAL doc
+		// 1) Take the original transaction's changes as specs (relative to startState)
+		const baseChangeSpecs: { from: number; to: number; insert: string }[] =
+			[];
+		tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+			baseChangeSpecs.push({
+				from: fromA,
+				to: toA,
+				insert: inserted.toString(),
+			});
+		});
+		// 2) Map our additional changes (currently in newDoc space) back to startState
+		const inverse = tr.changes.invert(tr.startState.doc);
+		const mappedNewChanges = newChanges.map((c) => ({
+			from: inverse.mapPos(c.from, -1),
+			to: inverse.mapPos(c.to, -1),
+			insert: c.insert,
+		}));
 		return {
-			changes: [tr.changes, ...newChanges],
+			changes: [...baseChangeSpecs, ...mappedNewChanges],
 			selection: tr.selection,
 			annotations: workflowChangeAnnotation.of("workflowChange"),
 		};
@@ -470,7 +570,7 @@ export function processTimestampAndCalculateTime(
 	lineFrom: number,
 	lineNumber: number,
 	workflowType: string,
-	plugin: TaskProgressBarPlugin,
+	plugin: TaskProgressBarPlugin
 ): { from: number; to: number; insert: string }[] {
 	const changes: { from: number; to: number; insert: string }[] = [];
 
@@ -489,7 +589,7 @@ export function processTimestampAndCalculateTime(
 	const startTime = moment(
 		timestampText.replace("🛫 ", ""),
 		timestampFormat,
-		true,
+		true
 	);
 
 	if (!startTime.isValid()) {
@@ -502,7 +602,7 @@ export function processTimestampAndCalculateTime(
 		lineText,
 		lineNumber,
 		doc,
-		plugin,
+		plugin
 	);
 
 	// Remove timestamp if enabled
@@ -518,22 +618,28 @@ export function processTimestampAndCalculateTime(
 
 	// Add spent time if enabled
 	if (plugin.settings.workflow.calculateSpentTime) {
-		const spentTime = moment
-			.utc(duration.asMilliseconds())
-			.format(plugin.settings.workflow.spentTimeFormat);
-
 		// Determine insertion position (before any stage marker)
 		const stageMarkerIndex = lineText.indexOf("[stage::");
 		const insertPosition =
 			lineFrom +
 			(stageMarkerIndex !== -1 ? stageMarkerIndex : lineText.length);
 
-		if (!isFinalStage || !plugin.settings.workflow.calculateFullSpentTime) {
-			changes.push({
-				from: insertPosition,
-				to: insertPosition,
-				insert: ` (⏱️ ${spentTime})`,
-			});
+		// Guard: avoid duplicating local spent time if it already exists on the line
+		if (!TIME_SPENT_REGEX.test(lineText)) {
+			const spentTime = moment
+				.utc(duration.asMilliseconds())
+				.format(plugin.settings.workflow.spentTimeFormat);
+
+			if (
+				!isFinalStage ||
+				!plugin.settings.workflow.calculateFullSpentTime
+			) {
+				changes.push({
+					from: insertPosition,
+					to: insertPosition,
+					insert: ` (⏱️ ${spentTime})`,
+				});
+			}
 		}
 
 		// Calculate and add total time for final stage if enabled
@@ -558,7 +664,7 @@ export function processTimestampAndCalculateTime(
 						const taskLine = doc.line(j);
 
 						const indentLevel = getIndentation(
-							taskLine.text,
+							taskLine.text
 						).length;
 
 						if (indentLevel > currentIndentLevel) {
@@ -634,7 +740,7 @@ export function processTimestampAndCalculateTime(
 export function updateWorkflowContextMenu(
 	menu: any,
 	editor: Editor,
-	plugin: TaskProgressBarPlugin,
+	plugin: TaskProgressBarPlugin
 ) {
 	if (!plugin.settings.workflow.enableWorkflow) {
 		return;
@@ -701,7 +807,7 @@ export function updateWorkflowContextMenu(
 						false,
 						editor,
 						null as any,
-						plugin,
+						plugin
 					);
 				});
 			});
@@ -715,7 +821,7 @@ export function updateWorkflowContextMenu(
 						false,
 						editor,
 						null as any,
-						plugin,
+						plugin
 					);
 				});
 			});
@@ -729,7 +835,7 @@ export function updateWorkflowContextMenu(
 						false,
 						editor,
 						null as any,
-						plugin,
+						plugin
 					);
 				});
 			});
@@ -743,7 +849,7 @@ export function updateWorkflowContextMenu(
 		line,
 		editor.cm.state.doc,
 		cursor.line + 1,
-		plugin,
+		plugin
 	);
 
 	if (!resolvedInfo) {
@@ -771,7 +877,7 @@ export function updateWorkflowContextMenu(
 				const firstStage = workflow.stages[0];
 				submenu.addItem((nextItem: any) => {
 					nextItem.setTitle(
-						`${t("Move to stage")} ${firstStage.name}`,
+						`${t("Move to stage")} ${firstStage.name}`
 					);
 					nextItem.onClick(() => {
 						const changes = createWorkflowStageTransition(
@@ -782,13 +888,15 @@ export function updateWorkflowContextMenu(
 							firstStage,
 							true,
 							undefined,
-							undefined,
+							undefined
 						);
 
 						editor.cm.dispatch({
 							changes,
-							annotations:
+							annotations: [
 								taskStatusChangeAnnotation.of("workflowChange"),
+								workflowChangeAnnotation.of("workflowChange"),
+							],
 						});
 					});
 				});
@@ -796,7 +904,7 @@ export function updateWorkflowContextMenu(
 		} else if (currentStage.canProceedTo) {
 			currentStage.canProceedTo.forEach((nextStageId) => {
 				const nextStage = workflow.stages.find(
-					(s) => s.id === nextStageId,
+					(s) => s.id === nextStageId
 				);
 
 				if (nextStage) {
@@ -806,14 +914,14 @@ export function updateWorkflowContextMenu(
 							line,
 							cursor.line,
 							editor.cm.state.doc,
-							plugin,
+							plugin
 						);
 
 						// If last stage, show "Complete stage" instead of "Move to"
 						nextItem.setTitle(
 							isLastStage
 								? `${t("Complete stage")}: ${nextStage.name}`
-								: `${t("Move to stage")} ${nextStage.name}`,
+								: `${t("Move to stage")} ${nextStage.name}`
 						);
 						nextItem.onClick(() => {
 							const changes = createWorkflowStageTransition(
@@ -824,15 +932,20 @@ export function updateWorkflowContextMenu(
 								nextStage,
 								false,
 								undefined,
-								currentSubStage,
+								currentSubStage
 							);
 							editor.cm.dispatch({
 								changes,
-								annotations: taskStatusChangeAnnotation.of(
-									isLastStage
-										? "workflowChange.completeStage"
-										: "workflowChange.moveToStage",
-								),
+								annotations: [
+									taskStatusChangeAnnotation.of(
+										isLastStage
+											? "workflowChange.completeStage"
+											: "workflowChange.moveToStage"
+									),
+									workflowChangeAnnotation.of(
+										"workflowChange"
+									),
+								],
 							});
 						});
 					});
@@ -850,13 +963,15 @@ export function updateWorkflowContextMenu(
 						currentStage,
 						false,
 						undefined,
-						currentSubStage,
+						currentSubStage
 					);
 
 					editor.cm.dispatch({
 						changes,
-						annotations:
+						annotations: [
 							taskStatusChangeAnnotation.of("workflowChange"),
+							workflowChangeAnnotation.of("workflowChange"),
+						],
 					});
 				});
 			});
@@ -865,13 +980,13 @@ export function updateWorkflowContextMenu(
 			const { nextStageId } = determineNextStage(
 				currentStage,
 				workflow,
-				currentSubStage,
+				currentSubStage
 			);
 
 			// Only add menu option if there's a valid next stage that's different from current
 			if (nextStageId && nextStageId !== currentStage.id) {
 				const nextStage = workflow.stages.find(
-					(s) => s.id === nextStageId,
+					(s) => s.id === nextStageId
 				);
 				if (nextStage) {
 					submenu.addItem((nextItem: any) => {
@@ -885,15 +1000,19 @@ export function updateWorkflowContextMenu(
 								nextStage,
 								false,
 								undefined,
-								undefined,
+								undefined
 							);
 
 							editor.cm.dispatch({
 								changes,
-								annotations:
+								annotations: [
 									taskStatusChangeAnnotation.of(
-										"workflowChange",
+										"workflowChange"
 									),
+									workflowChangeAnnotation.of(
+										"workflowChange"
+									),
+								],
 							});
 						});
 					});
@@ -918,12 +1037,14 @@ export function updateWorkflowContextMenu(
 							firstStage,
 							false,
 							undefined,
-							undefined,
+							undefined
 						);
 						editor.cm.dispatch({
 							changes,
-							annotations:
+							annotations: [
 								taskStatusChangeAnnotation.of("workflowChange"),
+								workflowChangeAnnotation.of("workflowChange"),
+							],
 						});
 					}
 				} else if (currentStage.id === "_root_task_") {
@@ -937,12 +1058,14 @@ export function updateWorkflowContextMenu(
 							firstStage,
 							false,
 							undefined,
-							undefined,
+							undefined
 						);
 						editor.cm.dispatch({
 							changes,
-							annotations:
+							annotations: [
 								taskStatusChangeAnnotation.of("workflowChange"),
+								workflowChangeAnnotation.of("workflowChange"),
+							],
 						});
 					}
 				} else {
@@ -954,12 +1077,14 @@ export function updateWorkflowContextMenu(
 						currentStage,
 						false,
 						currentSubStage,
-						undefined,
+						undefined
 					);
 					editor.cm.dispatch({
 						changes,
-						annotations:
+						annotations: [
 							taskStatusChangeAnnotation.of("workflowChange"),
+							workflowChangeAnnotation.of("workflowChange"),
+						],
 					});
 				}
 			});
@@ -980,7 +1105,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 	lineText: string,
 	lineNumber: number,
 	doc: Text,
-	plugin: TaskProgressBarPlugin,
+	plugin: TaskProgressBarPlugin
 ): boolean {
 	const workflowInfo = extractWorkflowInfo(lineText);
 	if (!workflowInfo) {
@@ -1002,7 +1127,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 	}
 
 	const workflow = plugin.settings.workflow.definitions.find(
-		(wf: WorkflowDefinition) => wf.id === workflowType,
+		(wf: WorkflowDefinition) => wf.id === workflowType
 	);
 
 	if (!workflow) {
@@ -1028,7 +1153,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 		currentSubStageId
 	) {
 		const currentSubStage = currentStage.subStages.find(
-			(ss) => ss.id === currentSubStageId,
+			(ss) => ss.id === currentSubStageId
 		);
 		if (!currentSubStage) {
 			return true;
@@ -1047,7 +1172,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 			!parentStageHasLinearNext
 		) {
 			const currentIndex = workflow.stages.findIndex(
-				(s) => s.id === currentStage.id,
+				(s) => s.id === currentStage.id
 			);
 			if (currentIndex === workflow.stages.length - 1) {
 				return true;
@@ -1064,7 +1189,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 	}
 
 	const currentIndex = workflow.stages.findIndex(
-		(s) => s.id === currentStage.id,
+		(s) => s.id === currentStage.id
 	);
 	if (currentIndex < 0) {
 		return true;
@@ -1086,7 +1211,7 @@ export function isLastWorkflowStageOrNotWorkflow(
 export function determineNextStage(
 	currentStage: WorkflowStage,
 	workflow: WorkflowDefinition,
-	currentSubStage?: WorkflowSubStage,
+	currentSubStage?: WorkflowSubStage
 ): { nextStageId: string; nextSubStageId?: string } {
 	let nextStageId = currentStage.id;
 	let nextSubStageId: string | undefined;
@@ -1135,7 +1260,7 @@ export function determineNextStage(
 			nextStageId = currentStage.canProceedTo[0];
 		} else {
 			const currentIndex = workflow.stages.findIndex(
-				(stage) => stage.id === currentStage.id,
+				(stage) => stage.id === currentStage.id
 			);
 			if (
 				currentIndex >= 0 &&
@@ -1166,7 +1291,7 @@ export function createWorkflowStageTransition(
 	nextStage: WorkflowStage,
 	isRootTask: boolean,
 	nextSubStage?: WorkflowSubStage,
-	currentSubStage?: WorkflowSubStage,
+	currentSubStage?: WorkflowSubStage
 ) {
 	const doc = editor.cm.state.doc;
 	const app = plugin.app;
@@ -1185,7 +1310,7 @@ export function createWorkflowStageTransition(
 		line,
 		lineNumber,
 		doc,
-		plugin,
+		plugin
 	);
 
 	const taskMatch = line.match(TASK_REGEX);
@@ -1214,7 +1339,7 @@ export function createWorkflowStageTransition(
 		lineStart.from,
 		lineNumber,
 		workflowType,
-		plugin,
+		plugin
 	);
 	changes.push(...timeChanges);
 
@@ -1239,13 +1364,15 @@ export function createWorkflowStageTransition(
 			indentation,
 			plugin,
 			true,
-			nextSubStage,
+			nextSubStage
 		);
 
 		// Add the new task after the current line
+		// Ensure the insertion point is within document bounds
+		const insertPoint = Math.min(lineStart.to, doc.length);
 		changes.push({
-			from: lineStart.to,
-			to: lineStart.to,
+			from: insertPoint,
+			to: insertPoint,
 			insert: `\n${newTaskText}`,
 		});
 	}
@@ -1277,7 +1404,7 @@ export function resolveWorkflowInfo(
 	lineText: string,
 	doc: Text,
 	lineNumber: number,
-	plugin: TaskProgressBarPlugin,
+	plugin: TaskProgressBarPlugin
 ): {
 	workflowType: string;
 	currentStage: WorkflowStage;
@@ -1305,7 +1432,7 @@ export function resolveWorkflowInfo(
 	}
 
 	const workflow = plugin.settings.workflow.definitions.find(
-		(wf: WorkflowDefinition) => wf.id === workflowType,
+		(wf: WorkflowDefinition) => wf.id === workflowType
 	);
 	if (!workflow) {
 		return null;
@@ -1337,7 +1464,7 @@ export function resolveWorkflowInfo(
 	let currentSubStage: WorkflowSubStage | undefined;
 	if (subStageId && currentStage.subStages) {
 		currentSubStage = currentStage.subStages.find(
-			(ss) => ss.id === subStageId,
+			(ss) => ss.id === subStageId
 		);
 	}
 
@@ -1364,14 +1491,14 @@ export function generateWorkflowTaskText(
 	indentation: string,
 	plugin: TaskProgressBarPlugin,
 	addSubtasks: boolean = true,
-	nextSubStage?: WorkflowSubStage,
+	nextSubStage?: WorkflowSubStage
 ): string {
 	// Generate timestamp if configured
 	const timestamp = plugin.settings.workflow.autoAddTimestamp
 		? ` 🛫 ${moment().format(
 				plugin.settings.workflow.timestampFormat ||
-					"YYYY-MM-DD HH:mm:ss",
-			)}`
+					"YYYY-MM-DD HH:mm:ss"
+		  )}`
 		: "";
 	const defaultIndentation = buildIndentString(plugin.app);
 
@@ -1406,10 +1533,15 @@ export function generateWorkflowTaskText(
 export function determineTaskInsertionPoint(
 	line: { number: number; to: number; text: string },
 	doc: Text,
-	indentation: string,
+	indentation: string
 ): number {
 	// Default insertion point is after the current line
 	let insertionPoint = line.to;
+
+	// Validate that the initial insertion point is within bounds
+	if (insertionPoint > doc.length) {
+		insertionPoint = doc.length;
+	}
 
 	// Check if there are child tasks by looking for lines with greater indentation
 	const lineIndent = indentation.length;
@@ -1418,11 +1550,14 @@ export function determineTaskInsertionPoint(
 
 	// Look at the next 20 lines to find potential child tasks
 	// This is a reasonable limit for most task hierarchies
-	for (
-		let i = line.number + 1;
-		i <= Math.min(line.number + 20, doc.lines);
-		i++
-	) {
+	const maxSearchLine = Math.min(line.number + 20, doc.lines);
+
+	for (let i = line.number + 1; i <= maxSearchLine; i++) {
+		// Ensure the line number is valid
+		if (i > doc.lines) {
+			break;
+		}
+
 		const checkLine = doc.line(i);
 		const checkIndent = getIndentation(checkLine.text).length;
 
@@ -1435,9 +1570,51 @@ export function determineTaskInsertionPoint(
 	}
 
 	// If we found child tasks, insert after the last child
-	if (foundChildren) {
-		insertionPoint = doc.line(lastChildLine).to;
+	if (foundChildren && lastChildLine <= doc.lines) {
+		const lastChild = doc.line(lastChildLine);
+		insertionPoint = lastChild.to;
+
+		// Ensure the insertion point doesn't exceed document bounds
+		if (insertionPoint > doc.length) {
+			insertionPoint = doc.length;
+		}
 	}
 
 	return insertionPoint;
+}
+
+function calculateInsertionAdjustment(
+	baseInsertionPoint: number,
+	lineStart: number,
+	changes: { from: number; to: number; insert: string }[]
+): number {
+	let adjustment = 0;
+
+	// Sort changes by position (descending) to process from end to beginning
+	const sortedChanges = [...changes].sort((a, b) => b.from - a.from);
+
+	for (const change of sortedChanges) {
+		const changeStart = change.from;
+		const changeEnd = change.to ?? change.from;
+
+		// Only consider changes that occur before the insertion point
+		// This accounts for ALL changes that affect the insertion position
+		if (changeStart >= baseInsertionPoint) {
+			continue;
+		}
+
+		const insertedLength = change.insert ? change.insert.length : 0;
+		const removedLength = changeEnd - changeStart;
+
+		// If the change ends before the insertion point, adjust by the full amount
+		if (changeEnd <= baseInsertionPoint) {
+			adjustment += insertedLength - removedLength;
+		} else {
+			// If the change partially overlaps, only adjust by the part before insertion point
+			const effectiveRemovedLength = baseInsertionPoint - changeStart;
+			adjustment += insertedLength - effectiveRemovedLength;
+		}
+	}
+
+	return adjustment;
 }
