@@ -666,6 +666,11 @@ export class TaskView extends ItemView {
 	}
 
 	private createTaskMark() {
+		// Check if task-mark feature is hidden in current workspace
+		if (this.plugin.workspaceManager?.isFeatureHidden('task-mark')) {
+			return;
+		}
+
 		this.titleEl.setText(
 			t("{{num}} Tasks", {
 				interpolation: {
@@ -676,26 +681,39 @@ export class TaskView extends ItemView {
 	}
 
 	private createActionButtons() {
-		this.detailsToggleBtn = this.addAction(
-			"panel-right-dashed",
-			t("Details"),
-			() => {
-				this.toggleDetailsVisibility(!this.isDetailsVisible);
-			}
-		);
-
-		this.detailsToggleBtn.toggleClass("panel-toggle-btn", true);
-		this.detailsToggleBtn.toggleClass("is-active", this.isDetailsVisible);
-
-		this.addAction("notebook-pen", t("Capture"), () => {
-			const modal = new QuickCaptureModal(
-				this.plugin.app,
-				this.plugin,
-				{},
-				true
+		// Check if details-panel feature is hidden
+		if (!this.plugin.workspaceManager?.isFeatureHidden('details-panel')) {
+			this.detailsToggleBtn = this.addAction(
+				"panel-right-dashed",
+				t("Details"),
+				() => {
+					this.toggleDetailsVisibility(!this.isDetailsVisible);
+				}
 			);
-			modal.open();
-		});
+
+			this.detailsToggleBtn.toggleClass("panel-toggle-btn", true);
+			this.detailsToggleBtn.toggleClass("is-active", this.isDetailsVisible);
+		}
+
+		// Check if quick-capture feature is hidden
+		if (!this.plugin.workspaceManager?.isFeatureHidden('quick-capture')) {
+			this.addAction("notebook-pen", t("Capture"), () => {
+				const modal = new QuickCaptureModal(
+					this.plugin.app,
+					this.plugin,
+					{},
+					true
+				);
+				modal.open();
+			});
+		}
+
+		// Check if filter feature is hidden
+		if (this.plugin.workspaceManager?.isFeatureHidden('filter')) {
+			// Skip filter button creation
+			this.updateActionButtons();
+			return;
+		}
 
 		this.addAction("filter", t("Filter"), (e) => {
 			if (Platform.isDesktop) {

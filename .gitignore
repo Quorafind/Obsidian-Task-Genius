@@ -39,10 +39,10 @@ translation-templates
 CLAUDE.md
 .kiro
 .claude
+.codex
 
 dist
 dist/*
 
 # Documentation site (separate repository)
 docs-site
-

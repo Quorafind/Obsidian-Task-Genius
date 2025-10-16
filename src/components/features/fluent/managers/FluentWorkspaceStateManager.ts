@@ -3,6 +3,27 @@ import TaskProgressBarPlugin from "@/index";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { ViewMode } from "../components/FluentTopNavigation";
 
+export interface WorkspaceFilterSnapshot {
+	filters: any;
+	selectedProject: string | undefined;
+	advancedFilter: RootFilterState | null;
+	liveFilterState: RootFilterState | null;
+	viewMode: ViewMode;
+	shouldClearSearch: boolean;
+}
+
+export interface FilterSyncHandlers {
+	setLiveFilterState: (state: RootFilterState | null) => void;
+	setCurrentFilterState: (state: RootFilterState | null) => void;
+	setViewPreferences: (payload: {
+		filters: any;
+		selectedProject: string | undefined;
+		viewMode: ViewMode;
+		clearSearch: boolean;
+	}) => void;
+	onAfterSync?: (snapshot: WorkspaceFilterSnapshot) => void;
+}
+
 /**
  * FluentWorkspaceStateManager - Manages workspace state persistence
  *
@@ -153,13 +174,7 @@ export class FluentWorkspaceStateManager extends Component {
 	/**
 	 * Restore filter state from workspace
 	 */
-	restoreFilterStateFromWorkspace(): {
-		filters: any;
-		selectedProject: string | undefined;
-		advancedFilter: RootFilterState | null;
-		viewMode: ViewMode;
-		shouldClearSearch: boolean;
-	} | null {
+	restoreFilterStateFromWorkspace(): WorkspaceFilterSnapshot | null {
 		const workspaceId = this.getWorkspaceId();
 		const viewId = this.getCurrentViewId();
 
@@ -177,6 +192,7 @@ export class FluentWorkspaceStateManager extends Component {
 				filters: savedState.filters || {},
 				selectedProject: savedState.selectedProject,
 				advancedFilter: savedState.advancedFilter || null,
+				liveFilterState: savedState.advancedFilter || null,
 				viewMode: savedState.viewMode || "list",
 				shouldClearSearch: true, // Always clear searchQuery on workspace restore
 			};
@@ -186,10 +202,35 @@ export class FluentWorkspaceStateManager extends Component {
 				filters: {},
 				selectedProject: undefined,
 				advancedFilter: null,
+				liveFilterState: null,
 				viewMode: "list",
 				shouldClearSearch: true,
 			};
 		}
+	}
+
+	/**
+	 * Sync filter-related state with the provided handlers
+	 */
+	syncFilterState(
+		snapshot: WorkspaceFilterSnapshot | null,
+		handlers: FilterSyncHandlers,
+	): void {
+		if (!snapshot) return;
+
+		const liveState =
+			snapshot.liveFilterState ?? snapshot.advancedFilter ?? null;
+
+		handlers.setLiveFilterState(liveState);
+		handlers.setCurrentFilterState(snapshot.advancedFilter ?? null);
+		handlers.setViewPreferences({
+			filters: snapshot.filters || {},
+			selectedProject: snapshot.selectedProject,
+			viewMode: snapshot.viewMode,
+			clearSearch: snapshot.shouldClearSearch,
+		});
+
+		handlers.onAfterSync?.(snapshot);
 	}
 
 	/**

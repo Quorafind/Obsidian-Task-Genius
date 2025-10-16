@@ -41,6 +41,45 @@ export interface WorkspaceOverrides {
 		advancedFilter?: any;
 		viewMode?: string;
 	}>;
+
+	// Hidden modules configuration
+	hiddenModules?: HiddenModulesConfig;
+}
+
+/** Hidden modules configuration for workspace */
+export interface HiddenModulesConfig {
+	/** Hidden view IDs (affects sidebar display and view access) */
+	views?: string[];
+
+	/** Hidden sidebar components */
+	sidebarComponents?: SidebarComponentType[];
+
+	/** Hidden feature components */
+	features?: FeatureComponentType[];
+}
+
+/** Sidebar component types that can be hidden */
+export type SidebarComponentType =
+	| 'projects-list'
+	| 'tags-list'
+	| 'view-switcher'
+	| 'top-views'
+	| 'bottom-views';
+
+/** Feature component types that can be hidden */
+export type FeatureComponentType =
+	| 'details-panel'
+	| 'quick-capture'
+	| 'filter'
+	| 'progress-bar'
+	| 'task-mark';
+
+/** Module definition for UI display */
+export interface ModuleDefinition {
+	id: string;
+	name: string;
+	icon: string;
+	type: 'view' | 'sidebar' | 'feature';
 }
 
 export interface WorkspacesConfig {

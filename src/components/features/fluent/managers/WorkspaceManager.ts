@@ -670,4 +670,197 @@ export class WorkspaceManager {
 			return null;
 		}
 	}
+
+	// Module visibility methods
+
+	/**
+	 * Check if a view is hidden in the specified workspace
+	 * @param viewId - The view ID to check
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 * @returns true if the view is hidden
+	 */
+	public isViewHidden(viewId: string, workspaceId?: string): boolean {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace?.settings?.hiddenModules?.views) {
+			return false;
+		}
+
+		return workspace.settings.hiddenModules.views.includes(viewId);
+	}
+
+	/**
+	 * Check if a sidebar component is hidden in the specified workspace
+	 * @param componentId - The sidebar component ID to check
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 * @returns true if the sidebar component is hidden
+	 */
+	public isSidebarComponentHidden(
+		componentId: 'projects-list' | 'tags-list' | 'view-switcher' | 'top-views' | 'bottom-views',
+		workspaceId?: string
+	): boolean {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace?.settings?.hiddenModules?.sidebarComponents) {
+			return false;
+		}
+
+		return workspace.settings.hiddenModules.sidebarComponents.includes(componentId);
+	}
+
+	/**
+	 * Check if a feature component is hidden in the specified workspace
+	 * @param featureId - The feature component ID to check
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 * @returns true if the feature component is hidden
+	 */
+	public isFeatureHidden(
+		featureId: 'details-panel' | 'quick-capture' | 'filter' | 'progress-bar' | 'task-mark',
+		workspaceId?: string
+	): boolean {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace?.settings?.hiddenModules?.features) {
+			return false;
+		}
+
+		return workspace.settings.hiddenModules.features.includes(featureId);
+	}
+
+	/**
+	 * Get all visible views for the specified workspace
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 * @returns Array of view IDs that are not hidden
+	 */
+	public getVisibleViews(workspaceId?: string): string[] {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		const hiddenViews = workspace?.settings?.hiddenModules?.views || [];
+		const allViews = this.plugin.settings.viewConfiguration.map(v => v.id);
+
+		return allViews.filter(viewId => !hiddenViews.includes(viewId));
+	}
+
+	/**
+	 * Toggle view visibility in a workspace
+	 * @param viewId - The view ID to toggle
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 */
+	public async toggleViewVisibility(viewId: string, workspaceId?: string): Promise<void> {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace) return;
+
+		// Initialize hiddenModules if needed
+		if (!workspace.settings.hiddenModules) {
+			workspace.settings.hiddenModules = {};
+		}
+		if (!workspace.settings.hiddenModules.views) {
+			workspace.settings.hiddenModules.views = [];
+		}
+
+		const index = workspace.settings.hiddenModules.views.indexOf(viewId);
+		if (index > -1) {
+			// Currently hidden, make visible
+			workspace.settings.hiddenModules.views.splice(index, 1);
+		} else {
+			// Currently visible, hide it
+			workspace.settings.hiddenModules.views.push(viewId);
+		}
+
+		workspace.updatedAt = Date.now();
+		this.clearCache();
+		await this.plugin.saveSettings();
+
+		// Emit event to notify UI components
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+	}
+
+	/**
+	 * Set hidden views for a workspace
+	 * @param viewIds - Array of view IDs to hide
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 */
+	public async setHiddenViews(viewIds: string[], workspaceId?: string): Promise<void> {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace) return;
+
+		if (!workspace.settings.hiddenModules) {
+			workspace.settings.hiddenModules = {};
+		}
+
+		workspace.settings.hiddenModules.views = [...viewIds];
+		workspace.updatedAt = Date.now();
+		this.clearCache();
+		await this.plugin.saveSettings();
+
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+	}
+
+	/**
+	 * Set hidden sidebar components for a workspace
+	 * @param componentIds - Array of sidebar component IDs to hide
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 */
+	public async setHiddenSidebarComponents(
+		componentIds: Array<'projects-list' | 'tags-list' | 'view-switcher' | 'top-views' | 'bottom-views'>,
+		workspaceId?: string
+	): Promise<void> {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace) return;
+
+		if (!workspace.settings.hiddenModules) {
+			workspace.settings.hiddenModules = {};
+		}
+
+		workspace.settings.hiddenModules.sidebarComponents = [...componentIds];
+		workspace.updatedAt = Date.now();
+		this.clearCache();
+		await this.plugin.saveSettings();
+
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+	}
+
+	/**
+	 * Set hidden features for a workspace
+	 * @param featureIds - Array of feature IDs to hide
+	 * @param workspaceId - Optional workspace ID, defaults to active workspace
+	 */
+	public async setHiddenFeatures(
+		featureIds: Array<'details-panel' | 'quick-capture' | 'filter' | 'progress-bar' | 'task-mark'>,
+		workspaceId?: string
+	): Promise<void> {
+		const workspace = workspaceId
+			? this.getWorkspace(workspaceId)
+			: this.getActiveWorkspace();
+
+		if (!workspace) return;
+
+		if (!workspace.settings.hiddenModules) {
+			workspace.settings.hiddenModules = {};
+		}
+
+		workspace.settings.hiddenModules.features = [...featureIds];
+		workspace.updatedAt = Date.now();
+		this.clearCache();
+		await this.plugin.saveSettings();
+
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+	}
 }

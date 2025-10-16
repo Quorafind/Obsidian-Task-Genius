@@ -168,16 +168,35 @@ export class FluentTaskView extends ItemView {
 		await this.workspaceStateManager.applyWorkspaceSettings();
 		const restored =
 			this.workspaceStateManager.restoreFilterStateFromWorkspace();
-		if (restored) {
-			this.viewState.filters = restored.filters;
-			this.viewState.selectedProject = restored.selectedProject;
-			this.currentFilterState = restored.advancedFilter;
-			this.viewState.viewMode = restored.viewMode;
-			if (restored.shouldClearSearch) {
-				this.viewState.searchQuery = "";
-				this.viewState.filterInputValue = "";
-			}
-		}
+		this.workspaceStateManager.syncFilterState(restored, {
+			setLiveFilterState: (state) => {
+				this.liveFilterState = state;
+				this.app.saveLocalStorage(
+					"task-genius-view-filter",
+					state || null,
+				);
+			},
+			setCurrentFilterState: (state) => {
+				this.currentFilterState = state;
+			},
+			setViewPreferences: ({
+				filters,
+				selectedProject,
+				viewMode,
+				clearSearch,
+			}) => {
+				this.viewState.filters = filters;
+				this.viewState.selectedProject = selectedProject;
+				this.viewState.viewMode = viewMode;
+				if (clearSearch) {
+					this.viewState.searchQuery = "";
+					this.viewState.filterInputValue = "";
+				}
+			},
+			onAfterSync: () => {
+				this.layoutManager?.updateActionButtons();
+			},
+		});
 
 		// Initial data load
 		await this.dataManager.loadTasks(false); // Will trigger onTasksLoaded callback
@@ -613,17 +632,36 @@ export class FluentTaskView extends ItemView {
 						// Restore filter state
 						const restored =
 							this.workspaceStateManager.restoreFilterStateFromWorkspace();
-						if (restored) {
-							this.viewState.filters = restored.filters;
-							this.viewState.selectedProject =
-								restored.selectedProject;
-							this.currentFilterState = restored.advancedFilter;
-							this.viewState.viewMode = restored.viewMode;
-							if (restored.shouldClearSearch) {
-								this.viewState.searchQuery = "";
-								this.viewState.filterInputValue = "";
-							}
-						}
+						this.workspaceStateManager.syncFilterState(restored, {
+							setLiveFilterState: (state) => {
+								this.liveFilterState = state;
+								this.app.saveLocalStorage(
+									"task-genius-view-filter",
+									state || null,
+								);
+							},
+							setCurrentFilterState: (state) => {
+								this.currentFilterState = state;
+							},
+							setViewPreferences: ({
+								filters,
+								selectedProject,
+								viewMode,
+								clearSearch,
+							}) => {
+								this.viewState.filters = filters;
+								this.viewState.selectedProject =
+									selectedProject;
+								this.viewState.viewMode = viewMode;
+								if (clearSearch) {
+									this.viewState.searchQuery = "";
+									this.viewState.filterInputValue = "";
+								}
+							},
+							onAfterSync: () => {
+								this.layoutManager?.updateActionButtons();
+							},
+						});
 
 						// Reload tasks
 						await this.dataManager.loadTasks();
