@@ -44,6 +44,12 @@ export class FluentTaskView extends ItemView {
 	private plugin: TaskProgressBarPlugin;
 
 	// ====================
+	// DEBUG CONFIGURATION
+	// ====================
+	// Set to false in production to reduce console output
+	private readonly DEBUG_MODE = false;
+
+	// ====================
 	// MANAGERS (added via addChild for lifecycle management)
 	// ====================
 	private dataManager: FluentDataManager;
@@ -131,86 +137,144 @@ export class FluentTaskView extends ItemView {
 		console.log("[TG-V2] onOpen started");
 		this.isInitializing = true;
 
-		this.contentEl.empty();
-		this.contentEl.toggleClass(
-			["task-genius-fluent-view", "task-genius-view"],
-			true
-		);
-
-		// Create root container (use exact same class as original)
-		this.rootContainerEl = this.contentEl.createDiv({
-			cls: "tg-fluent-container",
-		});
-
-		// Add mobile class for proper styling
-		if (Platform.isPhone) {
-			this.rootContainerEl.addClass("is-mobile");
-		}
-
-		// Initialize managers first (before UI)
-		this.initializeManagers();
-
-		// Build UI structure
-		await this.buildUIStructure();
-
-		// Subscribe to workspace and global events
-		this.registerEvents();
-
-		// Load workspace state
-		const savedWorkspaceId =
-			this.workspaceStateManager.getSavedWorkspaceId();
-		if (savedWorkspaceId && savedWorkspaceId !== this.workspaceId) {
-			this.workspaceId = savedWorkspaceId;
-			this.viewState.currentWorkspace = savedWorkspaceId;
-		}
-
-		// Apply workspace settings and restore filter state
-		await this.workspaceStateManager.applyWorkspaceSettings();
-		const restored =
-			this.workspaceStateManager.restoreFilterStateFromWorkspace();
-		this.workspaceStateManager.syncFilterState(restored, {
-			setLiveFilterState: (state) => {
-				this.liveFilterState = state;
-				this.app.saveLocalStorage(
-					"task-genius-view-filter",
-					state || null,
+		try {
+			// ====================
+			// PHASE 1-4: UI Setup, Managers, Structure, Events
+			// ====================
+			if (this.DEBUG_MODE) {
+				console.log(
+					"[TG-V2] Initializing UI, managers, structure, and events..."
 				);
-			},
-			setCurrentFilterState: (state) => {
-				this.currentFilterState = state;
-			},
-			setViewPreferences: ({
-				filters,
-				selectedProject,
-				viewMode,
-				clearSearch,
-			}) => {
-				this.viewState.filters = filters;
-				this.viewState.selectedProject = selectedProject;
-				this.viewState.viewMode = viewMode;
-				if (clearSearch) {
-					this.viewState.searchQuery = "";
-					this.viewState.filterInputValue = "";
+			}
+
+			this.contentEl.empty();
+			this.contentEl.toggleClass(
+				["task-genius-fluent-view", "task-genius-view"],
+				true
+			);
+
+			// Create root container (use exact same class as original)
+			this.rootContainerEl = this.contentEl.createDiv({
+				cls: "tg-fluent-container",
+			});
+
+			// Add mobile class for proper styling
+			if (Platform.isPhone) {
+				this.rootContainerEl.addClass("is-mobile");
+			}
+
+			// Initialize managers first (before UI)
+			this.initializeManagers();
+
+			// Build UI structure
+			await this.buildUIStructure();
+
+			// Subscribe to workspace and global events
+			this.registerEvents();
+
+			if (this.DEBUG_MODE) {
+				console.log(
+					"[TG-V2] ✅ UI, managers, structure, and events initialized"
+				);
+			}
+
+			// ====================
+			// PHASE 5: Restore Workspace State
+			// ====================
+			if (this.DEBUG_MODE) {
+				console.log("[TG-V2] Restoring workspace state...");
+			}
+
+			const savedWorkspaceId =
+				this.workspaceStateManager.getSavedWorkspaceId();
+			if (savedWorkspaceId && savedWorkspaceId !== this.workspaceId) {
+				this.workspaceId = savedWorkspaceId;
+				this.viewState.currentWorkspace = savedWorkspaceId;
+				if (this.DEBUG_MODE) {
+					console.log(
+						`[TG-V2] Restored workspace ID: ${savedWorkspaceId}`
+					);
 				}
-			},
-			onAfterSync: () => {
-				this.layoutManager?.updateActionButtons();
-			},
-		});
+			}
 
-		// Initial data load
-		await this.dataManager.loadTasks(false); // Will trigger onTasksLoaded callback
+			// Apply workspace settings and restore filter state
+			await this.workspaceStateManager.applyWorkspaceSettings();
+			const restored =
+				this.workspaceStateManager.restoreFilterStateFromWorkspace();
+			this.workspaceStateManager.syncFilterState(restored, {
+				setLiveFilterState: (state) => {
+					this.liveFilterState = state;
+					this.app.saveLocalStorage(
+						"task-genius-view-filter",
+						state || null,
+					);
+				},
+				setCurrentFilterState: (state) => {
+					this.currentFilterState = state;
+				},
+				setViewPreferences: ({
+					filters,
+					selectedProject,
+					viewMode,
+					clearSearch,
+				}) => {
+					this.viewState.filters = filters;
+					this.viewState.selectedProject = selectedProject;
+					this.viewState.viewMode = viewMode;
+					if (clearSearch) {
+						this.viewState.searchQuery = "";
+						this.viewState.filterInputValue = "";
+					}
+				},
+				onAfterSync: () => {
+					this.layoutManager?.updateActionButtons();
+				},
+			});
 
-		// Register dataflow listeners for real-time updates
-		await this.dataManager.registerDataflowListeners();
+			// ====================
+			// PHASE 6: Load Data (KEY PHASE)
+			// ====================
+			console.log("[TG-V2] Loading tasks...");
+			await this.dataManager.loadTasks(false); // Will trigger onTasksLoaded callback
+			await this.dataManager.registerDataflowListeners();
+			console.log(
+				`[TG-V2] ✅ Loaded ${this.tasks.length} tasks, ${this.filteredTasks.length} after filters`
+			);
 
-		// Initial render
-		this.updateView();
+			// ====================
+			// PHASE 7-8: Initial Render & Responsive Adjustments
+			// ====================
+			// Initial render (will be skipped due to isInitializing)
+			this.updateView();
 
-		// Check window size and auto-collapse sidebar if needed
-		this.layoutManager.checkAndCollapseSidebar();
+			// Check window size and auto-collapse sidebar if needed
+			if (this.DEBUG_MODE) {
+				console.log("[TG-V2] Checking sidebar collapse...");
+			}
+			this.layoutManager.checkAndCollapseSidebar();
+		} catch (error) {
+			console.error("[TG-V2] ❌ Initialization error:", error);
+			console.error("[TG-V2] Error stack:", (error as Error).stack);
+			this.loadError =
+				(error as Error).message || "Failed to initialize view";
+		} finally {
+			// ====================
+			// PHASE 9: Finalization (CRITICAL - Always Executes)
+			// ====================
+			if (this.DEBUG_MODE) {
+				console.log(
+					`[TG-V2] Finalizing (isInitializing was ${this.isInitializing})`
+				);
+			}
 
-		this.isInitializing = false;
+			this.isInitializing = false;
+
+			if (this.DEBUG_MODE) {
+				console.log("[TG-V2] Calling final updateView()...");
+			}
+			this.updateView();
+			console.log("[TG-V2] ✅ Initialization complete");
+		}
 	}
 
 	/**
@@ -788,13 +852,24 @@ export class FluentTaskView extends ItemView {
 	 * Update view with current state
 	 */
 	private updateView() {
+		// Enhanced logging with all critical state
+		console.log(
+			`[TG-V2] updateView called: ` +
+				`isInitializing=${this.isInitializing}, ` +
+				`viewId=${this.currentViewId}, ` +
+				`tasks=${this.tasks.length}, ` +
+				`filtered=${this.filteredTasks.length}, ` +
+				`isLoading=${this.isLoading}, ` +
+				`hasError=${!!this.loadError}`
+		);
+
 		if (this.isInitializing) {
-			console.log("[TG-V2] Skip update during initialization");
+			console.log("[TG-V2] ⏭️  Skip update during initialization");
 			return;
 		}
 
 		console.log(
-			`[TG-V2] updateView: viewId=${this.currentViewId}, tasks=${this.tasks.length}, filtered=${this.filteredTasks.length}`
+			`[TG-V2] ▶️  Proceeding with view update for ${this.currentViewId}`
 		);
 
 		// Update task count

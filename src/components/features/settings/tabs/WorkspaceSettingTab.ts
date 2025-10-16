@@ -1,7 +1,12 @@
 import { Menu, Setting, setIcon } from "obsidian";
 import { TaskProgressBarSettingTab } from "@/setting";
 import TaskProgressBarPlugin from "@/index";
-import { WorkspaceData, ModuleDefinition } from "@/types/workspace";
+import {
+	WorkspaceData,
+	ModuleDefinition,
+	SidebarComponentType,
+	FeatureComponentType,
+} from "@/types/workspace";
 import { t } from "@/translations/helper";
 import {
 	CreateWorkspaceModal,
@@ -351,7 +356,7 @@ function renderHiddenModulesConfig(
 	});
 
 	const modules = getAvailableModules(plugin);
-	const hiddenModules = workspace.settings.hiddenModules || {
+	let hiddenModules = workspace.settings.hiddenModules || {
 		views: [],
 		sidebarComponents: [],
 		features: [],
@@ -366,9 +371,11 @@ function renderHiddenModulesConfig(
 		groupTitle: string,
 		groupIcon: string,
 		moduleList: ModuleDefinition[],
-		hiddenList: string[],
+		initialHiddenList: string[],
 		moduleType: "views" | "sidebarComponents" | "features",
 	) => {
+		let hiddenList = [...initialHiddenList];
+
 		const groupEl = groupsContainer.createDiv({
 			cls: "workspace-module-group",
 		});
@@ -429,57 +436,100 @@ function renderHiddenModulesConfig(
 				text: module.name,
 			});
 
-			// Toggle handler
-			const toggleVisibility = () => {
+			const toggleVisibility = async () => {
 				const newHiddenList = [...hiddenList];
 				const index = newHiddenList.indexOf(module.id);
+				const shouldBeVisible = checkbox.checked;
 
-				if (checkbox.checked && index !== -1) {
-					// Remove from hidden list (make visible)
+				if (shouldBeVisible && index !== -1) {
 					newHiddenList.splice(index, 1);
-					itemEl.removeClass("is-hidden");
-				} else if (!checkbox.checked && index === -1) {
-					// Add to hidden list (make hidden)
+				} else if (!shouldBeVisible && index === -1) {
 					newHiddenList.push(module.id);
-					itemEl.addClass("is-hidden");
 				}
 
-				// Update workspace settings
-				if (!workspace.settings.hiddenModules) {
-					workspace.settings.hiddenModules = {
-						views: [],
-						sidebarComponents: [],
-						features: [],
-					};
-				}
-				workspace.settings.hiddenModules[moduleType] = newHiddenList;
+				try {
+					switch (moduleType) {
+						case "views":
+							await plugin.workspaceManager?.setHiddenViews(
+								[...newHiddenList],
+								workspace.id,
+							);
+							break;
+						case "sidebarComponents":
+							await plugin.workspaceManager?.setHiddenSidebarComponents(
+								newHiddenList as SidebarComponentType[],
+								workspace.id,
+							);
+							break;
+						case "features":
+							await plugin.workspaceManager?.setHiddenFeatures(
+								newHiddenList as FeatureComponentType[],
+								workspace.id,
+							);
+							break;
+					}
 
-				// Save and trigger update
-				plugin.workspaceManager?.updateWorkspace(
-					workspace.id,
-					workspace,
-				);
-				onUpdate();
+					const refreshed =
+						plugin.workspaceManager?.getWorkspace(workspace.id);
+					if (refreshed?.settings?.hiddenModules) {
+						hiddenModules = refreshed.settings.hiddenModules;
+					} else {
+						hiddenModules = {
+							views: [],
+							sidebarComponents: [],
+							features: [],
+						};
+					}
 
-				// Update count badge
-				const countBadge = headerEl.querySelector(
-					".workspace-module-group-count",
-				);
-				if (countBadge) {
-					countBadge.textContent = t("{{hidden}}/{{total}} hidden", {
-						interpolation: {
-							hidden: newHiddenList.length.toString(),
-							total: totalCount.toString(),
-						},
-					});
+					hiddenList = newHiddenList;
+					switch (moduleType) {
+						case "views":
+							hiddenModules.views = newHiddenList;
+							break;
+						case "sidebarComponents":
+							hiddenModules.sidebarComponents =
+								newHiddenList as SidebarComponentType[];
+							break;
+						case "features":
+							hiddenModules.features =
+								newHiddenList as FeatureComponentType[];
+							break;
+					}
+
+					itemEl.toggleClass("is-hidden", !shouldBeVisible);
+
+					const countBadge = headerEl.querySelector(
+						".workspace-module-group-count",
+					);
+					if (countBadge) {
+						countBadge.textContent = t(
+							"{{hidden}}/{{total}} hidden",
+							{
+								interpolation: {
+									hidden: newHiddenList.length.toString(),
+									total: totalCount.toString(),
+								},
+							},
+						);
+					}
+
+					onUpdate();
+				} catch (error) {
+					console.error(
+						"[WorkspaceSettings] Failed to update hidden modules",
+						error,
+					);
+					checkbox.checked = !checkbox.checked;
 				}
 			};
 
-			checkbox.addEventListener("change", toggleVisibility);
+			checkbox.addEventListener("change", () => {
+				void toggleVisibility();
+			});
 			itemEl.addEventListener("click", (e) => {
 				if (e.target !== checkbox) {
 					checkbox.checked = !checkbox.checked;
-					toggleVisibility();
+					void toggleVisibility();
 				}
 			});
 		});
