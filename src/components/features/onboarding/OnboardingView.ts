@@ -346,8 +346,34 @@ export class OnboardingView extends ItemView {
 	 * Handle skip button click
 	 */
 	private async handleSkip() {
+		// Auto-enable Fluent Layout for first-time users skipping onboarding
+		if (!this.plugin.settings.fluentView) {
+			this.plugin.settings.fluentView = {
+				enableFluent: true,
+			};
+		} else {
+			this.plugin.settings.fluentView.enableFluent = true;
+		}
+
+		// Ensure fluentConfig is initialized if needed
+		if (!this.plugin.settings.fluentView.fluentConfig) {
+			this.plugin.settings.fluentView.fluentConfig = {
+				enableWorkspaces: true,
+				defaultWorkspace: "default",
+				maxOtherViewsBeforeOverflow: 5,
+			};
+		}
+
+		await this.plugin.saveSettings();
+
+		// Mark onboarding as skipped
 		await this.configManager.skipOnboarding();
 		this.onComplete();
+
+		// Auto-open Task Genius View
+		await this.plugin.activateTaskView();
+
+		// Close onboarding view
 		this.leaf.detach();
 	}
 
@@ -372,10 +398,6 @@ export class OnboardingView extends ItemView {
 			(this.plugin.settings.fluentView as any).fluentConfig = {
 				enableWorkspaces: true,
 				defaultWorkspace: "default",
-				showTopNavigation: true,
-				showNewSidebar: true,
-				allowViewSwitching: true,
-				persistViewMode: true,
 				maxOtherViewsBeforeOverflow: 5,
 			};
 		}

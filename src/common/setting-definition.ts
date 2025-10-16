@@ -434,7 +434,6 @@ export interface BetaTestSettings {
 
 export interface FluentViewSettings {
 	enableFluent: boolean;
-	showFluentRibbon: boolean;
 	workspaces?: Array<{
 		id: string;
 		name: string;
@@ -445,33 +444,15 @@ export interface FluentViewSettings {
 	fluentConfig?: {
 		enableWorkspaces: boolean;
 		defaultWorkspace?: string;
-		showTopNavigation: boolean;
-		showNewSidebar: boolean;
-		allowViewSwitching: boolean;
-		persistViewMode: boolean;
 		maxOtherViewsBeforeOverflow?: number; // how many other views to show before overflow menu
 	};
 }
 
 export interface ExperimentalSettings {
-	enableFluent: boolean;
-	showFluentRibbon: boolean;
-	workspaces?: Array<{
-		id: string;
-		name: string;
-		color: string;
-		settings?: any;
-	}>;
-	useWorkspaceSideLeaves?: boolean;
-	fluentConfig?: {
-		enableWorkspaces: boolean;
-		defaultWorkspace?: string;
-		showTopNavigation: boolean;
-		showNewSidebar: boolean;
-		allowViewSwitching: boolean;
-		persistViewMode: boolean;
-		maxOtherViewsBeforeOverflow?: number; // how many other views to show before overflow menu
-	};
+	// Experimental feature 1
+	experimentalFeature1: boolean;
+	// Experimental feature 2
+	experimentalFeature2: boolean;
 }
 
 /** Project path mapping configuration */
@@ -1670,10 +1651,6 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	customDateFormats: [],
 
 	// Experimental Defaults
-	experimental: {
-		enableFluent: false,
-		showFluentRibbon: false,
-	},
 
 	// Onboarding Defaults
 	onboarding: {

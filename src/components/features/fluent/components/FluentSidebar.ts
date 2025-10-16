@@ -289,7 +289,9 @@ export class FluentSidebar extends Component {
 			attr: { "aria-label": t("New Task") },
 		});
 		setIcon(addBtn, "plus");
-		this.registerDomEvent(addBtn, "click", () => this.onNavigate("new-task"));
+		this.registerDomEvent(addBtn, "click", () =>
+			this.onNavigate("new-task"),
+		);
 	}
 
 	private renderOtherViewsSection() {
@@ -437,7 +439,7 @@ export class FluentSidebar extends Component {
 			menu.addItem((item) => {
 				const isDefault =
 					this.plugin.workspaceManager?.isDefaultWorkspace(w.id);
-				const title = isDefault ? `${w.name} 🔒` : w.name;
+				const title = isDefault ? `${w.name}` : w.name;
 
 				item.setTitle(title)
 					.setIcon("layers")

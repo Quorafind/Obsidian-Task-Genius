@@ -111,7 +111,8 @@ export const WORKSPACE_SCOPED_KEYS = [
 	'forecastOption',
 	'customProjectGroupsAndNames',
 	'tagCustomOrder',
-	'fluentFilterState'
+	'fluentFilterState',
+	'hiddenModules'
 ] as const;
 
 export type WorkspaceScopedKey = typeof WORKSPACE_SCOPED_KEYS[number];

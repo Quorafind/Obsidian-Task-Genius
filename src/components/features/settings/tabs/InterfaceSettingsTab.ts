@@ -8,15 +8,15 @@ import {
 
 export function renderInterfaceSettingsTab(
 	settingTab: TaskProgressBarSettingTab,
-	containerEl: HTMLElement
+	containerEl: HTMLElement,
 ) {
 	// Header
 	new Setting(containerEl)
 		.setName(t("User Interface"))
 		.setDesc(
 			t(
-				"Choose your preferred interface style and configure how Task Genius displays in your workspace."
-			)
+				"Choose your preferred interface style and configure how Task Genius displays in your workspace.",
+			),
 		)
 		.setHeading();
 
@@ -25,8 +25,8 @@ export function renderInterfaceSettingsTab(
 		.setName(t("Interface Mode"))
 		.setDesc(
 			t(
-				"Select between the modern Fluent interface or the classic Legacy interface."
-			)
+				"Select between the modern Fluent interface or the classic Legacy interface.",
+			),
 		)
 		.setHeading();
 
@@ -47,7 +47,7 @@ export function renderInterfaceSettingsTab(
 			title: t("Fluent"),
 			subtitle: t("Modern & Sleek"),
 			description: t(
-				"New visual design with elegant animations and modern interactions"
+				"New visual design with elegant animations and modern interactions",
 			),
 			preview: createFluentPreview(),
 		},
@@ -56,7 +56,7 @@ export function renderInterfaceSettingsTab(
 			title: t("Legacy"),
 			subtitle: t("Classic & Familiar"),
 			description: t(
-				"Keep the familiar interface and interaction style you know"
+				"Keep the familiar interface and interaction style you know",
 			),
 			preview: createLegacyPreview(),
 		},
@@ -76,15 +76,15 @@ export function renderInterfaceSettingsTab(
 			if (!settingTab.plugin.settings.fluentView) {
 				settingTab.plugin.settings.fluentView = {
 					enableFluent: false,
-					showFluentRibbon: false,
 				};
 			}
-			settingTab.plugin.settings.fluentView.enableFluent = mode === "fluent";
+			settingTab.plugin.settings.fluentView.enableFluent =
+				mode === "fluent";
 			await settingTab.plugin.saveSettings();
 
 			// Re-render the settings to show/hide Fluent-specific options
 			renderFluentSpecificSettings();
-		}
+		},
 	);
 
 	// Set initial selection
@@ -116,35 +116,32 @@ export function renderInterfaceSettingsTab(
 			.setName(t("Use Workspace Side Leaves"))
 			.setDesc(
 				t(
-					"Use left/right workspace side leaves for Sidebar and Details. When enabled, the main V2 view won't render in-view sidebar or details."
-				)
+					"Use left/right workspace side leaves for Sidebar and Details. When enabled, the main V2 view won't render in-view sidebar or details.",
+				),
 			)
 			.addToggle((toggle) => {
-				const current = settingTab.plugin.settings.fluentView?.useWorkspaceSideLeaves ?? true;
-				toggle
-					.setValue(current)
-					.onChange(async (value) => {
-						if (!settingTab.plugin.settings.fluentView) {
-							settingTab.plugin.settings.fluentView = {
-								enableFluent: false,
-								showFluentRibbon: false,
-							};
-						}
-						if (!settingTab.plugin.settings.fluentView.fluentConfig) {
-							settingTab.plugin.settings.fluentView.fluentConfig = {
-								enableWorkspaces: true,
-								defaultWorkspace: "default",
-								showTopNavigation: true,
-								showNewSidebar: true,
-								allowViewSwitching: true,
-								persistViewMode: true,
-							};
-						}
-						// Store via 'any' to avoid typing constraints for experimental backfill
-						(settingTab.plugin.settings.fluentView as any).useWorkspaceSideLeaves = value;
-						await settingTab.plugin.saveSettings();
-						new Notice(t("Saved. Reopen the view to apply."));
-					});
+				const current =
+					settingTab.plugin.settings.fluentView
+						?.useWorkspaceSideLeaves ?? true;
+				toggle.setValue(current).onChange(async (value) => {
+					if (!settingTab.plugin.settings.fluentView) {
+						settingTab.plugin.settings.fluentView = {
+							enableFluent: false,
+						};
+					}
+					if (!settingTab.plugin.settings.fluentView.fluentConfig) {
+						settingTab.plugin.settings.fluentView.fluentConfig = {
+							enableWorkspaces: true,
+							defaultWorkspace: "default",
+						};
+					}
+					// Store via 'any' to avoid typing constraints for experimental backfill
+					(
+						settingTab.plugin.settings.fluentView as any
+					).useWorkspaceSideLeaves = value;
+					await settingTab.plugin.saveSettings();
+					new Notice(t("Saved. Reopen the view to apply."));
+				});
 			});
 
 		// Max Other Views before overflow threshold
@@ -152,8 +149,8 @@ export function renderInterfaceSettingsTab(
 			.setName(t("Max Other Views before overflow"))
 			.setDesc(
 				t(
-					"Number of 'Other Views' to show before grouping the rest into an overflow menu (ellipsis)"
-				)
+					"Number of 'Other Views' to show before grouping the rest into an overflow menu (ellipsis)",
+				),
 			)
 			.addText((text) => {
 				const current =
@@ -167,20 +164,20 @@ export function renderInterfaceSettingsTab(
 							if (!settingTab.plugin.settings.fluentView) {
 								settingTab.plugin.settings.fluentView = {
 									enableFluent: false,
-									showFluentRibbon: false,
 								};
 							}
-							if (!settingTab.plugin.settings.fluentView.fluentConfig) {
-								settingTab.plugin.settings.fluentView.fluentConfig = {
-									enableWorkspaces: true,
-									defaultWorkspace: "default",
-									showTopNavigation: true,
-									showNewSidebar: true,
-									allowViewSwitching: true,
-									persistViewMode: true,
-								};
+							if (
+								!settingTab.plugin.settings.fluentView
+									.fluentConfig
+							) {
+								settingTab.plugin.settings.fluentView.fluentConfig =
+									{
+										enableWorkspaces: true,
+										defaultWorkspace: "default",
+									};
 							}
-							settingTab.plugin.settings.fluentView.fluentConfig.maxOtherViewsBeforeOverflow = n;
+							settingTab.plugin.settings.fluentView.fluentConfig.maxOtherViewsBeforeOverflow =
+								n;
 							await settingTab.plugin.saveSettings();
 						}
 					});

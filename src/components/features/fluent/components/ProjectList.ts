@@ -8,6 +8,7 @@ import {
 } from "./ProjectPopover";
 import type { CustomProject } from "@/common/setting-definition";
 import { t } from "@/translations/helper";
+import { onWorkspaceSwitched } from "@/components/features/fluent/events/ui-event";
 
 interface Project {
 	id: string;
@@ -78,9 +79,38 @@ export class ProjectList extends Component {
 		await this.loadExpandedNodes();
 		await this.loadProjects();
 		this.render();
+
+		// Listen for workspace switches to refresh the project list
+		this.registerEvent(
+			onWorkspaceSwitched(this.plugin.app, () => {
+				// Debounce the refresh to allow tasks to load in the new workspace
+				this.refreshWithDelay();
+			}),
+		);
+	}
+
+	private refreshTimeoutId: NodeJS.Timeout | null = null;
+
+	private refreshWithDelay() {
+		// Clear any pending refresh
+		if (this.refreshTimeoutId) {
+			clearTimeout(this.refreshTimeoutId);
+		}
+
+		// Schedule a refresh with a small delay to allow tasks to load
+		this.refreshTimeoutId = setTimeout(() => {
+			this.refresh();
+			this.refreshTimeoutId = null;
+		}, 100);
 	}
 
 	onunload() {
+		// Clean up any pending refresh timeout
+		if (this.refreshTimeoutId) {
+			clearTimeout(this.refreshTimeoutId);
+			this.refreshTimeoutId = null;
+		}
+
 		// Clean up any open popover
 		if (this.currentPopover) {
 			this.removeChild(this.currentPopover);

@@ -16,8 +16,8 @@ import {
 	emitWorkspaceSwitched,
 } from "@/components/features/fluent/events/ui-event";
 import { emit, Events } from "@/dataflow/events/Events";
+import { t } from "@/translations/helper";
 import type TaskProgressBarPlugin from "@/index";
-import { TaskProgressBarSettings } from "@/common/setting-definition";
 
 export class WorkspaceManager {
 	private app: App;
@@ -48,7 +48,7 @@ export class WorkspaceManager {
 			byId: {
 				[defaultId]: {
 					id: defaultId,
-					name: "Default",
+					name: t("Default"),
 					updatedAt: Date.now(),
 					settings: {}, // Default workspace has no overrides
 				},
@@ -70,7 +70,7 @@ export class WorkspaceManager {
 			config.defaultWorkspaceId = defaultId;
 			config.byId[defaultId] = {
 				id: defaultId,
-				name: "Default",
+				name: t("Default"),
 				updatedAt: Date.now(),
 				settings: {},
 			};
@@ -101,7 +101,7 @@ export class WorkspaceManager {
 		for (const key of Object.keys(overrides)) {
 			if (WORKSPACE_SCOPED_KEYS.includes(key as any)) {
 				(this.plugin.settings as any)[key] = structuredClone(
-					overrides[key as keyof WorkspaceOverrides]
+					overrides[key as keyof WorkspaceOverrides],
 				);
 			}
 		}
@@ -156,7 +156,7 @@ export class WorkspaceManager {
 			workspace.settings.fluentFilterState !== undefined
 		) {
 			effective.fluentFilterState = structuredClone(
-				workspace.settings.fluentFilterState
+				workspace.settings.fluentFilterState,
 			);
 		}
 
@@ -256,7 +256,7 @@ export class WorkspaceManager {
 		if (config.activeWorkspaceId === workspaceId) {
 			console.log(
 				"[TG-WORKSPACE] setActiveWorkspace:noop (already active)",
-				{ id: workspaceId }
+				{ id: workspaceId },
 			);
 			return; // Already active
 		}
@@ -277,7 +277,7 @@ export class WorkspaceManager {
 	public async createWorkspace(
 		name: string,
 		baseWorkspaceId?: string,
-		icon?: string
+		icon?: string,
 	): Promise<WorkspaceData> {
 		const config = this.getWorkspacesConfig();
 		const id = this.generateId();
@@ -360,7 +360,7 @@ export class WorkspaceManager {
 	public async renameWorkspace(
 		workspaceId: string,
 		newName: string,
-		icon?: string
+		icon?: string,
 	): Promise<void> {
 		const config = this.getWorkspacesConfig();
 		const workspace = config.byId[workspaceId];
@@ -382,7 +382,7 @@ export class WorkspaceManager {
 	// Save overrides for a workspace
 	public async saveOverrides(
 		workspaceId: string,
-		effective: EffectiveSettings
+		effective: EffectiveSettings,
 	): Promise<void> {
 		const config = this.getWorkspacesConfig();
 
@@ -396,7 +396,7 @@ export class WorkspaceManager {
 					key !== "fluentFilterState"
 				) {
 					(this.plugin.settings as any)[key] = structuredClone(
-						effective[key]
+						effective[key],
 					);
 					changedKeys.push(key);
 				}
@@ -406,7 +406,7 @@ export class WorkspaceManager {
 				const ws = config.byId[workspaceId];
 				ws.settings = (ws.settings || {}) as any;
 				(ws.settings as any).fluentFilterState = structuredClone(
-					effective.fluentFilterState
+					effective.fluentFilterState,
 				);
 				ws.updatedAt = Date.now();
 				changedKeys.push("fluentFilterState");
@@ -421,7 +421,7 @@ export class WorkspaceManager {
 			emitWorkspaceOverridesSaved(
 				this.app,
 				workspaceId,
-				changedKeys.length ? changedKeys : undefined
+				changedKeys.length ? changedKeys : undefined,
 			);
 			emit(this.app, Events.SETTINGS_CHANGED);
 			return;
@@ -453,7 +453,7 @@ export class WorkspaceManager {
 	// Save overrides quietly without triggering SETTINGS_CHANGED event
 	public async saveOverridesQuietly(
 		workspaceId: string,
-		effective: EffectiveSettings
+		effective: EffectiveSettings,
 	): Promise<void> {
 		const config = this.getWorkspacesConfig();
 
@@ -466,7 +466,7 @@ export class WorkspaceManager {
 					key !== "fluentFilterState"
 				) {
 					(this.plugin.settings as any)[key] = structuredClone(
-						effective[key]
+						effective[key],
 					);
 				}
 			}
@@ -475,14 +475,14 @@ export class WorkspaceManager {
 				const ws = config.byId[workspaceId];
 				ws.settings = (ws.settings || {}) as any;
 				(ws.settings as any).fluentFilterState = structuredClone(
-					effective.fluentFilterState
+					effective.fluentFilterState,
 				);
 				ws.updatedAt = Date.now();
 			}
 			console.log("[TG-WORKSPACE] saveOverridesQuietly(default)", {
 				workspaceId,
 				keys: WORKSPACE_SCOPED_KEYS.filter(
-					(k) => (effective as any)[k] !== undefined
+					(k) => (effective as any)[k] !== undefined,
 				),
 			});
 			this.clearCache();
@@ -651,7 +651,7 @@ export class WorkspaceManager {
 	// Import workspace configuration
 	public async importWorkspace(
 		jsonData: string,
-		name?: string
+		name?: string,
 	): Promise<WorkspaceData | null> {
 		try {
 			const importData = JSON.parse(jsonData);
@@ -698,8 +698,13 @@ export class WorkspaceManager {
 	 * @returns true if the sidebar component is hidden
 	 */
 	public isSidebarComponentHidden(
-		componentId: 'projects-list' | 'tags-list' | 'view-switcher' | 'top-views' | 'bottom-views',
-		workspaceId?: string
+		componentId:
+			| "projects-list"
+			| "tags-list"
+			| "view-switcher"
+			| "top-views"
+			| "bottom-views",
+		workspaceId?: string,
 	): boolean {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
@@ -709,7 +714,9 @@ export class WorkspaceManager {
 			return false;
 		}
 
-		return workspace.settings.hiddenModules.sidebarComponents.includes(componentId);
+		return workspace.settings.hiddenModules.sidebarComponents.includes(
+			componentId,
+		);
 	}
 
 	/**
@@ -719,8 +726,13 @@ export class WorkspaceManager {
 	 * @returns true if the feature component is hidden
 	 */
 	public isFeatureHidden(
-		featureId: 'details-panel' | 'quick-capture' | 'filter' | 'progress-bar' | 'task-mark',
-		workspaceId?: string
+		featureId:
+			| "details-panel"
+			| "quick-capture"
+			| "filter"
+			| "progress-bar"
+			| "task-mark",
+		workspaceId?: string,
 	): boolean {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
@@ -744,9 +756,11 @@ export class WorkspaceManager {
 			: this.getActiveWorkspace();
 
 		const hiddenViews = workspace?.settings?.hiddenModules?.views || [];
-		const allViews = this.plugin.settings.viewConfiguration.map(v => v.id);
+		const allViews = this.plugin.settings.viewConfiguration.map(
+			(v) => v.id,
+		);
 
-		return allViews.filter(viewId => !hiddenViews.includes(viewId));
+		return allViews.filter((viewId) => !hiddenViews.includes(viewId));
 	}
 
 	/**
@@ -754,7 +768,10 @@ export class WorkspaceManager {
 	 * @param viewId - The view ID to toggle
 	 * @param workspaceId - Optional workspace ID, defaults to active workspace
 	 */
-	public async toggleViewVisibility(viewId: string, workspaceId?: string): Promise<void> {
+	public async toggleViewVisibility(
+		viewId: string,
+		workspaceId?: string,
+	): Promise<void> {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
 			: this.getActiveWorkspace();
@@ -783,7 +800,7 @@ export class WorkspaceManager {
 		await this.plugin.saveSettings();
 
 		// Emit event to notify UI components
-		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ["hiddenModules"]);
 	}
 
 	/**
@@ -791,7 +808,10 @@ export class WorkspaceManager {
 	 * @param viewIds - Array of view IDs to hide
 	 * @param workspaceId - Optional workspace ID, defaults to active workspace
 	 */
-	public async setHiddenViews(viewIds: string[], workspaceId?: string): Promise<void> {
+	public async setHiddenViews(
+		viewIds: string[],
+		workspaceId?: string,
+	): Promise<void> {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
 			: this.getActiveWorkspace();
@@ -807,7 +827,7 @@ export class WorkspaceManager {
 		this.clearCache();
 		await this.plugin.saveSettings();
 
-		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ["hiddenModules"]);
 	}
 
 	/**
@@ -816,8 +836,14 @@ export class WorkspaceManager {
 	 * @param workspaceId - Optional workspace ID, defaults to active workspace
 	 */
 	public async setHiddenSidebarComponents(
-		componentIds: Array<'projects-list' | 'tags-list' | 'view-switcher' | 'top-views' | 'bottom-views'>,
-		workspaceId?: string
+		componentIds: Array<
+			| "projects-list"
+			| "tags-list"
+			| "view-switcher"
+			| "top-views"
+			| "bottom-views"
+		>,
+		workspaceId?: string,
 	): Promise<void> {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
@@ -834,7 +860,7 @@ export class WorkspaceManager {
 		this.clearCache();
 		await this.plugin.saveSettings();
 
-		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ["hiddenModules"]);
 	}
 
 	/**
@@ -843,8 +869,14 @@ export class WorkspaceManager {
 	 * @param workspaceId - Optional workspace ID, defaults to active workspace
 	 */
 	public async setHiddenFeatures(
-		featureIds: Array<'details-panel' | 'quick-capture' | 'filter' | 'progress-bar' | 'task-mark'>,
-		workspaceId?: string
+		featureIds: Array<
+			| "details-panel"
+			| "quick-capture"
+			| "filter"
+			| "progress-bar"
+			| "task-mark"
+		>,
+		workspaceId?: string,
 	): Promise<void> {
 		const workspace = workspaceId
 			? this.getWorkspace(workspaceId)
@@ -861,6 +893,6 @@ export class WorkspaceManager {
 		this.clearCache();
 		await this.plugin.saveSettings();
 
-		emitWorkspaceOverridesSaved(this.app, workspace.id, ['hiddenModules']);
+		emitWorkspaceOverridesSaved(this.app, workspace.id, ["hiddenModules"]);
 	}
 }

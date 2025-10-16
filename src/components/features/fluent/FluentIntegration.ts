@@ -1,8 +1,14 @@
 import { Workspace, WorkspaceLeaf } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { FluentTaskView, FLUENT_TASK_VIEW } from "@/pages/FluentTaskView";
-import { LeftSidebarView, TG_LEFT_SIDEBAR_VIEW_TYPE } from "@/pages/LeftSidebarView";
-import { RightDetailView, TG_RIGHT_DETAIL_VIEW_TYPE } from "@/pages/RightDetailView";
+import {
+	LeftSidebarView,
+	TG_LEFT_SIDEBAR_VIEW_TYPE,
+} from "@/pages/LeftSidebarView";
+import {
+	RightDetailView,
+	TG_RIGHT_DETAIL_VIEW_TYPE,
+} from "@/pages/RightDetailView";
 import { t } from "@/translations/helper";
 import { TASK_VIEW_TYPE } from "@/pages/TaskView";
 
@@ -26,25 +32,25 @@ export class FluentIntegration {
 		// Register the Fluent view
 		this.plugin.registerView(
 			FLUENT_TASK_VIEW,
-			(leaf: WorkspaceLeaf) => new FluentTaskView(leaf, this.plugin)
+			(leaf: WorkspaceLeaf) => new FluentTaskView(leaf, this.plugin),
 		);
-
 
 		// Register side leaf views for new architecture
 		this.plugin.registerView(
 			TG_LEFT_SIDEBAR_VIEW_TYPE,
-			(leaf: WorkspaceLeaf) => new LeftSidebarView(leaf, this.plugin)
+			(leaf: WorkspaceLeaf) => new LeftSidebarView(leaf, this.plugin),
 		);
 		this.plugin.registerView(
 			TG_RIGHT_DETAIL_VIEW_TYPE,
-			(leaf: WorkspaceLeaf) => new RightDetailView(leaf, this.plugin)
+			(leaf: WorkspaceLeaf) => new RightDetailView(leaf, this.plugin),
 		);
 
 		// When any of the V2 views becomes active, reveal the other side leaves without focusing them
 		this.plugin.registerEvent(
 			this.plugin.app.workspace.on("active-leaf-change", async (leaf) => {
 				if (this.revealingSideLeaves) return;
-				const useSideLeaves = !!(this.plugin.settings.fluentView)?.useWorkspaceSideLeaves;
+				const useSideLeaves =
+					!!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
 				if (!useSideLeaves || !leaf?.view?.getViewType) return;
 				const vt = leaf.view.getViewType();
 				const watched = new Set<string>([
@@ -57,31 +63,47 @@ export class FluentIntegration {
 				this.revealingSideLeaves = true;
 				try {
 					// Ensure side leaves exist
-					const leftLeaf = await ws.ensureSideLeaf(TG_LEFT_SIDEBAR_VIEW_TYPE, "left", {active: false});
-					const rightLeaf = await ws.ensureSideLeaf(TG_RIGHT_DETAIL_VIEW_TYPE, "right", {active: false});
+					const leftLeaf = await ws.ensureSideLeaf(
+						TG_LEFT_SIDEBAR_VIEW_TYPE,
+						"left",
+						{ active: false },
+					);
+					const rightLeaf = await ws.ensureSideLeaf(
+						TG_RIGHT_DETAIL_VIEW_TYPE,
+						"right",
+						{ active: false },
+					);
 					// Bring them to front within their splits (without keeping focus)
 					if (leftLeaf) ws.revealLeaf(leftLeaf);
 					if (rightLeaf) ws.revealLeaf(rightLeaf);
 					// Expand sidebars if they are collapsed
-					if (ws.leftSplit?.collapsed && typeof ws.leftSplit.expand === "function") ws.leftSplit.expand();
-					if (ws.rightSplit?.collapsed && typeof ws.rightSplit.expand === "function") ws.rightSplit.expand();
+					if (
+						ws.leftSplit?.collapsed &&
+						typeof ws.leftSplit.expand === "function"
+					)
+						ws.leftSplit.expand();
+					if (
+						ws.rightSplit?.collapsed &&
+						typeof ws.rightSplit.expand === "function"
+					)
+						ws.rightSplit.expand();
 					// Restore focus to the currently active (incoming) leaf
-					if (ws.setActiveLeaf && leaf) ws.setActiveLeaf(leaf, {focus: true});
+					if (ws.setActiveLeaf && leaf)
+						ws.setActiveLeaf(leaf, { focus: true });
 				} catch (_) {
 					// noop
 				} finally {
 					this.revealingSideLeaves = false;
 				}
-			})
+			}),
 		);
-
 	}
 
 	/**
 	 * Open the Fluent view
 	 */
 	private async openV2View() {
-		const {workspace} = this.plugin.app;
+		const { workspace } = this.plugin.app;
 
 		// Check if Fluent view is already open
 		const leaves = workspace.getLeavesOfType(FLUENT_TASK_VIEW);
@@ -107,15 +129,19 @@ export class FluentIntegration {
 	}
 
 	private async ensureSideLeavesIfEnabled() {
-		const useSideLeaves = !!(this.plugin.settings.fluentView)?.useWorkspaceSideLeaves;
+		const useSideLeaves =
+			!!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
 		if (!useSideLeaves) return;
 
 		const ws = this.plugin.app.workspace as Workspace;
 		// Left sidebar
-		await ws.ensureSideLeaf(TG_LEFT_SIDEBAR_VIEW_TYPE, "left", {active: false});
-		await ws.ensureSideLeaf(TG_RIGHT_DETAIL_VIEW_TYPE, "right", {active: false});
+		await ws.ensureSideLeaf(TG_LEFT_SIDEBAR_VIEW_TYPE, "left", {
+			active: false,
+		});
+		await ws.ensureSideLeaf(TG_RIGHT_DETAIL_VIEW_TYPE, "right", {
+			active: false,
+		});
 	}
-
 
 	/**
 	 * Check if Fluent features are enabled
@@ -131,14 +157,13 @@ export class FluentIntegration {
 		if (!this.plugin.settings.fluentView) {
 			this.plugin.settings.fluentView = {
 				enableFluent: false,
-				showFluentRibbon: false,
 			};
 		}
 
 		// Default workspace configuration
 		if (!this.plugin.settings.fluentView!.workspaces) {
 			this.plugin.settings.fluentView!.workspaces = [
-				{id: "default", name: "Default", color: "#3498db"},
+				{ id: "default", name: t("Default"), color: "#3498db" },
 			];
 		}
 
@@ -147,17 +172,14 @@ export class FluentIntegration {
 			this.plugin.settings.fluentView!.fluentConfig = {
 				enableWorkspaces: true,
 				defaultWorkspace: "default",
-				showTopNavigation: true,
-				showNewSidebar: true,
-				allowViewSwitching: true,
-				persistViewMode: true,
 				maxOtherViewsBeforeOverflow: 5,
 			};
 		}
 
 		// Backfill extra experimental flag without touching types
 		const v2c = this.plugin.settings.fluentView;
-		if (v2c.useWorkspaceSideLeaves === undefined) v2c.useWorkspaceSideLeaves = true;
+		if (v2c.useWorkspaceSideLeaves === undefined)
+			v2c.useWorkspaceSideLeaves = true;
 
 		await this.plugin.saveSettings();
 	}
@@ -166,7 +188,7 @@ export class FluentIntegration {
 	 * Toggle between V1 and Fluent views
 	 */
 	public async toggleVersion() {
-		const {workspace} = this.plugin.app;
+		const { workspace } = this.plugin.app;
 
 		// Close all V1 views
 		const v1Leaves = workspace.getLeavesOfType(TASK_VIEW_TYPE);
@@ -180,7 +202,6 @@ export class FluentIntegration {
 		if (!this.plugin.settings.fluentView) {
 			this.plugin.settings.fluentView = {
 				enableFluent: false,
-				showFluentRibbon: false,
 			};
 		}
 		this.plugin.settings.fluentView!.enableFluent =
