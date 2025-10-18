@@ -68,7 +68,7 @@ export class FileSource {
 	/**
 	 * Initialize FileSource and start listening for events
 	 */
-	initialize(): void {
+	async initialize(): Promise<void> {
 		if (this.isInitialized) return;
 		if (!this.config.isEnabled()) return;
 
@@ -82,13 +82,14 @@ export class FileSource {
 		// Subscribe to file events
 		this.subscribeToFileEvents();
 
-		// Delay initial scan to ensure vault is fully loaded
-		setTimeout(() => {
-			this.performInitialScan();
-		}, 1000); // 1 second delay
-
 		this.isInitialized = true;
 		this.stats.initialized = true;
+
+		try {
+			await this.performInitialScan();
+		} catch (error) {
+			console.error("[FileSource] Initial scan failed", error);
+		}
 
 		console.log(
 			`[FileSource] Initialized with strategies: ${this.config
@@ -1115,7 +1116,7 @@ export class FileSource {
 
 		if (newConfig.enabled && !this.isInitialized) {
 			// FileSource is being enabled
-			this.initialize();
+			void this.initialize();
 			return;
 		}
 

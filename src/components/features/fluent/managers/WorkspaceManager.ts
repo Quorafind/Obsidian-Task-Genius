@@ -1,6 +1,7 @@
 import { App, Notice } from "obsidian";
 import {
 	EffectiveSettings,
+	HiddenModulesConfig,
 	WORKSPACE_SCOPED_KEYS,
 	WorkspaceData,
 	WorkspaceOverrides,
@@ -278,6 +279,7 @@ export class WorkspaceManager {
 		name: string,
 		baseWorkspaceId?: string,
 		icon?: string,
+		color?: string,
 	): Promise<WorkspaceData> {
 		const config = this.getWorkspacesConfig();
 		const id = this.generateId();
@@ -313,6 +315,16 @@ export class WorkspaceManager {
 			baseId !== config.defaultWorkspaceId
 		) {
 			newWorkspace.icon = baseWorkspace.icon;
+		}
+
+		// Add color if provided, otherwise inherit from base workspace if cloning
+		if (color) {
+			newWorkspace.color = color;
+		} else if (
+			baseWorkspace?.color &&
+			baseId !== config.defaultWorkspaceId
+		) {
+			newWorkspace.color = baseWorkspace.color;
 		}
 
 		config.byId[id] = newWorkspace;
@@ -361,6 +373,7 @@ export class WorkspaceManager {
 		workspaceId: string,
 		newName: string,
 		icon?: string,
+		color?: string,
 	): Promise<void> {
 		const config = this.getWorkspacesConfig();
 		const workspace = config.byId[workspaceId];
@@ -372,6 +385,9 @@ export class WorkspaceManager {
 		workspace.name = newName;
 		if (icon !== undefined) {
 			workspace.icon = icon;
+		}
+		if (color !== undefined) {
+			workspace.color = color;
 		}
 		workspace.updatedAt = Date.now();
 
@@ -674,6 +690,36 @@ export class WorkspaceManager {
 	// Module visibility methods
 
 	/**
+	 * Ensure hiddenModules structure is fully initialized
+	 * @param workspace - The workspace to initialize
+	 * @returns The initialized hiddenModules object
+	 */
+	private ensureHiddenModulesInitialized(
+		workspace: WorkspaceData,
+	): Required<HiddenModulesConfig> {
+		if (!workspace.settings) {
+			workspace.settings = {};
+		}
+		if (!workspace.settings.hiddenModules) {
+			workspace.settings.hiddenModules = {
+				views: [],
+				sidebarComponents: [],
+				features: [],
+			};
+		}
+		if (!workspace.settings.hiddenModules.views) {
+			workspace.settings.hiddenModules.views = [];
+		}
+		if (!workspace.settings.hiddenModules.sidebarComponents) {
+			workspace.settings.hiddenModules.sidebarComponents = [];
+		}
+		if (!workspace.settings.hiddenModules.features) {
+			workspace.settings.hiddenModules.features = [];
+		}
+		return workspace.settings.hiddenModules as Required<HiddenModulesConfig>;
+	}
+
+	/**
 	 * Check if a view is hidden in the specified workspace
 	 * @param viewId - The view ID to check
 	 * @param workspaceId - Optional workspace ID, defaults to active workspace
@@ -778,21 +824,16 @@ export class WorkspaceManager {
 
 		if (!workspace) return;
 
-		// Initialize hiddenModules if needed
-		if (!workspace.settings.hiddenModules) {
-			workspace.settings.hiddenModules = {};
-		}
-		if (!workspace.settings.hiddenModules.views) {
-			workspace.settings.hiddenModules.views = [];
-		}
+		// Ensure complete initialization and get the initialized object
+		const hiddenModules = this.ensureHiddenModulesInitialized(workspace);
 
-		const index = workspace.settings.hiddenModules.views.indexOf(viewId);
+		const index = hiddenModules.views.indexOf(viewId);
 		if (index > -1) {
 			// Currently hidden, make visible
-			workspace.settings.hiddenModules.views.splice(index, 1);
+			hiddenModules.views.splice(index, 1);
 		} else {
 			// Currently visible, hide it
-			workspace.settings.hiddenModules.views.push(viewId);
+			hiddenModules.views.push(viewId);
 		}
 
 		workspace.updatedAt = Date.now();
@@ -818,11 +859,10 @@ export class WorkspaceManager {
 
 		if (!workspace) return;
 
-		if (!workspace.settings.hiddenModules) {
-			workspace.settings.hiddenModules = {};
-		}
+		// Ensure complete initialization and get the initialized object
+		const hiddenModules = this.ensureHiddenModulesInitialized(workspace);
+		hiddenModules.views = [...viewIds];
 
-		workspace.settings.hiddenModules.views = [...viewIds];
 		workspace.updatedAt = Date.now();
 		this.clearCache();
 		await this.plugin.saveSettings();
@@ -851,11 +891,10 @@ export class WorkspaceManager {
 
 		if (!workspace) return;
 
-		if (!workspace.settings.hiddenModules) {
-			workspace.settings.hiddenModules = {};
-		}
+		// Ensure complete initialization and get the initialized object
+		const hiddenModules = this.ensureHiddenModulesInitialized(workspace);
+		hiddenModules.sidebarComponents = [...componentIds];
 
-		workspace.settings.hiddenModules.sidebarComponents = [...componentIds];
 		workspace.updatedAt = Date.now();
 		this.clearCache();
 		await this.plugin.saveSettings();
@@ -884,11 +923,10 @@ export class WorkspaceManager {
 
 		if (!workspace) return;
 
-		if (!workspace.settings.hiddenModules) {
-			workspace.settings.hiddenModules = {};
-		}
+		// Ensure complete initialization and get the initialized object
+		const hiddenModules = this.ensureHiddenModulesInitialized(workspace);
+		hiddenModules.features = [...featureIds];
 
-		workspace.settings.hiddenModules.features = [...featureIds];
 		workspace.updatedAt = Date.now();
 		this.clearCache();
 		await this.plugin.saveSettings();

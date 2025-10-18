@@ -135,13 +135,14 @@ export class DataflowOrchestrator {
 		}
 
 		// Initialize debounced restore handler (default ON) - trailing only
-		this.restoreByFilterDebounced = debounce(
-			() => {
-				void this.restoreByFilter();
-			},
-			500,
-			false
-		);
+		this.restoreByFilterDebounced = debounce(() => {
+			this.restoreByFilter().catch((error) => {
+				console.error(
+					"[DataflowOrchestrator] restoreByFilter failed:",
+					error
+				);
+			});
+		}, 500, false);
 
 		// Initialize worker orchestrator with settings
 		const taskWorkerManager = new TaskWorkerManager(vault, metadataCache, {
@@ -373,6 +374,10 @@ export class DataflowOrchestrator {
 				);
 			}
 
+			// Subscribe to file update events from ObsidianSource and ICS events
+			console.log("[DataflowOrchestrator] Subscribing to events...");
+			this.subscribeToEvents();
+
 			// Initialize ObsidianSource to start listening for events
 			console.log(
 				"[DataflowOrchestrator] Initializing ObsidianSource..."
@@ -381,19 +386,29 @@ export class DataflowOrchestrator {
 
 			// Initialize IcsSource to start listening for calendar events
 			console.log("[DataflowOrchestrator] Initializing IcsSource...");
-			this.icsSource.initialize();
+			this.icsSource
+				.initialize()
+				.catch((error) => {
+					console.error(
+						"[DataflowOrchestrator] IcsSource initialization failed:",
+						error
+					);
+				});
 
 			// Initialize FileSource to start file recognition
 			if (this.fileSource) {
 				console.log(
 					"[DataflowOrchestrator] Initializing FileSource..."
 				);
-				this.fileSource.initialize();
+				this.fileSource
+					.initialize()
+					.catch((error) => {
+						console.error(
+							"[DataflowOrchestrator] FileSource initialization failed:",
+							error
+						);
+					});
 			}
-
-			// Subscribe to file update events from ObsidianSource and ICS events
-			console.log("[DataflowOrchestrator] Subscribing to events...");
-			this.subscribeToEvents();
 
 			// Emit initial ready event
 			emit(this.app, Events.CACHE_READY, {
@@ -904,7 +919,14 @@ export class DataflowOrchestrator {
 				settings.fileSource,
 				this.fileFilterManager
 			);
-			this.fileSource.initialize();
+			this.fileSource
+				.initialize()
+				.catch((error) => {
+					console.error(
+						"[DataflowOrchestrator] FileSource initialization failed:",
+						error
+					);
+				});
 			// Sync status mapping from Task Status settings on creation
 			try {
 				if (settings?.taskStatuses) {
@@ -1002,7 +1024,12 @@ export class DataflowOrchestrator {
 			console.log("[TG Index Filter] action", {
 				action: "PRUNE_THEN_RESTORE",
 			});
-			void this.pruneByFilter();
+			this.pruneByFilter().catch((error) => {
+				console.error(
+					"[DataflowOrchestrator] pruneByFilter failed:",
+					error
+				);
+			});
 			this.restoreByFilterDebounced?.();
 		}
 	}

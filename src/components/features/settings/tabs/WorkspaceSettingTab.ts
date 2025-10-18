@@ -93,6 +93,12 @@ export function renderWorkspaceSettingsTab(
 		});
 		const iconEl = nameWithIcon.createDiv({ cls: "workspace-list-icon" });
 		setIcon(iconEl, workspace.icon || "layers");
+
+		// Apply workspace color to icon
+		if (workspace.color) {
+			iconEl.style.color = workspace.color;
+		}
+
 		nameWithIcon.createSpan({ text: workspace.name });
 
 		setting

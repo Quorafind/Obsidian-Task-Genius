@@ -1,4 +1,11 @@
-import { Modal, Notice, Setting, ButtonComponent, setIcon } from "obsidian";
+import {
+	Modal,
+	Notice,
+	Setting,
+	ButtonComponent,
+	setIcon,
+	ColorComponent,
+} from "obsidian";
 import type TaskProgressBarPlugin from "@/index";
 import { WorkspaceData } from "@/types/workspace";
 import { t } from "@/translations/helper";
@@ -11,7 +18,7 @@ export function createWorkspaceIconSelector(
 	containerEl: HTMLElement,
 	plugin: TaskProgressBarPlugin,
 	initialIcon: string,
-	onIconSelected: (iconId: string) => void
+	onIconSelected: (iconId: string) => void,
 ): ButtonComponent {
 	const iconButton = new ButtonComponent(containerEl);
 	iconButton.setIcon(initialIcon);
@@ -35,27 +42,27 @@ export class CreateWorkspaceModal extends Modal {
 	private nameInput: HTMLInputElement;
 	private baseSelect: HTMLSelectElement;
 	private selectedIcon: string = "layers";
+	private selectedColor: string = "#888888";
 	private name: string = "";
 	private selectWorkspaceId: string = "";
 
 	constructor(
 		private plugin: TaskProgressBarPlugin,
-		private onCreated: (workspace: WorkspaceData) => void
+		private onCreated: (workspace: WorkspaceData) => void,
 	) {
 		super(plugin.app);
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.createEl("h2", {text: t("Create New Workspace")});
+		const { contentEl } = this;
+		contentEl.createEl("h2", { text: t("Create New Workspace") });
 
 		// Name input
 		new Setting(contentEl)
 			.setName(t("Workspace Name"))
 			.setDesc(t("A descriptive name for the workspace"))
 			.addText((text) => {
-				text
-					.setPlaceholder(t("Enter workspace name"))
+				text.setPlaceholder(t("Enter workspace name"))
 					.setValue("")
 					.onChange((value) => {
 						this.name = value;
@@ -78,8 +85,18 @@ export class CreateWorkspaceModal extends Modal {
 			this.selectedIcon,
 			(iconId) => {
 				this.selectedIcon = iconId;
-			}
+			},
 		);
+
+		// Color selection
+		new Setting(contentEl)
+			.setName(t("Workspace Color"))
+			.setDesc(t("Choose a color for this workspace"))
+			.addColorPicker((color) => {
+				color.setValue(this.selectedColor).onChange((value) => {
+					this.selectedColor = value;
+				});
+			});
 
 		// Base workspace selector
 		new Setting(contentEl)
@@ -88,11 +105,12 @@ export class CreateWorkspaceModal extends Modal {
 			.addDropdown((dropdown) => {
 				dropdown.addOption("", t("Default settings"));
 
-				const currentWorkspace = this.plugin.workspaceManager?.getActiveWorkspace();
+				const currentWorkspace =
+					this.plugin.workspaceManager?.getActiveWorkspace();
 				if (currentWorkspace) {
 					dropdown.addOption(
 						currentWorkspace.id,
-						`Current (${currentWorkspace.name})`
+						`Current (${currentWorkspace.name})`,
 					);
 				}
 
@@ -135,22 +153,18 @@ export class CreateWorkspaceModal extends Modal {
 			}
 
 			if (this.plugin.workspaceManager) {
-				console.log("[TG-WORKSPACE] modal:create", {
-					name,
-					baseId,
-					icon: this.selectedIcon,
-				});
-
-				const workspace = await this.plugin.workspaceManager.createWorkspace(
-					name,
-					baseId,
-					this.selectedIcon
-				);
+				const workspace =
+					await this.plugin.workspaceManager.createWorkspace(
+						name,
+						baseId,
+						this.selectedIcon,
+						this.selectedColor,
+					);
 
 				new Notice(
 					t('Workspace "{{name}}" created', {
-						interpolation: {name: name},
-					})
+						interpolation: { name: name },
+					}),
 				);
 
 				this.onCreated(workspace);
@@ -167,7 +181,7 @@ export class CreateWorkspaceModal extends Modal {
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
@@ -178,29 +192,29 @@ export class CreateWorkspaceModal extends Modal {
 export class RenameWorkspaceModal extends Modal {
 	private nameInput: HTMLInputElement;
 	private selectedIcon: string;
+	private selectedColor: string;
 
 	constructor(
 		private plugin: TaskProgressBarPlugin,
 		private workspace: WorkspaceData,
-		private onRenamed: () => void
+		private onRenamed: () => void,
 	) {
 		super(plugin.app);
 		this.selectedIcon = workspace.icon || "layers";
+		this.selectedColor = workspace.color || "#888888";
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.createEl("h2", {text: t("Rename Workspace")});
+		const { contentEl } = this;
+		contentEl.createEl("h2", { text: t("Rename Workspace") });
 
 		// Name input
-		new Setting(contentEl)
-			.setName(t("New Name"))
-			.addText((text) => {
-				text
-					.setValue(this.workspace.name)
-					.setPlaceholder(t("Enter new name"));
-				this.nameInput = text.inputEl;
-			});
+		new Setting(contentEl).setName(t("New Name")).addText((text) => {
+			text.setValue(this.workspace.name).setPlaceholder(
+				t("Enter new name"),
+			);
+			this.nameInput = text.inputEl;
+		});
 
 		// Icon selection
 		const iconSetting = new Setting(contentEl)
@@ -217,8 +231,18 @@ export class RenameWorkspaceModal extends Modal {
 			this.selectedIcon,
 			(iconId) => {
 				this.selectedIcon = iconId;
-			}
+			},
 		);
+
+		// Color selection
+		new Setting(contentEl)
+			.setName(t("Workspace Color"))
+			.setDesc(t("Choose a color for this workspace"))
+			.addColorPicker((color) => {
+				color.setValue(this.selectedColor).onChange((value) => {
+					this.selectedColor = value;
+				});
+			});
 
 		// Buttons
 		const buttonContainer = contentEl.createDiv({
@@ -247,12 +271,14 @@ export class RenameWorkspaceModal extends Modal {
 					id: this.workspace.id,
 					name: newName,
 					icon: this.selectedIcon,
+					color: this.selectedColor,
 				});
 
 				await this.plugin.workspaceManager.renameWorkspace(
 					this.workspace.id,
 					newName,
-					this.selectedIcon
+					this.selectedIcon,
+					this.selectedColor,
 				);
 
 				new Notice(t("Workspace updated"));
@@ -271,7 +297,7 @@ export class RenameWorkspaceModal extends Modal {
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
@@ -283,19 +309,19 @@ export class DeleteWorkspaceModal extends Modal {
 	constructor(
 		private plugin: TaskProgressBarPlugin,
 		private workspace: WorkspaceData,
-		private onDeleted: () => void
+		private onDeleted: () => void,
 	) {
 		super(plugin.app);
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.createEl("h2", {text: t("Delete Workspace")});
+		const { contentEl } = this;
+		contentEl.createEl("h2", { text: t("Delete Workspace") });
 
 		contentEl.createEl("p", {
 			text: t(
 				'Are you sure you want to delete "{{name}}"? This action cannot be undone.',
-				{interpolation: {name: this.workspace.name}}
+				{ interpolation: { name: this.workspace.name } },
 			),
 		});
 
@@ -319,13 +345,13 @@ export class DeleteWorkspaceModal extends Modal {
 				});
 
 				await this.plugin.workspaceManager.deleteWorkspace(
-					this.workspace.id
+					this.workspace.id,
 				);
 
 				new Notice(
 					t('Workspace "{{name}}" deleted', {
-						interpolation: {name: this.workspace.name},
-					})
+						interpolation: { name: this.workspace.name },
+					}),
 				);
 
 				this.onDeleted();
@@ -339,7 +365,7 @@ export class DeleteWorkspaceModal extends Modal {
 	}
 
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }

@@ -156,8 +156,11 @@ export class TopNavigation extends Component {
 		tab.createSpan({ text: label });
 
 		this.registerDomEvent(tab, "click", () => {
-			this.setViewMode(mode);
-			this.onViewModeChange(mode);
+			// Only trigger view change if switching to a different mode
+			if (this.currentViewMode !== mode) {
+				this.setViewMode(mode);
+				this.onViewModeChange(mode);
+			}
 		});
 	}
 
