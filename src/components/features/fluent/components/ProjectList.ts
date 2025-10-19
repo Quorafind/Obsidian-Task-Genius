@@ -1,6 +1,7 @@
 import { Component, Platform, setIcon, Menu, Modal, App } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
+import { getEffectiveProject } from "@/utils/task/task-operations";
 import {
 	ProjectPopover,
 	ProjectModal,
@@ -9,10 +10,12 @@ import {
 import type { CustomProject } from "@/common/setting-definition";
 import { t } from "@/translations/helper";
 import { onWorkspaceSwitched } from "@/components/features/fluent/events/ui-event";
+import { Events, on } from "@/dataflow/events/Events";
 
-interface Project {
+export interface Project {
 	id: string;
 	name: string;
+	filterKey: string;
 	displayName?: string;
 	color: string;
 	taskCount: number;
@@ -87,6 +90,23 @@ export class ProjectList extends Component {
 				this.refreshWithDelay();
 			}),
 		);
+
+		// Refresh when dataflow cache becomes ready or updates
+		this.registerEvent(
+			on(this.plugin.app, Events.CACHE_READY, () => {
+				this.refreshWithDelay();
+			}),
+		);
+		this.registerEvent(
+			on(this.plugin.app, Events.TASK_CACHE_UPDATED, () => {
+				this.refreshWithDelay();
+			}),
+		);
+		this.registerEvent(
+			on(this.plugin.app, Events.PROJECT_DATA_UPDATED, () => {
+				this.refreshWithDelay();
+			}),
+		);
 	}
 
 	private refreshTimeoutId: NodeJS.Timeout | null = null;
@@ -132,23 +152,28 @@ export class ProjectList extends Component {
 		const projectMap = new Map<string, Project>();
 
 		tasks.forEach((task: Task) => {
-			const projectName = task.metadata?.project;
-			if (projectName) {
-				if (!projectMap.has(projectName)) {
-					// Convert dashes back to spaces for display
-					const displayName = projectName.replace(/-/g, " ");
-					projectMap.set(projectName, {
-						id: projectName,
-						name: projectName,
-						displayName: displayName,
-						color: this.generateColorForProject(projectName),
-						taskCount: 0,
-					});
-				}
-				const project = projectMap.get(projectName);
-				if (project) {
-					project.taskCount++;
-				}
+			const projectName = getEffectiveProject(task);
+			if (!projectName) {
+				return;
+			}
+
+			const projectId = projectName;
+
+			if (!projectMap.has(projectId)) {
+				// Convert dashes back to spaces for display to match legacy behaviour
+				const displayName = projectName.replace(/-/g, " ");
+				projectMap.set(projectId, {
+					id: projectId,
+					name: projectId,
+					filterKey: projectId,
+					displayName: displayName,
+					color: this.generateColorForProject(projectId),
+					taskCount: 0,
+				});
+			}
+			const project = projectMap.get(projectId);
+			if (project) {
+				project.taskCount++;
 			}
 		});
 
@@ -272,6 +297,7 @@ export class ProjectList extends Component {
 						: {
 								id: currentPath,
 								name: currentPath,
+								filterKey: currentPath,
 								displayName: segment,
 								color: this.generateColorForProject(
 									currentPath,
@@ -301,6 +327,7 @@ export class ProjectList extends Component {
 				} else if (isLeaf && node.project.isVirtual) {
 					// Update virtual node with actual project data
 					node.project = project;
+					node.project.filterKey = project.filterKey;
 				}
 
 				parentNode = node;
@@ -513,19 +540,19 @@ export class ProjectList extends Component {
 		treeNode?: ProjectTreeNode,
 	) {
 		const projectItem = container.createDiv({
-			cls: "fluent-project-item",
-			attr: {
-				"data-project-id": project.id,
-				"data-level": String(level),
-			},
-		});
+					cls: "fluent-project-item",
+					attr: {
+						"data-project-id": project.filterKey,
+						"data-level": String(level),
+					},
+				});
 
-		// Add virtual class for styling
-		if (project.isVirtual) {
-			projectItem.addClass("is-virtual");
+				// Add virtual class for styling
+				if (project.isVirtual) {
+					projectItem.addClass("is-virtual");
 		}
 
-		if (this.activeProjectId === project.id) {
+		if (this.activeProjectId === project.filterKey) {
 			projectItem.addClass("is-active");
 		}
 
@@ -610,8 +637,8 @@ export class ProjectList extends Component {
 				if (project.isVirtual && treeNode) {
 					this.selectVirtualNode(treeNode);
 				} else {
-					this.setActiveProject(project.id);
-					this.onProjectSelect(project.id);
+					this.setActiveProject(project.filterKey);
+					this.onProjectSelect(project.filterKey);
 				}
 			}
 		});
@@ -634,7 +661,7 @@ export class ProjectList extends Component {
 		const projectIds: string[] = [];
 		const collectProjects = (n: ProjectTreeNode) => {
 			if (!n.project.isVirtual) {
-				projectIds.push(n.project.id);
+				projectIds.push(n.project.filterKey);
 			}
 			n.children.forEach((child) => collectProjects(child));
 		};
@@ -769,6 +796,7 @@ export class ProjectList extends Component {
 				this.projects.push({
 					id: customProject.id,
 					name: customProject.name,
+					filterKey: customProject.name,
 					displayName:
 						customProject.displayName || customProject.name,
 					color: customProject.color,
@@ -779,6 +807,7 @@ export class ProjectList extends Component {
 			} else {
 				// Update existing project with custom color
 				this.projects[existingIndex].id = customProject.id;
+				this.projects[existingIndex].filterKey = customProject.name;
 				this.projects[existingIndex].color = customProject.color;
 				this.projects[existingIndex].displayName =
 					customProject.displayName || customProject.name;
@@ -1038,7 +1067,7 @@ export class ProjectList extends Component {
 					await this.plugin.saveSettings();
 
 					// If this was the active project, clear selection
-					if (this.activeProjectId === project.id) {
+					if (this.activeProjectId === project.filterKey) {
 						this.setActiveProject(null);
 						this.onProjectSelect("");
 					}

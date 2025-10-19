@@ -1731,6 +1731,23 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 			caseSensitive: false,
 		},
 	},
+
+	fluentView: {
+		enableFluent: true,
+		workspaces: [
+			{
+				id: "default",
+				name: "Default",
+				color: "#3498db",
+			},
+		],
+		fluentConfig: {
+			enableWorkspaces: true,
+			defaultWorkspace: "default",
+			maxOtherViewsBeforeOverflow: 5,
+		},
+		useWorkspaceSideLeaves: false,
+	},
 };
 
 // Helper function to get view settings safely

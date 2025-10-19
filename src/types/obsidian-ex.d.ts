@@ -13,6 +13,7 @@ import {
 import { Component } from "obsidian";
 import { HabitProps } from "./habit-card";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
+import { SelectionModeChangeEventData } from "@/types/selection";
 
 interface Token extends EditorRange {
 	/** @todo Documentation incomplete. */
@@ -457,6 +458,11 @@ declare module "obsidian" {
 				isSelectionMode: boolean;
 				count: number;
 			},
+		): void;
+
+		trigger(
+			event: "task-genius:selection-mode-changed",
+			payload: SelectionModeChangeEventData,
 		): void;
 	}
 

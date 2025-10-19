@@ -35,15 +35,17 @@ export class FluentIntegration {
 			(leaf: WorkspaceLeaf) => new FluentTaskView(leaf, this.plugin),
 		);
 
+		if (this.plugin.settings.fluentView?.useWorkspaceSideLeaves) {
+			this.plugin.registerView(
+				TG_LEFT_SIDEBAR_VIEW_TYPE,
+				(leaf: WorkspaceLeaf) => new LeftSidebarView(leaf, this.plugin),
+			);
+			this.plugin.registerView(
+				TG_RIGHT_DETAIL_VIEW_TYPE,
+				(leaf: WorkspaceLeaf) => new RightDetailView(leaf, this.plugin),
+			);
+		}
 		// Register side leaf views for new architecture
-		this.plugin.registerView(
-			TG_LEFT_SIDEBAR_VIEW_TYPE,
-			(leaf: WorkspaceLeaf) => new LeftSidebarView(leaf, this.plugin),
-		);
-		this.plugin.registerView(
-			TG_RIGHT_DETAIL_VIEW_TYPE,
-			(leaf: WorkspaceLeaf) => new RightDetailView(leaf, this.plugin),
-		);
 
 		// When any of the fluent views becomes active, reveal the other side leaves without focusing them
 		this.plugin.registerEvent(
@@ -102,7 +104,7 @@ export class FluentIntegration {
 	/**
 	 * Open the Fluent view
 	 */
-	private async openV2View() {
+	private async openFluentView() {
 		const { workspace } = this.plugin.app;
 
 		// Check if Fluent view is already open
@@ -131,7 +133,25 @@ export class FluentIntegration {
 	private async ensureSideLeavesIfEnabled() {
 		const useSideLeaves =
 			!!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
-		if (!useSideLeaves) return;
+		if (!useSideLeaves) {
+			const leftSidebarLeaves = this.plugin.app.workspace.getLeavesOfType(
+				TG_LEFT_SIDEBAR_VIEW_TYPE,
+			);
+			if (leftSidebarLeaves.length > 0) {
+				this.plugin.app.workspace.detachLeavesOfType(
+					TG_LEFT_SIDEBAR_VIEW_TYPE,
+				);
+			}
+			const rightSidebarLeaves =
+				this.plugin.app.workspace.getLeavesOfType(
+					TG_RIGHT_DETAIL_VIEW_TYPE,
+				);
+			if (rightSidebarLeaves.length > 0) {
+				this.plugin.app.workspace.detachLeavesOfType(
+					TG_RIGHT_DETAIL_VIEW_TYPE,
+				);
+			}
+		}
 
 		const ws = this.plugin.app.workspace as Workspace;
 		// Left sidebar
@@ -161,15 +181,15 @@ export class FluentIntegration {
 		}
 
 		// Default workspace configuration
-		if (!this.plugin.settings.fluentView!.workspaces) {
-			this.plugin.settings.fluentView!.workspaces = [
+		if (!this.plugin.settings.fluentView.workspaces) {
+			this.plugin.settings.fluentView.workspaces = [
 				{ id: "default", name: t("Default"), color: "#3498db" },
 			];
 		}
 
 		// Default Fluent configuration
-		if (this.plugin.settings.fluentView!.fluentConfig === undefined) {
-			this.plugin.settings.fluentView!.fluentConfig = {
+		if (this.plugin.settings.fluentView.fluentConfig === undefined) {
+			this.plugin.settings.fluentView.fluentConfig = {
 				enableWorkspaces: true,
 				defaultWorkspace: "default",
 				maxOtherViewsBeforeOverflow: 5,
@@ -177,9 +197,9 @@ export class FluentIntegration {
 		}
 
 		// Backfill extra experimental flag without touching types
-		const v2c = this.plugin.settings.fluentView;
-		if (v2c.useWorkspaceSideLeaves === undefined)
-			v2c.useWorkspaceSideLeaves = true;
+		const fluentSetting = this.plugin.settings.fluentView;
+		if (fluentSetting.useWorkspaceSideLeaves === undefined)
+			fluentSetting.useWorkspaceSideLeaves = false;
 
 		await this.plugin.saveSettings();
 	}
@@ -204,13 +224,13 @@ export class FluentIntegration {
 				enableFluent: false,
 			};
 		}
-		this.plugin.settings.fluentView!.enableFluent =
-			!this.plugin.settings.fluentView!.enableFluent;
+		this.plugin.settings.fluentView.enableFluent =
+			!this.plugin.settings.fluentView.enableFluent;
 		await this.plugin.saveSettings();
 
 		// Open the appropriate view
 		if (this.plugin.settings.fluentView?.enableFluent) {
-			await this.openV2View();
+			await this.openFluentView();
 		} else {
 			// Open V1 view
 			const leaf = workspace.getLeaf("tab");

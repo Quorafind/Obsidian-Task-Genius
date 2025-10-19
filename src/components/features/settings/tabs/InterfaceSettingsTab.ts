@@ -5,6 +5,7 @@ import {
 	SelectableCard,
 	SelectableCardConfig,
 } from "@/components/features/onboarding/ui/SelectableCard";
+import { FluentViewSettings } from "@/common/setting-definition";
 
 export function renderInterfaceSettingsTab(
 	settingTab: TaskProgressBarSettingTab,
@@ -113,7 +114,7 @@ export function renderInterfaceSettingsTab(
 
 		// Use workspace side leaves for Sidebar & Details
 		new Setting(fluentSettingsContainer)
-			.setName(t("Use Workspace Side Leaves"))
+			.setName(t("Use workspace side leaves"))
 			.setDesc(
 				t(
 					"Use left/right workspace side leaves for Sidebar and Details. When enabled, the main fluent view won't render in-view sidebar or details.",
@@ -122,7 +123,7 @@ export function renderInterfaceSettingsTab(
 			.addToggle((toggle) => {
 				const current =
 					settingTab.plugin.settings.fluentView
-						?.useWorkspaceSideLeaves ?? true;
+						?.useWorkspaceSideLeaves ?? false;
 				toggle.setValue(current).onChange(async (value) => {
 					if (!settingTab.plugin.settings.fluentView) {
 						settingTab.plugin.settings.fluentView = {
@@ -137,7 +138,8 @@ export function renderInterfaceSettingsTab(
 					}
 					// Store via 'any' to avoid typing constraints for experimental backfill
 					(
-						settingTab.plugin.settings.fluentView as any
+						settingTab.plugin.settings
+							.fluentView as FluentViewSettings
 					).useWorkspaceSideLeaves = value;
 					await settingTab.plugin.saveSettings();
 					new Notice(t("Saved. Reopen the view to apply."));
@@ -146,7 +148,7 @@ export function renderInterfaceSettingsTab(
 
 		// Max Other Views before overflow threshold
 		new Setting(fluentSettingsContainer)
-			.setName(t("Max Other Views before overflow"))
+			.setName(t("Max other views before overflow"))
 			.setDesc(
 				t(
 					"Number of 'Other Views' to show before grouping the rest into an overflow menu (ellipsis)",

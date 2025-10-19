@@ -184,6 +184,9 @@ export class FluentDataManager extends Component {
 		const viewId = this.getCurrentViewId();
 		let result = [...tasks]; // Copy array to avoid mutation
 
+		const normalizeProjectId = (value?: string | null): string =>
+			(value ?? "").trim().toLowerCase();
+
 		// Status filter
 		if (filters.status && filters.status !== "all") {
 			switch (filters.status) {
@@ -217,17 +220,28 @@ export class FluentDataManager extends Component {
 
 		// Project filter - Skip for Inbox view
 		if (filters.project && viewId !== "inbox") {
-			result = result.filter(
-				(task) => task.metadata?.project === filters.project,
-			);
+			const targetProject = normalizeProjectId(filters.project);
+			result = result.filter((task) => {
+				const directProject = normalizeProjectId(
+					task.metadata?.project,
+				);
+				const tgProject = normalizeProjectId(
+					task.metadata?.tgProject?.name,
+				);
+				return (
+					targetProject.length > 0 &&
+					(targetProject === directProject ||
+						targetProject === tgProject)
+				);
+			});
 		}
 
 		// Tags filter
 		if (filters.tags && filters.tags.length > 0) {
 			result = result.filter((task) => {
 				if (!task.metadata?.tags) return false;
-				return filters.tags!.some((tag: string) =>
-					task.metadata!.tags!.includes(tag),
+				return filters.tags.some((tag: string) =>
+					task.metadata.tags.includes(tag),
 				);
 			});
 		}
@@ -239,7 +253,7 @@ export class FluentDataManager extends Component {
 					if (!task.metadata?.dueDate) return false;
 					return (
 						new Date(task.metadata.dueDate) >=
-						filters.dateRange!.start!
+						filters.dateRange.start
 					);
 				});
 			}
@@ -247,8 +261,7 @@ export class FluentDataManager extends Component {
 				result = result.filter((task) => {
 					if (!task.metadata?.dueDate) return false;
 					return (
-						new Date(task.metadata.dueDate) <=
-						filters.dateRange!.end!
+						new Date(task.metadata.dueDate) <= filters.dateRange.end
 					);
 				});
 			}
@@ -297,10 +310,7 @@ export class FluentDataManager extends Component {
 		}, 400);
 
 		// Register dataflow event listeners
-		if (
-			isDataflowEnabled(this.plugin) &&
-			this.plugin.dataflowOrchestrator
-		) {
+		if (isDataflowEnabled(this.plugin)) {
 			// Listen for batch operation start
 			this.registerEvent(
 				on(this.plugin.app, Events.BATCH_OPERATION_START, (payload) => {

@@ -19,6 +19,10 @@ import { Events, on } from "@/dataflow/events/Events";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { Platform } from "obsidian";
 import { t } from "@/translations/helper";
+import {
+	getInitialViewMode,
+	saveViewMode,
+} from "@/utils/ui/view-mode-utils";
 
 // Import managers
 import { FluentDataManager } from "@/components/features/fluent/managers/FluentDataManager";
@@ -79,6 +83,7 @@ export class FluentTaskView extends ItemView {
 	private viewState: FluentTaskViewState = {
 		currentWorkspace: "",
 		viewMode: "list",
+		viewModeByViewId: {},
 		searchQuery: "",
 		filters: {},
 		filterInputValue: "",
@@ -133,6 +138,65 @@ export class FluentTaskView extends ItemView {
 	 */
 	private useSideLeaves(): boolean {
 		return !!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
+	}
+
+	private ensureViewModeForView(viewId: string): ViewMode {
+		const availableModes =
+			this.componentManager?.getAvailableModesForView(viewId) ?? [];
+		const storedMode = this.viewState.viewModeByViewId?.[viewId];
+
+		const pickFallback = (): ViewMode => {
+			if (availableModes.length === 0) {
+				return storedMode ?? "list";
+			}
+			if (availableModes.includes("list")) {
+				return "list";
+			}
+			return availableModes[0];
+		};
+
+		if (storedMode) {
+			if (
+				availableModes.length === 0 ||
+				availableModes.includes(storedMode)
+			) {
+				return storedMode;
+			}
+		}
+
+		if (availableModes.includes("tree") || availableModes.includes("list")) {
+			const prefersTree = getInitialViewMode(
+				this.app,
+				this.plugin,
+				viewId,
+			);
+			if (prefersTree && availableModes.includes("tree")) {
+				return "tree";
+			}
+			if (availableModes.includes("list")) {
+				return "list";
+			}
+		}
+
+		return pickFallback();
+	}
+
+	private recordViewModeForView(viewId: string, mode: ViewMode): void {
+		if (!this.viewState.viewModeByViewId) {
+			this.viewState.viewModeByViewId = {};
+		}
+
+		const availableModes =
+			this.componentManager?.getAvailableModesForView(viewId);
+		if (
+			availableModes &&
+			availableModes.length > 0 &&
+			!availableModes.includes(mode)
+		) {
+			return;
+		}
+
+		this.viewState.viewModeByViewId[viewId] = mode;
 	}
 
 	/**
@@ -225,7 +289,28 @@ export class FluentTaskView extends ItemView {
 				}) => {
 					this.viewState.filters = filters;
 					this.viewState.selectedProject = selectedProject;
-					this.viewState.viewMode = viewMode;
+					const normalizedMode =
+						(() => {
+							const availableModes =
+								this.componentManager?.getAvailableModesForView(
+									this.currentViewId,
+								) ?? [];
+							if (
+								availableModes.length > 0 &&
+								!availableModes.includes(viewMode)
+							) {
+								return this.ensureViewModeForView(
+									this.currentViewId,
+								);
+							}
+							return viewMode;
+						})();
+					this.viewState.viewMode = normalizedMode;
+					this.recordViewModeForView(
+						this.currentViewId,
+						normalizedMode,
+					);
+					this.topNavigation?.setViewMode(normalizedMode);
 					if (clearSearch) {
 						this.viewState.searchQuery = "";
 						this.viewState.filterInputValue = "";
@@ -384,7 +469,15 @@ export class FluentTaskView extends ItemView {
 				this.updateView();
 			},
 			onNavigateToView: (viewId) => {
+				this.recordViewModeForView(
+					this.currentViewId,
+					this.viewState.viewMode,
+				);
 				this.currentViewId = viewId;
+				const nextMode = this.ensureViewModeForView(viewId);
+				this.viewState.viewMode = nextMode;
+				this.recordViewModeForView(viewId, nextMode);
+				this.topNavigation?.setViewMode(nextMode);
 				this.updateView();
 			},
 			onSearchQueryChanged: (query) => {
@@ -399,7 +492,19 @@ export class FluentTaskView extends ItemView {
 				this.viewState.selectedProject = projectId;
 
 				// Switch to projects view
+				this.recordViewModeForView(
+					this.currentViewId,
+					this.viewState.viewMode,
+				);
 				this.currentViewId = "projects";
+				const projectsViewMode =
+					this.ensureViewModeForView(this.currentViewId);
+				this.viewState.viewMode = projectsViewMode;
+				this.recordViewModeForView(
+					this.currentViewId,
+					projectsViewMode,
+				);
+				this.topNavigation?.setViewMode(projectsViewMode);
 
 				// Reflect selection into the Filter UI state so the top Filter button shows active and can be reset via "X"
 				try {
@@ -463,6 +568,10 @@ export class FluentTaskView extends ItemView {
 			},
 			onViewModeChanged: (mode) => {
 				this.viewState.viewMode = mode;
+				this.recordViewModeForView(this.currentViewId, mode);
+				if (mode === "list" || mode === "tree") {
+					saveViewMode(this.app, this.currentViewId, mode === "tree");
+				}
 				this.updateView();
 				// Save to workspace
 				this.workspaceStateManager.saveFilterStateToWorkspace();
@@ -495,7 +604,11 @@ export class FluentTaskView extends ItemView {
 		this.addChild(this.workspaceStateManager);
 
 		// 4. TaskSelectionManager - Multi-selection and bulk operations
-		this.selectionManager = new TaskSelectionManager(this.app, this.plugin);
+		this.selectionManager = new TaskSelectionManager(
+			this.app,
+			this.plugin,
+			this,
+		);
 		this.addChild(this.selectionManager);
 
 		console.log("[TG] Managers initialized");
@@ -725,7 +838,30 @@ export class FluentTaskView extends ItemView {
 								this.viewState.filters = filters;
 								this.viewState.selectedProject =
 									selectedProject;
-								this.viewState.viewMode = viewMode;
+								const normalizedMode =
+									(() => {
+										const availableModes =
+											this.componentManager?.getAvailableModesForView(
+												this.currentViewId,
+											) ?? [];
+										if (
+											availableModes.length > 0 &&
+											!availableModes.includes(viewMode)
+										) {
+											return this.ensureViewModeForView(
+												this.currentViewId,
+											);
+										}
+										return viewMode;
+									})();
+								this.viewState.viewMode = normalizedMode;
+								this.recordViewModeForView(
+									this.currentViewId,
+									normalizedMode,
+								);
+								this.topNavigation?.setViewMode(
+									normalizedMode,
+								);
 								if (clearSearch) {
 									this.viewState.searchQuery = "";
 									this.viewState.filterInputValue = "";
@@ -916,6 +1052,13 @@ export class FluentTaskView extends ItemView {
 		// Update selection manager task cache before rendering
 		// This is critical for bulk operations to work
 		this.selectionManager.updateTaskCache(this.filteredTasks);
+
+		const resolvedMode = this.ensureViewModeForView(this.currentViewId);
+		if (resolvedMode !== this.viewState.viewMode) {
+			this.viewState.viewMode = resolvedMode;
+			this.recordViewModeForView(this.currentViewId, resolvedMode);
+			this.topNavigation?.setViewMode(resolvedMode);
+		}
 
 		// Switch to appropriate component
 		this.componentManager.switchView(

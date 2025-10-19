@@ -432,6 +432,7 @@
 	margin-bottom: 1rem;
 	color: var(--text-muted);
 	opacity: 0.5;
+	--icon-size: 48px;
 }
 
 .tg-fluent-empty-title {
@@ -574,43 +575,43 @@
 	height: 300px;
 }
 
-.tg-fluent-button-primary {
+button.tg-fluent-button-primary {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
 
-.tg-fluent-button-primary:hover {
+button.tg-fluent-button-primary:hover {
 	background: var(--interactive-accent-hover);
 	transform: translateY(-1px);
 	box-shadow: var(--tg-shadow);
 }
 
-.tg-fluent-button-secondary {
+button.tg-fluent-button-secondary {
 	background: var(--background-secondary);
 	color: var(--text-normal);
 	border: 1px solid var(--background-modifier-border);
 }
 
-.tg-fluent-button-secondary:hover {
+button.tg-fluent-button-secondary:hover {
 	background: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
 }
 
-.tg-fluent-button-ghost {
+button.tg-fluent-button-ghost {
 	background: transparent;
 	color: var(--text-normal);
 }
 
-.tg-fluent-button-ghost:hover {
+button.tg-fluent-button-ghost:hover {
 	background: var(--background-modifier-hover);
 }
 
-.tg-fluent-button-danger {
+button.tg-fluent-button-danger {
 	background: var(--text-error);
 	color: white;
 }
 
-.tg-fluent-button-danger:hover {
+button.tg-fluent-button-danger:hover {
 	background: #dc2626;
 	transform: translateY(-1px);
 	box-shadow: var(--tg-shadow);

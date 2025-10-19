@@ -3,7 +3,7 @@
  * Manages multi-selection state for tasks and coordinates bulk operations
  */
 
-import { App, Component, Workspace } from "obsidian";
+import { App, Component, ItemView, Workspace } from "obsidian";
 import { Task } from "@/types/task";
 import {
 	SelectionState,
@@ -23,6 +23,7 @@ export class TaskSelectionManager extends Component {
 	constructor(
 		private app: App,
 		private plugin: TaskProgressBarPlugin,
+		private view?: ItemView,
 	) {
 		super();
 
@@ -211,7 +212,7 @@ export class TaskSelectionManager extends Component {
 			reason,
 		};
 
-		(this.app.workspace as any).trigger(
+		(this.app.workspace as Workspace).trigger(
 			"task-genius:selection-mode-changed",
 			eventData,
 		);

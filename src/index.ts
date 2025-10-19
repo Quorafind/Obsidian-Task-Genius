@@ -333,11 +333,15 @@ export default class TaskProgressBarPlugin extends Plugin {
 			const deferSpecificLeaves = this.app.workspace.getLeavesOfType(
 				TASK_SPECIFIC_VIEW_TYPE,
 			);
-			[...deferWorkspaceLeaves, ...deferSpecificLeaves].forEach(
-				(leaf) => {
-					leaf.loadIfDeferred();
-				},
-			);
+			const deferTaskGeniusLeaves =
+				this.app.workspace.getLeavesOfType(FLUENT_TASK_VIEW);
+			[
+				...deferWorkspaceLeaves,
+				...deferSpecificLeaves,
+				...deferTaskGeniusLeaves,
+			].forEach((leaf) => {
+				leaf.loadIfDeferred();
+			});
 			// Initialize Task Genius Icon Manager
 			this.taskGeniusIconManager = new TaskGeniusIconManager(this);
 			this.addChild(this.taskGeniusIconManager);
@@ -511,10 +515,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		this.registerOnboardingView();
 
-		this.registerView(
-			TASK_VIEW_TYPE,
-			(leaf) => new TaskView(leaf, this),
-		);
+		this.registerView(TASK_VIEW_TYPE, (leaf) => new TaskView(leaf, this));
 
 		this.registerView(
 			TASK_SPECIFIC_VIEW_TYPE,
@@ -596,10 +597,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				}
 
 				const isBeta = targetVersion.toLowerCase().includes("beta");
-				void this.changelogManager.openChangelog(
-					targetVersion,
-					isBeta,
-				);
+				void this.changelogManager.openChangelog(targetVersion, isBeta);
 			},
 		});
 	}

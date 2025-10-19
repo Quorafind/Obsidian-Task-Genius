@@ -1119,12 +1119,12 @@ export class DataflowOrchestrator {
 			let inlineCandidates: string[] = Array.from(
 				this.suppressedInline,
 			).filter((p) =>
-				this.fileFilterManager!.shouldIncludePath(p, "inline"),
+				this.fileFilterManager?.shouldIncludePath(p, "inline"),
 			);
 			const fileTaskCandidates: string[] = Array.from(
 				this.suppressedFileTasks,
 			).filter((p) =>
-				this.fileFilterManager!.shouldIncludePath(p, "file"),
+				this.fileFilterManager?.shouldIncludePath(p, "file"),
 			);
 
 			// Fallback: if we have no suppressed inline candidates (e.g., previous session), derive from cache keys
@@ -1142,7 +1142,7 @@ export class DataflowOrchestrator {
 					inlineCandidates = Array.from(union).filter(
 						(p) =>
 							!indexed.has(p) &&
-							this.fileFilterManager!.shouldIncludePath(
+							this.fileFilterManager?.shouldIncludePath(
 								p,
 								"inline",
 							),

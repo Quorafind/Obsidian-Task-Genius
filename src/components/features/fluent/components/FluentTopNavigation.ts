@@ -199,7 +199,7 @@ export class TopNavigation extends Component {
 		});
 	}
 
-	private setViewMode(mode: ViewMode) {
+	public setViewMode(mode: ViewMode) {
 		this.currentViewMode = mode;
 
 		this.containerEl.querySelectorAll(".fluent-view-tab").forEach((tab) => {

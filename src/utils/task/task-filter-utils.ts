@@ -83,7 +83,7 @@ function parseDateFilterString(dateString: string): moment.Moment | null {
 export function isNotCompleted(
 	plugin: TaskProgressBarPlugin,
 	task: Task,
-	viewId: ViewMode
+	viewId: ViewMode,
 ): boolean {
 	const viewConfig = getViewSettingOrDefault(plugin, viewId);
 	const abandonedStatus = plugin.settings.taskStatuses.abandoned.split("|");
@@ -111,7 +111,7 @@ export function isNotCompleted(
 export function isBlank(
 	plugin: TaskProgressBarPlugin,
 	task: Task,
-	viewId: ViewMode
+	viewId: ViewMode,
 ): boolean {
 	const viewConfig = getViewSettingOrDefault(plugin, viewId);
 
@@ -130,7 +130,7 @@ export function isBlank(
  */
 export function applyAdvancedFilter(
 	task: Task,
-	filterState: RootFilterState
+	filterState: RootFilterState,
 ): boolean {
 	// 如果没有过滤器组或过滤器组为空，返回所有任务
 	if (!filterState.filterGroups || filterState.filterGroups.length === 0) {
@@ -205,7 +205,7 @@ function applyFilter(task: Task, filter: Filter): boolean {
 			return applyPriorityFilter(
 				task.metadata.priority,
 				condition,
-				value
+				value,
 			);
 		case "dueDate":
 			return applyDateFilter(task.metadata.dueDate, condition, value);
@@ -215,7 +215,7 @@ function applyFilter(task: Task, filter: Filter): boolean {
 			return applyDateFilter(
 				task.metadata.scheduledDate,
 				condition,
-				value
+				value,
 			);
 		case "tags":
 			return applyTagsFilter(task.metadata.tags, condition, value);
@@ -237,7 +237,7 @@ function applyFilter(task: Task, filter: Filter): boolean {
 function applyContentFilter(
 	content: string,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	if (!content) content = "";
 	if (!value) value = "";
@@ -270,7 +270,7 @@ function applyContentFilter(
 function applyStatusFilter(
 	status: string,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	if (!status) status = "";
 	if (!value) value = "";
@@ -299,7 +299,7 @@ function applyStatusFilter(
 function applyPriorityFilter(
 	priority: number | undefined,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	// 如果没有设置优先级，将其视为0
 	const taskPriority = typeof priority === "number" ? priority : 0;
@@ -339,7 +339,7 @@ function applyPriorityFilter(
 function applyDateFilter(
 	date: number | undefined,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	// 处理空值条件
 	switch (condition) {
@@ -390,7 +390,7 @@ function applyDateFilter(
 function applyTagsFilter(
 	tags: string[],
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	if (!tags) tags = [];
 	if (!value) value = "";
@@ -417,7 +417,7 @@ function applyTagsFilter(
 function applyFilePathFilter(
 	filePath: string,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	if (!filePath) filePath = "";
 	if (!value) value = "";
@@ -450,7 +450,7 @@ function applyFilePathFilter(
 function applyProjectFilter(
 	project: string | undefined,
 	condition: string,
-	value?: string
+	value?: string,
 ): boolean {
 	const proj = (project ?? "").toLowerCase();
 	const val = (value ?? "").toLowerCase();
@@ -499,7 +499,7 @@ export function filterTasks(
 	allTasks: Task[],
 	viewId: ViewMode,
 	plugin: TaskProgressBarPlugin,
-	options: FilterOptions = {}
+	options: FilterOptions = {},
 ): Task[] {
 	let filtered = [...allTasks];
 	const viewConfig = getViewSettingOrDefault(plugin, viewId);
@@ -544,7 +544,7 @@ export function filterTasks(
 	) {
 		console.log("应用全局筛选器:", globalFilterRules.advancedFilter);
 		filtered = filtered.filter((task) =>
-			applyAdvancedFilter(task, globalFilterRules.advancedFilter!)
+			applyAdvancedFilter(task, globalFilterRules.advancedFilter!),
 		);
 	}
 
@@ -555,10 +555,10 @@ export function filterTasks(
 	) {
 		console.log(
 			"应用视图配置中的基础高级过滤器:",
-			filterRules.advancedFilter
+			filterRules.advancedFilter,
 		);
 		filtered = filtered.filter((task) =>
-			applyAdvancedFilter(task, filterRules.advancedFilter!)
+			applyAdvancedFilter(task, filterRules.advancedFilter!),
 		);
 	}
 
@@ -569,13 +569,13 @@ export function filterTasks(
 	) {
 		console.log("应用传入的实时高级过滤器:", options.advancedFilter);
 		filtered = filtered.filter((task) =>
-			applyAdvancedFilter(task, options.advancedFilter!)
+			applyAdvancedFilter(task, options.advancedFilter!),
 		);
 
 		// 如果有实时高级过滤器，应用基本规则后直接返回
 		// 应用 isNotCompleted 过滤器（基于视图配置的 hideCompletedAndAbandonedTasks）
 		filtered = filtered.filter((task) =>
-			isNotCompleted(plugin, task, viewId)
+			isNotCompleted(plugin, task, viewId),
 		);
 
 		// 应用 isBlank 过滤器（基于视图配置的 filterBlanks）
@@ -590,8 +590,8 @@ export function filterTasks(
 					task.metadata.project?.toLowerCase().includes(textFilter) ||
 					task.metadata.context?.toLowerCase().includes(textFilter) ||
 					task.metadata.tags?.some((tag) =>
-						tag.toLowerCase().includes(textFilter)
-					)
+						tag.toLowerCase().includes(textFilter),
+					),
 			);
 		}
 
@@ -605,16 +605,16 @@ export function filterTasks(
 	if (filterRules.textContains) {
 		const query = filterRules.textContains.toLowerCase();
 		filtered = filtered.filter((task) =>
-			task.content.toLowerCase().includes(query)
+			task.content.toLowerCase().includes(query),
 		);
 	}
 	if (filterRules.tagsInclude && filterRules.tagsInclude.length > 0) {
 		filtered = filtered.filter((task) =>
 			filterRules.tagsInclude?.some((tag) =>
 				task.metadata.tags.some(
-					(taskTag) => typeof taskTag === "string" && taskTag === tag
-				)
-			)
+					(taskTag) => typeof taskTag === "string" && taskTag === tag,
+				),
+			),
 		);
 	}
 	if (filterRules.tagsExclude && filterRules.tagsExclude.length > 0) {
@@ -625,11 +625,11 @@ export function filterTasks(
 
 			// Convert task tags to lowercase for case-insensitive comparison
 			const taskTagsLower = task.metadata.tags.map((tag) =>
-				tag.toLowerCase()
+				tag.toLowerCase(),
 			);
 
 			// Check if any excluded tag is in the task's tags
-			return !filterRules.tagsExclude!.some((excludeTag) => {
+			return !filterRules.tagsExclude?.some((excludeTag) => {
 				const tagLower = excludeTag.toLowerCase();
 				return (
 					taskTagsLower.includes(tagLower) ||
@@ -641,7 +641,7 @@ export function filterTasks(
 	if (filterRules.project) {
 		filtered = filtered.filter(
 			(task) =>
-				task.metadata.project?.trim() === filterRules.project?.trim()
+				task.metadata.project?.trim() === filterRules.project?.trim(),
 		);
 	}
 	if (filterRules.priority !== undefined) {
@@ -662,12 +662,12 @@ export function filterTasks(
 	}
 	if (filterRules.statusInclude && filterRules.statusInclude.length > 0) {
 		filtered = filtered.filter((task) =>
-			filterRules.statusInclude!.includes(task.status)
+			filterRules.statusInclude?.includes(task.status),
 		);
 	}
 	if (filterRules.statusExclude && filterRules.statusExclude.length > 0) {
 		filtered = filtered.filter(
-			(task) => !filterRules.statusExclude!.includes(task.status)
+			(task) => !filterRules.statusExclude?.includes(task.status),
 		);
 	}
 	// Path filters (Added based on content.ts logic)
@@ -677,7 +677,7 @@ export function filterTasks(
 			.filter((p) => p.trim() !== "")
 			.map((p) => p.trim().toLowerCase());
 		filtered = filtered.filter((task) =>
-			query.some((q) => task.filePath.toLowerCase().includes(q))
+			query.some((q) => task.filePath.toLowerCase().includes(q)),
 		);
 	}
 
@@ -699,7 +699,7 @@ export function filterTasks(
 			filtered = filtered.filter((task) =>
 				task.metadata.dueDate
 					? moment(task.metadata.dueDate).isSame(targetDueDate, "day")
-					: false
+					: false,
 			);
 		}
 	}
@@ -710,24 +710,24 @@ export function filterTasks(
 				task.metadata.startDate
 					? moment(task.metadata.startDate).isSame(
 							targetStartDate,
-							"day"
-					  )
-					: false
+							"day",
+						)
+					: false,
 			);
 		}
 	}
 	if (filterRules.scheduledDate) {
 		const targetScheduledDate = parseDateFilterString(
-			filterRules.scheduledDate
+			filterRules.scheduledDate,
 		);
 		if (targetScheduledDate) {
 			filtered = filtered.filter((task) =>
 				task.metadata.scheduledDate
 					? moment(task.metadata.scheduledDate).isSame(
 							targetScheduledDate,
-							"day"
-					  )
-					: false
+							"day",
+						)
+					: false,
 			);
 		}
 	}
@@ -751,7 +751,7 @@ export function filterTasks(
 					(task) =>
 						isToday(task.metadata?.dueDate) ||
 						isToday(task.metadata?.scheduledDate) ||
-						isToday(task.metadata?.startDate)
+						isToday(task.metadata?.startDate),
 				);
 				break;
 			}
@@ -761,13 +761,13 @@ export function filterTasks(
 				const inNext7Days = (d?: string | number | Date) =>
 					d
 						? moment(d).isAfter(start, "day") &&
-						  moment(d).isSameOrBefore(end, "day")
+							moment(d).isSameOrBefore(end, "day")
 						: false;
 				filtered = filtered.filter(
 					(task) =>
 						inNext7Days(task.metadata?.dueDate) ||
 						inNext7Days(task.metadata?.scheduledDate) ||
-						inNext7Days(task.metadata?.startDate)
+						inNext7Days(task.metadata?.startDate),
 				);
 				break;
 			}
@@ -776,7 +776,7 @@ export function filterTasks(
 					(task) =>
 						(task.metadata.priority ?? 0) >= 3 ||
 						(task.metadata.tags?.includes("flagged") ?? false) ||
-						(task.metadata.tags?.includes("#flagged") ?? false)
+						(task.metadata.tags?.includes("#flagged") ?? false),
 				);
 				break;
 			}
@@ -801,8 +801,8 @@ export function filterTasks(
 				task.metadata.project?.toLowerCase().includes(textFilter) ||
 				task.metadata.context?.toLowerCase().includes(textFilter) ||
 				task.metadata.tags?.some((tag) =>
-					tag.toLowerCase().includes(textFilter)
-				)
+					tag.toLowerCase().includes(textFilter),
+				),
 		);
 	}
 

@@ -2,6 +2,10 @@ export interface FluentTaskViewState {
 	currentWorkspace: string;
 	selectedProject?: string | null;
 	viewMode: "list" | "kanban" | "tree" | "calendar";
+	viewModeByViewId?: Record<
+		string,
+		"list" | "kanban" | "tree" | "calendar"
+	>;
 	searchQuery?: string;
 	filterInputValue?: string;
 	filters?: any;

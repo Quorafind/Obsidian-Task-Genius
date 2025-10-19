@@ -1,6 +1,17 @@
-import { App, Component, setIcon, Menu, Notice, Modal, Platform } from "obsidian";
+import {
+	App,
+	Component,
+	setIcon,
+	Menu,
+	Notice,
+	Modal,
+	Platform,
+} from "obsidian";
 import { WorkspaceSelector } from "./WorkspaceSelector";
-import { ProjectList } from "@/components/features/fluent/components/ProjectList";
+import {
+	Project,
+	ProjectList,
+} from "@/components/features/fluent/components/ProjectList";
 import { FluentTaskNavigationItem } from "@/types/fluent-types";
 import { WorkspaceData } from "@/types/workspace";
 import {
@@ -12,11 +23,7 @@ import TaskProgressBarPlugin from "@/index";
 import { t } from "@/translations/helper";
 import { ViewConfigModal } from "@/components/features/task/view/modals/ViewConfigModal";
 import { TASK_SPECIFIC_VIEW_TYPE } from "@/pages/TaskSpecificView";
-import {
-	ViewConfig,
-	ViewFilterRule,
-	ViewMode,
-} from "@/common/setting-definition";
+import { ViewConfig, ViewFilterRule } from "@/common/setting-definition";
 
 export class FluentSidebar extends Component {
 	private containerEl: HTMLElement;
@@ -46,22 +53,7 @@ export class FluentSidebar extends Component {
 		{ id: "flagged", label: t("Flagged"), icon: "flag", type: "primary" },
 	];
 
-	private otherItems: FluentTaskNavigationItem[] = [
-		{
-			id: "calendar",
-			label: t("Calendar"),
-			icon: "calendar",
-			type: "other",
-		},
-		{ id: "gantt", label: t("Gantt"), icon: "git-branch", type: "other" },
-		{
-			id: "review",
-			label: t("Review"),
-			icon: "check-square",
-			type: "other",
-		},
-		{ id: "tags", label: t("Tags"), icon: "tag", type: "other" },
-	];
+	private otherItems: FluentTaskNavigationItem[] = [];
 
 	constructor(
 		containerEl: HTMLElement,
@@ -111,9 +103,9 @@ export class FluentSidebar extends Component {
 		// New Task Button
 		const newTaskBtn = header.createEl("button", {
 			cls: "fluent-new-task-btn",
-			text: t("New Task"),
 		});
 		setIcon(newTaskBtn.createDiv({ cls: "fluent-new-task-icon" }), "plus");
+		newTaskBtn.createDiv({ cls: "fluent-new-task-text" }, t("New Task"));
 		this.registerDomEvent(newTaskBtn, "click", () =>
 			this.onNavigate("new-task"),
 		);
@@ -265,7 +257,7 @@ export class FluentSidebar extends Component {
 		});
 
 		if (remainingOther.length > 0) {
-			const moreBtn = this.railEl!.createDiv({
+			const moreBtn = this.railEl.createDiv({
 				cls: "fluent-rail-btn",
 				attr: { "aria-label": t("More views") },
 			});
@@ -276,7 +268,7 @@ export class FluentSidebar extends Component {
 		}
 
 		// Projects menu button
-		const projBtn = this.railEl!.createDiv({
+		const projBtn = this.railEl.createDiv({
 			cls: "fluent-rail-btn",
 			attr: { "aria-label": t("Projects") },
 		});
@@ -286,7 +278,7 @@ export class FluentSidebar extends Component {
 		);
 
 		// Add (New Task) button
-		const addBtn = this.railEl!.createDiv({
+		const addBtn = this.railEl.createDiv({
 			cls: "fluent-rail-btn",
 			attr: { "aria-label": t("New Task") },
 		});
@@ -534,14 +526,14 @@ export class FluentSidebar extends Component {
 
 	private showProjectMenu(event: MouseEvent) {
 		// Try to use existing project list data; if missing, build a temporary one
-		let projects: any[] = [];
-		const anyList: any = this.projectList as any;
+		let projects: Project[] = [];
+		const anyList: ProjectList = this.projectList as ProjectList;
 		if (anyList && typeof anyList.getProjects === "function") {
 			projects = anyList.getProjects();
 		} else {
 			const temp = createDiv();
-			const tempList: any = new ProjectList(
-				temp as any,
+			const tempList: ProjectList = new ProjectList(
+				temp,
 				this.plugin,
 				this.onProjectSelect,
 			);
@@ -555,7 +547,7 @@ export class FluentSidebar extends Component {
 				item.setTitle(p.name)
 					.setIcon("folder")
 					.onClick(() => {
-						this.onProjectSelect(p.id);
+						this.onProjectSelect(p.filterKey);
 					});
 			});
 		});
