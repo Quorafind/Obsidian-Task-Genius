@@ -531,7 +531,7 @@ export interface ProjectNamingStrategy {
 	enabled: boolean;
 }
 
-/** Custom project definition for V2 */
+/** Custom project definition for fluent */
 export interface CustomProject {
 	id: string;
 	name: string; // Internal name with dashes for metadata
@@ -555,7 +555,7 @@ export interface ProjectConfiguration {
 	metadataMappings: MetadataMapping[];
 	/** Default project naming strategy */
 	defaultProjectNaming: ProjectNamingStrategy;
-	/** Custom projects for V2 */
+	/** Custom projects for fluent */
 	customProjects?: CustomProject[];
 }
 

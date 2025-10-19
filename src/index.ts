@@ -75,6 +75,7 @@ import "./styles/setting.css";
 import "./styles/view.css";
 import "./styles/view-config.css";
 import "./styles/task-status.css";
+import "./styles/task-selection.css";
 import "./styles/quadrant/quadrant.css";
 import "./styles/onboarding.css";
 import "./styles/universal-suggest.css";
@@ -201,11 +202,20 @@ export default class TaskProgressBarPlugin extends Plugin {
 	// OnCompletion manager instance
 	onCompletionManager?: OnCompletionManager;
 
-	// V2 Integration instance
-	v2Integration?: FluentIntegration;
+	// fluent Integration instance
+	fluentIntegration?: FluentIntegration;
+
+	// Deferred initialization guards
+	private coreCommandsRegistered = false;
+	private viewsRegistered = false;
+	private onboardingViewRegistered = false;
+	private viewCommandsRegistered = false;
+	private extendedCommandsScheduled = false;
+	private editorExtensionsRegistered = false;
+	private iconsDeferred = false;
 
 	async onload() {
-		console.time("[TPB] onload");
+		console.time("[TG] onload");
 		await this.loadSettings();
 
 		// Initialize version manager first
@@ -226,7 +236,6 @@ export default class TaskProgressBarPlugin extends Plugin {
 		this.globalSuggestManager = new SuggestManager(this.app, this);
 
 		this.workspaceManager = new WorkspaceManager(this);
-		await this.workspaceManager.migrateToV2();
 		this.workspaceManager.ensureDefaultWorkspaceInvariant();
 
 		// Initialize URI handler
@@ -236,235 +245,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 		// Initialize rebuild progress manager
 		this.rebuildProgressManager = new RebuildProgressManager();
 
-		// Initialize task management systems
-		if (this.settings.enableIndexer) {
-			// Initialize indexer-dependent features
-			if (this.settings.enableView) {
-				this.loadViews();
-			}
-
-			// Check for version changes and handle rebuild if needed
-			if (this.dataflowOrchestrator) {
-				// Initialize with version check for dataflow
-				this.initializeDataflowWithVersionCheck().catch((error) => {
-					console.error(
-						"Failed to initialize dataflow with version check:",
-						error,
-					);
-				});
-			}
-
-			console.time("[TPB] registerViewsAndCommands");
-			// Register the TaskView
-			this.v2Integration = new FluentIntegration(this);
-			await this.v2Integration.migrateSettings();
-			this.v2Integration.register();
-
-			this.registerView(
-				TASK_VIEW_TYPE,
-				(leaf) => new TaskView(leaf, this),
-			);
-
-			this.registerView(
-				TASK_SPECIFIC_VIEW_TYPE,
-				(leaf) => new TaskSpecificView(leaf, this),
-			);
-
-			// Register the Timeline Sidebar View
-			this.registerView(
-				TIMELINE_SIDEBAR_VIEW_TYPE,
-				(leaf) => new TimelineSidebarView(leaf, this),
-			);
-
-			// Register the Onboarding View
-			this.registerView(
-				ONBOARDING_VIEW_TYPE,
-				(leaf) =>
-					new OnboardingView(leaf, this, () => {
-						console.log("Onboarding completed successfully");
-						// Close the onboarding view and refresh views
-						leaf.detach();
-					}),
-			);
-
-			// Register Bases views if Bases plugin is available
-			try {
-				registerTaskGeniusBasesViews(this);
-			} catch (error) {
-				console.log("Failed to register Bases views:", error);
-				// Not critical if Bases plugin is not installed
-			}
-
-			// Add a command to open the TaskView
-			this.addCommand({
-				id: "open-task-genius-view",
-				name: t("Open Task Genius view"),
-				callback: () => {
-					this.activateTaskView();
-				},
-			});
-
-			// Add a command to open the Timeline Sidebar View
-			this.addCommand({
-				id: "open-timeline-sidebar-view",
-				name: t("Open Timeline Sidebar"),
-				callback: () => {
-					this.activateTimelineSidebarView();
-				},
-			});
-
-			// Add a command to open the Onboarding/Setup View
-			this.addCommand({
-				id: "open-task-genius-setup",
-				name: t("Open Task Genius Setup"),
-				callback: () => {
-					this.openOnboardingView();
-				},
-			});
-
-			this.addCommand({
-				id: "open-task-genius-changelog",
-				name: t("Open Task Genius changelog"),
-				callback: () => {
-					if (!this.changelogManager) {
-						return;
-					}
-
-					const targetVersion =
-						this.manifest?.version ||
-						this.settings.changelog.lastVersion;
-
-					if (!targetVersion) {
-						return;
-					}
-
-					const isBeta = targetVersion.toLowerCase().includes("beta");
-					void this.changelogManager.openChangelog(
-						targetVersion,
-						isBeta,
-					);
-				},
-			});
-
-			addIcon("task-genius", getTaskGeniusIcon());
-			addIcon("completed", getStatusIcon("completed"));
-			addIcon("inProgress", getStatusIcon("inProgress"));
-			addIcon("planned", getStatusIcon("planned"));
-			addIcon("abandoned", getStatusIcon("abandoned"));
-			addIcon("notStarted", getStatusIcon("notStarted"));
-
-			// Add a ribbon icon for opening the TaskView
-			this.addRibbonIcon(
-				"task-genius",
-				t("Open Task Genius view"),
-				() => {
-					this.activateTaskView();
-				},
-			);
-
-			// Initialize dataflow orchestrator (primary architecture)
-			try {
-				// Wait for dataflow initialization to complete before proceeding
-				this.dataflowOrchestrator = await createDataflow(
-					this.app,
-					this.app.vault,
-					this.app.metadataCache,
-					this,
-					{
-						configFileName:
-							this.settings.projectConfig?.configFile?.fileName ||
-							"project.md",
-						searchRecursively:
-							this.settings.projectConfig?.configFile
-								?.searchRecursively ?? true,
-						metadataKey:
-							this.settings.projectConfig?.metadataConfig
-								?.metadataKey || "project",
-						pathMappings:
-							this.settings.projectConfig?.pathMappings || [],
-						metadataMappings:
-							this.settings.projectConfig?.metadataMappings || [],
-						defaultProjectNaming: this.settings.projectConfig
-							?.defaultProjectNaming || {
-							strategy: "filename",
-							stripExtension: true,
-							enabled: false,
-						},
-						enhancedProjectEnabled:
-							this.settings.projectConfig
-								?.enableEnhancedProject ?? false,
-						metadataConfigEnabled:
-							this.settings.projectConfig?.metadataConfig
-								?.enabled ?? false,
-						configFileEnabled:
-							this.settings.projectConfig?.configFile?.enabled ??
-							false,
-						detectionMethods:
-							this.settings.projectConfig?.metadataConfig
-								?.detectionMethods || [],
-					},
-				);
-			} catch (error) {
-				console.error(
-					"[Plugin] Failed to initialize dataflow orchestrator:",
-					error,
-				);
-				// Fatal error - cannot continue without dataflow
-				new Notice(
-					t(
-						"Failed to initialize task system. Please restart Obsidian.",
-					),
-				);
-			}
-
-			// Initialize WriteAPI (always, as dataflow is now primary)
-			const getTaskById = async (id: string): Promise<Task | null> => {
-				try {
-					if (!this.dataflowOrchestrator) {
-						return null;
-					}
-					const repository =
-						this.dataflowOrchestrator.getRepository();
-					const task = await repository.getTaskById(id);
-					return task || null;
-				} catch (e) {
-					console.warn("Failed to get task from dataflow", e);
-					return null;
-				}
-			};
-
-			this.writeAPI = new WriteAPI(
-				this.app,
-				this.app.vault,
-				this.app.metadataCache,
-				this,
-				getTaskById,
-			);
-
-			// Initialize OnCompletionManager
-			this.onCompletionManager = new OnCompletionManager(this.app, this);
-			this.addChild(this.onCompletionManager);
-			console.log("[Plugin] OnCompletionManager initialized");
+		if (this.settings.enableIndexer && this.settings.enableView) {
+			this.loadViews();
 		}
-
-		if (this.settings.rewards.enableRewards) {
-			this.rewardManager = new RewardManager(this);
-			this.addChild(this.rewardManager);
-
-			this.registerEditorExtension([
-				monitorTaskCompletedExtension(this.app, this),
-			]);
-		}
-
-		this.registerCommands();
-		this.registerEditorExt();
-
-		// Install workspace DnD monkey patch (blocks dragging restricted views to center)
-		installWorkspaceDragMonitor(this);
-		// Also restrict V2 main view from being dropped to center, as it is sidebar-managed
-		try {
-			registerRestrictedDnDViewTypes(FLUENT_TASK_VIEW);
-		} catch {}
 
 		this.settingTab = new TaskProgressBarSettingTab(this.app, this);
 		this.addSettingTab(this.settingTab);
@@ -540,7 +323,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 		);
 
 		this.app.workspace.onLayoutReady(async () => {
-			console.time("[TPB] onLayoutReady");
+			console.time("[TG] onLayoutReady");
+
+			await this.initializeDeferredStartup();
 
 			// Update workspace leaves when layout is ready
 			const deferWorkspaceLeaves =
@@ -651,83 +436,409 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 			this.maybeShowChangelog();
 
-			console.timeEnd("[TPB] onLayoutReady");
+			console.timeEnd("[TG] onLayoutReady");
 		});
 
-		// Migrate old presets to use the new filterMode setting
-		console.time("[TPB] migratePresetTaskFilters");
-		if (
-			this.settings.taskFilter &&
-			this.settings.taskFilter.presetTaskFilters
-		) {
-			this.settings.taskFilter.presetTaskFilters =
-				this.settings.taskFilter.presetTaskFilters.map(
-					(preset: any) => {
-						if (preset.options) {
-							preset.options = migrateOldFilterOptions(
-								preset.options,
-							);
-						}
-						return preset;
-					},
-				);
-			await this.saveSettings();
-			console.timeEnd("[TPB] migratePresetTaskFilters");
+		await this.migratePresetTaskFiltersIfNeeded();
+
+		this.registerCoreCommands();
+
+		console.timeEnd("[TG] onload");
+	}
+
+	private async initializeDeferredStartup(): Promise<void> {
+		this.registerOnboardingView();
+
+		if (!this.settings.enableIndexer) {
+			this.scheduleExtendedCommands();
+			return;
 		}
 
-		// Add command for quick capture with metadata
+		console.time("[TG] initializeIndexer");
+
+		await this.ensureFluentIntegration();
+
+		if (this.settings.enableView) {
+			this.registerTaskViews();
+			this.installWorkspaceGuards();
+			this.registerViewCommands();
+			this.deferIconRegistration();
+		}
+
+		const dataflowInitialized = await this.initializeDataflowOrchestrator();
+		if (!dataflowInitialized) {
+			this.scheduleExtendedCommands();
+			console.timeEnd("[TG] initializeIndexer");
+			return;
+		}
+
+		try {
+			await this.initializeDataflowWithVersionCheck();
+		} catch (error) {
+			console.error(
+				"[Plugin] Dataflow version check failed during startup:",
+				error,
+			);
+		}
+
+		this.initializeWriteAPI();
+		this.initializeOnCompletionManager();
+
+		if (this.settings.rewards.enableRewards) {
+			this.initializeRewardManager();
+		}
+
+		this.scheduleExtendedCommands();
+
+		console.timeEnd("[TG] initializeIndexer");
+	}
+
+	private async ensureFluentIntegration(): Promise<void> {
+		if (this.fluentIntegration) {
+			return;
+		}
+
+		this.fluentIntegration = new FluentIntegration(this);
+		await this.fluentIntegration.migrateSettings();
+		this.fluentIntegration.register();
+	}
+
+	private registerTaskViews(): void {
+		if (this.viewsRegistered) {
+			return;
+		}
+		this.viewsRegistered = true;
+
+		this.registerOnboardingView();
+
+		this.registerView(
+			TASK_VIEW_TYPE,
+			(leaf) => new TaskView(leaf, this),
+		);
+
+		this.registerView(
+			TASK_SPECIFIC_VIEW_TYPE,
+			(leaf) => new TaskSpecificView(leaf, this),
+		);
+
+		this.registerView(
+			TIMELINE_SIDEBAR_VIEW_TYPE,
+			(leaf) => new TimelineSidebarView(leaf, this),
+		);
+
+		try {
+			registerTaskGeniusBasesViews(this);
+		} catch (error) {
+			console.log("Failed to register Bases views:", error);
+		}
+	}
+
+	private registerOnboardingView(): void {
+		if (this.onboardingViewRegistered) {
+			return;
+		}
+		this.onboardingViewRegistered = true;
+
+		this.registerView(
+			ONBOARDING_VIEW_TYPE,
+			(leaf) =>
+				new OnboardingView(leaf, this, () => {
+					console.log("Onboarding completed successfully");
+					leaf.detach();
+				}),
+		);
+	}
+
+	private registerViewCommands(): void {
+		if (this.viewCommandsRegistered) {
+			return;
+		}
+		this.viewCommandsRegistered = true;
+
+		this.addCommand({
+			id: "open-task-genius-view",
+			name: t("Open Task Genius view"),
+			callback: () => {
+				this.activateTaskView();
+			},
+		});
+
+		this.addCommand({
+			id: "open-timeline-sidebar-view",
+			name: t("Open Timeline Sidebar"),
+			callback: () => {
+				this.activateTimelineSidebarView();
+			},
+		});
+
+		this.addCommand({
+			id: "open-task-genius-setup",
+			name: t("Open Task Genius Setup"),
+			callback: () => {
+				this.openOnboardingView();
+			},
+		});
+
+		this.addCommand({
+			id: "open-task-genius-changelog",
+			name: t("Open Task Genius changelog"),
+			callback: () => {
+				if (!this.changelogManager) {
+					return;
+				}
+
+				const targetVersion =
+					this.manifest?.version ||
+					this.settings.changelog.lastVersion;
+
+				if (!targetVersion) {
+					return;
+				}
+
+				const isBeta = targetVersion.toLowerCase().includes("beta");
+				void this.changelogManager.openChangelog(
+					targetVersion,
+					isBeta,
+				);
+			},
+		});
+	}
+
+	private deferIconRegistration(): void {
+		if (this.iconsDeferred) {
+			return;
+		}
+		this.iconsDeferred = true;
+
+		const registerIcons = () => {
+			addIcon("task-genius", getTaskGeniusIcon());
+			addIcon("completed", getStatusIcon("completed"));
+			addIcon("inProgress", getStatusIcon("inProgress"));
+			addIcon("planned", getStatusIcon("planned"));
+			addIcon("abandoned", getStatusIcon("abandoned"));
+			addIcon("notStarted", getStatusIcon("notStarted"));
+
+			this.addRibbonIcon(
+				"task-genius",
+				t("Open Task Genius view"),
+				() => {
+					this.activateTaskView();
+				},
+			);
+		};
+
+		const idle = (window as any)?.requestIdleCallback;
+		if (typeof idle === "function") {
+			idle(registerIcons);
+		} else {
+			setTimeout(registerIcons, 0);
+		}
+	}
+
+	private installWorkspaceGuards(): void {
+		installWorkspaceDragMonitor(this);
+		try {
+			registerRestrictedDnDViewTypes(FLUENT_TASK_VIEW);
+		} catch {}
+	}
+
+	private async initializeDataflowOrchestrator(): Promise<boolean> {
+		try {
+			this.dataflowOrchestrator = await createDataflow(
+				this.app,
+				this.app.vault,
+				this.app.metadataCache,
+				this,
+				{
+					configFileName:
+						this.settings.projectConfig?.configFile?.fileName ||
+						"project.md",
+					searchRecursively:
+						this.settings.projectConfig?.configFile
+							?.searchRecursively ?? true,
+					metadataKey:
+						this.settings.projectConfig?.metadataConfig
+							?.metadataKey || "project",
+					pathMappings:
+						this.settings.projectConfig?.pathMappings || [],
+					metadataMappings:
+						this.settings.projectConfig?.metadataMappings || [],
+					defaultProjectNaming: this.settings.projectConfig
+						?.defaultProjectNaming || {
+						strategy: "filename",
+						stripExtension: true,
+						enabled: false,
+					},
+					enhancedProjectEnabled:
+						this.settings.projectConfig?.enableEnhancedProject ??
+						false,
+					metadataConfigEnabled:
+						this.settings.projectConfig?.metadataConfig?.enabled ??
+						false,
+					configFileEnabled:
+						this.settings.projectConfig?.configFile?.enabled ??
+						false,
+					detectionMethods:
+						this.settings.projectConfig?.metadataConfig
+							?.detectionMethods || [],
+				},
+			);
+			return true;
+		} catch (error) {
+			console.error(
+				"[Plugin] Failed to initialize dataflow orchestrator:",
+				error,
+			);
+			new Notice(
+				t("Failed to initialize task system. Please restart Obsidian."),
+			);
+			this.dataflowOrchestrator = undefined;
+			return false;
+		}
+	}
+
+	private initializeWriteAPI(): void {
+		const dataflow = this.dataflowOrchestrator;
+		if (!dataflow) {
+			return;
+		}
+
+		const repository = dataflow.getRepository();
+
+		const getTaskById = async (id: string): Promise<Task | null> => {
+			try {
+				const task = await repository.getTaskById(id);
+				return task ?? null;
+			} catch (e) {
+				console.warn("Failed to get task from dataflow", e);
+				return null;
+			}
+		};
+
+		this.writeAPI = new WriteAPI(
+			this.app,
+			this.app.vault,
+			this.app.metadataCache,
+			this,
+			getTaskById,
+		);
+	}
+
+	private initializeOnCompletionManager(): void {
+		if (this.onCompletionManager) {
+			return;
+		}
+		this.onCompletionManager = new OnCompletionManager(this.app, this);
+		this.addChild(this.onCompletionManager);
+		console.log("[Plugin] OnCompletionManager initialized");
+	}
+
+	private initializeRewardManager(): void {
+		if (this.rewardManager) {
+			return;
+		}
+		this.rewardManager = new RewardManager(this);
+		this.addChild(this.rewardManager);
+
+		this.registerEditorExtension([
+			monitorTaskCompletedExtension(this.app, this),
+		]);
+	}
+
+	private scheduleExtendedCommands(): void {
+		if (this.extendedCommandsScheduled) {
+			return;
+		}
+		this.extendedCommandsScheduled = true;
+
+		setTimeout(() => {
+			try {
+				this.registerCommands();
+				this.ensureEditorExtensionsRegistered();
+			} catch (error) {
+				console.error(
+					"[Plugin] Failed registering deferred commands:",
+					error,
+				);
+			}
+		}, 100);
+	}
+
+	private ensureEditorExtensionsRegistered(): void {
+		if (this.editorExtensionsRegistered) {
+			return;
+		}
+		this.editorExtensionsRegistered = true;
+		this.registerEditorExt();
+	}
+
+	private registerCoreCommands(): void {
+		if (this.coreCommandsRegistered) {
+			return;
+		}
+		this.coreCommandsRegistered = true;
+
 		this.addCommand({
 			id: "quick-capture",
 			name: t("Quick Capture"),
 			callback: () => {
-				// Create a modal with full task metadata options
-				// The new modal will automatically handle mode switching
 				new QuickCaptureModal(this.app, this, undefined, true).open();
 			},
 		});
 
-		// Add command for minimal quick capture
 		this.addCommand({
 			id: "minimal-quick-capture",
 			name: t("Minimal Quick Capture"),
 			callback: () => {
-				// Create a minimal modal for quick task capture
 				new MinimalQuickCaptureModal(this.app, this).open();
 			},
 		});
 
-		// Add command for quick file creation
 		this.addCommand({
 			id: "quick-file-create",
 			name: t("Quick File Create"),
 			callback: () => {
-				// Create a modal with file creation mode metadata
 				const modal = new QuickCaptureModal(this.app, this, {
 					location: "file",
 				});
-				// The modal will detect file location and switch to file mode
 				modal.open();
 			},
 		});
 
-		// Add command for toggling task filter
 		this.addCommand({
 			id: "toggle-task-filter",
 			name: t("Toggle task filter panel"),
-			editorCallback: (editor, ctx) => {
+			editorCallback: (editor) => {
 				const view = editor.cm as EditorView;
-
-				if (view) {
-					view.dispatch({
-						effects: toggleTaskFilter.of(
-							!view.state.field(taskFilterState),
-						),
-					});
+				if (!view) {
+					return;
 				}
+				view.dispatch({
+					effects: toggleTaskFilter.of(
+						!view.state.field(taskFilterState),
+					),
+				});
 			},
 		});
+	}
 
-		console.timeEnd("[TPB] onload");
+	private async migratePresetTaskFiltersIfNeeded(): Promise<void> {
+		const presets = this.settings.taskFilter?.presetTaskFilters;
+		if (!presets) {
+			return;
+		}
+
+		console.time("[TG] migratePresetTaskFilters");
+		this.settings.taskFilter.presetTaskFilters = presets.map(
+			(preset: any) => {
+				if (preset.options) {
+					preset.options = migrateOldFilterOptions(preset.options);
+				}
+				return preset;
+			},
+		);
+		await this.saveSettings();
+		console.timeEnd("[TG] migratePresetTaskFilters");
 	}
 
 	registerCommands() {
@@ -1674,7 +1785,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			const isBeta = manifestVersion.toLowerCase().includes("beta");
 			void this.changelogManager.openChangelog(manifestVersion, isBeta);
 		} catch (error) {
-			console.error("[TPB] Failed to show changelog:", error);
+			console.error("[TG] Failed to show changelog:", error);
 		}
 	}
 

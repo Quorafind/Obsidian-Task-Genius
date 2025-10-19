@@ -54,6 +54,7 @@ import {
 } from "@/components/features/task/filter/ViewTaskFilter";
 import { isDataflowEnabled } from "@/dataflow/createDataflow";
 import { Events, on } from "@/dataflow/events/Events";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
 
 export const TASK_SPECIFIC_VIEW_TYPE = "task-genius-specific-view";
 
@@ -79,6 +80,7 @@ export class TaskSpecificView extends ItemView {
 	private ganttComponent: GanttComponent;
 	private habitsComponent: HabitsComponent;
 	private viewComponentManager: ViewComponentManager; // 新增：统一的视图组件管理器
+	private selectionManager: TaskSelectionManager;
 	// Custom view components by view ID
 	private twoColumnViewComponents: Map<string, TaskPropertyTwoColumnView> =
 		new Map();
@@ -108,8 +110,13 @@ export class TaskSpecificView extends ItemView {
 		this.scope = new Scope(this.app.scope);
 
 		this.scope?.register(null, "escape", (e) => {
-			e.preventDefault();
-			e.stopPropagation();
+			// Exit selection mode if active
+			if (this.selectionManager?.isSelectionMode) {
+				e.preventDefault();
+				e.stopPropagation();
+				this.selectionManager.exitSelectionMode("user_action");
+				return false;
+			}
 		});
 	}
 
@@ -303,6 +310,13 @@ export class TaskSpecificView extends ItemView {
 		// No SidebarComponent initialization
 		// No createSidebarToggle call
 
+		// Initialize TaskSelectionManager
+		this.selectionManager = new TaskSelectionManager(
+			this.plugin.app,
+			this.plugin
+		);
+		this.addChild(this.selectionManager);
+
 		this.contentComponent = new ContentComponent(
 			this.rootContainerEl,
 			this.plugin.app,
@@ -317,6 +331,7 @@ export class TaskSpecificView extends ItemView {
 				onTaskContextMenu: (event: MouseEvent, task: Task) => {
 					this.handleTaskContextMenu(event, task);
 				},
+				selectionManager: this.selectionManager,
 			}
 		);
 		this.addChild(this.contentComponent);
@@ -1451,6 +1466,11 @@ export class TaskSpecificView extends ItemView {
 	}
 
 	async onClose() {
+		// Exit selection mode
+		if (this.selectionManager?.isSelectionMode) {
+			this.selectionManager.exitSelectionMode("view_change");
+		}
+
 		// Cleanup TwoColumnView components
 		this.twoColumnViewComponents.forEach((component) => {
 			this.removeChild(component);

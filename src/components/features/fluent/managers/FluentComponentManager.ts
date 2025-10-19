@@ -12,12 +12,24 @@ import { KanbanComponent } from "@/components/features/kanban/kanban";
 import { GanttComponent } from "@/components/features/gantt/gantt";
 import { ViewComponentManager } from "@/components/ui/behavior/ViewComponentManager";
 import { TaskPropertyTwoColumnView } from "@/components/features/task/view/TaskPropertyTwoColumnView";
-import { getViewSettingOrDefault, TwoColumnSpecificConfig, } from "@/common/setting-definition";
+import {
+	getViewSettingOrDefault,
+	TwoColumnSpecificConfig,
+} from "@/common/setting-definition";
 import { filterTasks } from "@/utils/task/task-filter-utils";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
 import { t } from "@/translations/helper";
 import { ViewMode } from "../components/FluentTopNavigation";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
+
+type ManagedViewComponent = {
+	containerEl: HTMLElement;
+	setViewMode?: (...args: any[]) => void;
+	setTasks?: (...args: any[]) => void;
+	updateTasks?: (...args: any[]) => void;
+	refreshReviewSettings?: () => void;
+};
 
 // View mode configuration for each view type
 const VIEW_MODE_CONFIG: Record<string, ViewMode[]> = {
@@ -70,7 +82,7 @@ export class FluentComponentManager extends Component {
 	private treeContainer: HTMLElement;
 
 	// Track currently visible component
-	private currentVisibleComponent: any = null;
+	private currentVisibleComponent: ManagedViewComponent | null = null;
 
 	// View handlers
 	private viewHandlers: {
@@ -80,7 +92,7 @@ export class FluentComponentManager extends Component {
 		onTaskContextMenu: (event: MouseEvent, task: Task) => void;
 		onKanbanTaskStatusUpdate: (
 			taskId: string,
-			newStatusMark: string
+			newStatusMark: string,
 		) => void;
 	};
 
@@ -94,14 +106,15 @@ export class FluentComponentManager extends Component {
 			onTaskCompleted: (task: Task) => void;
 			onTaskUpdate: (
 				originalTask: Task,
-				updatedTask: Task
+				updatedTask: Task,
 			) => Promise<void>;
 			onTaskContextMenu: (event: MouseEvent, task: Task) => void;
 			onKanbanTaskStatusUpdate: (
 				taskId: string,
-				newStatusMark: string
+				newStatusMark: string,
 			) => void;
-		}
+		},
+		private selectionManager?: TaskSelectionManager,
 	) {
 		super();
 		this.viewHandlers = viewHandlers;
@@ -131,7 +144,7 @@ export class FluentComponentManager extends Component {
 			this.app,
 			this.plugin,
 			this.contentArea,
-			viewHandlers
+			viewHandlers,
 		);
 		this.parentView.addChild(this.viewComponentManager);
 
@@ -151,7 +164,8 @@ export class FluentComponentManager extends Component {
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+				selectionManager: this.selectionManager,
+			},
 		);
 		this.parentView.addChild(this.contentComponent);
 		this.contentComponent.load();
@@ -172,14 +186,14 @@ export class FluentComponentManager extends Component {
 					if (originalTask && updatedTask) {
 						await this.viewHandlers.onTaskUpdate(
 							originalTask,
-							updatedTask
+							updatedTask,
 						);
 					}
 				},
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.forecastComponent);
 		this.forecastComponent.load();
@@ -200,14 +214,14 @@ export class FluentComponentManager extends Component {
 					if (originalTask && updatedTask) {
 						await this.viewHandlers.onTaskUpdate(
 							originalTask,
-							updatedTask
+							updatedTask,
 						);
 					}
 				},
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.tagsComponent);
 		this.tagsComponent.load();
@@ -228,14 +242,14 @@ export class FluentComponentManager extends Component {
 					if (originalTask && updatedTask) {
 						await this.viewHandlers.onTaskUpdate(
 							originalTask,
-							updatedTask
+							updatedTask,
 						);
 					}
 				},
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.projectsComponent);
 		this.projectsComponent.load();
@@ -256,14 +270,14 @@ export class FluentComponentManager extends Component {
 					if (originalTask && updatedTask) {
 						await this.viewHandlers.onTaskUpdate(
 							originalTask,
-							updatedTask
+							updatedTask,
 						);
 					}
 				},
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.reviewComponent);
 		this.reviewComponent.load();
@@ -286,11 +300,10 @@ export class FluentComponentManager extends Component {
 				onTaskCompleted: (task: Task) => {
 					if (task) this.viewHandlers.onTaskCompleted(task);
 				},
-				onEventContextMenu: (ev: MouseEvent, event: any) => {
-					if (event)
-						this.viewHandlers.onTaskContextMenu(ev, event as any);
+				onEventContextMenu: (ev: MouseEvent, event: Task) => {
+					if (event) this.viewHandlers.onTaskContextMenu(ev, event);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.calendarComponent);
 
@@ -304,7 +317,7 @@ export class FluentComponentManager extends Component {
 				onTaskStatusUpdate: async (taskId, newStatusMark) => {
 					this.viewHandlers.onKanbanTaskStatusUpdate(
 						taskId,
-						newStatusMark
+						newStatusMark,
 					);
 				},
 				onTaskSelected: (task) => {
@@ -316,7 +329,7 @@ export class FluentComponentManager extends Component {
 				onTaskContextMenu: (event, task) => {
 					if (task) this.viewHandlers.onTaskContextMenu(event, task);
 				},
-			}
+			},
 		);
 		this.parentView.addChild(this.kanbanComponent);
 
@@ -331,7 +344,7 @@ export class FluentComponentManager extends Component {
 					this.viewHandlers.onTaskCompleted(task),
 				onTaskContextMenu: (event: MouseEvent, task: Task) =>
 					this.viewHandlers.onTaskContextMenu(event, task),
-			}
+			},
 		);
 		this.parentView.addChild(this.ganttComponent);
 		this.ganttComponent.load();
@@ -339,12 +352,12 @@ export class FluentComponentManager extends Component {
 		// Create legacy containers for backward compatibility
 		this.listContainer = this.contentArea.createDiv({
 			cls: "task-list-container",
-			attr: {style: "display: none;"},
+			attr: { style: "display: none;" },
 		});
 
 		this.treeContainer = this.contentArea.createDiv({
 			cls: "task-tree-container",
-			attr: {style: "display: none;"},
+			attr: { style: "display: none;" },
 		});
 
 		// Hide all components initially
@@ -362,7 +375,7 @@ export class FluentComponentManager extends Component {
 		// Smart hiding - only hide currently visible component (unless initial hide)
 		if (!isInitialHide && this.currentVisibleComponent) {
 			console.log(
-				"[FluentComponent] Smart hide - only hiding current visible component"
+				"[FluentComponent] Smart hide - only hiding current visible component",
 			);
 			this.currentVisibleComponent.containerEl?.hide();
 			this.currentVisibleComponent = null;
@@ -370,7 +383,7 @@ export class FluentComponentManager extends Component {
 			// Hide all components
 			console.log(
 				"[FluentComponent] Hiding all components",
-				isInitialHide ? "(initial hide)" : ""
+				isInitialHide ? "(initial hide)" : "",
 			);
 			this.contentComponent?.containerEl.hide();
 			this.forecastComponent?.containerEl.hide();
@@ -403,20 +416,20 @@ export class FluentComponentManager extends Component {
 		filteredTasks: Task[],
 		currentFilterState: RootFilterState | null,
 		viewMode: ViewMode,
-		project?: string | null
+		project?: string | null,
 	): void {
 		console.log(
 			"[FluentComponent] switchView called with:",
 			viewId,
 			"viewMode:",
-			viewMode
+			viewMode,
 		);
 
 		// Remove transient overlays (loading/error/empty) before showing components
 		if (this.contentArea) {
 			this.contentArea
 				.querySelectorAll(
-					".tg-fluent-loading, .tg-fluent-error-state, .tg-fluent-empty-state"
+					".tg-fluent-loading, .tg-fluent-error-state, .tg-fluent-empty-state",
 				)
 				.forEach((el) => el.remove());
 		}
@@ -439,7 +452,7 @@ export class FluentComponentManager extends Component {
 			"View mode:",
 			viewMode,
 			"Available modes:",
-			viewModes
+			viewModes,
 		);
 
 		if (
@@ -451,13 +464,13 @@ export class FluentComponentManager extends Component {
 			// For content-based views in kanban/calendar mode, use special rendering
 			console.log(
 				"[FluentComponent] Using renderContentWithViewMode for non-list/tree mode:",
-				viewMode
+				viewMode,
 			);
 			this.renderContentWithViewMode(
 				viewId,
 				tasks,
 				filteredTasks,
-				viewMode
+				viewMode,
 			);
 			return;
 		}
@@ -465,7 +478,7 @@ export class FluentComponentManager extends Component {
 		// Get view configuration
 		const viewConfig = getViewSettingOrDefault(this.plugin, viewId as any);
 
-		let targetComponent: any = null;
+		let targetComponent: ManagedViewComponent | null = null;
 		let modeForComponent: string = viewId;
 
 		// Handle TwoColumn views
@@ -478,7 +491,7 @@ export class FluentComponentManager extends Component {
 					this.app,
 					this.plugin,
 					twoColumnConfig,
-					viewId
+					viewId,
 				);
 				this.parentView.addChild(twoColumnComponent);
 
@@ -493,15 +506,23 @@ export class FluentComponentManager extends Component {
 				this.twoColumnViewComponents.set(viewId, twoColumnComponent);
 			}
 
-			targetComponent = this.twoColumnViewComponents.get(viewId);
+			const twoColumnComponent = this.twoColumnViewComponents.get(viewId);
+			if (!twoColumnComponent) {
+				console.warn(
+					`[FluentComponent] Missing two column component for view ${viewId}`,
+				);
+				return;
+			}
+			targetComponent = twoColumnComponent;
 		} else {
 			// Check special view types
 			const specificViewType = viewConfig.specificConfig?.viewType;
 
 			// Check if it's a special view managed by ViewComponentManager
 			if (this.viewComponentManager.isSpecialView(viewId)) {
-				targetComponent =
-					this.viewComponentManager.showComponent(viewId);
+				targetComponent = this.viewComponentManager.showComponent(
+					viewId,
+				) as ManagedViewComponent | null;
 			} else if (
 				specificViewType === "forecast" ||
 				viewId === "forecast"
@@ -548,13 +569,13 @@ export class FluentComponentManager extends Component {
 
 		console.log(
 			"[FluentComponent] Target component determined:",
-			targetComponent?.constructor?.name
+			targetComponent?.constructor?.name,
 		);
 
 		if (targetComponent) {
 			console.log(
 				`[FluentComponent] Activating component for view ${viewId}:`,
-				targetComponent.constructor.name
+				targetComponent.constructor.name,
 			);
 			targetComponent.containerEl.show();
 			this.currentVisibleComponent = targetComponent;
@@ -562,7 +583,7 @@ export class FluentComponentManager extends Component {
 			// Set view mode first for ContentComponent
 			if (typeof targetComponent.setViewMode === "function") {
 				console.log(
-					`[FluentComponent] Setting view mode for ${viewId} to ${modeForComponent}`
+					`[FluentComponent] Setting view mode for ${viewId} to ${modeForComponent}`,
 				);
 				targetComponent.setViewMode(modeForComponent as any, project);
 			}
@@ -573,7 +594,7 @@ export class FluentComponentManager extends Component {
 				if (viewId === "review" || viewId === "tags") {
 					console.log(
 						`[FluentComponent] Calling setTasks for ${viewId} with ALL tasks:`,
-						tasks.length
+						tasks.length,
 					);
 					targetComponent.setTasks(tasks);
 				} else {
@@ -582,14 +603,14 @@ export class FluentComponentManager extends Component {
 					// Forecast view: remove badge-only items
 					if (viewId === "forecast") {
 						filteredTasksLocal = filteredTasksLocal.filter(
-							(task) => !(task as any).badge
+							(task) => !(task as any).badge,
 						);
 					}
 					console.log(
 						"[FluentComponent] Calling setTasks with filtered:",
 						filteredTasksLocal.length,
 						"all:",
-						tasks.length
+						tasks.length,
 					);
 					targetComponent.setTasks(filteredTasksLocal, tasks);
 				}
@@ -611,8 +632,8 @@ export class FluentComponentManager extends Component {
 						tasks,
 						viewId as any,
 						this.plugin,
-						filterOptions
-					)
+						filterOptions,
+					),
 				);
 			}
 
@@ -625,7 +646,7 @@ export class FluentComponentManager extends Component {
 			}
 		} else {
 			console.warn(
-				`[FluentComponent] No target component found for viewId: ${viewId}`
+				`[FluentComponent] No target component found for viewId: ${viewId}`,
 			);
 		}
 	}
@@ -637,11 +658,11 @@ export class FluentComponentManager extends Component {
 		viewId: string,
 		tasks: Task[],
 		filteredTasks: Task[],
-		viewMode: ViewMode
+		viewMode: ViewMode,
 	): void {
 		console.log(
 			"[FluentComponent] renderContentWithViewMode called, viewMode:",
-			viewMode
+			viewMode,
 		);
 
 		// Hide current component
@@ -660,7 +681,7 @@ export class FluentComponentManager extends Component {
 
 				console.log(
 					"[FluentComponent] Setting tasks to ContentComponent, filtered:",
-					filteredTasks.length
+					filteredTasks.length,
 				);
 				this.contentComponent.setTasks(filteredTasks, tasks);
 				this.currentVisibleComponent = this.contentComponent;
@@ -675,7 +696,7 @@ export class FluentComponentManager extends Component {
 				console.log(
 					"[FluentComponent] Setting",
 					filteredTasks.length,
-					"tasks to kanban"
+					"tasks to kanban",
 				);
 				this.kanbanComponent.setTasks(filteredTasks);
 				this.currentVisibleComponent = this.kanbanComponent;
@@ -684,11 +705,11 @@ export class FluentComponentManager extends Component {
 			case "calendar":
 				// Use CalendarComponent
 				console.log(
-					"[FluentComponent] Calendar mode in renderContentWithViewMode"
+					"[FluentComponent] Calendar mode in renderContentWithViewMode",
 				);
 				if (!this.calendarComponent) {
 					console.log(
-						"[FluentComponent] No calendar component available!"
+						"[FluentComponent] No calendar component available!",
 					);
 					return;
 				}
@@ -699,7 +720,7 @@ export class FluentComponentManager extends Component {
 				console.log(
 					"[FluentComponent] Setting",
 					filteredTasks.length,
-					"tasks to calendar"
+					"tasks to calendar",
 				);
 				this.calendarComponent.setTasks(filteredTasks);
 				this.currentVisibleComponent = this.calendarComponent;
@@ -715,7 +736,7 @@ export class FluentComponentManager extends Component {
 		viewId: string,
 		tasks: Task[],
 		filteredTasks: Task[],
-		viewMode: ViewMode
+		viewMode: ViewMode,
 	): void {
 		// Content-based views (list/tree/kanban/calendar)
 		if (this.isContentBasedView(viewId)) {
@@ -732,7 +753,7 @@ export class FluentComponentManager extends Component {
 					this.contentComponent?.setTasks?.(
 						filteredTasks,
 						tasks,
-						true
+						true,
 					);
 					break;
 			}
@@ -792,7 +813,7 @@ export class FluentComponentManager extends Component {
 			const loadingEl = this.contentArea.createDiv({
 				cls: "tg-fluent-loading",
 			});
-			loadingEl.createDiv({cls: "tg-fluent-spinner"});
+			loadingEl.createDiv({ cls: "tg-fluent-spinner" });
 			loadingEl.createDiv({
 				cls: "tg-fluent-loading-text",
 				text: t("Loading tasks..."),
@@ -861,7 +882,7 @@ export class FluentComponentManager extends Component {
 			emptyEl.createDiv({
 				cls: "tg-fluent-empty-description",
 				text: t(
-					"Create your first task to get started with Task Genius"
+					"Create your first task to get started with Task Genius",
 				),
 			});
 
@@ -895,7 +916,10 @@ export class FluentComponentManager extends Component {
 	 */
 	getAvailableModesForView(viewId: string): ViewMode[] {
 		// Check for special two-column views
-		const viewConfig = getViewSettingOrDefault(this.plugin, viewId as any);
+		const viewConfig = getViewSettingOrDefault(
+			this.plugin,
+			viewId as ViewMode,
+		);
 		if (viewConfig?.specificConfig?.viewType === "twocolumn") {
 			return [];
 		}

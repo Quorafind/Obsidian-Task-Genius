@@ -116,7 +116,7 @@ export function renderInterfaceSettingsTab(
 			.setName(t("Use Workspace Side Leaves"))
 			.setDesc(
 				t(
-					"Use left/right workspace side leaves for Sidebar and Details. When enabled, the main V2 view won't render in-view sidebar or details.",
+					"Use left/right workspace side leaves for Sidebar and Details. When enabled, the main fluent view won't render in-view sidebar or details.",
 				),
 			)
 			.addToggle((toggle) => {

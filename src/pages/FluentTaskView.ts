@@ -27,11 +27,12 @@ import { FluentComponentManager } from "@/components/features/fluent/managers/Fl
 import { FluentGestureManager } from "@/components/features/fluent/managers/FluentGestureManager";
 import { FluentWorkspaceStateManager } from "@/components/features/fluent/managers/FluentWorkspaceStateManager";
 import { FluentActionHandlers } from "@/components/features/fluent/managers/FluentActionHandlers";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
 
 export const FLUENT_TASK_VIEW = "fluent-task-genius-view";
 
 /**
- * TaskViewV2 - Main view coordinator with centralized state management
+ * TaskViewfluent - Main view coordinator with centralized state management
  *
  * This class is the single source of truth for all state:
  * - tasks: All loaded tasks
@@ -41,7 +42,7 @@ export const FLUENT_TASK_VIEW = "fluent-task-genius-view";
  * - selectedTask: Currently selected task
  *
  * Managers are stateless executors that receive state and return results via callbacks.
- * State flows: Manager executes → Callback → TaskViewV2 updates state → Notifies other managers
+ * State flows: Manager executes → Callback → TaskViewfluent updates state → Notifies other managers
  */
 export class FluentTaskView extends ItemView {
 	private plugin: TaskProgressBarPlugin;
@@ -61,6 +62,7 @@ export class FluentTaskView extends ItemView {
 	private gestureManager: FluentGestureManager;
 	private workspaceStateManager: FluentWorkspaceStateManager;
 	private actionHandlers: FluentActionHandlers;
+	private selectionManager: TaskSelectionManager;
 
 	// ====================
 	// CENTRALIZED STATE - Single source of truth
@@ -492,6 +494,10 @@ export class FluentTaskView extends ItemView {
 		);
 		this.addChild(this.workspaceStateManager);
 
+		// 4. TaskSelectionManager - Multi-selection and bulk operations
+		this.selectionManager = new TaskSelectionManager(this.app, this.plugin);
+		this.addChild(this.selectionManager);
+
 		console.log("[TG-V2] Managers initialized");
 	}
 
@@ -642,6 +648,7 @@ export class FluentTaskView extends ItemView {
 					}
 				},
 			},
+			this.selectionManager,
 		);
 		this.addChild(this.componentManager);
 		this.componentManager.initializeViewComponents();
@@ -848,6 +855,14 @@ export class FluentTaskView extends ItemView {
 		this.registerDomEvent(window, "resize", () => {
 			this.layoutManager.onResize();
 		});
+
+		// ESC key to exit selection mode
+		this.registerDomEvent(document, "keydown", (evt: KeyboardEvent) => {
+			if (evt.key === "Escape" && this.selectionManager.isSelectionMode) {
+				evt.preventDefault();
+				this.selectionManager.exitSelectionMode("user_action");
+			}
+		});
 	}
 
 	/**
@@ -899,6 +914,10 @@ export class FluentTaskView extends ItemView {
 			this.componentManager.renderEmptyState();
 			return;
 		}
+
+		// Update selection manager task cache before rendering
+		// This is critical for bulk operations to work
+		this.selectionManager.updateTaskCache(this.filteredTasks);
 
 		// Switch to appropriate component
 		this.componentManager.switchView(
@@ -970,6 +989,11 @@ export class FluentTaskView extends ItemView {
 
 		// Save workspace layout before closing
 		this.workspaceStateManager.saveWorkspaceLayout();
+
+		// Exit selection mode
+		if (this.selectionManager.isSelectionMode) {
+			this.selectionManager.exitSelectionMode("view_change");
+		}
 
 		// Clear selection
 		this.actionHandlers.clearSelection();

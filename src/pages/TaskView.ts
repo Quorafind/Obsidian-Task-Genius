@@ -58,6 +58,7 @@ import { FilterConfigModal } from "@/components/features/task/filter/FilterConfi
 import { SavedFilterConfig } from "@/common/setting-definition";
 import { isDataflowEnabled } from "@/dataflow/createDataflow";
 import { Events, on } from "@/dataflow/events/Events";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
 
 export const TASK_VIEW_TYPE = "task-genius-view";
 
@@ -80,6 +81,10 @@ export class TaskView extends ItemView {
 	// Custom view components by view ID
 	private twoColumnViewComponents: Map<string, TaskPropertyTwoColumnView> =
 		new Map();
+
+	// Selection management
+	private selectionManager: TaskSelectionManager;
+
 	// UI state management
 	private isSidebarCollapsed = false;
 	private isDetailsVisible = false;
@@ -109,11 +114,19 @@ export class TaskView extends ItemView {
 
 		this.tasks = this.plugin.preloadedTasks || [];
 
+		// Initialize selection manager
+		this.selectionManager = new TaskSelectionManager(this.app, this.plugin);
+		this.addChild(this.selectionManager);
+
 		this.scope = new Scope(this.app.scope);
 
+		// Register ESC key to exit selection mode
 		this.scope?.register(null, "escape", (e) => {
-			e.preventDefault();
-			e.stopPropagation();
+			if (this.selectionManager.isSelectionMode) {
+				e.preventDefault();
+				e.stopPropagation();
+				this.selectionManager.exitSelectionMode("escape");
+			}
 		});
 	}
 
@@ -442,6 +455,7 @@ export class TaskView extends ItemView {
 				onTaskCompleted: (task: Task) => {
 					this.toggleTaskCompletion(task);
 				},
+				selectionManager: this.selectionManager,
 				onTaskUpdate: async (originalTask: Task, updatedTask: Task) => {
 					console.log(
 						"TaskView onTaskUpdate",
@@ -959,6 +973,11 @@ export class TaskView extends ItemView {
 		project?: string | null,
 		forceRefresh: boolean = false
 	) {
+		// Exit selection mode when switching views
+		if (this.selectionManager.isSelectionMode) {
+			this.selectionManager.exitSelectionMode("view_change");
+		}
+
 		this.currentViewId = viewId;
 		console.log(
 			"[TaskView] Switching view to:",

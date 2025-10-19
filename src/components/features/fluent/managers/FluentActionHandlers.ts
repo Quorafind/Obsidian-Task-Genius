@@ -1,6 +1,6 @@
 import { App, Component, Menu, Notice, TFile } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
-import { Task } from "@/types/task";
+import { StandardTaskMetadata, Task } from "@/types/task";
 import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
 import { ConfirmModal } from "@/components/ui/modals/ConfirmModal";
 import { createTaskCheckbox } from "@/components/features/task/view/details";
@@ -41,7 +41,7 @@ export class FluentActionHandlers extends Component {
 		private app: App,
 		private plugin: TaskProgressBarPlugin,
 		private getWorkspaceId: () => string,
-		private useSideLeaves: () => boolean
+		private useSideLeaves: () => boolean,
 	) {
 		super();
 	}
@@ -123,7 +123,7 @@ export class FluentActionHandlers extends Component {
 			return;
 		}
 
-		const updatedTask = {...task, completed: !task.completed};
+		const updatedTask = { ...task, completed: !task.completed };
 
 		if (updatedTask.completed) {
 			updatedTask.metadata.completedDate = Date.now();
@@ -150,7 +150,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	async handleTaskUpdate(
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
 	): Promise<void> {
 		if (!this.plugin.writeAPI) {
 			console.error("WriteAPI not available");
@@ -160,7 +160,7 @@ export class FluentActionHandlers extends Component {
 		try {
 			const updates = this.extractChangedFields(
 				originalTask,
-				updatedTask
+				updatedTask,
 			);
 			const writeResult = await this.plugin.writeAPI.updateTask({
 				taskId: originalTask.id,
@@ -188,7 +188,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	async handleKanbanTaskStatusUpdate(
 		task: Task,
-		newStatusMark: string
+		newStatusMark: string,
 	): Promise<void> {
 		const isCompleted = this.isCompletedMark(newStatusMark);
 		const completedDate = isCompleted ? Date.now() : undefined;
@@ -247,7 +247,7 @@ export class FluentActionHandlers extends Component {
 							},
 							(el) => {
 								createTaskCheckbox(mark, task, el);
-							}
+							},
 						);
 						item.titleEl.createEl("span", {
 							cls: "status-option",
@@ -307,7 +307,7 @@ export class FluentActionHandlers extends Component {
 		if (!(file instanceof TFile)) return;
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.openFile(file, {
-			eState: {line: task.line},
+			eState: { line: task.line },
 		});
 	}
 
@@ -362,7 +362,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	private async deleteTask(
 		task: Task,
-		deleteChildren: boolean
+		deleteChildren: boolean,
 	): Promise<void> {
 		if (!this.plugin.writeAPI) {
 			console.error("WriteAPI not available for deleteTask");
@@ -389,14 +389,14 @@ export class FluentActionHandlers extends Component {
 			} else {
 				new Notice(
 					t("Failed to delete task") +
-					": " +
-					(result.error || "Unknown error")
+						": " +
+						(result.error || "Unknown error"),
 				);
 			}
 		} catch (error) {
 			console.error("Error deleting task:", error);
 			new Notice(
-				t("Failed to delete task") + ": " + (error as any).message
+				t("Failed to delete task") + ": " + (error as any).message,
 			);
 		}
 	}
@@ -452,7 +452,7 @@ export class FluentActionHandlers extends Component {
 		try {
 			const lower = mark.toLowerCase();
 			const completedCfg = String(
-				this.plugin.settings.taskStatuses?.completed || "x"
+				this.plugin.settings.taskStatuses?.completed || "x",
 			);
 			const completedSet = completedCfg
 				.split("|")
@@ -469,7 +469,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	private extractChangedFields(
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
 	): Partial<Task> {
 		const changes: Partial<Task> = {};
 
@@ -501,8 +501,12 @@ export class FluentActionHandlers extends Component {
 		];
 
 		for (const field of metadataFields) {
-			const originalValue = (originalTask.metadata as any)?.[field];
-			const updatedValue = (updatedTask.metadata as any)?.[field];
+			const originalValue = (
+				originalTask.metadata as StandardTaskMetadata
+			)?.[field];
+			const updatedValue = (
+				updatedTask.metadata as StandardTaskMetadata
+			)?.[field];
 
 			if (field === "tags") {
 				const origTags = originalValue || [];
@@ -515,7 +519,7 @@ export class FluentActionHandlers extends Component {
 					hasMetadataChanges = true;
 				}
 			} else if (originalValue !== updatedValue) {
-				(metadataChanges as any)[field] = updatedValue;
+				(metadataChanges as StandardTaskMetadata)[field] = updatedValue;
 				hasMetadataChanges = true;
 			}
 		}

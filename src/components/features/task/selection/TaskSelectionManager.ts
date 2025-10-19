@@ -3,7 +3,7 @@
  * Manages multi-selection state for tasks and coordinates bulk operations
  */
 
-import { App, Component } from "obsidian";
+import { App, Component, Workspace } from "obsidian";
 import { Task } from "@/types/task";
 import {
 	SelectionState,
@@ -22,7 +22,7 @@ export class TaskSelectionManager extends Component {
 
 	constructor(
 		private app: App,
-		private plugin: TaskProgressBarPlugin
+		private plugin: TaskProgressBarPlugin,
 	) {
 		super();
 
@@ -44,8 +44,7 @@ export class TaskSelectionManager extends Component {
 		return {
 			selectedTaskIds: new Set(this.selectionState.selectedTaskIds),
 			isSelectionMode: this.selectionState.isSelectionMode,
-			selectionModeStartTime:
-				this.selectionState.selectionModeStartTime,
+			selectionModeStartTime: this.selectionState.selectionModeStartTime,
 		};
 	}
 
@@ -172,7 +171,7 @@ export class TaskSelectionManager extends Component {
 	 * Exit selection mode
 	 */
 	public exitSelectionMode(
-		reason: SelectionModeChangeEventData["reason"] = "user_action"
+		reason: SelectionModeChangeEventData["reason"] = "user_action",
 	): void {
 		if (!this.selectionState.isSelectionMode) {
 			return; // Already exited
@@ -195,9 +194,9 @@ export class TaskSelectionManager extends Component {
 			count: this.getSelectedCount(),
 		};
 
-		(this.app.workspace as any).trigger(
+		(this.app.workspace as Workspace).trigger(
 			"task-genius:selection-changed",
-			eventData
+			eventData,
 		);
 	}
 
@@ -205,7 +204,7 @@ export class TaskSelectionManager extends Component {
 	 * Notify selection mode changed
 	 */
 	private notifySelectionModeChanged(
-		reason: SelectionModeChangeEventData["reason"]
+		reason: SelectionModeChangeEventData["reason"],
 	): void {
 		const eventData: SelectionModeChangeEventData = {
 			isSelectionMode: this.selectionState.isSelectionMode,
@@ -214,7 +213,7 @@ export class TaskSelectionManager extends Component {
 
 		(this.app.workspace as any).trigger(
 			"task-genius:selection-mode-changed",
-			eventData
+			eventData,
 		);
 	}
 

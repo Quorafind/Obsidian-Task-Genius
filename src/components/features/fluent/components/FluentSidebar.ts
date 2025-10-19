@@ -1,4 +1,4 @@
-import { Component, setIcon, Menu, Notice, Modal, Platform } from "obsidian";
+import { App, Component, setIcon, Menu, Notice, Modal, Platform } from "obsidian";
 import { WorkspaceSelector } from "./WorkspaceSelector";
 import { ProjectList } from "@/components/features/fluent/components/ProjectList";
 import { FluentTaskNavigationItem } from "@/types/fluent-types";
@@ -166,7 +166,9 @@ export class FluentSidebar extends Component {
 			);
 			// Update project list view mode
 			if (this.projectList) {
-				(this.projectList as any).setViewMode?.(this.isTreeView);
+				(this.projectList as ProjectList).setViewMode?.(
+					this.isTreeView,
+				);
 			}
 		});
 
@@ -179,7 +181,7 @@ export class FluentSidebar extends Component {
 
 		// Pass sort button to project list for menu handling
 		this.registerDomEvent(sortProjectBtn, "click", () => {
-			(this.projectList as any).showSortMenu?.(sortProjectBtn);
+			(this.projectList as ProjectList).showSortMenu?.(sortProjectBtn);
 		});
 
 		const projectListEl = projectsSection.createDiv();
@@ -537,7 +539,7 @@ export class FluentSidebar extends Component {
 		if (anyList && typeof anyList.getProjects === "function") {
 			projects = anyList.getProjects();
 		} else {
-			const temp = document.createElement("div");
+			const temp = createDiv();
 			const tempList: any = new ProjectList(
 				temp as any,
 				this.plugin,
@@ -611,8 +613,8 @@ export class FluentSidebar extends Component {
 				.onClick(async () => {
 					// Special handling for habit view
 					if (viewId === "habit") {
-						(this.plugin.app as any).setting.open();
-						(this.plugin.app as any).setting.openTabById(
+						(this.plugin.app as App).setting.open();
+						(this.plugin.app as App).setting.openTabById(
 							this.plugin.manifest.id,
 						);
 						setTimeout(() => {

@@ -344,6 +344,8 @@ declare module "obsidian" {
 	}
 
 	interface Setting {
+		activeTab: SettingTab;
+		activeTabId: string;
 		open(): void;
 
 		openTabById(tabId: string): void;
@@ -362,52 +364,57 @@ declare module "obsidian" {
 	interface Workspace {
 		on(
 			event: "task-genius:task-added",
-			callback: (task: Task) => void
+			callback: (task: Task) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:task-updated",
-			callback: (task: Task) => void
+			callback: (task: Task) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:task-deleted",
-			callback: (taskId: string) => void
+			callback: (taskId: string) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:task-cache-updated",
-			callback: (cache: TaskCache) => void
+			callback: (cache: TaskCache) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:ics-config-changed",
-			callback: () => void
+			callback: () => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:ics-cache-updated",
-			callback: () => void
+			callback: () => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:task-completed",
-			callback: (task: Task) => void
+			callback: (task: Task) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:habit-index-updated",
-			callback: (habits: HabitProps[]) => void
+			callback: (habits: HabitProps[]) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:filter-changed",
-			callback: (filterState: RootFilterState, leafId?: string) => void
+			callback: (filterState: RootFilterState, leafId?: string) => void,
 		): EventRef;
 
 		on(
 			event: "task-genius:view-config-changed",
-			callback: (payload: { reason: string; viewId?: string }) => void
+			callback: (payload: { reason: string; viewId?: string }) => void,
+		): EventRef;
+
+		on(
+			event: "task-genius:selection-changed",
+			callback: () => void,
 		): EventRef;
 
 		trigger(event: "task-genius:task-completed", task: Task): void;
@@ -420,7 +427,7 @@ declare module "obsidian" {
 
 		trigger(
 			event: "task-genius:task-cache-updated",
-			cache: TaskCache
+			cache: TaskCache,
 		): void;
 
 		trigger(event: "task-genius:ics-config-changed"): void;
@@ -429,18 +436,27 @@ declare module "obsidian" {
 
 		trigger(
 			event: "task-genius:habit-index-updated",
-			habits: HabitProps[]
+			habits: HabitProps[],
 		): void;
 
 		trigger(
 			event: "task-genius:filter-changed",
 			filterState: RootFilterState,
-			leafId?: string
+			leafId?: string,
 		): void;
 
 		trigger(
 			event: "task-genius:view-config-changed",
-			payload: { reason: string; viewId?: string }
+			payload: { reason: string; viewId?: string },
+		): void;
+
+		trigger(
+			event: "task-genius:selection-changed",
+			payload: {
+				selectedTaskIds: string[];
+				isSelectionMode: boolean;
+				count: number;
+			},
 		): void;
 	}
 

@@ -45,7 +45,7 @@ export class FluentIntegration {
 			(leaf: WorkspaceLeaf) => new RightDetailView(leaf, this.plugin),
 		);
 
-		// When any of the V2 views becomes active, reveal the other side leaves without focusing them
+		// When any of the fluent views becomes active, reveal the other side leaves without focusing them
 		this.plugin.registerEvent(
 			this.plugin.app.workspace.on("active-leaf-change", async (leaf) => {
 				if (this.revealingSideLeaves) return;

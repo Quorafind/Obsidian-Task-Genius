@@ -607,22 +607,6 @@ export class WorkspaceManager {
 		return `ws_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 	}
 
-	// Migrate from v1 to v2
-	public async migrateToV2(): Promise<void> {
-		if (this.plugin.settings.workspaces?.version === 2) {
-			return; // Already v2
-		}
-
-		// Initialize v2 structure
-		this.initializeWorkspaces();
-		this.ensureDefaultWorkspaceInvariant();
-
-		// If there were v1 workspaces, migrate them
-		// (This is a placeholder - implement based on actual v1 structure)
-
-		await this.plugin.saveSettings();
-	}
-
 	// Reorder workspaces
 	public async reorderWorkspaces(newOrder: string[]): Promise<void> {
 		const config = this.getWorkspacesConfig();
@@ -716,7 +700,8 @@ export class WorkspaceManager {
 		if (!workspace.settings.hiddenModules.features) {
 			workspace.settings.hiddenModules.features = [];
 		}
-		return workspace.settings.hiddenModules as Required<HiddenModulesConfig>;
+		return workspace.settings
+			.hiddenModules as Required<HiddenModulesConfig>;
 	}
 
 	/**

@@ -6,12 +6,13 @@ import {
 	editorInfoField,
 	MarkdownPostProcessorContext,
 	TFile,
+	Vault,
 } from "obsidian";
 
 // Helper function to check if progress bars should be hidden
 export function shouldHideProgressBarInPreview(
 	plugin: TaskProgressBarPlugin,
-	ctx: MarkdownPostProcessorContext
+	ctx: MarkdownPostProcessorContext,
 ): boolean {
 	if (!plugin.settings.hideProgressBarBasedOnConditions) {
 		return false;
@@ -80,7 +81,7 @@ export function shouldHideProgressBarInPreview(
 // Helper function to check if progress bars should be hidden
 export function shouldHideProgressBarInLivePriview(
 	plugin: TaskProgressBarPlugin,
-	view: EditorView
+	view: EditorView,
 ): boolean {
 	// If progress display mode is set to "none", hide progress bars
 	if (plugin.settings.progressBarDisplayMode === "none") {
@@ -172,7 +173,7 @@ export function getTabSize(app: App): number {
  */
 export function buildIndentString(app: App): string {
 	try {
-		const vaultConfig = app.vault as any;
+		const vaultConfig = app.vault as Vault;
 		const useTab =
 			vaultConfig.getConfig?.("useTab") === undefined ||
 			vaultConfig.getConfig?.("useTab") === true;
@@ -184,22 +185,27 @@ export function buildIndentString(app: App): string {
 	}
 }
 
-export function getTasksAPI(plugin: TaskProgressBarPlugin) {
-	// @ts-ignore
-	const tasksPlugin = plugin.app.plugins.plugins[
+export interface TasksApiV1 {
+	executeToggleTaskDoneCommand: (taskLine: string, filePath: string) => string;
+}
+
+export function getTasksAPI(
+	plugin: TaskProgressBarPlugin,
+): TasksApiV1 | null {
+	const tasksPlugin = ((plugin.app as any)?.plugins?.plugins ?? {})[
 		"obsidian-tasks-plugin"
-	] as any;
+	] as undefined | { _loaded?: boolean; apiV1?: unknown };
 
-	if (!tasksPlugin) {
+	if (!tasksPlugin || !tasksPlugin._loaded) {
 		return null;
 	}
 
-	if (!tasksPlugin._loaded) {
+	const api = tasksPlugin.apiV1 as TasksApiV1 | undefined;
+	if (!api || typeof api.executeToggleTaskDoneCommand !== "function") {
 		return null;
 	}
 
-	// Access the API v1 from the Tasks plugin
-	return tasksPlugin.apiV1;
+	return api;
 }
 
 /**

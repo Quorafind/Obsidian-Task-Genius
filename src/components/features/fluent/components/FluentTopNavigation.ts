@@ -9,6 +9,7 @@ import {
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
 import { t } from "@/translations/helper";
+import { Events, on } from "@/dataflow/events/Events";
 
 export type ViewMode = "list" | "kanban" | "tree" | "calendar";
 
@@ -43,30 +44,62 @@ export class TopNavigation extends Component {
 			}
 		}
 
-		this.updateNotificationCount();
+		// Render UI first (fast, synchronous)
 		this.render();
+
+		// Then update notification count asynchronously
+		this.updateNotificationCount();
+
+		// Listen for dataflow events to refresh notification count
+		this.setupEventListeners();
+	}
+
+	private setupEventListeners() {
+		// Listen for cache ready event (when dataflow initializes)
+		this.registerEvent(
+			on(this.plugin.app, Events.CACHE_READY, () => {
+				this.updateNotificationCount();
+			}),
+		);
+
+		// Listen for task cache updates
+		this.registerEvent(
+			on(this.plugin.app, Events.TASK_CACHE_UPDATED, () => {
+				this.updateNotificationCount();
+			}),
+		);
 	}
 
 	private async updateNotificationCount() {
-		let tasks: Task[] = [];
-		if (this.plugin.dataflowOrchestrator) {
-			const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
-			tasks = await queryAPI.getAllTasks();
-		} else {
-			tasks = this.plugin.preloadedTasks || [];
+		try {
+			let tasks: Task[] = [];
+
+			// Wait for dataflow to be ready if it's still initializing
+			if (this.plugin.dataflowOrchestrator) {
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				tasks = await queryAPI.getAllTasks();
+			} else if (this.plugin.preloadedTasks) {
+				tasks = this.plugin.preloadedTasks;
+			} else {
+				// Dataflow not ready yet, will be called again when ready
+				return;
+			}
+
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			this.notificationCount = tasks.filter((task: Task) => {
+				if (task.completed) return false;
+				const dueDate = task.metadata?.dueDate
+					? new Date(task.metadata.dueDate)
+					: null;
+				return dueDate && dueDate <= today;
+			}).length;
+
+			this.updateNotificationBadge();
+		} catch (error) {
+			console.warn("[FluentTopNavigation] Failed to update notification count:", error);
 		}
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-
-		this.notificationCount = tasks.filter((task: Task) => {
-			if (task.completed) return false;
-			const dueDate = task.metadata?.dueDate
-				? new Date(task.metadata.dueDate)
-				: null;
-			return dueDate && dueDate <= today;
-		}).length;
-
-		this.updateNotificationBadge();
 	}
 
 	private render() {
@@ -122,8 +155,10 @@ export class TopNavigation extends Component {
 			cls: "fluent-notification-badge",
 			text: String(this.notificationCount),
 		});
-		if (this.notificationCount === 0) {
-			badge.hide();
+		// Don't hide badge initially - let updateNotificationCount decide
+		// This prevents badge from disappearing during async load
+		if (this.notificationCount > 0) {
+			badge.show();
 		}
 		this.registerDomEvent(notificationBtn, "click", (e) =>
 			this.showNotifications(e),

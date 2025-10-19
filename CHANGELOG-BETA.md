@@ -22,7 +22,7 @@ All notable changes to beta releases will be documented in this file.
 
 * **setting:** manage workspace setting should jump to workspace setting tab ([f282bff](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f282bffbf84d2b8fdde21521620342e1f47f6a58))
 * **task-mover:** prevent archive markers on non-task lines and preserve folded content ([f20c5eb](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f20c5ebee3b999fe69a902afee1b0d12e28fcfbe))
-* **v2:** hide top navigation for two-column views ([2c24068](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2c24068c69f314d7ccc63212c243e11abaaa6262))
+* **fluent:** hide top navigation for two-column views ([2c24068](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2c24068c69f314d7ccc63212c243e11abaaa6262))
 
 ### Chores
 
@@ -35,7 +35,7 @@ All notable changes to beta releases will be documented in this file.
 
 * **setting:** manage workspace setting should jump to workspace setting tab ([f282bff](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f282bffbf84d2b8fdde21521620342e1f47f6a58))
 * **task-mover:** prevent archive markers on non-task lines and preserve folded content ([f20c5eb](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/f20c5ebee3b999fe69a902afee1b0d12e28fcfbe))
-* **v2:** hide top navigation for two-column views ([2c24068](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2c24068c69f314d7ccc63212c243e11abaaa6262))
+* **fluent:** hide top navigation for two-column views ([2c24068](https://github.com/Quorafind/Obsidian-Task-Progress-Bar/commit/2c24068c69f314d7ccc63212c243e11abaaa6262))
 
 ## [9.9.0-beta.4](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.0-beta.3...9.9.0-beta.4) (2025-09-24)
 
@@ -45,7 +45,7 @@ All notable changes to beta releases will be documented in this file.
 
 ### Bug Fixes
 
-* **v2:** resolve filter state management issues ([6c282f9](https://github.com/Quorafind/Obsidian-Task-Genius/commit/6c282f976cdaa0da7361a8599ea6b1f092cf1418))
+* **fluent:** resolve filter state management issues ([6c282f9](https://github.com/Quorafind/Obsidian-Task-Genius/commit/6c282f976cdaa0da7361a8599ea6b1f092cf1418))
 
 ### Chores
 
@@ -62,7 +62,7 @@ All notable changes to beta releases will be documented in this file.
 
 ### Refactors
 
-* **v2:** rename V2 interface to Fluent and simplify command names ([c096c6c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c096c6c9527ff0659b991e82f4bbca439e7430d7))
+* **fluent:** rename fluent interface to Fluent and simplify command names ([c096c6c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c096c6c9527ff0659b991e82f4bbca439e7430d7))
 
 ## [9.9.0-beta.1](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.0-beta.0...9.9.0-beta.1) (2025-09-24)
 

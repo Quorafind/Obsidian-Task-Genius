@@ -3,7 +3,7 @@
  * Handles custom URI scheme: obsidian://task-genius/...
  */
 
-import { Modal, Notice } from "obsidian";
+import { App, Modal, Notice } from "obsidian";
 import TaskProgressBarPlugin from "../index";
 import { t } from "../translations/helper";
 
@@ -31,7 +31,7 @@ export class ObsidianUriHandler {
 			"task-genius",
 			async (params: UriParams) => {
 				await this.handleUri(params);
-			}
+			},
 		);
 
 		// Register specific action handlers for direct path access
@@ -44,7 +44,7 @@ export class ObsidianUriHandler {
 				async (params: UriParams) => {
 					// Set the action explicitly since it's in the path
 					await this.handleUri({ ...params, action });
-				}
+				},
 			);
 		}
 	}
@@ -86,7 +86,7 @@ export class ObsidianUriHandler {
 		settings.openTabById(this.plugin.manifest.id);
 
 		// Wait for settings to be ready
-		await new Promise(resolve => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 
 		// Navigate to specific tab if provided
 		if (tab) {
@@ -105,7 +105,7 @@ export class ObsidianUriHandler {
 	private navigateToSettingsTab(
 		tabName: string,
 		section?: string,
-		search?: string
+		search?: string,
 	): void {
 		// Use the settingTab's navigation method if available
 		if (this.plugin.settingTab && this.plugin.settingTab.navigateToTab) {
@@ -115,21 +115,21 @@ export class ObsidianUriHandler {
 
 		// Fallback: Map tab names to tab indices or identifiers
 		const tabMap: Record<string, string> = {
-			"general": "general",
-			"index": "index",
-			"view-settings": "view-settings", 
+			general: "general",
+			index: "index",
+			"view-settings": "view-settings",
 			"file-filter": "file-filter",
 			"progress-bar": "progress-bar",
 			"task-status": "task-status",
 			"task-handler": "task-handler",
-			"workflow": "workflow",
-			"reward": "reward",
-			"habit": "habit",
+			workflow: "workflow",
+			reward: "reward",
+			habit: "habit",
 			"mcp-integration": "mcp-integration",
-			"ics": "ics",
+			ics: "ics",
 			"time-parsing": "time-parsing",
 			"beta-test": "beta-test",
-			"about": "about"
+			about: "about",
 		};
 
 		const tabId = tabMap[tabName];
@@ -170,14 +170,17 @@ export class ObsidianUriHandler {
 	 * Scroll to a specific section within the settings
 	 */
 	private scrollToSection(sectionId: string): void {
-		const modal = (this.plugin.app as any).setting.activeTab;
+		const modal = (this.plugin.app as App).setting.activeTab;
 		if (!modal) return;
 
 		// Look for section headers
 		const headers = modal.containerEl.querySelectorAll("h3, h4");
 		headers.forEach((header: HTMLElement) => {
 			const headerText = header.textContent?.toLowerCase();
-			if (headerText && headerText.includes(sectionId.replace("-", " "))) {
+			if (
+				headerText &&
+				headerText.includes(sectionId.replace("-", " "))
+			) {
 				header.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 		});
@@ -185,13 +188,19 @@ export class ObsidianUriHandler {
 		// Special handling for specific sections
 		if (sectionId === "cursor") {
 			// Look for Cursor configuration section
-			const cursorSection = modal.containerEl.querySelector(".mcp-client-section");
+			const cursorSection = modal.containerEl.querySelector(
+				".mcp-client-section",
+			);
 			if (cursorSection) {
-				const header = cursorSection.querySelector(".mcp-client-header");
+				const header =
+					cursorSection.querySelector(".mcp-client-header");
 				if (header && header.textContent?.includes("Cursor")) {
 					// Click to expand
 					(header as HTMLElement).click();
-					cursorSection.scrollIntoView({ behavior: "smooth", block: "start" });
+					cursorSection.scrollIntoView({
+						behavior: "smooth",
+						block: "start",
+					});
 				}
 			}
 		}
@@ -201,12 +210,12 @@ export class ObsidianUriHandler {
 	 * Perform a search in the settings
 	 */
 	private performSettingsSearch(searchTerm: string): void {
-		const modal = (this.plugin.app as any).setting.activeTab;
+		const modal = (this.plugin.app as App).setting?.activeTab;
 		if (!modal) return;
 
 		// Find the search input
 		const searchInput = modal.containerEl.querySelector(
-			"input[type='search'], input.search-input"
+			"input[type='search'], input.search-input",
 		) as HTMLInputElement;
 
 		if (searchInput) {
@@ -221,12 +230,12 @@ export class ObsidianUriHandler {
 	 */
 	private async handleSettingsAction(
 		action: string,
-		tab?: string
+		tab?: string,
 	): Promise<void> {
 		// Wait for settings to be fully loaded
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 500));
 
-		const modal = (this.plugin.app as any).setting.activeTab as Modal;
+		const modal = (this.plugin.app as App).setting.activeTab;
 		if (!modal) return;
 
 		switch (action) {
@@ -234,7 +243,7 @@ export class ObsidianUriHandler {
 				if (tab === "mcp-integration") {
 					// Find and click the enable toggle
 					const toggle = modal.containerEl.querySelector(
-						".setting-item:has(.setting-item-name:contains('Enable MCP Server')) .checkbox-container input"
+						".setting-item:has(.setting-item-name:contains('Enable MCP Server')) .checkbox-container input",
 					) as HTMLInputElement;
 					if (toggle && !toggle.checked) {
 						toggle.click();
@@ -246,8 +255,8 @@ export class ObsidianUriHandler {
 				if (tab === "mcp-integration") {
 					// Find and click the test button
 					const testButton = Array.from(
-						modal.containerEl.querySelectorAll("button")
-					).find(btn => btn.textContent === t("Test"));
+						modal.containerEl.querySelectorAll("button"),
+					).find((btn) => btn.textContent === t("Test"));
 					if (testButton) {
 						(testButton as HTMLButtonElement).click();
 					}
@@ -258,8 +267,8 @@ export class ObsidianUriHandler {
 				if (tab === "mcp-integration") {
 					// Find and click the regenerate button
 					const regenerateButton = Array.from(
-						modal.containerEl.querySelectorAll("button")
-					).find(btn => btn.textContent === t("Regenerate"));
+						modal.containerEl.querySelectorAll("button"),
+					).find((btn) => btn.textContent === t("Regenerate"));
 					if (regenerateButton) {
 						(regenerateButton as HTMLButtonElement).click();
 					}
@@ -280,7 +289,7 @@ export class ObsidianUriHandler {
 			tags,
 			priority,
 			dueDate,
-			startDate
+			startDate,
 		} = params;
 
 		if (!content) {
@@ -289,7 +298,7 @@ export class ObsidianUriHandler {
 		}
 
 		// Parse tags if provided as comma-separated
-		const taskTags = tags ? tags.split(",").map(t => t.trim()) : [];
+		const taskTags = tags ? tags.split(",").map((t) => t.trim()) : [];
 
 		// Create the task using WriteAPI
 		try {
@@ -299,8 +308,9 @@ export class ObsidianUriHandler {
 			}
 
 			// Get the daily note or create in inbox
-			const dailyNotePath = this.plugin.app.workspace.getActiveFile()?.path || 
-				`Daily/${new Date().toISOString().split('T')[0]}.md`;
+			const dailyNotePath =
+				this.plugin.app.workspace.getActiveFile()?.path ||
+				`Daily/${new Date().toISOString().split("T")[0]}.md`;
 
 			await this.plugin.writeAPI.createTask({
 				content: decodeURIComponent(content),
@@ -310,7 +320,7 @@ export class ObsidianUriHandler {
 				priority: priority ? parseInt(priority) : undefined,
 				dueDate: dueDate || undefined,
 				startDate: startDate || undefined,
-				filePath: dailyNotePath
+				filePath: dailyNotePath,
 			});
 
 			new Notice(t("Task created successfully"));
@@ -334,16 +344,16 @@ export class ObsidianUriHandler {
 
 		// Map view types to leaf types
 		const viewMap: Record<string, string> = {
-			"inbox": "task-progress-bar-view",
-			"forecast": "task-progress-bar-view",
-			"project": "task-progress-bar-view",
-			"tag": "task-progress-bar-view",
-			"review": "task-progress-bar-view",
-			"calendar": "task-progress-bar-view",
-			"gantt": "task-progress-bar-view",
-			"kanban": "task-progress-bar-view",
-			"matrix": "task-progress-bar-view",
-			"table": "task-progress-bar-view"
+			inbox: "task-progress-bar-view",
+			forecast: "task-progress-bar-view",
+			project: "task-progress-bar-view",
+			tag: "task-progress-bar-view",
+			review: "task-progress-bar-view",
+			calendar: "task-progress-bar-view",
+			gantt: "task-progress-bar-view",
+			kanban: "task-progress-bar-view",
+			matrix: "task-progress-bar-view",
+			table: "task-progress-bar-view",
 		};
 
 		const leafType = viewMap[type];
@@ -356,7 +366,7 @@ export class ObsidianUriHandler {
 		const leaf = this.plugin.app.workspace.getLeaf(true);
 		await leaf.setViewState({
 			type: leafType,
-			state: { viewType: type }
+			state: { viewType: type },
 		});
 
 		this.plugin.app.workspace.revealLeaf(leaf);
@@ -370,7 +380,7 @@ export class ObsidianUriHandler {
 		tab?: string,
 		section?: string,
 		action?: string,
-		search?: string
+		search?: string,
 	): string {
 		const params = new URLSearchParams();
 		if (tab) params.set("tab", tab);
@@ -395,15 +405,18 @@ export class ObsidianUriHandler {
 			priority?: number;
 			dueDate?: string;
 			startDate?: string;
-		}
+		},
 	): string {
 		const params = new URLSearchParams();
 		params.set("content", encodeURIComponent(content));
 
-		if (options?.project) params.set("project", encodeURIComponent(options.project));
-		if (options?.context) params.set("context", encodeURIComponent(options.context));
+		if (options?.project)
+			params.set("project", encodeURIComponent(options.project));
+		if (options?.context)
+			params.set("context", encodeURIComponent(options.context));
 		if (options?.tags) params.set("tags", options.tags.join(","));
-		if (options?.priority) params.set("priority", options.priority.toString());
+		if (options?.priority)
+			params.set("priority", options.priority.toString());
 		if (options?.dueDate) params.set("dueDate", options.dueDate);
 		if (options?.startDate) params.set("startDate", options.startDate);
 

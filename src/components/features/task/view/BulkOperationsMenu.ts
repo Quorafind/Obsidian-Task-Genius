@@ -24,7 +24,7 @@ export function showBulkOperationsMenu(
 	app: App,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	const menu = new Menu();
 	const selectedCount = selectionManager.getSelectedCount();
@@ -38,16 +38,32 @@ export function showBulkOperationsMenu(
 	menu.addSeparator();
 
 	// Bulk change status
-	addBulkStatusChangeMenu(menu, plugin, selectionManager, onOperationComplete);
+	addBulkStatusChangeMenu(
+		menu,
+		plugin,
+		selectionManager,
+		onOperationComplete,
+	);
 
 	// Bulk set dates
-	addBulkSetDateMenu(menu, app, plugin, selectionManager, onOperationComplete);
+	addBulkSetDateMenu(
+		menu,
+		app,
+		plugin,
+		selectionManager,
+		onOperationComplete,
+	);
 
 	// Bulk set priority
 	addBulkSetPriorityMenu(menu, plugin, selectionManager, onOperationComplete);
 
 	// Bulk move to project
-	addBulkMoveToProjectMenu(menu, plugin, selectionManager, onOperationComplete);
+	addBulkMoveToProjectMenu(
+		menu,
+		plugin,
+		selectionManager,
+		onOperationComplete,
+	);
 
 	menu.addSeparator();
 
@@ -70,7 +86,7 @@ function addBulkStatusChangeMenu(
 	menu: Menu,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	menu.addItem((item) => {
 		item.setIcon("square-pen");
@@ -100,7 +116,7 @@ function addBulkStatusChangeMenu(
 					},
 					(el) => {
 						createTaskCheckbox(mark, {} as Task, el);
-					}
+					},
 				);
 				subItem.titleEl.createEl("span", {
 					cls: "status-option",
@@ -112,7 +128,7 @@ function addBulkStatusChangeMenu(
 						status,
 						plugin,
 						selectionManager,
-						onOperationComplete
+						onOperationComplete,
 					);
 				});
 			});
@@ -128,7 +144,7 @@ function addBulkSetDateMenu(
 	app: App,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	menu.addItem((item) => {
 		item.setIcon("calendar");
@@ -149,7 +165,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -162,7 +178,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -175,7 +191,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -194,7 +210,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -207,7 +223,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -220,7 +236,7 @@ function addBulkSetDateMenu(
 					app,
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -240,7 +256,7 @@ function addBulkSetDateMenu(
 					"dueDate",
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -252,7 +268,7 @@ function addBulkSetDateMenu(
 					"startDate",
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -264,7 +280,7 @@ function addBulkSetDateMenu(
 					"scheduledDate",
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -278,7 +294,7 @@ function addBulkSetPriorityMenu(
 	menu: Menu,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	menu.addItem((item) => {
 		item.setIcon("alert-triangle");
@@ -288,13 +304,15 @@ function addBulkSetPriorityMenu(
 		// Priority levels 1-5
 		for (let priority = 1; priority <= 5; priority++) {
 			submenu.addItem((subItem) => {
-				subItem.setTitle(`${"!".repeat(priority)} Priority ${priority}`);
+				subItem.setTitle(
+					`${"!".repeat(priority)} Priority ${priority}`,
+				);
 				subItem.onClick(async () => {
 					await executeBulkSetPriority(
 						priority,
 						plugin,
 						selectionManager,
-						onOperationComplete
+						onOperationComplete,
 					);
 				});
 			});
@@ -309,7 +327,7 @@ function addBulkSetPriorityMenu(
 				await executeBulkClearPriority(
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -323,7 +341,7 @@ function addBulkMoveToProjectMenu(
 	menu: Menu,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	menu.addItem((item) => {
 		item.setIcon("folder");
@@ -350,7 +368,7 @@ function addBulkMoveToProjectMenu(
 						project,
 						plugin,
 						selectionManager,
-						onOperationComplete
+						onOperationComplete,
 					);
 				});
 			});
@@ -365,7 +383,7 @@ function addBulkMoveToProjectMenu(
 				await executeBulkClearProject(
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			});
 		});
@@ -379,7 +397,7 @@ function addBulkDeleteMenu(
 	menu: Menu,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): void {
 	menu.addItem((item) => {
 		item.setIcon("trash");
@@ -391,9 +409,12 @@ function addBulkDeleteMenu(
 			const confirmed = await new Promise<boolean>((resolve) => {
 				new ConfirmModal(plugin, {
 					title: t("Confirm bulk delete"),
-					message: t("Are you sure you want to delete {count} tasks?", {
-						count: count.toString(),
-					}),
+					message: t(
+						"Are you sure you want to delete {count} tasks?",
+						{
+							count: count.toString(),
+						},
+					),
 					confirmText: t("Delete"),
 					cancelText: t("Cancel"),
 					onConfirm: (result: boolean) => resolve(result),
@@ -404,7 +425,7 @@ function addBulkDeleteMenu(
 				await executeBulkDelete(
 					plugin,
 					selectionManager,
-					onOperationComplete
+					onOperationComplete,
 				);
 			}
 		});
@@ -416,7 +437,7 @@ function addBulkDeleteMenu(
  */
 function addSelectionManagementMenu(
 	menu: Menu,
-	selectionManager: TaskSelectionManager
+	selectionManager: TaskSelectionManager,
 ): void {
 	menu.addItem((item) => {
 		item.setTitle(t("Clear selection"));
@@ -440,7 +461,7 @@ async function executeBulkStatusChange(
 	statusName: string,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -472,8 +493,10 @@ async function executeBulkStatusChange(
 
 			return updates;
 		},
-		plugin
+		plugin,
 	);
+
+	console.log(result, tasks);
 
 	showOperationResult(result, `Changed status to "${statusName}"`);
 	selectionManager.exitSelectionMode("operation_complete");
@@ -488,7 +511,7 @@ async function showDatePickerForBulk(
 	app: App,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const modal = new BulkDatePickerModal(app, plugin, dateType);
 	modal.onDateSelected = async (timestamp: number) => {
@@ -497,7 +520,7 @@ async function showDatePickerForBulk(
 			timestamp,
 			plugin,
 			selectionManager,
-			onOperationComplete
+			onOperationComplete,
 		);
 	};
 	modal.open();
@@ -511,7 +534,7 @@ async function showDateOffsetForBulk(
 	app: App,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const modal = new BulkDateOffsetModal(app, plugin, dateType);
 	modal.onOffsetSelected = async (offsetDays: number) => {
@@ -520,7 +543,7 @@ async function showDateOffsetForBulk(
 			offsetDays,
 			plugin,
 			selectionManager,
-			onOperationComplete
+			onOperationComplete,
 		);
 	};
 	modal.open();
@@ -534,7 +557,7 @@ async function executeBulkSetDate(
 	timestamp: number,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -548,7 +571,7 @@ async function executeBulkSetDate(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, `Set ${dateType}`);
@@ -564,7 +587,7 @@ async function executeBulkOffsetDate(
 	offsetDays: number,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -573,7 +596,9 @@ async function executeBulkOffsetDate(
 		(task) => {
 			// Get current date or use today as base
 			const currentTimestamp = task.metadata?.[dateType];
-			const baseDate = currentTimestamp ? new Date(currentTimestamp) : new Date();
+			const baseDate = currentTimestamp
+				? new Date(currentTimestamp)
+				: new Date();
 
 			// Calculate new date
 			const newDate = addDays(baseDate, offsetDays);
@@ -586,12 +611,15 @@ async function executeBulkOffsetDate(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	const action = offsetDays > 0 ? "Postponed" : "Advanced";
 	const daysText = Math.abs(offsetDays) === 1 ? "day" : "days";
-	showOperationResult(result, `${action} ${dateType} by ${Math.abs(offsetDays)} ${daysText}`);
+	showOperationResult(
+		result,
+		`${action} ${dateType} by ${Math.abs(offsetDays)} ${daysText}`,
+	);
 	selectionManager.exitSelectionMode("operation_complete");
 	onOperationComplete();
 }
@@ -603,7 +631,7 @@ async function executeBulkClearDate(
 	dateType: "dueDate" | "startDate" | "scheduledDate",
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -617,7 +645,7 @@ async function executeBulkClearDate(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, `Cleared ${dateType}`);
@@ -632,7 +660,7 @@ async function executeBulkSetPriority(
 	priority: number,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -646,7 +674,7 @@ async function executeBulkSetPriority(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, `Set priority to ${priority}`);
@@ -660,7 +688,7 @@ async function executeBulkSetPriority(
 async function executeBulkClearPriority(
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -674,7 +702,7 @@ async function executeBulkClearPriority(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, "Cleared priority");
@@ -689,7 +717,7 @@ async function executeBulkMoveToProject(
 	project: string,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -703,7 +731,7 @@ async function executeBulkMoveToProject(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, `Moved to project "${project}"`);
@@ -717,7 +745,7 @@ async function executeBulkMoveToProject(
 async function executeBulkClearProject(
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 
@@ -731,7 +759,7 @@ async function executeBulkClearProject(
 				},
 			};
 		},
-		plugin
+		plugin,
 	);
 
 	showOperationResult(result, "Cleared project");
@@ -745,7 +773,7 @@ async function executeBulkClearProject(
 async function executeBulkDelete(
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
-	onOperationComplete: () => void
+	onOperationComplete: () => void,
 ): Promise<void> {
 	const tasks = selectionManager.getSelectedTasks();
 	let successCount = 0;
@@ -804,7 +832,7 @@ async function executeBulkDelete(
 async function executeBulkOperation(
 	tasks: Task[],
 	operation: (task: Task) => Partial<Task>,
-	plugin: TaskProgressBarPlugin
+	plugin: TaskProgressBarPlugin,
 ): Promise<BulkOperationResult> {
 	if (!plugin.writeAPI) {
 		return {
@@ -833,9 +861,8 @@ async function executeBulkOperation(
 		originalContent.set(task.id, task.content);
 	}
 
-	const result = await plugin.writeAPI.updateTasksSequentially(
-		updateRequests
-	);
+	const result =
+		await plugin.writeAPI.updateTasksSequentially(updateRequests);
 
 	const normalizedErrors = result.errors.map((error) => ({
 		...error,
@@ -854,14 +881,17 @@ async function executeBulkOperation(
 /**
  * Show operation result notification
  */
-function showOperationResult(result: BulkOperationResult, operation: string): void {
+function showOperationResult(
+	result: BulkOperationResult,
+	operation: string,
+): void {
 	if (result.failCount === 0) {
 		new Notice(
-			`✓ ${operation}: ${result.successCount} tasks updated successfully`
+			`✓ ${operation}: ${result.successCount} tasks updated successfully`,
 		);
 	} else {
 		new Notice(
-			`⚠ ${operation}: ${result.successCount} succeeded, ${result.failCount} failed`
+			`⚠ ${operation}: ${result.successCount} succeeded, ${result.failCount} failed`,
 		);
 
 		// Log errors to console

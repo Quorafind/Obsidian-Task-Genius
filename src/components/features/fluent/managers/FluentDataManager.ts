@@ -35,7 +35,7 @@ export class FluentDataManager extends Component {
 			searchQuery: string;
 			filterInputValue: string;
 		},
-		private isInitializing: () => boolean
+		private isInitializing: () => boolean,
 	) {
 		super();
 	}
@@ -61,7 +61,7 @@ export class FluentDataManager extends Component {
 		try {
 			console.log(
 				"[FluentData] loadTasks started, showLoading:",
-				showLoading
+				showLoading,
 			);
 
 			// Notify loading state
@@ -74,21 +74,21 @@ export class FluentDataManager extends Component {
 
 			if (this.plugin.dataflowOrchestrator) {
 				console.log(
-					"[FluentData] Using dataflow orchestrator to load tasks"
+					"[FluentData] Using dataflow orchestrator to load tasks",
 				);
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				console.log("[FluentData] Getting all tasks from queryAPI...");
 				loadedTasks = await queryAPI.getAllTasks();
 				console.log(
-					`[FluentData] Loaded ${loadedTasks.length} tasks from dataflow`
+					`[FluentData] Loaded ${loadedTasks.length} tasks from dataflow`,
 				);
 			} else {
 				console.log(
-					"[FluentData] Dataflow not available, using preloaded tasks"
+					"[FluentData] Dataflow not available, using preloaded tasks",
 				);
 				loadedTasks = this.plugin.preloadedTasks || [];
 				console.log(
-					`[FluentData] Loaded ${loadedTasks.length} preloaded tasks`
+					`[FluentData] Loaded ${loadedTasks.length} preloaded tasks`,
 				);
 			}
 
@@ -153,19 +153,19 @@ export class FluentDataManager extends Component {
 			tasks,
 			viewId as any,
 			this.plugin,
-			filterOptions
+			filterOptions,
 		);
 
 		// Apply additional fluent-specific filters if needed
 		if (filterOptions.v2Filters) {
 			filteredTasks = this.applyV2Filters(
 				filteredTasks,
-				filterOptions.v2Filters
+				filterOptions.v2Filters,
 			);
 		}
 
 		console.log(
-			`[FluentData] Filtered ${filteredTasks.length} tasks from ${tasks.length} total`
+			`[FluentData] Filtered ${filteredTasks.length} tasks from ${tasks.length} total`,
 		);
 
 		return filteredTasks;
@@ -174,7 +174,7 @@ export class FluentDataManager extends Component {
 	/**
 	 * Apply fluent-specific filters (pure function - returns filtered tasks)
 	 * @param tasks - Tasks to filter
-	 * @param filters - V2 filter configuration
+	 * @param filters - fluent filter configuration
 	 * @returns Filtered tasks
 	 */
 	private applyV2Filters(tasks: Task[], filters: any): Task[] {
@@ -215,7 +215,7 @@ export class FluentDataManager extends Component {
 		// Project filter - Skip for Inbox view
 		if (filters.project && viewId !== "inbox") {
 			result = result.filter(
-				(task) => task.metadata?.project === filters.project
+				(task) => task.metadata?.project === filters.project,
 			);
 		}
 
@@ -224,7 +224,7 @@ export class FluentDataManager extends Component {
 			result = result.filter((task) => {
 				if (!task.metadata?.tags) return false;
 				return filters.tags!.some((tag: string) =>
-					task.metadata!.tags!.includes(tag)
+					task.metadata!.tags!.includes(tag),
 				);
 			});
 		}
@@ -254,7 +254,7 @@ export class FluentDataManager extends Component {
 		// Assignee filter
 		if (filters.assignee) {
 			result = result.filter(
-				(task) => task.metadata?.assignee === filters.assignee
+				(task) => task.metadata?.assignee === filters.assignee,
 			);
 		}
 
@@ -294,7 +294,7 @@ export class FluentDataManager extends Component {
 				on(this.plugin.app, Events.CACHE_READY, async () => {
 					await this.loadTasks();
 					this.onUpdateNeeded?.("cache-ready");
-				})
+				}),
 			);
 
 			// Listen for task cache updates
@@ -302,16 +302,16 @@ export class FluentDataManager extends Component {
 				on(
 					this.plugin.app,
 					Events.TASK_CACHE_UPDATED,
-					debouncedViewUpdate
-				)
+					debouncedViewUpdate,
+				),
 			);
 		} else {
 			// Legacy event support
 			this.registerEvent(
 				this.plugin.app.workspace.on(
 					"task-genius:task-cache-updated",
-					debouncedViewUpdate
-				)
+					debouncedViewUpdate,
+				),
 			);
 		}
 
@@ -327,12 +327,12 @@ export class FluentDataManager extends Component {
 							leafId !== "global-filter")
 					) {
 						console.log(
-							"[FluentData] Filter changed, notifying update needed"
+							"[FluentData] Filter changed, notifying update needed",
 						);
 						debouncedApplyFilter();
 					}
-				}
-			)
+				},
+			),
 		);
 	}
 

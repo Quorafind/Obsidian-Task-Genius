@@ -256,6 +256,7 @@ export class ProjectDataCache {
 
 	/**
 	 * Find project config file in a specific directory (non-recursive)
+	 * Uses the config file name from ProjectConfigManager settings
 	 */
 	private async findConfigFileInDirectory(
 		directory: string
@@ -265,7 +266,7 @@ export class ProjectDataCache {
 			return null;
 		}
 
-		const configFileName = "task-genius.config.md"; // TODO: Make configurable
+		const configFileName = this.projectConfigManager.getConfigFileName();
 		const configFile = (file as any).children.find(
 			(child: any) =>
 				child && child.name === configFileName && "stat" in child

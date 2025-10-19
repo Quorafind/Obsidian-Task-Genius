@@ -221,7 +221,7 @@ class TaskTextMark extends Component {
 		const nextMark = marks[nextState] || " ";
 		// Check if next state is DONE and Tasks plugin is available
 		const tasksApi = getTasksAPI(this.plugin);
-		const isDoneState = nextState === "DONE" && tasksApi;
+		const canToggleWithTasksApi = nextState === "DONE" && !!tasksApi;
 		const isCurrentDone = currentState === "DONE";
 
 		// Update the underlying file using the process method for atomic operations
@@ -260,7 +260,7 @@ class TaskTextMark extends Component {
 				return content; // Can't proceed without location info
 			}
 
-			if (isDoneState) {
+			if (canToggleWithTasksApi && tasksApi) {
 				// Use Tasks API to toggle the task
 				const updatedContent = tasksApi.executeToggleTaskDoneCommand(
 					taskLine,

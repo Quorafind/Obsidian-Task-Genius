@@ -33,14 +33,17 @@ export interface WorkspaceOverrides {
 	customProjectGroupsAndNames?: any;
 	tagCustomOrder?: any;
 
-	// V2 filter state per view
-	fluentFilterState?: Record<string, {
-		filters?: any;
-		searchQuery?: string;
-		selectedProject?: string | null;
-		advancedFilter?: any;
-		viewMode?: string;
-	}>;
+	// fluent filter state per view
+	fluentFilterState?: Record<
+		string,
+		{
+			filters?: any;
+			searchQuery?: string;
+			selectedProject?: string | null;
+			advancedFilter?: any;
+			viewMode?: string;
+		}
+	>;
 
 	// Hidden modules configuration
 	hiddenModules?: HiddenModulesConfig;
@@ -60,26 +63,26 @@ export interface HiddenModulesConfig {
 
 /** Sidebar component types that can be hidden */
 export type SidebarComponentType =
-	| 'projects-list'
-	| 'tags-list'
-	| 'view-switcher'
-	| 'top-views'
-	| 'bottom-views';
+	| "projects-list"
+	| "tags-list"
+	| "view-switcher"
+	| "top-views"
+	| "bottom-views";
 
 /** Feature component types that can be hidden */
 export type FeatureComponentType =
-	| 'details-panel'
-	| 'quick-capture'
-	| 'filter'
-	| 'progress-bar'
-	| 'task-mark';
+	| "details-panel"
+	| "quick-capture"
+	| "filter"
+	| "progress-bar"
+	| "task-mark";
 
 /** Module definition for UI display */
 export interface ModuleDefinition {
 	id: string;
 	name: string;
 	icon: string;
-	type: 'view' | 'sidebar' | 'feature';
+	type: "view" | "sidebar" | "feature";
 }
 
 export interface WorkspacesConfig {
@@ -97,39 +100,39 @@ export interface EffectiveSettings {
 
 // Keys that can be overridden per workspace
 export const WORKSPACE_SCOPED_KEYS = [
-	'filters',
-	'sort',
-	'group',
-	'columns',
-	'viewMode',
-	'calendar',
-	'kanban',
-	'gantt',
-	'displayOptions',
-	'viewConfiguration',
-	'taskListDisplayOption',
-	'forecastOption',
-	'customProjectGroupsAndNames',
-	'tagCustomOrder',
-	'fluentFilterState',
-	'hiddenModules'
+	"filters",
+	"sort",
+	"group",
+	"columns",
+	"viewMode",
+	"calendar",
+	"kanban",
+	"gantt",
+	"displayOptions",
+	"viewConfiguration",
+	"taskListDisplayOption",
+	"forecastOption",
+	"customProjectGroupsAndNames",
+	"tagCustomOrder",
+	"fluentFilterState",
+	"hiddenModules",
 ] as const;
 
-export type WorkspaceScopedKey = typeof WORKSPACE_SCOPED_KEYS[number];
+export type WorkspaceScopedKey = (typeof WORKSPACE_SCOPED_KEYS)[number];
 
 // Global-only keys (cannot be overridden)
 export const GLOBAL_ONLY_KEYS = [
-	'autoRun',
-	'lang',
-	'experimental',
-	'appearance',
-	'hotkeys',
-	'quickCapture',
-	'workflow',
-	'habit',
-	'reward',
-	'integrations',
-	'editorExtensions'
+	"autoRun",
+	"lang",
+	"experimental",
+	"appearance",
+	"hotkeys",
+	"quickCapture",
+	"workflow",
+	"habit",
+	"reward",
+	"integrations",
+	"editorExtensions",
 ] as const;
 
-export type GlobalOnlyKey = typeof GLOBAL_ONLY_KEYS[number];
+export type GlobalOnlyKey = (typeof GLOBAL_ONLY_KEYS)[number];

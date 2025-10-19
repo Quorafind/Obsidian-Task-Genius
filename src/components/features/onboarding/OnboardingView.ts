@@ -23,6 +23,7 @@ import { TaskGuideStep } from "./steps/TaskGuideStep";
 import { CompleteStep } from "./steps/CompleteStep";
 import { SettingsCheckStep } from "./steps/SettingsCheckStep";
 import { ConfigCheckTransition } from "@/components/features/onboarding/steps/intro/ConfigCheckTransition";
+import { FluentViewSettings } from "@/common/setting-definition";
 
 export const ONBOARDING_VIEW_TYPE = "task-genius-onboarding";
 
@@ -385,17 +386,24 @@ export class OnboardingView extends ItemView {
 		const isFluent = state.uiMode === "fluent";
 
 		if (!this.plugin.settings.fluentView) {
-			(this.plugin.settings as any).experimental = {
-				enableV2: false,
-				showV2Ribbon: false,
+			this.plugin.settings.fluentView = {
+				enableFluent: isFluent,
+				fluentConfig: {
+					enableWorkspaces: true,
+					defaultWorkspace: "default",
+					maxOtherViewsBeforeOverflow: 5,
+				},
+				useWorkspaceSideLeaves: !!state.useSideLeaves,
 			};
 		}
 
-		this.plugin.settings.fluentView!.enableFluent = isFluent;
+		this.plugin.settings.fluentView.enableFluent = isFluent;
 
-		// Prepare v2 config and set placement option when Fluent is chosen
+		// Prepare fluent config and set placement option when Fluent is chosen
 		if (!this.plugin.settings.fluentView) {
-			(this.plugin.settings.fluentView as any).fluentConfig = {
+			(
+				this.plugin.settings.fluentView as FluentViewSettings
+			).fluentConfig = {
 				enableWorkspaces: true,
 				defaultWorkspace: "default",
 				maxOtherViewsBeforeOverflow: 5,

@@ -36,7 +36,10 @@ export class VersionManager extends Component {
 	private persister: LocalStorageCache;
 	private currentVersion: string;
 
-	constructor(private app: App, private plugin: TaskProgressBarPlugin) {
+	constructor(
+		private app: App,
+		private plugin: TaskProgressBarPlugin,
+	) {
 		super();
 		this.persister = new LocalStorageCache(this.app.appId);
 		this.currentVersion = this.getCurrentVersionFromManifest();
@@ -53,7 +56,7 @@ export class VersionManager extends Component {
 
 		// Fallback to a default version if manifest is not available
 		console.warn(
-			"Could not determine plugin version from manifest, using fallback"
+			"Could not determine plugin version from manifest, using fallback",
 		);
 		return "unknown";
 	}
@@ -64,7 +67,7 @@ export class VersionManager extends Component {
 	private async getPreviousVersion(): Promise<string | null> {
 		try {
 			const cached = await this.persister.loadFile<string>(
-				this.VERSION_STORAGE_KEY
+				this.VERSION_STORAGE_KEY,
 			);
 			return cached?.data || null;
 		} catch (error) {
@@ -80,7 +83,7 @@ export class VersionManager extends Component {
 		try {
 			await this.persister.storeFile(
 				this.VERSION_STORAGE_KEY,
-				this.currentVersion
+				this.currentVersion,
 			);
 		} catch (error) {
 			console.error("Error storing current version:", error);
@@ -128,14 +131,14 @@ export class VersionManager extends Component {
 				// Handle corrupted version data
 				if (!this.isValidVersionString(previousVersion)) {
 					console.warn(
-						`Corrupted version data detected: ${previousVersion}, forcing rebuild`
+						`Corrupted version data detected: ${previousVersion}, forcing rebuild`,
 					);
 					requiresRebuild = true;
 					rebuildReason = `Corrupted version data detected (${previousVersion}) - rebuilding index`;
 				} else {
 					const comparison = this.compareVersions(
 						this.currentVersion,
-						previousVersion
+						previousVersion,
 					);
 					isUpgrade = comparison > 0;
 					isDowngrade = comparison < 0;
@@ -252,12 +255,12 @@ export class VersionManager extends Component {
 			await this.storeCurrentVersion();
 
 			console.log(
-				`Version recovery complete, set to ${this.currentVersion}`
+				`Version recovery complete, set to ${this.currentVersion}`,
 			);
 		} catch (error) {
 			console.error("Error during version recovery:", error);
 			throw new Error(
-				`Failed to recover from corrupted version: ${error.message}`
+				`Failed to recover from corrupted version: ${error.message}`,
 			);
 		}
 	}
@@ -266,7 +269,7 @@ export class VersionManager extends Component {
 	 * Handle emergency rebuild scenarios
 	 */
 	public async handleEmergencyRebuild(
-		reason: string
+		reason: string,
 	): Promise<VersionChangeResult> {
 		console.warn(`Emergency rebuild triggered: ${reason}`);
 
@@ -295,7 +298,7 @@ export class VersionManager extends Component {
 			// Store test version
 			await this.persister.storeFile(
 				this.VERSION_STORAGE_KEY,
-				testVersion
+				testVersion,
 			);
 
 			// Read it back
@@ -305,7 +308,7 @@ export class VersionManager extends Component {
 			if (originalVersion) {
 				await this.persister.storeFile(
 					this.VERSION_STORAGE_KEY,
-					originalVersion
+					originalVersion,
 				);
 			} else {
 				await this.clearVersionInfo();
@@ -339,7 +342,7 @@ export class VersionManager extends Component {
 		try {
 			await this.persister.storeFile(
 				`${this.VERSION_STORAGE_KEY}-test`,
-				"test"
+				"test",
 			);
 			await this.persister.removeFile(`${this.VERSION_STORAGE_KEY}-test`);
 			canWrite = true;
