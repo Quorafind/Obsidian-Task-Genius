@@ -461,6 +461,12 @@ const createMockPlugin = (
 
 	const mockWriteAPI = {
 		updateTask: jest.fn(async () => ({ success: true })),
+		updateTasksSequentially: jest.fn(async (args: any[]) => ({
+			successCount: args?.length ?? 0,
+			failCount: 0,
+			errors: [],
+			totalCount: args?.length ?? 0,
+		})),
 		createTask: jest.fn(async () => ({ success: true })),
 		deleteTask: jest.fn(async () => ({ success: true })),
 	};

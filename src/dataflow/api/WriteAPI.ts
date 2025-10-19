@@ -24,6 +24,7 @@ import { Events, emit } from "../events/Events";
 import { CanvasTaskUpdater } from "@/parsers/canvas-task-updater";
 import { rrulestr } from "rrule";
 import { EMOJI_TAG_REGEX, TOKEN_CONTEXT_REGEX } from "@/common/regex-define";
+import { BulkOperationResult } from "@/types/selection";
 
 /**
  * Arguments for creating a task
@@ -81,6 +82,7 @@ export interface BatchCreateSubtasksArgs {
 
 export class WriteAPI {
 	canvasTaskUpdater: CanvasTaskUpdater;
+	private writeQueue: Promise<void>;
 
 	constructor(
 		private app: App,
@@ -90,12 +92,36 @@ export class WriteAPI {
 		private getTaskById: (id: string) => Promise<Task | null> | Task | null,
 	) {
 		this.canvasTaskUpdater = new CanvasTaskUpdater(vault, plugin);
+		this.writeQueue = Promise.resolve();
+	}
+
+	private enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
+		const run = this.writeQueue
+			.catch(() => undefined)
+			.then(operation);
+
+		this.writeQueue = run.then(
+			() => undefined,
+			() => undefined,
+		);
+
+		return run;
 	}
 
 	/**
 	 * Update a task's status or completion state
 	 */
 	async updateTaskStatus(args: {
+		taskId: string;
+		status?: string;
+		completed?: boolean;
+	}): Promise<{ success: boolean; task?: Task; error?: string }> {
+		return this.enqueueWrite(() =>
+			this.performUpdateTaskStatus(args),
+		);
+	}
+
+	private async performUpdateTaskStatus(args: {
 		taskId: string;
 		status?: string;
 		completed?: boolean;
@@ -285,6 +311,12 @@ export class WriteAPI {
 	 * Update a task with new properties
 	 */
 	async updateTask(
+		args: UpdateTaskArgs,
+	): Promise<{ success: boolean; task?: Task; error?: string }> {
+		return this.enqueueWrite(() => this.performUpdateTask(args));
+	}
+
+	private async performUpdateTask(
 		args: UpdateTaskArgs,
 	): Promise<{ success: boolean; task?: Task; error?: string }> {
 		try {
@@ -776,6 +808,38 @@ export class WriteAPI {
 			console.error("WriteAPI: Error updating task:", error);
 			return { success: false, error: String(error) };
 		}
+	}
+
+	async updateTasksSequentially(
+		argsList: UpdateTaskArgs[],
+	): Promise<BulkOperationResult> {
+		return this.enqueueWrite(async () => {
+			const summary: BulkOperationResult = {
+				successCount: 0,
+				failCount: 0,
+				errors: [],
+				totalCount: argsList.length,
+			};
+
+			for (const args of argsList) {
+				const originalTask = await Promise.resolve(
+					this.getTaskById(args.taskId),
+				);
+				const updateResult = await this.performUpdateTask(args);
+				if (updateResult.success) {
+					summary.successCount++;
+				} else {
+					summary.failCount++;
+					summary.errors.push({
+						taskId: args.taskId,
+						taskContent: originalTask?.content || "",
+						error: updateResult.error || "Unknown error",
+					});
+				}
+			}
+
+			return summary;
+		});
 	}
 
 	/**

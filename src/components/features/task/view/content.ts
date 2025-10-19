@@ -11,12 +11,14 @@ import { getInitialViewMode, saveViewMode } from "@/utils/ui/view-mode-utils";
 // @ts-ignore
 import { filterTasks } from "@/utils/task/task-filter-utils";
 import { sortTasks } from "@/commands/sortTaskCommands"; // 导入 sortTasks 函数
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
 
 interface ContentComponentParams {
 	onTaskSelected?: (task: Task | null) => void;
 	onTaskCompleted?: (task: Task) => void;
 	onTaskUpdate?: (originalTask: Task, updatedTask: Task) => Promise<void>;
 	onTaskContextMenu?: (event: MouseEvent, task: Task) => void;
+	selectionManager?: TaskSelectionManager;
 }
 
 export class ContentComponent extends Component {
@@ -583,6 +585,7 @@ export class ContentComponent extends Component {
 				this.currentViewId, // Pass currentViewId
 				this.app,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -643,6 +646,7 @@ export class ContentComponent extends Component {
 				childTasks,
 				taskMap,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -823,6 +827,7 @@ export class ContentComponent extends Component {
 				this.currentViewId,
 				this.app,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 			// Attach events
 			taskComponent.onTaskSelected = this.selectTask.bind(this);
@@ -936,6 +941,7 @@ export class ContentComponent extends Component {
 								childTasks,
 								taskMap,
 								this.plugin,
+								this.params.selectionManager // Pass selection manager
 							);
 							newRoot.onTaskSelected = this.selectTask.bind(this);
 							newRoot.onTaskCompleted = (t) => {

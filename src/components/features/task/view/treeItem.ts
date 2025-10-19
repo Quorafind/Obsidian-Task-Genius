@@ -1,4 +1,12 @@
-import { App, Component, setIcon, Menu, Keymap } from "obsidian";
+import {
+	App,
+	Component,
+	setIcon,
+	Menu,
+	Keymap,
+	Platform,
+	Workspace,
+} from "obsidian";
 import { Task } from "@/types/task";
 import "@/styles/tree-view.css";
 import { MarkdownRendererComponent } from "@/components/ui/renderers/MarkdownRenderer";
@@ -11,6 +19,8 @@ import { InlineEditor, InlineEditorOptions } from "./InlineEditor";
 import { InlineEditorManager } from "./InlineEditorManager";
 import { sanitizePriorityForClass } from "@/utils/task/priority-utils";
 import { sortTasks } from "@/commands/sortTaskCommands";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
+import { showBulkOperationsMenu } from "./BulkOperationsMenu";
 
 export class TaskTreeItemComponent extends Component {
 	public element: HTMLElement;
@@ -41,6 +51,10 @@ export class TaskTreeItemComponent extends Component {
 	// Use shared editor manager instead of individual editors
 	private static editorManager: InlineEditorManager | null = null;
 
+	// Selection management
+	private selectionManager: TaskSelectionManager | null = null;
+	private isTaskSelectedState: boolean = false;
+
 	constructor(
 		task: Task,
 		viewMode: string,
@@ -48,7 +62,8 @@ export class TaskTreeItemComponent extends Component {
 		indentLevel: number = 0,
 		private childTasks: Task[] = [],
 		taskMap: Map<string, Task>,
-		private plugin: TaskProgressBarPlugin
+		private plugin: TaskProgressBarPlugin,
+		selectionManager?: TaskSelectionManager,
 	) {
 		super();
 		this.task = task;
@@ -56,11 +71,14 @@ export class TaskTreeItemComponent extends Component {
 		this.indentLevel = indentLevel;
 		this.taskMap = taskMap;
 
+		// Store selection manager reference
+		this.selectionManager = selectionManager || null;
+
 		// Initialize shared editor manager if not exists
 		if (!TaskTreeItemComponent.editorManager) {
 			TaskTreeItemComponent.editorManager = new InlineEditorManager(
 				this.app,
-				this.plugin
+				this.plugin,
 			);
 		}
 	}
@@ -75,7 +93,7 @@ export class TaskTreeItemComponent extends Component {
 					try {
 						await this.onTaskUpdate(originalTask, updatedTask);
 						console.log(
-							"treeItem onTaskUpdate completed successfully"
+							"treeItem onTaskUpdate completed successfully",
 						);
 						// Don't update task reference here - let onContentEditFinished handle it
 					} catch (error) {
@@ -88,7 +106,7 @@ export class TaskTreeItemComponent extends Component {
 			},
 			onContentEditFinished: (
 				targetEl: HTMLElement,
-				updatedTask: Task
+				updatedTask: Task,
 			) => {
 				// Update the task reference with the saved task
 				this.task = updatedTask;
@@ -101,13 +119,13 @@ export class TaskTreeItemComponent extends Component {
 
 				// Release the editor from the manager
 				TaskTreeItemComponent.editorManager?.releaseEditor(
-					this.task.id
+					this.task.id,
 				);
 			},
 			onMetadataEditFinished: (
 				targetEl: HTMLElement,
 				updatedTask: Task,
-				fieldType: string
+				fieldType: string,
 			) => {
 				// Update the task reference with the saved task
 				this.task = updatedTask;
@@ -117,7 +135,7 @@ export class TaskTreeItemComponent extends Component {
 
 				// Release the editor from the manager
 				TaskTreeItemComponent.editorManager?.releaseEditor(
-					this.task.id
+					this.task.id,
 				);
 			},
 			useEmbeddedEditor: true, // Enable Obsidian's embedded editor
@@ -125,7 +143,7 @@ export class TaskTreeItemComponent extends Component {
 
 		return TaskTreeItemComponent.editorManager!.getEditor(
 			this.task,
-			editorOptions
+			editorOptions,
 		);
 	}
 
@@ -135,7 +153,7 @@ export class TaskTreeItemComponent extends Component {
 	private isCurrentlyEditing(): boolean {
 		return (
 			TaskTreeItemComponent.editorManager?.hasActiveEditor(
-				this.task.id
+				this.task.id,
 			) || false
 		);
 	}
@@ -149,9 +167,52 @@ export class TaskTreeItemComponent extends Component {
 			},
 		});
 
+		// Register selection change listener
+		if (this.selectionManager) {
+			this.registerEvent(
+				(this.app.workspace as Workspace).on(
+					"task-genius:selection-changed",
+					() => {
+						this.updateSelectionVisualState();
+					},
+				),
+			);
+
+			// Setup long press detection for mobile
+			if (Platform.isMobile) {
+				this.selectionManager.longPressDetector.startDetection(
+					this.element,
+					{
+						onLongPress: () => {
+							this.selectionManager?.enterSelectionMode();
+							this.handleMultiSelect();
+						},
+					},
+				);
+			}
+		}
+
 		this.registerDomEvent(this.element, "contextmenu", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+
+			// Check if we have multiple selections
+			if (
+				this.selectionManager &&
+				this.selectionManager.getSelectedCount() > 1
+			) {
+				showBulkOperationsMenu(
+					e,
+					this.app,
+					this.plugin,
+					this.selectionManager,
+					() => {
+						// Optionally refresh the view after bulk operation
+					},
+				);
+				return;
+			}
+
 			if (this.onTaskContextMenu) {
 				this.onTaskContextMenu(e, this.task);
 			}
@@ -181,7 +242,7 @@ export class TaskTreeItemComponent extends Component {
 				this.parentContainer.contains(e.target as Node)
 			) {
 				const isCheckbox = (e.target as HTMLElement).classList.contains(
-					"task-checkbox"
+					"task-checkbox",
 				);
 
 				if (isCheckbox) {
@@ -189,15 +250,36 @@ export class TaskTreeItemComponent extends Component {
 					this.toggleTaskCompletion();
 				} else if (
 					(e.target as HTMLElement).classList.contains(
-						"task-expand-toggle"
+						"task-expand-toggle",
 					)
 				) {
 					e.stopPropagation();
 				} else {
+					// Check for multi-select with Shift key
+					if (this.selectionManager && e.shiftKey) {
+						e.stopPropagation();
+						this.handleMultiSelect();
+						return;
+					}
+
+					// Check if in selection mode
+					if (
+						this.selectionManager &&
+						this.selectionManager.isSelectionMode
+					) {
+						e.stopPropagation();
+						this.handleMultiSelect();
+						return;
+					}
+
+					// Normal selection
 					this.selectTask();
 				}
 			}
 		});
+
+		// Update selection visual state on load
+		this.updateSelectionVisualState();
 	}
 
 	private renderTaskContent() {
@@ -224,7 +306,7 @@ export class TaskTreeItemComponent extends Component {
 			});
 			setIcon(
 				this.toggleEl,
-				this.isExpanded ? "chevron-down" : "chevron-right"
+				this.isExpanded ? "chevron-down" : "chevron-right",
 			);
 
 			// Register toggle event
@@ -243,7 +325,7 @@ export class TaskTreeItemComponent extends Component {
 				const checkbox = createTaskCheckbox(
 					this.task.status,
 					this.task,
-					el
+					el,
 				);
 
 				this.registerDomEvent(checkbox, "click", (event) => {
@@ -258,7 +340,7 @@ export class TaskTreeItemComponent extends Component {
 						checkbox.dataset.task = "x";
 					}
 				});
-			}
+			},
 		);
 
 		const taskItemContainer = this.parentContainer.createDiv({
@@ -290,7 +372,7 @@ export class TaskTreeItemComponent extends Component {
 		// Priority indicator if available
 		if (this.task.metadata.priority) {
 			const sanitizedPriority = sanitizePriorityForClass(
-				this.task.metadata.priority
+				this.task.metadata.priority,
 			);
 			const classes = ["task-priority"];
 			if (sanitizedPriority) {
@@ -315,7 +397,7 @@ export class TaskTreeItemComponent extends Component {
 			this.renderDateMetadata(
 				metadataEl,
 				"cancelled",
-				this.task.metadata.cancelledDate
+				this.task.metadata.cancelledDate,
 			);
 		}
 
@@ -326,7 +408,7 @@ export class TaskTreeItemComponent extends Component {
 				this.renderDateMetadata(
 					metadataEl,
 					"due",
-					this.task.metadata.dueDate
+					this.task.metadata.dueDate,
 				);
 			}
 
@@ -335,7 +417,7 @@ export class TaskTreeItemComponent extends Component {
 				this.renderDateMetadata(
 					metadataEl,
 					"scheduled",
-					this.task.metadata.scheduledDate
+					this.task.metadata.scheduledDate,
 				);
 			}
 
@@ -344,7 +426,7 @@ export class TaskTreeItemComponent extends Component {
 				this.renderDateMetadata(
 					metadataEl,
 					"start",
-					this.task.metadata.startDate
+					this.task.metadata.startDate,
 				);
 			}
 
@@ -358,7 +440,7 @@ export class TaskTreeItemComponent extends Component {
 				this.renderDateMetadata(
 					metadataEl,
 					"completed",
-					this.task.metadata.completedDate
+					this.task.metadata.completedDate,
 				);
 			}
 
@@ -367,7 +449,7 @@ export class TaskTreeItemComponent extends Component {
 				this.renderDateMetadata(
 					metadataEl,
 					"created",
-					this.task.metadata.createdDate
+					this.task.metadata.createdDate,
 				);
 			}
 		}
@@ -416,7 +498,7 @@ export class TaskTreeItemComponent extends Component {
 			| "completed"
 			| "cancelled"
 			| "created",
-		dateValue: number
+		dateValue: number,
 	) {
 		const dateEl = metadataEl.createEl("div", {
 			cls: ["task-date", `task-${type}-date`],
@@ -465,7 +547,7 @@ export class TaskTreeItemComponent extends Component {
 						year: "numeric",
 						month: "long",
 						day: "numeric",
-				  });
+					});
 		}
 
 		if (cssClass) {
@@ -486,20 +568,20 @@ export class TaskTreeItemComponent extends Component {
 						type === "due"
 							? "dueDate"
 							: type === "scheduled"
-							? "scheduledDate"
-							: type === "start"
-							? "startDate"
-							: type === "cancelled"
-							? "cancelledDate"
-							: type === "completed"
-							? "completedDate"
-							: null;
+								? "scheduledDate"
+								: type === "start"
+									? "startDate"
+									: type === "cancelled"
+										? "cancelledDate"
+										: type === "completed"
+											? "completedDate"
+											: null;
 
 					if (fieldType) {
 						editor.showMetadataEditor(
 							dateEl,
 							fieldType,
-							dateString
+							dateString,
 						);
 					}
 				}
@@ -546,7 +628,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						projectEl,
 						"project",
-						this.task.metadata.project || ""
+						this.task.metadata.project || "",
 					);
 				}
 			});
@@ -581,7 +663,7 @@ export class TaskTreeItemComponent extends Component {
 							editor.showMetadataEditor(
 								tagsContainer,
 								"tags",
-								tagsString
+								tagsString,
 							);
 						}
 					});
@@ -604,7 +686,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						recurrenceEl,
 						"recurrence",
-						this.task.metadata.recurrence || ""
+						this.task.metadata.recurrence || "",
 					);
 				}
 			});
@@ -626,7 +708,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						onCompletionEl,
 						"onCompletion",
-						this.task.metadata.onCompletion || ""
+						this.task.metadata.onCompletion || "",
 					);
 				}
 			});
@@ -638,7 +720,7 @@ export class TaskTreeItemComponent extends Component {
 			cls: "task-dependson",
 		});
 		dependsOnEl.textContent = `⛔ ${this.task.metadata.dependsOn?.join(
-			", "
+			", ",
 		)}`;
 
 		// Make dependsOn clickable for editing only if inline editor is enabled
@@ -650,7 +732,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						dependsOnEl,
 						"dependsOn",
-						this.task.metadata.dependsOn?.join(", ") || ""
+						this.task.metadata.dependsOn?.join(", ") || "",
 					);
 				}
 			});
@@ -672,7 +754,7 @@ export class TaskTreeItemComponent extends Component {
 					editor.showMetadataEditor(
 						idEl,
 						"id",
-						this.task.metadata.id || ""
+						this.task.metadata.id || "",
 					);
 				}
 			});
@@ -769,7 +851,7 @@ export class TaskTreeItemComponent extends Component {
 		if (fieldsToShow.length === 0) {
 			menu.addItem((item) => {
 				item.setTitle(
-					"All metadata fields are already set"
+					"All metadata fields are already set",
 				).setDisabled(true);
 			});
 		} else {
@@ -786,7 +868,7 @@ export class TaskTreeItemComponent extends Component {
 
 							editor.showMetadataEditor(
 								tempContainer,
-								field.key as any
+								field.key as any,
 							);
 						});
 				});
@@ -819,7 +901,7 @@ export class TaskTreeItemComponent extends Component {
 		this.markdownRenderer = new MarkdownRendererComponent(
 			this.app,
 			this.contentEl,
-			this.task.filePath
+			this.task.filePath,
 		);
 		this.addChild(this.markdownRenderer);
 
@@ -849,11 +931,11 @@ export class TaskTreeItemComponent extends Component {
 			// If disabled, always use multi-line (traditional) layout
 			this.contentMetadataContainer.toggleClass(
 				"multi-line-content",
-				true
+				true,
 			);
 			this.contentMetadataContainer.toggleClass(
 				"single-line-content",
-				false
+				false,
 			);
 			return;
 		}
@@ -873,11 +955,11 @@ export class TaskTreeItemComponent extends Component {
 		// Apply appropriate layout class using Obsidian's toggleClass method
 		this.contentMetadataContainer.toggleClass(
 			"multi-line-content",
-			isMultiLine
+			isMultiLine,
 		);
 		this.contentMetadataContainer.toggleClass(
 			"single-line-content",
-			!isMultiLine
+			!isMultiLine,
 		);
 	}
 
@@ -892,7 +974,10 @@ export class TaskTreeItemComponent extends Component {
 				// Open task in file
 				e.stopPropagation();
 				await this.openTaskInFile();
-			} else if (this.plugin.settings.enableInlineEditor && !this.isCurrentlyEditing()) {
+			} else if (
+				this.plugin.settings.enableInlineEditor &&
+				!this.isCurrentlyEditing()
+			) {
 				// Only stop propagation if we're actually going to show the editor
 				e.stopPropagation();
 				// Show inline editor only if enabled
@@ -926,7 +1011,7 @@ export class TaskTreeItemComponent extends Component {
 		// Get view configuration to check if we should hide completed and abandoned tasks
 		const viewConfig = getViewSettingOrDefault(
 			this.plugin,
-			this.viewMode as ViewMode
+			this.viewMode as ViewMode,
 		);
 		const abandonedStatus =
 			this.plugin.settings.taskStatuses.abandoned.split("|");
@@ -950,7 +1035,7 @@ export class TaskTreeItemComponent extends Component {
 			tasksToRender = sortTasks(
 				[...tasksToRender],
 				childSortCriteria,
-				this.plugin.settings
+				this.plugin.settings,
 			);
 		} else {
 			// Default sorting: incomplete first, then priority (high->low), due date (earlier->later), content; tie-break by filePath->line
@@ -974,7 +1059,7 @@ export class TaskTreeItemComponent extends Component {
 				});
 				const contentCmp = collator.compare(
 					a.content ?? "",
-					b.content ?? ""
+					b.content ?? "",
 				);
 				if (contentCmp !== 0) return contentCmp;
 				const fp = (a.filePath || "").localeCompare(b.filePath || "");
@@ -1000,7 +1085,8 @@ export class TaskTreeItemComponent extends Component {
 				this.indentLevel + 1,
 				grandchildren, // Pass the correctly found grandchildren
 				this.taskMap, // Pass the map down recursively
-				this.plugin // Pass the plugin down
+				this.plugin, // Pass the plugin down
+				this.selectionManager || undefined, // Pass selection manager down
 			);
 
 			// Pass up events
@@ -1090,7 +1176,7 @@ export class TaskTreeItemComponent extends Component {
 		if (this.toggleEl instanceof HTMLElement) {
 			setIcon(
 				this.toggleEl,
-				this.isExpanded ? "chevron-down" : "chevron-right"
+				this.isExpanded ? "chevron-down" : "chevron-right",
 			);
 		}
 
@@ -1152,7 +1238,7 @@ export class TaskTreeItemComponent extends Component {
 		) {
 			// Re-render metadata
 			const metadataEl = this.parentContainer.querySelector(
-				".task-metadata"
+				".task-metadata",
 			) as HTMLElement;
 			if (metadataEl) {
 				this.renderMetadata(metadataEl);
@@ -1234,26 +1320,26 @@ export class TaskTreeItemComponent extends Component {
 			if (elementToToggle) {
 				elementToToggle.classList.toggle(
 					"is-selected",
-					this.isSelected
+					this.isSelected,
 				);
 				// Also ensure the parent container reflects selection if separate element
 				if (this.parentContainer) {
 					this.parentContainer.classList.toggle(
 						"selected",
-						this.isSelected
+						this.isSelected,
 					);
 				}
 			} else {
 				console.warn(
 					"Could not find element to toggle selection class for task:",
-					this.task.id
+					this.task.id,
 				);
 			}
 		}
 
 		// Recursively update children
 		this.childComponents.forEach((child) =>
-			child.updateSelectionVisuals(selectedId)
+			child.updateSelectionVisuals(selectedId),
 		);
 	}
 
@@ -1265,7 +1351,7 @@ export class TaskTreeItemComponent extends Component {
 			if (this.toggleEl instanceof HTMLElement) {
 				setIcon(
 					this.toggleEl,
-					this.isExpanded ? "chevron-down" : "chevron-right"
+					this.isExpanded ? "chevron-down" : "chevron-right",
 				);
 			}
 
@@ -1273,6 +1359,35 @@ export class TaskTreeItemComponent extends Component {
 			this.isExpanded
 				? this.childrenContainer.show()
 				: this.childrenContainer.hide();
+		}
+	}
+
+	/**
+	 * Handle multi-select toggle
+	 */
+	private handleMultiSelect(): void {
+		if (!this.selectionManager) return;
+
+		this.selectionManager.toggleSelection(this.task.id);
+		this.updateSelectionVisualState();
+	}
+
+	/**
+	 * Update visual state based on selection
+	 */
+	private updateSelectionVisualState(): void {
+		if (!this.selectionManager) return;
+
+		const isSelected = this.selectionManager.isTaskSelected(this.task.id);
+		this.isTaskSelectedState = isSelected;
+
+		// Update visual state
+		if (isSelected) {
+			this.element?.classList.add("task-item-selected");
+			this.parentContainer?.classList.add("task-item-selected");
+		} else {
+			this.element?.classList.remove("task-item-selected");
+			this.parentContainer?.classList.remove("task-item-selected");
 		}
 	}
 
