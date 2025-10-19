@@ -814,6 +814,11 @@ export class WriteAPI {
 		argsList: UpdateTaskArgs[],
 	): Promise<BulkOperationResult> {
 		return this.enqueueWrite(async () => {
+			// Emit batch operation start event
+			emit(this.app, Events.BATCH_OPERATION_START, {
+				count: argsList.length,
+			});
+
 			const summary: BulkOperationResult = {
 				successCount: 0,
 				failCount: 0,
@@ -821,24 +826,32 @@ export class WriteAPI {
 				totalCount: argsList.length,
 			};
 
-			for (const args of argsList) {
-				const originalTask = await Promise.resolve(
-					this.getTaskById(args.taskId),
-				);
-				const updateResult = await this.performUpdateTask(args);
-				if (updateResult.success) {
-					summary.successCount++;
-				} else {
-					summary.failCount++;
-					summary.errors.push({
-						taskId: args.taskId,
-						taskContent: originalTask?.content || "",
-						error: updateResult.error || "Unknown error",
-					});
+			try {
+				for (const args of argsList) {
+					const originalTask = await Promise.resolve(
+						this.getTaskById(args.taskId),
+					);
+					const updateResult = await this.performUpdateTask(args);
+					if (updateResult.success) {
+						summary.successCount++;
+					} else {
+						summary.failCount++;
+						summary.errors.push({
+							taskId: args.taskId,
+							taskContent: originalTask?.content || "",
+							error: updateResult.error || "Unknown error",
+						});
+					}
 				}
-			}
 
-			return summary;
+				return summary;
+			} finally {
+				// Emit batch operation complete event (always, even if error occurred)
+				emit(this.app, Events.BATCH_OPERATION_COMPLETE, {
+					successCount: summary.successCount,
+					failCount: summary.failCount,
+				});
+			}
 		});
 	}
 

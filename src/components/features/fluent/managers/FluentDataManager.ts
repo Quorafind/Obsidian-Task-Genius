@@ -24,6 +24,9 @@ export class FluentDataManager extends Component {
 	private onLoadingStateChanged?: (isLoading: boolean) => void;
 	private onUpdateNeeded?: (source: string) => void;
 
+	// Batch operation state flag
+	private isBatchOperating = false;
+
 	constructor(
 		private plugin: TaskProgressBarPlugin,
 		private getCurrentViewId: () => string,
@@ -269,6 +272,15 @@ export class FluentDataManager extends Component {
 		// Add debounced view update to prevent rapid successive refreshes
 		const debouncedViewUpdate = debounce(async () => {
 			console.log("[FluentData] debouncedViewUpdate triggered");
+
+			// Skip update during batch operation to prevent list flashing
+			if (this.isBatchOperating) {
+				console.log(
+					"[FluentData] Skipping update during batch operation",
+				);
+				return;
+			}
+
 			if (!this.isInitializing()) {
 				// Load tasks and notify parent
 				await this.loadTasks(false);
@@ -289,6 +301,36 @@ export class FluentDataManager extends Component {
 			isDataflowEnabled(this.plugin) &&
 			this.plugin.dataflowOrchestrator
 		) {
+			// Listen for batch operation start
+			this.registerEvent(
+				on(this.plugin.app, Events.BATCH_OPERATION_START, (payload) => {
+					console.log(
+						`[FluentData] Batch operation started: ${payload.count} tasks`,
+					);
+					this.isBatchOperating = true;
+				}),
+			);
+
+			// Listen for batch operation complete
+			this.registerEvent(
+				on(
+					this.plugin.app,
+					Events.BATCH_OPERATION_COMPLETE,
+					async (payload) => {
+						console.log(
+							`[FluentData] Batch operation complete: ${payload.successCount} succeeded, ${payload.failCount} failed`,
+						);
+						this.isBatchOperating = false;
+
+						// Immediately refresh view after batch operation (skip debounce)
+						if (!this.isInitializing()) {
+							await this.loadTasks(false);
+							this.onUpdateNeeded?.("batch-operation-complete");
+						}
+					},
+				),
+			);
+
 			// Listen for cache ready event
 			this.registerEvent(
 				on(this.plugin.app, Events.CACHE_READY, async () => {
