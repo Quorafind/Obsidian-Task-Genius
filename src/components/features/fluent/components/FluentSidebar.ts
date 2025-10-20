@@ -125,75 +125,94 @@ export class FluentSidebar extends Component {
 		this.renderNavigationItems(primarySection, this.primaryItems);
 
 		// Projects section
-		const projectsSection = content.createDiv({
-			cls: "fluent-sidebar-section",
-		});
-		const projectHeader = projectsSection.createDiv({
-			cls: "fluent-section-header",
-		});
-
-		projectHeader.createSpan({ text: t("Projects") });
-
-		// Button container for tree toggle and sort
-		const buttonContainer = projectHeader.createDiv({
-			cls: "fluent-project-header-buttons",
-		});
-
-		// Tree/List toggle button
-		const treeToggleBtn = buttonContainer.createDiv({
-			cls: "fluent-tree-toggle-btn",
-			attr: { "aria-label": t("Toggle tree/list view") },
-		});
-		// Load saved view mode preference
-		this.isTreeView =
-			this.plugin.app.loadLocalStorage(
-				"task-genius-project-view-mode",
-			) === "tree";
-		setIcon(treeToggleBtn, this.isTreeView ? "git-branch" : "list");
-
-		this.registerDomEvent(treeToggleBtn, "click", () => {
-			this.isTreeView = !this.isTreeView;
-			setIcon(treeToggleBtn, this.isTreeView ? "git-branch" : "list");
-			// Save preference
-			this.plugin.app.saveLocalStorage(
-				"task-genius-project-view-mode",
-				this.isTreeView ? "tree" : "list",
+		const isProjectsHidden =
+			this.plugin.workspaceManager?.isSidebarComponentHidden(
+				"projects-list",
 			);
-			// Update project list view mode
-			if (this.projectList) {
-				(this.projectList as ProjectList).setViewMode?.(
-					this.isTreeView,
+
+		if (!isProjectsHidden) {
+			const projectsSection = content.createDiv({
+				cls: "fluent-sidebar-section",
+			});
+			const projectHeader = projectsSection.createDiv({
+				cls: "fluent-section-header",
+			});
+
+			projectHeader.createSpan({ text: t("Projects") });
+
+			// Button container for tree toggle and sort
+			const buttonContainer = projectHeader.createDiv({
+				cls: "fluent-project-header-buttons",
+			});
+
+			// Tree/List toggle button
+			const treeToggleBtn = buttonContainer.createDiv({
+				cls: "fluent-tree-toggle-btn",
+				attr: { "aria-label": t("Toggle tree/list view") },
+			});
+			// Load saved view mode preference
+			this.isTreeView =
+				this.plugin.app.loadLocalStorage(
+					"task-genius-project-view-mode",
+				) === "tree";
+			setIcon(treeToggleBtn, this.isTreeView ? "git-branch" : "list");
+
+			this.registerDomEvent(treeToggleBtn, "click", () => {
+				this.isTreeView = !this.isTreeView;
+				setIcon(
+					treeToggleBtn,
+					this.isTreeView ? "git-branch" : "list",
 				);
-			}
-		});
+				// Save preference
+				this.plugin.app.saveLocalStorage(
+					"task-genius-project-view-mode",
+					this.isTreeView ? "tree" : "list",
+				);
+				// Update project list view mode
+				if (this.projectList) {
+					(this.projectList as ProjectList).setViewMode?.(
+						this.isTreeView,
+					);
+				}
+			});
 
-		// Sort button
-		const sortProjectBtn = buttonContainer.createDiv({
-			cls: "fluent-sort-project-btn",
-			attr: { "aria-label": t("Sort projects") },
-		});
-		setIcon(sortProjectBtn, "arrow-up-down");
+			// Sort button
+			const sortProjectBtn = buttonContainer.createDiv({
+				cls: "fluent-sort-project-btn",
+				attr: { "aria-label": t("Sort projects") },
+			});
+			setIcon(sortProjectBtn, "arrow-up-down");
 
-		// Pass sort button to project list for menu handling
-		this.registerDomEvent(sortProjectBtn, "click", () => {
-			(this.projectList as ProjectList).showSortMenu?.(sortProjectBtn);
-		});
+			// Pass sort button to project list for menu handling
+			this.registerDomEvent(sortProjectBtn, "click", () => {
+				(this.projectList as ProjectList).showSortMenu?.(
+					sortProjectBtn,
+				);
+			});
 
-		const projectListEl = projectsSection.createDiv();
-		this.projectList = new ProjectList(
-			projectListEl,
-			this.plugin,
-			this.onProjectSelect,
-			this.isTreeView,
-		);
-		// Add ProjectList as a child component
-		this.addChild(this.projectList);
+			const projectListEl = projectsSection.createDiv();
+			this.projectList = new ProjectList(
+				projectListEl,
+				this.plugin,
+				this.onProjectSelect,
+				this.isTreeView,
+			);
+			// Add ProjectList as a child component
+			this.addChild(this.projectList);
+		}
 
 		// Other views section
-		this.otherViewsSection = content.createDiv({
-			cls: "fluent-sidebar-section",
-		});
-		this.renderOtherViewsSection();
+		const isOtherViewsHidden =
+			this.plugin.workspaceManager?.isSidebarComponentHidden(
+				"other-views",
+			);
+
+		if (!isOtherViewsHidden) {
+			this.otherViewsSection = content.createDiv({
+				cls: "fluent-sidebar-section",
+			});
+			this.renderOtherViewsSection();
+		}
 	}
 
 	private renderRailMode() {
@@ -232,53 +251,66 @@ export class FluentSidebar extends Component {
 		});
 
 		// Other view icons with overflow menu when > 5
-		const allOtherItems = this.computeOtherItems();
-		const visibleCount =
-			this.plugin?.settings?.fluentView?.fluentConfig
-				?.maxOtherViewsBeforeOverflow ?? 5;
-		const displayedOther: FluentTaskNavigationItem[] = allOtherItems.slice(
-			0,
-			visibleCount,
-		);
-		const remainingOther: FluentTaskNavigationItem[] =
-			allOtherItems.slice(visibleCount);
+		if (
+			!this.plugin.workspaceManager?.isSidebarComponentHidden(
+				"other-views",
+			)
+		) {
+			const allOtherItems = this.computeOtherItems();
+			const visibleCount =
+				this.plugin?.settings?.fluentView?.fluentConfig
+					?.maxOtherViewsBeforeOverflow ?? 5;
+			const displayedOther: FluentTaskNavigationItem[] =
+				allOtherItems.slice(0, visibleCount);
+			const remainingOther: FluentTaskNavigationItem[] =
+				allOtherItems.slice(visibleCount);
 
-		displayedOther.forEach((item: FluentTaskNavigationItem) => {
-			const btn = this.railEl!.createDiv({
-				cls: "fluent-rail-btn",
-				attr: { "aria-label": item.label, "data-view-id": item.id },
+			displayedOther.forEach((item: FluentTaskNavigationItem) => {
+				const btn = this.railEl!.createDiv({
+					cls: "fluent-rail-btn",
+					attr: {
+						"aria-label": item.label,
+						"data-view-id": item.id,
+					},
+				});
+				setIcon(btn, item.icon);
+				this.registerDomEvent(btn, "click", () => {
+					this.setActiveItem(item.id);
+					this.onNavigate(item.id);
+				});
+				// Add context menu handler for rail button
+				this.registerDomEvent(btn, "contextmenu", (e) => {
+					this.showViewContextMenu(e as MouseEvent, item.id);
+				});
 			});
-			setIcon(btn, item.icon);
-			this.registerDomEvent(btn, "click", () => {
-				this.setActiveItem(item.id);
-				this.onNavigate(item.id);
-			});
-			// Add context menu handler for rail button
-			this.registerDomEvent(btn, "contextmenu", (e) => {
-				this.showViewContextMenu(e as MouseEvent, item.id);
-			});
-		});
 
-		if (remainingOther.length > 0) {
-			const moreBtn = this.railEl.createDiv({
-				cls: "fluent-rail-btn",
-				attr: { "aria-label": t("More views") },
-			});
-			setIcon(moreBtn, "more-horizontal");
-			this.registerDomEvent(moreBtn, "click", (e) =>
-				this.showOtherViewsMenu(e as MouseEvent, remainingOther),
-			);
+			if (remainingOther.length > 0) {
+				const moreBtn = this.railEl.createDiv({
+					cls: "fluent-rail-btn",
+					attr: { "aria-label": t("More views") },
+				});
+				setIcon(moreBtn, "more-horizontal");
+				this.registerDomEvent(moreBtn, "click", (e) =>
+					this.showOtherViewsMenu(e as MouseEvent, remainingOther),
+				);
+			}
 		}
 
 		// Projects menu button
-		const projBtn = this.railEl.createDiv({
-			cls: "fluent-rail-btn",
-			attr: { "aria-label": t("Projects") },
-		});
-		setIcon(projBtn, "folder");
-		this.registerDomEvent(projBtn, "click", (e) =>
-			this.showProjectMenu(e as MouseEvent),
-		);
+		if (
+			!this.plugin.workspaceManager?.isSidebarComponentHidden(
+				"projects-list",
+			)
+		) {
+			const projBtn = this.railEl.createDiv({
+				cls: "fluent-rail-btn",
+				attr: { "aria-label": t("Projects") },
+			});
+			setIcon(projBtn, "folder");
+			this.registerDomEvent(projBtn, "click", (e) =>
+				this.showProjectMenu(e as MouseEvent),
+			);
+		}
 
 		// Add (New Task) button
 		const addBtn = this.railEl.createDiv({

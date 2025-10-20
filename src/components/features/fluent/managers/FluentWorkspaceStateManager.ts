@@ -1,4 +1,4 @@
-import { App, Component, debounce } from "obsidian";
+import { App, Component, Notice, debounce } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { ViewMode } from "../components/FluentTopNavigation";
@@ -10,6 +10,7 @@ export interface WorkspaceFilterSnapshot {
 	liveFilterState: RootFilterState | null;
 	viewMode: ViewMode;
 	shouldClearSearch: boolean;
+	activeViewId?: string;
 }
 
 export interface FilterSyncHandlers {
@@ -22,6 +23,17 @@ export interface FilterSyncHandlers {
 		clearSearch: boolean;
 	}) => void;
 	onAfterSync?: (snapshot: WorkspaceFilterSnapshot) => void;
+}
+
+interface FilterStatePersistPayload {
+	workspaceId: string;
+	viewId: string;
+	activeViewId: string;
+	filters: any;
+	selectedProject: string | undefined;
+	viewMode: ViewMode;
+	searchQuery: string;
+	advancedFilter: RootFilterState | null;
 }
 
 /**
@@ -58,16 +70,14 @@ export class FluentWorkspaceStateManager extends Component {
 	 * Save workspace layout (filter state and preferences)
 	 */
 	saveWorkspaceLayout(): void {
-		const workspaceId = this.getWorkspaceId();
-		if (!workspaceId) return;
+		const snapshot = this.captureFilterStateSnapshot();
+		if (!snapshot) return;
 
-		// Save filter state
-		this.saveFilterStateToWorkspace();
+		this.saveFilterStateToWorkspace(snapshot);
 
-		// Save current workspace ID to localStorage for persistence
 		localStorage.setItem(
 			"task-genius-fluent-current-workspace",
-			workspaceId
+			snapshot.workspaceId
 		);
 	}
 
@@ -113,75 +123,210 @@ export class FluentWorkspaceStateManager extends Component {
 	}
 
 	/**
-	 * Save filter state to workspace (debounced to avoid infinite loops)
+	 * Capture a point-in-time snapshot of the filter state for persistence.
+	 * @returns Snapshot payload or null if workspaceManager is unavailable
 	 */
-	saveFilterStateToWorkspace = debounce(
-		() => {
-			const workspaceId = this.getWorkspaceId();
-			const viewId = this.getCurrentViewId();
+	public captureFilterStateSnapshot(): FilterStatePersistPayload | null {
+		const workspaceId = this.getWorkspaceId();
+		const viewId = this.getCurrentViewId();
 
-			if (!this.plugin.workspaceManager || !workspaceId) return;
+		if (!this.plugin.workspaceManager || !workspaceId || !viewId) {
+			return null;
+		}
+
+		const viewState = this.getViewState();
+		const currentFilterState = this.getCurrentFilterState();
+
+		return {
+			workspaceId,
+			viewId,
+			activeViewId: viewId,
+			filters: structuredClone(viewState.filters || {}),
+			selectedProject: viewState.selectedProject,
+			viewMode: viewState.viewMode,
+			searchQuery: viewState.searchQuery,
+			advancedFilter: currentFilterState
+				? structuredClone(currentFilterState)
+				: null,
+		};
+	}
+
+	public getSavedActiveViewId(): string | null {
+		const workspaceId = this.getWorkspaceId();
+
+		if (!this.plugin.workspaceManager || !workspaceId) {
+			return null;
+		}
+
+		const effective =
+			this.plugin.workspaceManager.getEffectiveSettings(workspaceId);
+		const active = (effective as any)?.fluentActiveViewId;
+		return typeof active === "string" ? active : null;
+	}
+
+	/**
+	 * Debounced worker that performs the actual save.
+	 */
+	private persistFilterState = debounce(
+		(payload: FilterStatePersistPayload) => {
+			if (!this.plugin.workspaceManager) {
+				return;
+			}
+
+			const {
+				workspaceId,
+				viewId,
+				activeViewId,
+				filters,
+				selectedProject,
+				viewMode,
+				searchQuery,
+				advancedFilter,
+			} = payload;
 
 			const effectiveSettings =
 				this.plugin.workspaceManager.getEffectiveSettings(workspaceId);
 
-			// Save current filter state
 			if (!effectiveSettings.fluentFilterState) {
 				effectiveSettings.fluentFilterState = {};
 			}
 
-			const viewState = this.getViewState();
-			const currentFilterState = this.getCurrentFilterState();
-
-			// Build payload (do NOT persist ephemeral fields across workspaces)
-			const payload = {
-				filters: viewState.filters,
-				selectedProject: viewState.selectedProject,
-				advancedFilter: currentFilterState,
-				viewMode: viewState.viewMode,
+			effectiveSettings.fluentFilterState[viewId] = {
+				filters,
+				selectedProject,
+				advancedFilter,
+				viewMode,
 			};
-			effectiveSettings.fluentFilterState[viewId] = payload;
+			if (activeViewId) {
+				effectiveSettings.fluentActiveViewId = activeViewId;
+			}
 
 			console.log("[FluentWorkspace] saveFilterStateToWorkspace", {
-				workspaceId: workspaceId,
-				viewId: viewId,
-				searchQuery: viewState.searchQuery,
-				selectedProject: viewState.selectedProject,
-				hasAdvanced: !!currentFilterState,
-				groups: (currentFilterState as any)?.filterGroups?.length ?? 0,
+				workspaceId,
+				viewId,
+				activeViewId,
+				searchQuery,
+				selectedProject,
+				hasAdvanced: !!advancedFilter,
+				groups: (advancedFilter as any)?.filterGroups?.length ?? 0,
 			});
 
-			// Use saveOverridesQuietly to avoid triggering SETTINGS_CHANGED event
 			this.plugin.workspaceManager
 				.saveOverridesQuietly(workspaceId, effectiveSettings)
 				.then(() =>
 					console.log("[FluentWorkspace] overrides saved quietly", {
-						workspaceId: workspaceId,
-						viewId: viewId,
+						workspaceId,
+						viewId,
 					})
 				)
-				.catch((e) =>
-					console.warn(
+				.catch((e) => {
+					console.error(
 						"[FluentWorkspace] failed to save overrides",
 						e
-					)
-				);
+					);
+					new Notice(
+						"Failed to save workspace state. Recent changes may be lost."
+					);
+				});
 		},
-		500,
-		true
+		500
 	);
+
+	/**
+	 * Save filter state to workspace (debounced to avoid infinite loops)
+	 */
+	public saveFilterStateToWorkspace(
+		payload?: FilterStatePersistPayload,
+	): void {
+		const snapshot = payload ?? this.captureFilterStateSnapshot();
+		if (!snapshot) return;
+
+		this.persistFilterState(snapshot);
+	}
+
+	/**
+	 * Save filter state immediately without debouncing.
+	 * Used for critical saves like workspace switching.
+	 * @param payload Optional snapshot to save, or captures current state if not provided
+	 */
+	public async saveFilterStateImmediately(
+		payload?: FilterStatePersistPayload,
+	): Promise<void> {
+		const snapshot = payload ?? this.captureFilterStateSnapshot();
+		if (!snapshot || !this.plugin.workspaceManager) {
+			return;
+		}
+
+		const {
+			workspaceId,
+			viewId,
+			activeViewId,
+			filters,
+			selectedProject,
+			viewMode,
+			advancedFilter,
+		} = snapshot;
+
+		const effectiveSettings =
+			this.plugin.workspaceManager.getEffectiveSettings(workspaceId);
+
+		if (!effectiveSettings.fluentFilterState) {
+			effectiveSettings.fluentFilterState = {};
+		}
+
+		effectiveSettings.fluentFilterState[viewId] = {
+			filters,
+			selectedProject,
+			advancedFilter,
+			viewMode,
+		};
+		if (activeViewId) {
+			effectiveSettings.fluentActiveViewId = activeViewId;
+		}
+
+		console.log(
+			"[FluentWorkspace] saveFilterStateImmediately",
+			{
+				workspaceId,
+				viewId,
+				activeViewId,
+			}
+		);
+
+		try {
+			await this.plugin.workspaceManager.saveOverridesQuietly(
+				workspaceId,
+				effectiveSettings
+			);
+			console.log(
+				"[FluentWorkspace] immediate save completed",
+				{ workspaceId, viewId }
+			);
+		} catch (e) {
+			console.error(
+				"[FluentWorkspace] immediate save failed",
+				e
+			);
+			new Notice(
+				"Failed to save workspace state. Recent changes may be lost."
+			);
+		}
+	}
 
 	/**
 	 * Restore filter state from workspace
 	 */
 	restoreFilterStateFromWorkspace(): WorkspaceFilterSnapshot | null {
 		const workspaceId = this.getWorkspaceId();
-		const viewId = this.getCurrentViewId();
-
 		if (!this.plugin.workspaceManager || !workspaceId) return null;
 
 		const effectiveSettings =
 			this.plugin.workspaceManager.getEffectiveSettings(workspaceId);
+		const activeViewId =
+			((effectiveSettings as any)?.fluentActiveViewId as
+				| string
+				| undefined) ?? this.getCurrentViewId();
+		const viewId = activeViewId || this.getCurrentViewId();
 
 		const saved = effectiveSettings.fluentFilterState?.[viewId] ?? null;
 
@@ -195,6 +340,7 @@ export class FluentWorkspaceStateManager extends Component {
 				liveFilterState: savedState.advancedFilter || null,
 				viewMode: savedState.viewMode || "list",
 				shouldClearSearch: true, // Always clear searchQuery on workspace restore
+				activeViewId: viewId,
 			};
 		} else {
 			// No saved state for this view in this workspace
@@ -205,6 +351,7 @@ export class FluentWorkspaceStateManager extends Component {
 				liveFilterState: null,
 				viewMode: "list",
 				shouldClearSearch: true,
+				activeViewId: viewId,
 			};
 		}
 	}

@@ -270,6 +270,9 @@ export class FluentTaskView extends ItemView {
 			await this.workspaceStateManager.applyWorkspaceSettings();
 			const restored =
 				this.workspaceStateManager.restoreFilterStateFromWorkspace();
+			if (restored?.activeViewId) {
+				this.currentViewId = restored.activeViewId;
+			}
 			this.workspaceStateManager.syncFilterState(restored, {
 				setLiveFilterState: (state) => {
 					this.liveFilterState = state;
@@ -848,8 +851,14 @@ export class FluentTaskView extends ItemView {
 			this.registerEvent(
 				onWorkspaceSwitched(this.app, async (payload) => {
 					if (payload.workspaceId !== this.workspaceId) {
-						// Save current workspace state
-						this.workspaceStateManager.saveWorkspaceLayout();
+						// Save current workspace state immediately (before switching)
+						const snapshot =
+							this.workspaceStateManager.captureFilterStateSnapshot();
+						if (snapshot) {
+							await this.workspaceStateManager.saveFilterStateImmediately(
+								snapshot
+							);
+						}
 
 						// Switch to new workspace
 						this.workspaceId = payload.workspaceId;
@@ -858,9 +867,12 @@ export class FluentTaskView extends ItemView {
 						// Apply new workspace settings
 						await this.workspaceStateManager.applyWorkspaceSettings();
 
-						// Restore filter state
+						// Restore filter state (includes activeViewId)
 						const restored =
 							this.workspaceStateManager.restoreFilterStateFromWorkspace();
+						if (restored?.activeViewId) {
+							this.currentViewId = restored.activeViewId;
+						}
 						this.workspaceStateManager.syncFilterState(restored, {
 							setLiveFilterState: (state) => {
 								this.liveFilterState = state;

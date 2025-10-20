@@ -44,6 +44,7 @@ export interface WorkspaceOverrides {
 			viewMode?: string;
 		}
 	>;
+	fluentActiveViewId?: string;
 
 	// Hidden modules configuration
 	hiddenModules?: HiddenModulesConfig;
@@ -61,13 +62,28 @@ export interface HiddenModulesConfig {
 	features?: FeatureComponentType[];
 }
 
-/** Sidebar component types that can be hidden */
+/** Sidebar component types that can be hidden (Fluent interface) */
 export type SidebarComponentType =
-	| "projects-list"
-	| "tags-list"
-	| "view-switcher"
-	| "top-views"
-	| "bottom-views";
+	| "projects-list" // Fluent: Projects list section
+	| "other-views"; // Fluent: Other views section
+
+/**
+ * Legacy sidebar component types (deprecated, kept for backward compatibility)
+ * These will be silently ignored or mapped when reading old workspace settings
+ */
+export type LegacySidebarComponentType =
+	| "tags-list" // Never implemented
+	| "view-switcher" // Legacy name, replaced by "other-views"
+	| "top-views" // Only for old TaskView (not implemented)
+	| "bottom-views"; // Only for old TaskView (not implemented)
+
+/**
+ * All sidebar component types including legacy ones
+ * Used internally for reading old settings
+ */
+export type AnySidebarComponentType =
+	| SidebarComponentType
+	| LegacySidebarComponentType;
 
 /** Feature component types that can be hidden */
 export type FeatureComponentType =
@@ -115,10 +131,20 @@ export const WORKSPACE_SCOPED_KEYS = [
 	"customProjectGroupsAndNames",
 	"tagCustomOrder",
 	"fluentFilterState",
+	"fluentActiveViewId",
 	"hiddenModules",
 ] as const;
 
 export type WorkspaceScopedKey = (typeof WORKSPACE_SCOPED_KEYS)[number];
+
+// Workspace-only keys (stored per-workspace, never merged into global settings)
+export const WORKSPACE_ONLY_KEYS = [
+	"fluentFilterState",
+	"fluentActiveViewId",
+	"hiddenModules",
+] as const;
+
+export type WorkspaceOnlyKey = (typeof WORKSPACE_ONLY_KEYS)[number];
 
 // Global-only keys (cannot be overridden)
 export const GLOBAL_ONLY_KEYS = [

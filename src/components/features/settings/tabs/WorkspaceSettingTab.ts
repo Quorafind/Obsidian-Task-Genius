@@ -128,7 +128,7 @@ export function renderWorkspaceSettingsTab(
 					});
 				}
 			})
-			.addButton((button) => {
+			.addExtraButton((button) => {
 				button
 					.setIcon("settings-2")
 					.setTooltip(t("Configure hidden modules"))
@@ -140,7 +140,7 @@ export function renderWorkspaceSettingsTab(
 						);
 					});
 			})
-			.addButton((button) => {
+			.addExtraButton((button) => {
 				button
 					.setIcon("edit")
 					.setTooltip(t("Rename"))
@@ -148,7 +148,7 @@ export function renderWorkspaceSettingsTab(
 						showRenameWorkspaceDialog(settingTab, workspace);
 					});
 			})
-			.addButton((button) => {
+			.addExtraButton((button) => {
 				if (isDefaultWs) {
 					button
 						.setIcon("trash")
@@ -262,7 +262,7 @@ function getAvailableModules(plugin: TaskProgressBarPlugin): {
 		}),
 	);
 
-	// Define sidebar component modules
+	// Define sidebar component modules (Fluent interface only)
 	const sidebarComponents: ModuleDefinition[] = [
 		{
 			id: "projects-list",
@@ -271,27 +271,9 @@ function getAvailableModules(plugin: TaskProgressBarPlugin): {
 			type: "sidebar" as const,
 		},
 		{
-			id: "tags-list",
-			name: t("Tags List"),
-			icon: "tag",
-			type: "sidebar" as const,
-		},
-		{
-			id: "view-switcher",
-			name: t("View Switcher"),
+			id: "other-views",
+			name: t("Other Views"),
 			icon: "layout-list",
-			type: "sidebar" as const,
-		},
-		{
-			id: "top-views",
-			name: t("Top Views Area"),
-			icon: "layout-top",
-			type: "sidebar" as const,
-		},
-		{
-			id: "bottom-views",
-			name: t("Bottom Views Area"),
-			icon: "layout-bottom",
 			type: "sidebar" as const,
 		},
 	];
@@ -475,8 +457,9 @@ function renderHiddenModulesConfig(
 							break;
 					}
 
-					const refreshed =
-						plugin.workspaceManager?.getWorkspace(workspace.id);
+					const refreshed = plugin.workspaceManager?.getWorkspace(
+						workspace.id,
+					);
 					if (refreshed?.settings?.hiddenModules) {
 						hiddenModules = refreshed.settings.hiddenModules;
 					} else {
@@ -487,18 +470,16 @@ function renderHiddenModulesConfig(
 						};
 					}
 
-					hiddenList = newHiddenList;
+					// Update local state from the refreshed data (after normalization)
 					switch (moduleType) {
 						case "views":
-							hiddenModules.views = newHiddenList;
+							hiddenList = hiddenModules.views || [];
 							break;
 						case "sidebarComponents":
-							hiddenModules.sidebarComponents =
-								newHiddenList as SidebarComponentType[];
+							hiddenList = hiddenModules.sidebarComponents || [];
 							break;
 						case "features":
-							hiddenModules.features =
-								newHiddenList as FeatureComponentType[];
+							hiddenList = hiddenModules.features || [];
 							break;
 					}
 
@@ -512,7 +493,7 @@ function renderHiddenModulesConfig(
 							"{{hidden}}/{{total}} hidden",
 							{
 								interpolation: {
-									hidden: newHiddenList.length.toString(),
+									hidden: hiddenList.length.toString(),
 									total: totalCount.toString(),
 								},
 							},
@@ -530,12 +511,12 @@ function renderHiddenModulesConfig(
 			};
 
 			checkbox.addEventListener("change", () => {
-				void toggleVisibility();
+				toggleVisibility();
 			});
 			itemEl.addEventListener("click", (e) => {
 				if (e.target !== checkbox) {
 					checkbox.checked = !checkbox.checked;
-					void toggleVisibility();
+					toggleVisibility();
 				}
 			});
 		});
