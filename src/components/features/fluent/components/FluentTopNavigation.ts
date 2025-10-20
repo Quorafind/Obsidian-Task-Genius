@@ -98,7 +98,10 @@ export class TopNavigation extends Component {
 
 			this.updateNotificationBadge();
 		} catch (error) {
-			console.warn("[FluentTopNavigation] Failed to update notification count:", error);
+			console.warn(
+				"[FluentTopNavigation] Failed to update notification count:",
+				error,
+			);
 		}
 	}
 
@@ -169,7 +172,9 @@ export class TopNavigation extends Component {
 			cls: "fluent-nav-icon-button",
 		});
 		setIcon(settingsBtn, "settings");
-		this.registerDomEvent(settingsBtn, "click", () => this.onSettingsClick());
+		this.registerDomEvent(settingsBtn, "click", () =>
+			this.onSettingsClick(),
+		);
 	}
 
 	private createViewTab(

@@ -1207,7 +1207,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	enableIndexer: true, // Enable indexer by default
 	enableView: true, // Enable view by default
 	enableInlineEditor: true, // Enable inline editing by default
-	enableDynamicMetadataPositioning: true, // Enable intelligent metadata positioning by default
+	enableDynamicMetadataPositioning: false, // Enable intelligent metadata positioning by default
 	defaultViewMode: "list", // Global default view mode for all views
 
 	// Global Filter Defaults

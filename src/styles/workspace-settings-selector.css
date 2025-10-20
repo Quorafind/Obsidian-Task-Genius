@@ -103,6 +103,7 @@
 /* Main container adjustments */
 .tg-settings-main-container {
 	width: 100%;
+	position: relative;
 }
 
 /* Ensure search results appear below the header bar */

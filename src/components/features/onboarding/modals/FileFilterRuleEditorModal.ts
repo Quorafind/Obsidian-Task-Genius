@@ -23,7 +23,7 @@ export class FileFilterRuleEditorModal extends Modal {
 	constructor(
 		app: App,
 		plugin: TaskProgressBarPlugin,
-		options: FileFilterRuleEditorModalOptions = {}
+		options: FileFilterRuleEditorModalOptions = {},
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -38,7 +38,7 @@ export class FileFilterRuleEditorModal extends Modal {
 		contentEl.createEl("h2", { text: t("Edit File Filter Rules") });
 		contentEl.createEl("p", {
 			text: t(
-				"Configure which files, folders, or patterns are included during task indexing."
+				"Configure which files, folders, or patterns are included during task indexing.",
 			),
 			cls: "setting-item-description",
 		});
@@ -47,14 +47,14 @@ export class FileFilterRuleEditorModal extends Modal {
 			.setName(t("Filter Mode"))
 			.setDesc(
 				t(
-					"Whitelist: include only specified paths. Blacklist: exclude specified paths."
-				)
+					"Whitelist: include only specified paths. Blacklist: exclude specified paths.",
+				),
 			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption(
 						FilterMode.WHITELIST,
-						t("Whitelist (Include only)")
+						t("Whitelist (Include only)"),
 					)
 					.addOption(FilterMode.BLACKLIST, t("Blacklist (Exclude)"))
 					.setValue(this.plugin.settings.fileFilter.mode)
@@ -62,7 +62,7 @@ export class FileFilterRuleEditorModal extends Modal {
 						this.plugin.settings.fileFilter.mode = value;
 						await this.plugin.saveSettings();
 						this.updateStats();
-					})
+					}),
 			);
 
 		const actionSetting = new Setting(contentEl);
@@ -74,18 +74,18 @@ export class FileFilterRuleEditorModal extends Modal {
 					.setButtonText(t("Add File Rule"))
 					.setCta()
 					.onClick(() => {
-						void this.addRule("file");
-					})
+						this.addRule("file");
+					}),
 			)
 			.addButton((button) =>
 				button.setButtonText(t("Add Folder Rule")).onClick(() => {
-					void this.addRule("folder");
-				})
+					this.addRule("folder");
+				}),
 			)
 			.addButton((button) =>
 				button.setButtonText(t("Add Pattern Rule")).onClick(() => {
-					void this.addRule("pattern");
-				})
+					this.addRule("pattern");
+				}),
 			);
 
 		this.rulesContainer = contentEl.createDiv({
@@ -100,14 +100,14 @@ export class FileFilterRuleEditorModal extends Modal {
 			button
 				.setButtonText(t("Done"))
 				.setCta()
-				.onClick(() => this.close())
+				.onClick(() => this.close()),
 		);
 
 		this.renderRules();
 		this.updateStats();
 
 		if (this.options.autoAddRuleType) {
-			void this.addRule(this.options.autoAddRuleType).then((rule) => {
+			this.addRule(this.options.autoAddRuleType).then((rule) => {
 				this.pendingRule = rule;
 			});
 		}
@@ -116,11 +116,11 @@ export class FileFilterRuleEditorModal extends Modal {
 	onClose() {
 		if (this.pendingRule && !this.pendingRule.path.trim()) {
 			const index = this.plugin.settings.fileFilter.rules.indexOf(
-				this.pendingRule
+				this.pendingRule,
 			);
 			if (index !== -1) {
 				this.plugin.settings.fileFilter.rules.splice(index, 1);
-				void this.plugin.saveSettings();
+				this.plugin.saveSettings();
 			}
 		}
 
@@ -130,7 +130,7 @@ export class FileFilterRuleEditorModal extends Modal {
 	}
 
 	private async addRule(
-		type: FileFilterRule["type"]
+		type: FileFilterRule["type"],
 	): Promise<FileFilterRule> {
 		const newRule: FileFilterRule = {
 			type,
@@ -207,8 +207,8 @@ export class FileFilterRuleEditorModal extends Modal {
 					rule.type === "pattern"
 						? "*.tmp, temp/*"
 						: rule.type === "folder"
-						? "path/to/folder"
-						: "path/to/file.md",
+							? "path/to/folder"
+							: "path/to/file.md",
 			});
 
 			if (rule.type === "folder") {
@@ -216,7 +216,7 @@ export class FileFilterRuleEditorModal extends Modal {
 					this.plugin.app,
 					pathInput,
 					this.plugin,
-					"single"
+					"single",
 				);
 			} else if (rule.type === "file") {
 				new FileSuggest(pathInput, this.plugin, (file) => {
@@ -269,7 +269,7 @@ export class FileFilterRuleEditorModal extends Modal {
 		container.empty();
 
 		const activeRules = this.plugin.settings.fileFilter.rules.filter(
-			(rule) => rule.enabled
+			(rule) => rule.enabled,
 		).length;
 
 		const stats = [

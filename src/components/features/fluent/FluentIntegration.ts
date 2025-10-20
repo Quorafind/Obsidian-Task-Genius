@@ -215,8 +215,8 @@ export class FluentIntegration {
 		v1Leaves.forEach((leaf) => leaf.detach());
 
 		// Close all Fluent views
-		const v2Leaves = workspace.getLeavesOfType(FLUENT_TASK_VIEW);
-		v2Leaves.forEach((leaf) => leaf.detach());
+		const fluentLeaves = workspace.getLeavesOfType(FLUENT_TASK_VIEW);
+		fluentLeaves.forEach((leaf) => leaf.detach());
 
 		// Toggle the setting
 		if (!this.plugin.settings.fluentView) {

@@ -199,7 +199,7 @@ export class FileNameInput {
 		if (updated) {
 			this.plugin.settings.quickCapture.fileNameTemplates = templates;
 			if (typeof this.plugin.saveSettings === "function") {
-				void this.plugin.saveSettings();
+				this.plugin.saveSettings();
 			}
 		}
 

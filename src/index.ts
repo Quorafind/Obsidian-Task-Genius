@@ -597,7 +597,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				}
 
 				const isBeta = targetVersion.toLowerCase().includes("beta");
-				void this.changelogManager.openChangelog(targetVersion, isBeta);
+				this.changelogManager.openChangelog(targetVersion, isBeta);
 			},
 		});
 	}
@@ -1781,7 +1781,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			}
 
 			const isBeta = manifestVersion.toLowerCase().includes("beta");
-			void this.changelogManager.openChangelog(manifestVersion, isBeta);
+			this.changelogManager.openChangelog(manifestVersion, isBeta);
 		} catch (error) {
 			console.error("[TG] Failed to show changelog:", error);
 		}

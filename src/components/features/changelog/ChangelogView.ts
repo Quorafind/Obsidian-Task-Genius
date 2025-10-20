@@ -74,7 +74,7 @@ export class ChangelogView extends ItemView {
 			markdown: "",
 			sourceUrl: "",
 		};
-		void this.render();
+		this.render();
 	}
 
 	async setContent(content: ChangelogContent) {
@@ -87,7 +87,7 @@ export class ChangelogView extends ItemView {
 	showError(message: string) {
 		this.isLoading = false;
 		this.error = message;
-		void this.render();
+		this.render();
 	}
 
 	private async render(): Promise<void> {

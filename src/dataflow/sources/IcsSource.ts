@@ -61,7 +61,7 @@ export class IcsSource {
 		// Listen for ICS cache updates
 		this.app.workspace.on("ics-cache-updated" as any, () => {
 			console.log("[IcsSource] ICS cache updated, reloading events...");
-			void this.loadAndEmitIcsEvents();
+			this.loadAndEmitIcsEvents();
 		});
 
 		// Listen for ICS configuration changes

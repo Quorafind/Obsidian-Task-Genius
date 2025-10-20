@@ -601,7 +601,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 		} else {
 			if (this.previewPlainEl) {
 				const snapshot = this.capturedContent;
-				void this.computeFileModePreviewContent(snapshot).then(
+				this.computeFileModePreviewContent(snapshot).then(
 					(finalContent) => {
 						if (
 							this.previewPlainEl &&
