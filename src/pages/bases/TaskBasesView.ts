@@ -35,7 +35,6 @@ import {
 	createTaskCheckbox,
 	TaskDetailsComponent,
 } from "@/components/features/task/view/details";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
 import { t } from "@/translations/helper";
 import {
 	getViewSettingOrDefault,

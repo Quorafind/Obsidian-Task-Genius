@@ -1,5 +1,5 @@
 import { QuickCaptureModal } from "../components/features/quick-capture/modals/QuickCaptureModal";
-import { DEFAULT_TIME_PARSING_CONFIG } from '@/services/time-parsing-service';
+import { DEFAULT_TIME_PARSING_CONFIG } from "@/services/time-parsing-service";
 import { App } from "obsidian";
 
 // Mock dependencies
@@ -52,17 +52,21 @@ jest.mock("obsidian", () => ({
 	moment: () => ({ format: jest.fn(() => "2025-01-04") }),
 	EditorSuggest: class {
 		constructor() {}
-		getSuggestions() { return []; }
+		getSuggestions() {
+			return [];
+		}
 		renderSuggestion() {}
 		selectSuggestion() {}
-		onTrigger() { return null; }
+		onTrigger() {
+			return null;
+		}
 		close() {}
 	},
 }));
 
 // Mock moment module
 jest.mock("moment", () => {
-	const moment = function(input?: any) {
+	const moment = function (input?: any) {
 		return {
 			format: () => "2024-01-01",
 			diff: () => 0,
@@ -87,7 +91,15 @@ jest.mock("moment", () => {
 	moment.locale = jest.fn(() => "en");
 	moment.utc = () => ({ format: () => "00:00:00" });
 	moment.duration = () => ({ asMilliseconds: () => 0 });
-	moment.weekdaysShort = () => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+	moment.weekdaysShort = () => [
+		"Sun",
+		"Mon",
+		"Tue",
+		"Wed",
+		"Thu",
+		"Fri",
+		"Sat",
+	];
 	moment.weekdaysMin = () => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 	return moment;
 });
@@ -166,7 +178,7 @@ describe("QuickCaptureModal Time Parsing Integration", () => {
 		test("should initialize with plugin settings", () => {
 			expect(modal.timeParsingService).toBeDefined();
 			expect(modal.timeParsingService.getConfig()).toEqual(
-				mockPlugin.settings.timeParsing
+				mockPlugin.settings.timeParsing,
 			);
 		});
 
@@ -183,11 +195,11 @@ describe("QuickCaptureModal Time Parsing Integration", () => {
 				mockApp,
 				pluginWithoutTimeParsing,
 				undefined,
-				true
+				true,
 			);
 			expect(modalWithoutConfig.timeParsingService).toBeDefined();
 			expect(modalWithoutConfig.timeParsingService.getConfig()).toEqual(
-				DEFAULT_TIME_PARSING_CONFIG
+				DEFAULT_TIME_PARSING_CONFIG,
 			);
 		});
 	});

@@ -1,7 +1,7 @@
 import { t } from "@/translations/helper";
 import { Notice } from "obsidian";
 import type TaskProgressBarPlugin from "@/index";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 
 /**
  * Quick Capture Demo Component - Demo quick capture feature
@@ -17,7 +17,7 @@ export class QuickCaptureDemo {
 		const demo = section.createDiv("demo-content");
 		demo.createEl("p", {
 			text: t(
-				"Use Quick Capture to quickly create tasks from anywhere in Obsidian"
+				"Use Quick Capture to quickly create tasks from anywhere in Obsidian",
 			),
 		});
 
@@ -33,15 +33,17 @@ export class QuickCaptureDemo {
 					new QuickCaptureModal(plugin.app, plugin).open();
 				} else {
 					new Notice(
-						t("Quick capture is now enabled in your configuration!"),
-						3000
+						t(
+							"Quick capture is now enabled in your configuration!",
+						),
+						3000,
 					);
 				}
 			} catch (error) {
 				console.error("Failed to open quick capture:", error);
 				new Notice(
 					t("Failed to open quick capture. Please try again later."),
-					3000
+					3000,
 				);
 			}
 		});

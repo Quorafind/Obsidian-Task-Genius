@@ -18,7 +18,7 @@ import {
 } from "@/common/setting-definition";
 import { filterTasks } from "@/utils/task/task-filter-utils";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 import { t } from "@/translations/helper";
 import { ViewMode } from "../components/FluentTopNavigation";
 import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";

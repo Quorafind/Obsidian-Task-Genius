@@ -492,7 +492,7 @@ export class ProjectList extends Component {
 		}
 
 		// Add new project button
-		const addProjectBtn = scrollArea.createDiv({
+		const addProjectBtn = this.containerEl.createDiv({
 			cls: "fluent-project-item fluent-add-project",
 		});
 
@@ -540,16 +540,16 @@ export class ProjectList extends Component {
 		treeNode?: ProjectTreeNode,
 	) {
 		const projectItem = container.createDiv({
-					cls: "fluent-project-item",
-					attr: {
-						"data-project-id": project.filterKey,
-						"data-level": String(level),
-					},
-				});
+			cls: "fluent-project-item",
+			attr: {
+				"data-project-id": project.filterKey,
+				"data-level": String(level),
+			},
+		});
 
-				// Add virtual class for styling
-				if (project.isVirtual) {
-					projectItem.addClass("is-virtual");
+		// Add virtual class for styling
+		if (project.isVirtual) {
+			projectItem.addClass("is-virtual");
 		}
 
 		if (this.activeProjectId === project.filterKey) {

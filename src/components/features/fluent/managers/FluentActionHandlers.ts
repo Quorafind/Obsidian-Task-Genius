@@ -1,7 +1,7 @@
 import { App, Component, Menu, Notice, TFile } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { StandardTaskMetadata, Task } from "@/types/task";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 import { ConfirmModal } from "@/components/ui/modals/ConfirmModal";
 import { createTaskCheckbox } from "@/components/features/task/view/details";
 import { emitTaskSelected } from "@/components/features/fluent/events/ui-event";

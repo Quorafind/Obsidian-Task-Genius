@@ -45,7 +45,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	private previewMarkdownEl: HTMLElement | null = null;
 	private previewPlainEl: HTMLElement | null = null;
 	private markdownRenderer: MarkdownRendererComponent | null = null;
-	private timeParsingService: TimeParsingService;
+	public timeParsingService: TimeParsingService;
 	private universalSuggest: UniversalEditorSuggest | null = null;
 
 	// Date input references

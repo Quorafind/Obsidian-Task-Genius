@@ -12,7 +12,7 @@ import { TaskDetailsComponent } from "@/components/features/task/view/details";
 import { Task } from "@/types/task";
 import { t } from "@/translations/helper";
 import { TG_LEFT_SIDEBAR_VIEW_TYPE } from "../../../../pages/LeftSidebarView";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 import {
 	ViewTaskFilterModal,
 	ViewTaskFilterPopover,

@@ -105,7 +105,10 @@ export class FluentSidebar extends Component {
 			cls: "fluent-new-task-btn",
 		});
 		setIcon(newTaskBtn.createDiv({ cls: "fluent-new-task-icon" }), "plus");
-		newTaskBtn.createDiv({ cls: "fluent-new-task-text" }, t("New Task"));
+		newTaskBtn.createDiv({
+			cls: "fluent-new-task-text",
+			text: t("New Task"),
+		});
 		this.registerDomEvent(newTaskBtn, "click", () =>
 			this.onNavigate("new-task"),
 		);

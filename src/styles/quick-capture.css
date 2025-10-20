@@ -240,7 +240,6 @@
 .quick-capture-modal.quick-capture-checkbox {
 	width: 800px;
 	max-width: 90vw;
-	height: 700px;
 	max-height: 80vh;
 	min-height: fit-content;
 }
