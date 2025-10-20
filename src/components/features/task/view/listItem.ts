@@ -903,6 +903,9 @@ export class TaskListItemComponent extends Component {
 	private registerContentClickHandler() {
 		// Make content clickable for editing or navigation
 		this.registerDomEvent(this.contentEl, "click", async (e) => {
+			if (Keymap.isModifier(e, "Shift")) {
+				return;
+			}
 			// Check if modifier key is pressed (Cmd/Ctrl)
 			if (Keymap.isModEvent(e)) {
 				// Open task in file

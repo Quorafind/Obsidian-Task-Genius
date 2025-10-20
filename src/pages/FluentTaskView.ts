@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Scope, WorkspaceLeaf } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
 import "@/styles/fluent/fluent-main.css";
@@ -19,10 +19,7 @@ import { Events, on } from "@/dataflow/events/Events";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { Platform } from "obsidian";
 import { t } from "@/translations/helper";
-import {
-	getInitialViewMode,
-	saveViewMode,
-} from "@/utils/ui/view-mode-utils";
+import { getInitialViewMode, saveViewMode } from "@/utils/ui/view-mode-utils";
 
 // Import managers
 import { FluentDataManager } from "@/components/features/fluent/managers/FluentDataManager";
@@ -164,7 +161,10 @@ export class FluentTaskView extends ItemView {
 			}
 		}
 
-		if (availableModes.includes("tree") || availableModes.includes("list")) {
+		if (
+			availableModes.includes("tree") ||
+			availableModes.includes("list")
+		) {
 			const prefersTree = getInitialViewMode(
 				this.app,
 				this.plugin,
@@ -289,22 +289,21 @@ export class FluentTaskView extends ItemView {
 				}) => {
 					this.viewState.filters = filters;
 					this.viewState.selectedProject = selectedProject;
-					const normalizedMode =
-						(() => {
-							const availableModes =
-								this.componentManager?.getAvailableModesForView(
-									this.currentViewId,
-								) ?? [];
-							if (
-								availableModes.length > 0 &&
-								!availableModes.includes(viewMode)
-							) {
-								return this.ensureViewModeForView(
-									this.currentViewId,
-								);
-							}
-							return viewMode;
-						})();
+					const normalizedMode = (() => {
+						const availableModes =
+							this.componentManager?.getAvailableModesForView(
+								this.currentViewId,
+							) ?? [];
+						if (
+							availableModes.length > 0 &&
+							!availableModes.includes(viewMode)
+						) {
+							return this.ensureViewModeForView(
+								this.currentViewId,
+							);
+						}
+						return viewMode;
+					})();
 					this.viewState.viewMode = normalizedMode;
 					this.recordViewModeForView(
 						this.currentViewId,
@@ -497,8 +496,9 @@ export class FluentTaskView extends ItemView {
 					this.viewState.viewMode,
 				);
 				this.currentViewId = "projects";
-				const projectsViewMode =
-					this.ensureViewModeForView(this.currentViewId);
+				const projectsViewMode = this.ensureViewModeForView(
+					this.currentViewId,
+				);
 				this.viewState.viewMode = projectsViewMode;
 				this.recordViewModeForView(
 					this.currentViewId,
@@ -610,6 +610,11 @@ export class FluentTaskView extends ItemView {
 			this,
 		);
 		this.addChild(this.selectionManager);
+
+		this.scope = new Scope(this.app.scope);
+		this.scope.register(null, "Escape", () => {
+			this.selectionManager.clearSelection();
+		});
 
 		console.log("[TG] Managers initialized");
 	}
@@ -838,30 +843,27 @@ export class FluentTaskView extends ItemView {
 								this.viewState.filters = filters;
 								this.viewState.selectedProject =
 									selectedProject;
-								const normalizedMode =
-									(() => {
-										const availableModes =
-											this.componentManager?.getAvailableModesForView(
-												this.currentViewId,
-											) ?? [];
-										if (
-											availableModes.length > 0 &&
-											!availableModes.includes(viewMode)
-										) {
-											return this.ensureViewModeForView(
-												this.currentViewId,
-											);
-										}
-										return viewMode;
-									})();
+								const normalizedMode = (() => {
+									const availableModes =
+										this.componentManager?.getAvailableModesForView(
+											this.currentViewId,
+										) ?? [];
+									if (
+										availableModes.length > 0 &&
+										!availableModes.includes(viewMode)
+									) {
+										return this.ensureViewModeForView(
+											this.currentViewId,
+										);
+									}
+									return viewMode;
+								})();
 								this.viewState.viewMode = normalizedMode;
 								this.recordViewModeForView(
 									this.currentViewId,
 									normalizedMode,
 								);
-								this.topNavigation?.setViewMode(
-									normalizedMode,
-								);
+								this.topNavigation?.setViewMode(normalizedMode);
 								if (clearSearch) {
 									this.viewState.searchQuery = "";
 									this.viewState.filterInputValue = "";
