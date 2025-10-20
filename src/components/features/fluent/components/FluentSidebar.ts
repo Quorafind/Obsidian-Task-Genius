@@ -337,8 +337,8 @@ export class FluentSidebar extends Component {
 			if (!Array.isArray(cfg)) return this.otherItems;
 
 			const primaryIds = new Set(this.primaryItems.map((i) => i.id));
-			// Exclude views that are represented elsewhere in the sidebar (e.g., Projects list)
-			const excludeIds = new Set<string>(["projects"]);
+			// No longer exclude projects view - users can access it from both Projects list and Other Views
+			const excludeIds = new Set<string>([]);
 			const seen = new Set<string>();
 			const items: FluentTaskNavigationItem[] = [];
 
@@ -846,5 +846,14 @@ export class FluentSidebar extends Component {
 		this.currentWorkspaceId = workspaceId;
 		this.workspaceSelector?.setWorkspace(workspaceId);
 		this.projectList?.refresh();
+	}
+
+	/**
+	 * Enable or disable project list interaction
+	 * Used when showing full projects overview to prevent conflicting navigation
+	 */
+	public setProjectListEnabled(enabled: boolean) {
+		if (!this.projectList) return;
+		this.projectList.setEnabled(enabled);
 	}
 }

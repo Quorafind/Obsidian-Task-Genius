@@ -473,6 +473,44 @@ export class FluentTaskView extends ItemView {
 					this.viewState.viewMode,
 				);
 				this.currentViewId = viewId;
+
+				// When navigating to projects view directly, clear project selection
+				// This enables the full project overview mode
+				if (viewId === "projects") {
+					console.log("[TG] Navigating to projects overview - clearing project selection");
+					this.viewState.selectedProject = undefined;
+
+					// Clear project filter from filter state
+					try {
+						if (this.liveFilterState) {
+							const nextState = { ...this.liveFilterState };
+							nextState.filterGroups = (nextState.filterGroups || [])
+								.map((g: any) => ({
+									...g,
+									filters: (g.filters || []).filter(
+										(f: any) => f.property !== "project",
+									),
+								}))
+								.filter((g: any) => g.filters && g.filters.length > 0);
+
+							this.liveFilterState = nextState as any;
+							this.currentFilterState = nextState as any;
+							this.app.saveLocalStorage(
+								"task-genius-view-filter",
+								nextState,
+							);
+
+							// Broadcast filter change
+							this.app.workspace.trigger(
+								"task-genius:filter-changed",
+								nextState,
+							);
+						}
+					} catch (e) {
+						console.warn("[TG] Failed to clear project filter", e);
+					}
+				}
+
 				const nextMode = this.ensureViewModeForView(viewId);
 				this.viewState.viewMode = nextMode;
 				this.recordViewModeForView(viewId, nextMode);
@@ -1030,6 +1068,14 @@ export class FluentTaskView extends ItemView {
 
 		// Update sidebar active item
 		this.layoutManager.setSidebarActiveItem(this.currentViewId);
+
+		// Control project list interaction based on view state
+		// Disable project list when showing full projects overview (no project selected)
+		// Enable it when in other views or when a specific project is selected
+		const isProjectsOverview =
+			this.currentViewId === "projects" &&
+			!this.viewState.selectedProject;
+		this.layoutManager.sidebar?.setProjectListEnabled(!isProjectsOverview);
 
 		// Show loading state
 		if (this.isLoading) {

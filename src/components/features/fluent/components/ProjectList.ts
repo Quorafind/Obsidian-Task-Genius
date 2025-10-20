@@ -701,6 +701,18 @@ export class ProjectList extends Component {
 		this.loadProjects();
 	}
 
+	/**
+	 * Enable or disable project list interaction
+	 * Used when showing full projects overview to prevent conflicting navigation
+	 */
+	public setEnabled(enabled: boolean) {
+		if (enabled) {
+			this.containerEl.removeClass("tg-project-list-disabled");
+		} else {
+			this.containerEl.addClass("tg-project-list-disabled");
+		}
+	}
+
 	private handleAddProject(buttonEl: HTMLElement) {
 		// Clean up any existing popover
 		if (this.currentPopover) {

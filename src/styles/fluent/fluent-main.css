@@ -380,6 +380,29 @@ button.fluent-new-task-btn:hover {
 	background-color: var(--background-modifier-hover);
 }
 
+/* Disabled project list styles - used when showing full projects overview */
+.tg-project-list-disabled {
+	pointer-events: none;
+	opacity: 0.5;
+	position: relative;
+}
+
+.tg-project-list-disabled::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: var(--background-modifier-cover);
+	opacity: 0.3;
+	z-index: 1;
+}
+
+.tg-project-list-disabled .fluent-project-item {
+	cursor: not-allowed;
+}
+
 /* Main Container */
 .tg-fluent-main-container {
 	flex: 1;

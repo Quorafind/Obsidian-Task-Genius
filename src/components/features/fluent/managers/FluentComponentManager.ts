@@ -538,9 +538,22 @@ export class FluentComponentManager extends Component {
 						targetComponent = this.tagsComponent;
 						break;
 					case "projects":
-						// In V2, Projects is treated as a content-based view using global project filters
-						targetComponent = this.contentComponent;
-						modeForComponent = viewId;
+						// Two modes for projects view:
+						// 1. With project selection (from ProjectList) → use ContentComponent for filtered tasks
+						// 2. Without project selection (from view navigation) → use ProjectsComponent for overview
+						if (project) {
+							console.log(
+								"[FluentComponent] Projects view with selected project - using ContentComponent",
+							);
+							targetComponent = this.contentComponent;
+							modeForComponent = viewId;
+						} else {
+							console.log(
+								"[FluentComponent] Projects view without selection - using ProjectsComponent",
+							);
+							targetComponent = this.projectsComponent;
+							modeForComponent = viewId;
+						}
 						break;
 					case "review":
 						targetComponent = this.reviewComponent;
@@ -591,7 +604,8 @@ export class FluentComponentManager extends Component {
 			// Set tasks on the component
 			if (typeof targetComponent.setTasks === "function") {
 				// Special handling for components that need only all tasks (single parameter)
-				if (viewId === "review" || viewId === "tags") {
+				// Projects overview mode (no project selected) needs all tasks to build project list
+				if (viewId === "review" || viewId === "tags" || (viewId === "projects" && !project)) {
 					console.log(
 						`[FluentComponent] Calling setTasks for ${viewId} with ALL tasks:`,
 						tasks.length,
