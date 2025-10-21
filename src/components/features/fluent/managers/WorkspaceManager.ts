@@ -115,6 +115,25 @@ export class WorkspaceManager {
 		) {
 			config.activeWorkspaceId = config.defaultWorkspaceId;
 		}
+
+		this.removeDeprecatedHiddenFeatures(config);
+	}
+
+	private removeDeprecatedHiddenFeatures(config: WorkspacesConfig): void {
+		let mutated = false;
+		for (const workspace of Object.values(config.byId)) {
+			if (
+				workspace.settings?.hiddenModules?.features &&
+				workspace.settings.hiddenModules.features.length > 0
+			) {
+				workspace.settings.hiddenModules.features = [];
+				mutated = true;
+			}
+		}
+
+		if (mutated) {
+			void this.plugin.saveSettings();
+		}
 	}
 
 	// Merge workspace overrides into global settings
@@ -774,6 +793,9 @@ export class WorkspaceManager {
 		}
 		if (!workspace.settings.hiddenModules.features) {
 			workspace.settings.hiddenModules.features = [];
+		} else if (workspace.settings.hiddenModules.features.length > 0) {
+			// Features can no longer be hidden; normalize to empty
+			workspace.settings.hiddenModules.features = [];
 		}
 		return workspace.settings
 			.hiddenModules as Required<HiddenModulesConfig>;
@@ -863,15 +885,8 @@ export class WorkspaceManager {
 			| "task-mark",
 		workspaceId?: string,
 	): boolean {
-		const workspace = workspaceId
-			? this.getWorkspace(workspaceId)
-			: this.getActiveWorkspace();
-
-		if (!workspace?.settings?.hiddenModules?.features) {
-			return false;
-		}
-
-		return workspace.settings.hiddenModules.features.includes(featureId);
+		// Feature hiding is no longer supported
+		return false;
 	}
 
 	/**
@@ -1005,9 +1020,23 @@ export class WorkspaceManager {
 
 		if (!workspace) return;
 
-		// Ensure complete initialization and get the initialized object
+		// Feature hiding is deprecated; ensure list stays empty
 		const hiddenModules = this.ensureHiddenModulesInitialized(workspace);
-		hiddenModules.features = [...featureIds];
+		const hadHiddenFeatures = hiddenModules.features.length > 0;
+		if (hadHiddenFeatures) {
+			hiddenModules.features = [];
+		}
+
+		if (featureIds.length > 0) {
+			console.warn(
+				"[WorkspaceManager] Feature hiding is deprecated and will be ignored.",
+				{ requestedFeatures: featureIds },
+			);
+		}
+
+		if (!hadHiddenFeatures && featureIds.length === 0) {
+			return;
+		}
 
 		workspace.updatedAt = Date.now();
 		this.clearCache();

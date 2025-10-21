@@ -70,6 +70,15 @@ export class FluentSidebar extends Component {
 			plugin.workspaceManager?.getActiveWorkspace().id || "";
 	}
 
+	private isViewVisible(viewId: string): boolean {
+		const manager = this.plugin.workspaceManager;
+		if (!manager) return true;
+		const workspaceId =
+			this.currentWorkspaceId ||
+			manager.getActiveWorkspace()?.id;
+		return !manager.isViewHidden(viewId, workspaceId);
+	}
+
 	private render() {
 		this.containerEl.empty();
 		this.containerEl.addClass("fluent-sidebar");
@@ -234,7 +243,9 @@ export class FluentSidebar extends Component {
 		);
 
 		// Primary view icons
-		this.primaryItems.forEach((item) => {
+		this.primaryItems
+			.filter((item) => this.isViewVisible(item.id))
+			.forEach((item) => {
 			const btn = this.railEl!.createDiv({
 				cls: "fluent-rail-btn",
 				attr: { "aria-label": item.label, "data-view-id": item.id },
@@ -388,9 +399,12 @@ export class FluentSidebar extends Component {
 				seen.add(id);
 			}
 
-			return items.length ? items : this.otherItems;
+			const result = items.length ? items : this.otherItems;
+			return result.filter((item) => this.isViewVisible(item.id));
 		} catch (e) {
-			return this.otherItems;
+			return this.otherItems.filter((item) =>
+				this.isViewVisible(item.id),
+			);
 		}
 	}
 
@@ -825,8 +839,13 @@ export class FluentSidebar extends Component {
 		containerEl: HTMLElement,
 		items: FluentTaskNavigationItem[],
 	) {
+		const visibleItems = items.filter((item) =>
+			this.isViewVisible(item.id),
+		);
+		if (!visibleItems.length) return;
+
 		const list = containerEl.createDiv({ cls: "fluent-navigation-list" });
-		items.forEach((item) => {
+		visibleItems.forEach((item) => {
 			const itemEl = list.createDiv({
 				cls: "fluent-navigation-item",
 				attr: { "data-view-id": item.id },

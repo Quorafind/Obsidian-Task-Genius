@@ -5,7 +5,6 @@ import {
 	WorkspaceData,
 	ModuleDefinition,
 	SidebarComponentType,
-	FeatureComponentType,
 } from "@/types/workspace";
 import { t } from "@/translations/helper";
 import {
@@ -250,7 +249,6 @@ function showDeleteWorkspaceDialog(
 function getAvailableModules(plugin: TaskProgressBarPlugin): {
 	views: ModuleDefinition[];
 	sidebarComponents: ModuleDefinition[];
-	features: ModuleDefinition[];
 } {
 	// Get view modules from plugin settings
 	const views: ModuleDefinition[] = plugin.settings.viewConfiguration.map(
@@ -278,41 +276,7 @@ function getAvailableModules(plugin: TaskProgressBarPlugin): {
 		},
 	];
 
-	// Define feature component modules
-	const features: ModuleDefinition[] = [
-		{
-			id: "details-panel",
-			name: t("Details Panel"),
-			icon: "panel-right",
-			type: "feature" as const,
-		},
-		{
-			id: "quick-capture",
-			name: t("Quick Capture"),
-			icon: "notebook-pen",
-			type: "feature" as const,
-		},
-		{
-			id: "filter",
-			name: t("Filter"),
-			icon: "filter",
-			type: "feature" as const,
-		},
-		{
-			id: "progress-bar",
-			name: t("Progress Bar"),
-			icon: "percent",
-			type: "feature" as const,
-		},
-		{
-			id: "task-mark",
-			name: t("Task Count"),
-			icon: "hash",
-			type: "feature" as const,
-		},
-	];
-
-	return { views, sidebarComponents, features };
+	return { views, sidebarComponents };
 }
 
 /**
@@ -339,7 +303,7 @@ function renderHiddenModulesConfig(
 	modulesContainer.createDiv({
 		cls: "workspace-hidden-modules-desc",
 		text: t(
-			"Configure which modules should be hidden in this workspace. Hidden views will not appear in the sidebar, and hidden features will be disabled.",
+			"Configure which modules should be hidden in this workspace. Hidden views will not appear in the sidebar.",
 		),
 	});
 
@@ -347,7 +311,6 @@ function renderHiddenModulesConfig(
 	let hiddenModules = workspace.settings.hiddenModules || {
 		views: [],
 		sidebarComponents: [],
-		features: [],
 	};
 
 	const groupsContainer = modulesContainer.createDiv({
@@ -360,7 +323,7 @@ function renderHiddenModulesConfig(
 		groupIcon: string,
 		moduleList: ModuleDefinition[],
 		initialHiddenList: string[],
-		moduleType: "views" | "sidebarComponents" | "features",
+		moduleType: "views" | "sidebarComponents",
 	) => {
 		let hiddenList = [...initialHiddenList];
 
@@ -449,12 +412,6 @@ function renderHiddenModulesConfig(
 								workspace.id,
 							);
 							break;
-						case "features":
-							await plugin.workspaceManager?.setHiddenFeatures(
-								newHiddenList as FeatureComponentType[],
-								workspace.id,
-							);
-							break;
 					}
 
 					const refreshed = plugin.workspaceManager?.getWorkspace(
@@ -466,7 +423,6 @@ function renderHiddenModulesConfig(
 						hiddenModules = {
 							views: [],
 							sidebarComponents: [],
-							features: [],
 						};
 					}
 
@@ -477,9 +433,6 @@ function renderHiddenModulesConfig(
 							break;
 						case "sidebarComponents":
 							hiddenList = hiddenModules.sidebarComponents || [];
-							break;
-						case "features":
-							hiddenList = hiddenModules.features || [];
 							break;
 					}
 
@@ -537,14 +490,6 @@ function renderHiddenModulesConfig(
 		modules.sidebarComponents,
 		hiddenModules.sidebarComponents || [],
 		"sidebarComponents",
-	);
-
-	renderModuleGroup(
-		t("Features"),
-		"settings",
-		modules.features,
-		hiddenModules.features || [],
-		"features",
 	);
 }
 
