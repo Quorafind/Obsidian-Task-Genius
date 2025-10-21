@@ -421,12 +421,15 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 					this.taskMetadata.dueDate
 						? moment(this.taskMetadata.dueDate).format("YYYY-MM-DD")
 						: undefined,
-					"📅"
+					"📅",
 				);
 
-				datePickerModal.onDateSelected = (selectedDate: string | null) => {
+				datePickerModal.onDateSelected = (
+					selectedDate: string | null,
+				) => {
 					if (selectedDate) {
-						this.taskMetadata.dueDate = moment(selectedDate).toDate();
+						this.taskMetadata.dueDate =
+							moment(selectedDate).toDate();
 						this.updateButtonState(this.dateButton!, true);
 
 						// If called from suggest, replace the ~ with date text
@@ -565,11 +568,6 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			const rect = this.locationButton.getBoundingClientRect();
 			this.showMenuAtCoords(menu, rect.left, rect.bottom + 5);
 		}
-	}
-
-	// Tag selector methods
-	public showTagSelectorAtCursor(cursorCoords: any, cursor: EditorPosition) {
-		// TODO: Implement tag selector
 	}
 
 	/**

@@ -1,4 +1,4 @@
-import { Component, setIcon } from "obsidian";
+import { Component, Notice, setIcon } from "obsidian";
 import { FilterDropdown } from "./filter-dropdown";
 import { FilterPill } from "./filter-pill";
 import {
@@ -123,7 +123,7 @@ export class FilterComponent extends Component {
 
 	constructor(
 		private params: FilterComponentOptions,
-		private plugin: TaskProgressBarPlugin
+		private plugin: TaskProgressBarPlugin,
 	) {
 		super();
 		this.container = params.container;
@@ -173,7 +173,7 @@ export class FilterComponent extends Component {
 				const textSpan = el.createEl("span", {
 					text: t("Add filter"),
 				});
-			}
+			},
 		);
 
 		this.clearAllButton = this.controlsContainer.createEl("button", {
@@ -212,16 +212,15 @@ export class FilterComponent extends Component {
 			(option) =>
 				option.options.length > 0 && // Only show categories with available options
 				!this.activeFilters.some(
-					(filter) => filter.category === option.id
-				)
+					(filter) => filter.category === option.id,
+				),
 		);
 
 		if (availableOptions.length === 0) {
-			// TODO: Use Obsidian's Notice API
 			console.log(
-				"No more filter categories available or options populated."
+				"No more filter categories available or options populated.",
 			);
-			// import { Notice } from 'obsidian'; new Notice('No more filter categories available.');
+			new Notice("No more filter categories available.");
 			return;
 		}
 
@@ -238,7 +237,7 @@ export class FilterComponent extends Component {
 					this.hideFilterDropdown(); // Close dropdown if requested (e.g., Escape key)
 				},
 			},
-			this.plugin
+			this.plugin,
 		);
 		this.addChild(this.dropdown); // Manage lifecycle
 	}
@@ -341,23 +340,23 @@ export class FilterComponent extends Component {
 		// Re-add filters using the (potentially updated) options
 		currentFilters.forEach((f) => {
 			const categoryExists = this.options.some(
-				(opt) => opt.id === f.category
+				(opt) => opt.id === f.category,
 			);
 			if (categoryExists) {
 				// Check if the specific value exists within the updated options for that category
 				const categoryWithOptions = this.options.find(
-					(opt) => opt.id === f.category
+					(opt) => opt.id === f.category,
 				);
 				if (categoryWithOptions?.options.includes(f.value)) {
 					this.addFilter(f.category, f.value);
 				} else {
 					console.warn(
-						`Initial filter value "${f.value}" no longer exists for category "${f.category}". Skipping.`
+						`Initial filter value "${f.value}" no longer exists for category "${f.category}". Skipping.`,
 					);
 				}
 			} else {
 				console.warn(
-					`Initial filter category "${f.category}" no longer exists. Skipping filter for value "${f.value}".`
+					`Initial filter category "${f.category}" no longer exists. Skipping filter for value "${f.value}".`,
 				);
 			}
 		});
@@ -386,7 +385,7 @@ export class FilterComponent extends Component {
 		filters.forEach((filter) => {
 			// Find the category label from options
 			const category = this.options.find(
-				(opt) => opt.id === filter.category
+				(opt) => opt.id === filter.category,
 			);
 			// Check if the specific option value exists within the category
 			if (category && category.options.includes(filter.value)) {
@@ -394,11 +393,11 @@ export class FilterComponent extends Component {
 				this.addFilter(filter.category, filter.value);
 			} else if (category) {
 				console.warn(
-					`Filter value "${filter.value}" not found in options for category "${filter.category}".`
+					`Filter value "${filter.value}" not found in options for category "${filter.category}".`,
 				);
 			} else {
 				console.warn(
-					`Filter category "${filter.category}" not found in options.`
+					`Filter category "${filter.category}" not found in options.`,
 				);
 			}
 		});
