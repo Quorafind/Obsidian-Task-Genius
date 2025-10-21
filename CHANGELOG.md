@@ -4,103 +4,57 @@ All notable changes to this project will be documented in this file.
 
 ## [9.9.0](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.14...9.9.0) (2025-10-21)
 
-### Features
+### Shinny new things
 
-* **fluent:** implement dual-mode projects view ([9aaabe7](https://github.com/Quorafind/Obsidian-Task-Genius/commit/9aaabe7))
-* **bulk-operations:** add keyboard shortcuts for selection management ([8fdfc39](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8fdfc39))
-* **bulk-operations:** optimize view updates to prevent list flashing ([fc7600c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/fc7600c))
-* **task:** add multi-task selection and bulk operations ([852f527](https://github.com/Quorafind/Obsidian-Task-Genius/commit/852f527))
-* **workspace:** add color customization support ([dee9541](https://github.com/Quorafind/Obsidian-Task-Genius/commit/dee9541))
-* **workspace:** add module visibility control with performance improvements ([09ed881](https://github.com/Quorafind/Obsidian-Task-Genius/commit/09ed881))
-* **quick-capture:** add file name template dropdown and enhance settings ([37c9769](https://github.com/Quorafind/Obsidian-Task-Genius/commit/37c9769))
-* **views:** enhance view copy with intelligent two-column preset detection ([0b0d4af](https://github.com/Quorafind/Obsidian-Task-Genius/commit/0b0d4af))
-* **onboarding:** refactor onboarding flow with new placement configuration ([1b9768f](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1b9768f))
-* **changelog:** add in-app changelog viewer with auto-display on updates ([2323767](https://github.com/Quorafind/Obsidian-Task-Genius/commit/2323767))
-* **quick-capture:** add template folder support and content merging ([39c5cf3](https://github.com/Quorafind/Obsidian-Task-Genius/commit/39c5cf3))
-* **settings:** enhance index settings with tabbed source configuration ([0ae3957](https://github.com/Quorafind/Obsidian-Task-Genius/commit/0ae3957))
-* **settings:** add dedicated Interface settings tab with Fluent/Legacy mode selection ([af31b39](https://github.com/Quorafind/Obsidian-Task-Genius/commit/af31b39))
-* **gantt:** add config override support for Bases integration ([11a8d5a](https://github.com/Quorafind/Obsidian-Task-Genius/commit/11a8d5a))
-* **views:** add config override support for Bases integration ([227f85d](https://github.com/Quorafind/Obsidian-Task-Genius/commit/227f85d))
-* **bases:** add quadrant view integration to TaskBasesView ([0cba1f3](https://github.com/Quorafind/Obsidian-Task-Genius/commit/0cba1f3))
-* **quick-capture:** enhance minimal modal with editable target and resolved paths ([b921396](https://github.com/Quorafind/Obsidian-Task-Genius/commit/b921396))
-* **onboarding:** enhance setup with modal-driven file filter editing ([e17caaf](https://github.com/Quorafind/Obsidian-Task-Genius/commit/e17caaf))
-* **quick-capture:** add mode persistence and file capture to minimal modal ([22865d1](https://github.com/Quorafind/Obsidian-Task-Genius/commit/22865d1))
-* **quick-capture:** add comprehensive frontmatter generation for file mode ([8bed404](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8bed404))
-* **onboarding:** add file filter and fluent components configuration steps ([6307b01](https://github.com/Quorafind/Obsidian-Task-Genius/commit/6307b01))
-* **onboarding:** improve layout flexibility and refine copy ([a1b12c9](https://github.com/Quorafind/Obsidian-Task-Genius/commit/a1b12c9))
-* **onboarding:** add theme-aware preview images for mode selection ([17545ed](https://github.com/Quorafind/Obsidian-Task-Genius/commit/17545ed))
-* **onboarding:** add noise texture and enhance UI polish ([141b092](https://github.com/Quorafind/Obsidian-Task-Genius/commit/141b092))
-* **onboarding:** enhance intro animation and fix mode selection UI ([491e2a6](https://github.com/Quorafind/Obsidian-Task-Genius/commit/491e2a6))
-* **onboarding:** add fluent/legacy mode selection flow ([3fcf2f9](https://github.com/Quorafind/Obsidian-Task-Genius/commit/3fcf2f9))
-* **quick-capture:** add multi-mode capture with file creation support ([09a2e0f](https://github.com/Quorafind/Obsidian-Task-Genius/commit/09a2e0f))
-* **settings:** add workspace selector component ([27c426c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/27c426c))
-* improve date positioning logic for task metadata ([41f1d95](https://github.com/Quorafind/Obsidian-Task-Genius/commit/41f1d95))
-* **workspace:** add custom icon selection for workspaces ([b709c90](https://github.com/Quorafind/Obsidian-Task-Genius/commit/b709c90))
-* **view:** add task count display in view title ([86cbad4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/86cbad4))
-* **fluent:** add mobile drawer navigation and responsive design ([7721ac1](https://github.com/Quorafind/Obsidian-Task-Genius/commit/7721ac1))
-* **fluent-sidebar:** add right-click context menu for view items ([59643c0](https://github.com/Quorafind/Obsidian-Task-Genius/commit/59643c0))
-* **projects:** add tree view support and improve view mode system ([f3bee5e](https://github.com/Quorafind/Obsidian-Task-Genius/commit/f3bee5e))
-* **fluent-nav:** hide entire navigation when no view tabs are needed ([1e162c2](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1e162c2))
-* **projects:** add context menu with edit and delete functionality ([743b9ca](https://github.com/Quorafind/Obsidian-Task-Genius/commit/743b9ca))
-* **fluent:** implement workspace management with persistent filter states ([2b7179e](https://github.com/Quorafind/Obsidian-Task-Genius/commit/2b7179e))
-* **fluent:** add project creation UI with sorting capabilities ([9f008db](https://github.com/Quorafind/Obsidian-Task-Genius/commit/9f008db))
-* **fluent:** add overflow menu for other views and optimized task updates ([c747e2b](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c747e2b))
-* **fluent:** add collapsible sidebar and full task context menu ([86f8d17](https://github.com/Quorafind/Obsidian-Task-Genius/commit/86f8d17))
-* **fluent:** add project filter integration and details panel ([c722fb4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c722fb4))
-* **experimental:** add Fluent interface foundation with settings infrastructure ([6b779f8](https://github.com/Quorafind/Obsidian-Task-Genius/commit/6b779f8))
+- **Fluent Interface**: Brand new modern interface mode
 
-### Bug Fixes
+![task_genius_dark](https://github.com/Quorafind/Obsidian-Task-Genius/blob/master/media/fluent.png?raw=true)
 
-* **workspace:** improve async handling and error recovery in module visibility ([a0b9891](https://github.com/Quorafind/Obsidian-Task-Genius/commit/a0b9891))
-* **editor-extensions:** resolve transaction conflicts between workflow and date managers ([cf5334f](https://github.com/Quorafind/Obsidian-Task-Genius/commit/cf5334f))
-* **changelog:** improve cache serialization and require app parameter ([8fca370](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8fca370))
-* **editor:** improve date positioning in task content ([dab3ecb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/dab3ecb))
-* cancel date goes before task content ([8b48e6a](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8b48e6a))
-* **task-mover:** prevent archive markers on non-task lines and preserve folded content ([f20c5eb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/f20c5eb))
-* **setting:** manage workspace setting should jump to workspace setting tab ([f282bff](https://github.com/Quorafind/Obsidian-Task-Genius/commit/f282bff))
-* **v2:** hide top navigation for two-column views ([2c24068](https://github.com/Quorafind/Obsidian-Task-Genius/commit/2c24068))
-* cancel date goes before task content ([17afcc4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/17afcc4))
-* **v2:** resolve filter state management issues ([6c282f9](https://github.com/Quorafind/Obsidian-Task-Genius/commit/6c282f9))
-* **ui:** correct translation interpolation and button alignment ([ec09f34](https://github.com/Quorafind/Obsidian-Task-Genius/commit/ec09f34))
-* **filter:** ensure proper initialization of filter components ([78cdf77](https://github.com/Quorafind/Obsidian-Task-Genius/commit/78cdf77))
-* **workspace:** resolve filter state persistence and restoration issues ([f617992](https://github.com/Quorafind/Obsidian-Task-Genius/commit/f617992))
+- **Bulk Operations**: Select and manage multiple tasks at once
+  - Multi-task Selection: Select multiple tasks with pressing `Shift` key
+  - Bulk Operations when you right click on these selected tasks
+- **Quick Capture Enhancements**: More powerful task capture
+  - Multi-mode Capture: Create tasks or entire files
+  - Template Folder Support: Use templates from folders with content merging
+  - File Name Template Dropdown: Quick access to common filename patterns
+  - Comprehensive Frontmatter: Auto-generate frontmatter for new files
+  - Mode Persistence: Remembers your last capture mode
+- **Module Visibility Control**: Show/hide modules in fluent interface
+- **In-app Changelog Viewer**: View release notes directly in the app with auto-display on updates
+- **Enhanced Onboarding**: Guided setup experience
+  - Fluent/Legacy Mode Selection: Choose your preferred interface
+  - Theme-aware Preview Images: See what each mode looks like
+  - Progressive Steps: Step-by-step configuration
+  - File Filter Configuration: Set up task sources during onboarding
+- **Bases Integration**: Full support Obsidian 1.10.0+
+- **Settings Improvements**:
+  - Dedicated Interface Settings Tab: Easily switch between Fluent/Legacy modes
+  - Tabbed Source Configuration: Better organized index settings
+  - Workspace Selector Component: Quickly navigate between workspaces
 
-### Performance
+### Fixes
 
-* **fluent:** optimize view initialization and reduce unnecessary renders ([e08aa64](https://github.com/Quorafind/Obsidian-Task-Genius/commit/e08aa64))
+- **Editor Extensions**: Resolved transaction conflicts between workflow and date managers
+- **Workspace**: Improved async handling and error recovery in module visibility
+- **Filter**: Fixed proper initialization of filter components
+- **Workspace**: Fixed filter state persistence and restoration issues
+- **Task Mover**: Prevented archive markers on non-task lines and preserved folded content
+- **Settings**: Manage workspace setting now correctly jumps to workspace settings tab
+- **Editor**: Improved date positioning in task content (cancel date now goes before task content)
+- **Changelog**: Improved cache serialization
+- **UI**: Corrected translation interpolation and button alignment
 
-### Refactors
+### Improvements
 
-* **workspace:** remove deprecated feature hiding functionality ([9dedada](https://github.com/Quorafind/Obsidian-Task-Genius/commit/9dedada))
-* **workspace:** improve state management and persistence reliability ([422fdf0](https://github.com/Quorafind/Obsidian-Task-Genius/commit/422fdf0))
-* remove void keywords and standardize code formatting ([7d41359](https://github.com/Quorafind/Obsidian-Task-Genius/commit/7d41359))
-* **quick-capture:** consolidate modal imports and improve code quality ([99884ea](https://github.com/Quorafind/Obsidian-Task-Genius/commit/99884ea))
-* **fluent:** improve view mode persistence and configuration ([2f2f59a](https://github.com/Quorafind/Obsidian-Task-Genius/commit/2f2f59a))
-* **fluent:** rename V2 to fluent and improve code quality ([add61b7](https://github.com/Quorafind/Obsidian-Task-Genius/commit/add61b7))
-* **workspace:** clean up settings and improve module visibility ([b475615](https://github.com/Quorafind/Obsidian-Task-Genius/commit/b475615))
-* **workflow:** improve code quality and type safety ([59a2d42](https://github.com/Quorafind/Obsidian-Task-Genius/commit/59a2d42))
-* **quick-capture:** migrate to QuickCaptureModalWithSwitch and improve UI ([ab8af59](https://github.com/Quorafind/Obsidian-Task-Genius/commit/ab8af59))
-* **bases:** simplify view registration and upgrade to Obsidian 1.10 ([5583f46](https://github.com/Quorafind/Obsidian-Task-Genius/commit/5583f46))
-* **fluent:** extract fluent settings and reorganize file structure ([791f2cd](https://github.com/Quorafind/Obsidian-Task-Genius/commit/791f2cd))
-* **fluent:** migrate experimental fluent to production fluent structure ([aaa4ff4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/aaa4ff4))
-* **onboarding:** decompose fluent onboarding into progressive steps ([1814877](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1814877))
-* **onboarding:** integrate mode selection into intro step ([055ba03](https://github.com/Quorafind/Obsidian-Task-Genius/commit/055ba03))
-* **onboarding:** decompose monolithic modal into component architecture ([8f5daeb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8f5daeb))
-* **fluent:** decompose fluent task view into stateless manager classes ([68247f0](https://github.com/Quorafind/Obsidian-Task-Genius/commit/68247f0))
-* **plugin:** simplify deferred workspace leaves loading ([498b6dc](https://github.com/Quorafind/Obsidian-Task-Genius/commit/498b6dc))
-* **fluent:** rename V2 interface to Fluent and simplify command names ([c096c6c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c096c6c))
-* **workspace:** make search query ephemeral across workspace switches ([adc7e3e](https://github.com/Quorafind/Obsidian-Task-Genius/commit/adc7e3e))
-* **fluent:** streamline filter panel integration and fix view mode initialization ([846d3bb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/846d3bb))
-
-### Documentation
-
-* update documentation with CLA and license information ([853c9ef](https://github.com/Quorafind/Obsidian-Task-Genius/commit/853c9ef))
-* add FSL-1.1-ALv2 license and contributor license agreement ([fa35b82](https://github.com/Quorafind/Obsidian-Task-Genius/commit/fa35b82))
-
-### Styles
-
-* improve CSS formatting and remove redundant type annotations ([7516261](https://github.com/Quorafind/Obsidian-Task-Genius/commit/7516261))
-* **onboarding:** improve component preview layout ([1a09c39](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1a09c39))
+- **State Management**: Improved workspace state management and persistence reliability
+- **Code Quality**: Removed void keywords and standardized code formatting
+- **Quick Capture**: Consolidated modal imports and improved code quality
+- **View Copy**: Enhanced with intelligent two-column preset detection
+- **Workflow**: Improved code quality and type safety
+- **Performance**: Optimized view initialization and reduced unnecessary renders
+- **Search**: Made search query ephemeral across workspace switches
+- **License**: Added FSL-1.1-ALv2 license and contributor license agreement
+- **Documentation**: Updated with CLA and license information, added PR template
 
 
 ## [9.8.14](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.13...9.8.14) (2025-09-19)
