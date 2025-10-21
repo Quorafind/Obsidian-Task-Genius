@@ -6,7 +6,7 @@ import { t } from "@/translations/helper";
  */
 export class ComponentPreviewFactory {
 	/**
-	 * Create a preview of the V2 Sidebar component
+	 * Create a preview of the fluent Sidebar component
 	 */
 	static createSidebarPreview(container: HTMLElement): void {
 		container.addClass("tg-fluent-container", "component-preview-sidebar");
@@ -214,14 +214,14 @@ export class ComponentPreviewFactory {
 		const root = container.querySelector(".fluent-sidebar")!;
 		const handleActivate = (target: HTMLElement) => {
 			const item = target.closest<HTMLElement>(
-				".fluent-navigation-item, .fluent-project-item"
+				".fluent-navigation-item, .fluent-project-item",
 			);
 			if (!item) return;
 			const parentList = item.parentElement;
 			if (!parentList) return;
 			// Clear previous active in the same group
 			Array.from(parentList.children).forEach((el) =>
-				el.classList.remove("is-active")
+				el.classList.remove("is-active"),
 			);
 			item.classList.add("is-active");
 		};
@@ -240,7 +240,7 @@ export class ComponentPreviewFactory {
 	}
 
 	/**
-	 * Create a preview of the V2 TopNavigation component
+	 * Create a preview of the fluent TopNavigation component
 	 */
 	static createTopNavigationPreview(container: HTMLElement): void {
 		container.addClass("tg-fluent-container", "component-preview-topnav");

@@ -6,7 +6,7 @@
 import { QueryAPI } from "@/dataflow/api/QueryAPI";
 import { WriteAPI } from "@/dataflow/api/WriteAPI";
 import TaskProgressBarPlugin from "@/index";
-import { Task } from "@/types/task";
+import { StandardTaskMetadata, Task } from "@/types/task";
 import { moment } from "obsidian";
 import {
 	UpdateTaskArgs,
@@ -23,7 +23,7 @@ export class DataflowBridge {
 	constructor(
 		private plugin: TaskProgressBarPlugin,
 		queryAPI: QueryAPI,
-		writeAPI: WriteAPI
+		writeAPI: WriteAPI,
 	) {
 		this.queryAPI = queryAPI;
 		this.writeAPI = writeAPI;
@@ -52,38 +52,45 @@ export class DataflowBridge {
 
 			// Apply filters
 			if (params.filter) {
-				const {completed, project, tags, priority, context} = params.filter;
+				const { completed, project, tags, priority, context } =
+					params.filter;
 
 				if (completed !== undefined) {
-					tasks = tasks.filter(t => t.completed === completed);
+					tasks = tasks.filter((t) => t.completed === completed);
 				}
 
 				if (project) {
-					tasks = tasks.filter(t => {
-						const p = t.metadata?.project || (t.metadata as any)?.tgProject?.name;
+					tasks = tasks.filter((t) => {
+						const p =
+							t.metadata?.project ||
+							(t.metadata as any)?.tgProject?.name;
 						return p === project;
 					});
 				}
 
 				if (tags && tags.length > 0) {
-					tasks = tasks.filter(t => {
+					tasks = tasks.filter((t) => {
 						const taskTags = t.metadata?.tags || [];
-						return tags.some(tag => taskTags.includes(tag));
+						return tags.some((tag) => taskTags.includes(tag));
 					});
 				}
 
 				if (priority !== undefined) {
-					tasks = tasks.filter(t => t.metadata?.priority === priority);
+					tasks = tasks.filter(
+						(t) => t.metadata?.priority === priority,
+					);
 				}
 
 				if (context) {
-					tasks = tasks.filter(t => t.metadata?.context === context);
+					tasks = tasks.filter(
+						(t) => t.metadata?.context === context,
+					);
 				}
 			}
 
 			// Apply sorting
 			if (params.sort) {
-				const {field, order} = params.sort;
+				const { field, order } = params.sort;
 				tasks.sort((a, b) => {
 					let aVal: any = a;
 					let bVal: any = b;
@@ -112,10 +119,10 @@ export class DataflowBridge {
 			const limit = params.limit || 100;
 			tasks = tasks.slice(offset, offset + limit);
 
-			return {tasks, total};
+			return { tasks, total };
 		} catch (error) {
 			console.error("DataflowBridge: Error querying tasks:", error);
-			return {tasks: [], total: 0};
+			return { tasks: [], total: 0 };
 		}
 	}
 
@@ -125,10 +132,13 @@ export class DataflowBridge {
 	async queryProjectTasks(project: string): Promise<{ tasks: Task[] }> {
 		try {
 			const tasks = await this.queryAPI.getTasksByProject(project);
-			return {tasks};
+			return { tasks };
 		} catch (error) {
-			console.error("DataflowBridge: Error querying project tasks:", error);
-			return {tasks: []};
+			console.error(
+				"DataflowBridge: Error querying project tasks:",
+				error,
+			);
+			return { tasks: [] };
 		}
 	}
 
@@ -138,27 +148,35 @@ export class DataflowBridge {
 	async queryContextTasks(context: string): Promise<{ tasks: Task[] }> {
 		try {
 			const tasks = await this.queryAPI.getAllTasks();
-			const filtered = tasks.filter(t => t.metadata?.context === context);
-			return {tasks: filtered};
+			const filtered = tasks.filter(
+				(t) => t.metadata?.context === context,
+			);
+			return { tasks: filtered };
 		} catch (error) {
-			console.error("DataflowBridge: Error querying context tasks:", error);
-			return {tasks: []};
+			console.error(
+				"DataflowBridge: Error querying context tasks:",
+				error,
+			);
+			return { tasks: [] };
 		}
 	}
 
 	/**
 	 * Query tasks by priority
 	 */
-	async queryByPriority(priority: number, limit?: number): Promise<{ tasks: Task[] }> {
+	async queryByPriority(
+		priority: number,
+		limit?: number,
+	): Promise<{ tasks: Task[] }> {
 		try {
 			const tasks = await this.queryAPI.getAllTasks();
 			const filtered = tasks
-				.filter(t => t.metadata?.priority === priority)
+				.filter((t) => t.metadata?.priority === priority)
 				.slice(0, limit || 100);
-			return {tasks: filtered};
+			return { tasks: filtered };
 		} catch (error) {
 			console.error("DataflowBridge: Error querying by priority:", error);
-			return {tasks: []};
+			return { tasks: [] };
 		}
 	}
 
@@ -172,19 +190,21 @@ export class DataflowBridge {
 		limit?: number;
 	}): Promise<{ tasks: Task[] }> {
 		try {
-			const fromMs = params.from ? moment(params.from).valueOf() : undefined;
+			const fromMs = params.from
+				? moment(params.from).valueOf()
+				: undefined;
 			const toMs = params.to ? moment(params.to).valueOf() : undefined;
 
 			const tasks = await this.queryAPI.getTasksByDateRange({
 				from: fromMs,
 				to: toMs,
-				field: params.dateType || "due"
+				field: params.dateType || "due",
 			});
 
-			return {tasks: tasks.slice(0, params.limit || 100)};
+			return { tasks: tasks.slice(0, params.limit || 100) };
 		} catch (error) {
 			console.error("DataflowBridge: Error querying by date:", error);
-			return {tasks: []};
+			return { tasks: [] };
 		}
 	}
 
@@ -199,34 +219,54 @@ export class DataflowBridge {
 		try {
 			const tasks = await this.queryAPI.getAllTasks();
 			const query = params.query.toLowerCase();
-			const searchIn = params.searchIn || ["content", "tags", "project", "context"];
+			const searchIn = params.searchIn || [
+				"content",
+				"tags",
+				"project",
+				"context",
+			];
 
-			const filtered = tasks.filter(task => {
+			const filtered = tasks.filter((task) => {
 				for (const field of searchIn) {
 					switch (field) {
 						case "content":
-							if (task.content?.toLowerCase().includes(query)) return true;
+							if (task.content?.toLowerCase().includes(query))
+								return true;
 							break;
 						case "tags":
 							const tags = task.metadata?.tags || [];
-							if (tags.some(tag => tag.toLowerCase().includes(query))) return true;
+							if (
+								tags.some((tag) =>
+									tag.toLowerCase().includes(query),
+								)
+							)
+								return true;
 							break;
-						case "project":
-							const p = task.metadata?.project || (task.metadata as any)?.tgProject?.name;
+						case "project": {
+							const p =
+								task.metadata?.project ||
+								(task.metadata as StandardTaskMetadata)
+									?.tgProject?.name;
 							if (p?.toLowerCase().includes(query)) return true;
 							break;
+						}
 						case "context":
-							if (task.metadata?.context?.toLowerCase().includes(query)) return true;
+							if (
+								task.metadata?.context
+									?.toLowerCase()
+									.includes(query)
+							)
+								return true;
 							break;
 					}
 				}
 				return false;
 			});
 
-			return {tasks: filtered.slice(0, params.limit || 100)};
+			return { tasks: filtered.slice(0, params.limit || 100) };
 		} catch (error) {
 			console.error("DataflowBridge: Error searching tasks:", error);
-			return {tasks: []};
+			return { tasks: [] };
 		}
 	}
 
@@ -241,11 +281,13 @@ export class DataflowBridge {
 		try {
 			// Since this is synchronous in TaskManagerBridge, we need to handle it differently
 			// For now, return empty arrays - this would need to be refactored to be async
-			console.warn("DataflowBridge: listAllTagsProjectsContexts needs async refactoring");
-			return {tags: [], projects: [], contexts: []};
+			console.warn(
+				"DataflowBridge: listAllTagsProjectsContexts needs async refactoring",
+			);
+			return { tags: [], projects: [], contexts: [] };
 		} catch (error) {
 			console.error("DataflowBridge: Error listing metadata:", error);
-			return {tags: [], projects: [], contexts: []};
+			return { tags: [], projects: [], contexts: [] };
 		}
 	}
 
@@ -281,13 +323,16 @@ export class DataflowBridge {
 			const tasks = await this.queryAPI.getTasksByDateRange({
 				from: from.valueOf(),
 				to: to.valueOf(),
-				field: params.dateType || "due"
+				field: params.dateType || "due",
 			});
 
-			return {tasks: tasks.slice(0, params.limit || 100)};
+			return { tasks: tasks.slice(0, params.limit || 100) };
 		} catch (error) {
-			console.error("DataflowBridge: Error listing tasks for period:", error);
-			return {tasks: []};
+			console.error(
+				"DataflowBridge: Error listing tasks for period:",
+				error,
+			);
+			return { tasks: [] };
 		}
 	}
 
@@ -304,13 +349,16 @@ export class DataflowBridge {
 			const tasks = await this.queryAPI.getTasksByDateRange({
 				from: moment(params.from).valueOf(),
 				to: moment(params.to).valueOf(),
-				field: params.dateType || "due"
+				field: params.dateType || "due",
 			});
 
-			return {tasks: tasks.slice(0, params.limit || 100)};
+			return { tasks: tasks.slice(0, params.limit || 100) };
 		} catch (error) {
-			console.error("DataflowBridge: Error listing tasks in range:", error);
-			return {tasks: []};
+			console.error(
+				"DataflowBridge: Error listing tasks in range:",
+				error,
+			);
+			return { tasks: [] };
 		}
 	}
 
@@ -328,15 +376,26 @@ export class DataflowBridge {
 		return this.writeAPI.deleteTask(args);
 	}
 
-	async updateTaskStatus(args: { taskId: string; status?: string; completed?: boolean }): Promise<any> {
+	async updateTaskStatus(args: {
+		taskId: string;
+		status?: string;
+		completed?: boolean;
+	}): Promise<any> {
 		return this.writeAPI.updateTaskStatus(args);
 	}
 
-	async batchUpdateTaskStatus(args: { taskIds: string[]; status?: string; completed?: boolean }): Promise<any> {
+	async batchUpdateTaskStatus(args: {
+		taskIds: string[];
+		status?: string;
+		completed?: boolean;
+	}): Promise<any> {
 		return this.writeAPI.batchUpdateTaskStatus(args);
 	}
 
-	async postponeTasks(args: { taskIds: string[]; newDate: string }): Promise<any> {
+	async postponeTasks(args: {
+		taskIds: string[];
+		newDate: string;
+	}): Promise<any> {
 		return this.writeAPI.postponeTasks(args);
 	}
 
@@ -348,10 +407,11 @@ export class DataflowBridge {
 		return this.writeAPI.batchCreateSubtasks(args);
 	}
 
-	async createTaskInDailyNote(args: CreateTaskArgs & { heading?: string }): Promise<any> {
+	async createTaskInDailyNote(
+		args: CreateTaskArgs & { heading?: string },
+	): Promise<any> {
 		return this.writeAPI.createTaskInDailyNote(args);
 	}
-
 
 	async addProjectTaskToQuickCapture(args: {
 		content: string;
@@ -368,15 +428,18 @@ export class DataflowBridge {
 		return this.writeAPI.addProjectTaskToQuickCapture(args);
 	}
 
-	async batchCreateTasks(args: { tasks: CreateTaskArgs[]; defaultFilePath?: string }): Promise<{
+	async batchCreateTasks(args: {
+		tasks: CreateTaskArgs[];
+		defaultFilePath?: string;
+	}): Promise<{
 		success: boolean;
 		created: number;
-		errors: string[]
+		errors: string[];
 	}> {
 		const results = {
 			success: true,
 			created: 0,
-			errors: [] as string[]
+			errors: [] as string[],
 		};
 
 		for (let i = 0; i < args.tasks.length; i++) {
@@ -385,14 +448,16 @@ export class DataflowBridge {
 				// Use defaultFilePath if task doesn't specify filePath
 				const taskArgs: CreateTaskArgs = {
 					...task,
-					filePath: task.filePath || args.defaultFilePath
+					filePath: task.filePath || args.defaultFilePath,
 				};
 
 				const result = await this.writeAPI.createTask(taskArgs);
 				if (result.success) {
 					results.created++;
 				} else {
-					results.errors.push(`Task ${i + 1}: ${result.error || 'Failed to create'}`);
+					results.errors.push(
+						`Task ${i + 1}: ${result.error || "Failed to create"}`,
+					);
 				}
 			} catch (error: any) {
 				results.success = false;

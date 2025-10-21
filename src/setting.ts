@@ -3,13 +3,9 @@ import {
 	PluginSettingTab,
 	setIcon,
 	ButtonComponent,
-	Setting,
 	Platform,
 	requireApiVersion,
 	debounce,
-	Menu,
-	Modal,
-	Notice,
 } from "obsidian";
 import TaskProgressBarPlugin from ".";
 
@@ -226,7 +222,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		// 	icon: "beaker",
 		// 	category: "advanced",
 		// },
-		{id: "about", name: t("About"), icon: "info", category: "info"},
+		{ id: "about", name: t("About"), icon: "info", category: "info" },
 	];
 
 	constructor(app: App, plugin: TaskProgressBarPlugin) {
@@ -242,7 +238,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				if (plugin.dataflowOrchestrator) {
 					// Call async updateSettings and await to ensure incremental reindex completes
 					await plugin.dataflowOrchestrator.updateSettings(
-						plugin.settings
+						plugin.settings,
 					);
 				}
 
@@ -253,7 +249,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				await plugin.triggerViewUpdate();
 			},
 			100,
-			true
+			true,
 		);
 
 		this.debouncedApplyNotifications = debounce(
@@ -264,7 +260,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				// Minimal view updates are unnecessary here
 			},
 			100,
-			true
+			true,
 		);
 	}
 
@@ -284,7 +280,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		}
 		this.searchComponent = new SettingsSearchComponent(
 			this,
-			this.containerEl
+			this.containerEl,
 		);
 	}
 
@@ -297,7 +293,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Group tabs by category
 		const categories = {
-			core: {name: t("Core Settings"), tabs: [] as typeof this.tabs},
+			core: { name: t("Core Settings"), tabs: [] as typeof this.tabs },
 			display: {
 				name: t("Display & Progress"),
 				tabs: [] as typeof this.tabs,
@@ -318,8 +314,8 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				name: t("Integration"),
 				tabs: [] as typeof this.tabs,
 			},
-			advanced: {name: t("Advanced"), tabs: [] as typeof this.tabs},
-			info: {name: t("Information"), tabs: [] as typeof this.tabs},
+			advanced: { name: t("Advanced"), tabs: [] as typeof this.tabs },
+			info: { name: t("Information"), tabs: [] as typeof this.tabs },
 		};
 
 		// Group tabs by category
@@ -379,9 +375,9 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				labelEl.addClass("settings-tab-label");
 				labelEl.setText(
 					tab.name +
-					(tab.id === "about"
-						? " v" + this.plugin.manifest.version
-						: "")
+						(tab.id === "about"
+							? " v" + this.plugin.manifest.version
+							: ""),
 				);
 
 				// Add click handler
@@ -414,7 +410,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Show active section, hide others
 		const sections = this.containerEl.querySelectorAll(
-			".settings-tab-section"
+			".settings-tab-section",
 		);
 		sections.forEach((section) => {
 			if (section.getAttribute("data-tab-id") === tabId) {
@@ -428,10 +424,10 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Handle tab container and header visibility based on selected tab
 		const tabsContainer = this.containerEl.querySelector(
-			".settings-tabs-categorized-container"
+			".settings-tabs-categorized-container",
 		);
 		const settingsHeader = this.containerEl.querySelector(
-			".task-genius-settings-header"
+			".task-genius-settings-header",
 		);
 
 		if (tabId === "general") {
@@ -456,10 +452,11 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 		if (tabId === "workspaces") {
 			// Make sure the workspace section is visible even though the tab is hidden
 			const workspaceSection = this.containerEl.querySelector(
-				'[data-tab-id="workspaces"]'
+				'[data-tab-id="workspaces"]',
 			);
 			if (workspaceSection) {
-				(workspaceSection as unknown as HTMLElement).style.display = "block";
+				(workspaceSection as unknown as HTMLElement).style.display =
+					"block";
 				workspaceSection.addClass("settings-tab-section-active");
 			}
 		}
@@ -476,7 +473,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	public navigateToTab(
 		tabId: string,
 		section?: string,
-		search?: string
+		search?: string,
 	): void {
 		// Set the current tab
 		this.currentTab = tabId;
@@ -510,14 +507,14 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 				headerText &&
 				headerText.includes(sectionId.replace("-", " "))
 			) {
-				header.scrollIntoView({behavior: "smooth", block: "start"});
+				header.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 		});
 
 		// Special handling for MCP sections
 		if (sectionId === "cursor" && this.currentTab === "mcp-integration") {
 			const cursorSection = this.containerEl.querySelector(
-				".mcp-client-section"
+				".mcp-client-section",
 			);
 			if (cursorSection) {
 				const header =
@@ -537,7 +534,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	private createTabSection(tabId: string): HTMLElement {
 		// Get the sections container
 		const sectionsContainer = this.containerEl.querySelector(
-			".settings-tab-sections"
+			".settings-tab-sections",
 		);
 		if (!sectionsContainer) return this.containerEl;
 
@@ -570,7 +567,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 					new IframeModal(
 						this.app,
 						url,
-						`How to use — ${tabInfo?.name ?? tabId}`
+						`How to use — ${tabInfo?.name ?? tabId}`,
 					).open();
 				} catch (e) {
 					window.open(url);
@@ -607,7 +604,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
@@ -698,7 +695,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 		// Notifications Tab
 		const notificationsSection = this.createTabSection(
-			"desktop-integration"
+			"desktop-integration",
 		);
 		this.displayDesktopIntegrationSettings(notificationsSection);
 
@@ -862,7 +859,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 			() => {
 				this.currentTab = "general";
 				this.display();
-			}
+			},
 		);
 		icsSettingsComponent.display();
 	}
@@ -873,7 +870,7 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 
 	private displayMcpSettings(containerEl: HTMLElement): void {
 		renderMcpIntegrationSettingsTab(containerEl, this.plugin, () =>
-			this.applySettingsUpdate()
+			this.applySettingsUpdate(),
 		);
 	}
 
@@ -909,5 +906,4 @@ export class TaskProgressBarSettingTab extends PluginSettingTab {
 	private renderTaskTimerSettingsTab(containerEl: HTMLElement): void {
 		renderTaskTimerSettingTab(this, containerEl);
 	}
-
 }

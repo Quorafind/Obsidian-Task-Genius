@@ -11,12 +11,14 @@ import { getInitialViewMode, saveViewMode } from "@/utils/ui/view-mode-utils";
 // @ts-ignore
 import { filterTasks } from "@/utils/task/task-filter-utils";
 import { sortTasks } from "@/commands/sortTaskCommands"; // 导入 sortTasks 函数
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
 
 interface ContentComponentParams {
 	onTaskSelected?: (task: Task | null) => void;
 	onTaskCompleted?: (task: Task) => void;
 	onTaskUpdate?: (originalTask: Task, updatedTask: Task) => Promise<void>;
 	onTaskContextMenu?: (event: MouseEvent, task: Task) => void;
+	selectionManager?: TaskSelectionManager;
 }
 
 export class ContentComponent extends Component {
@@ -53,6 +55,8 @@ export class ContentComponent extends Component {
 	private pendingForceRefresh: boolean = false; // Track if a force refresh is pending
 	private pendingVisibilityRetry: boolean = false; // Queue a retry when container becomes visible
 	private visibilityRetryCount: number = 0; // Limit visibility retry loop
+	private lastAllTasksSignature = "";
+	private lastNotFilteredTasksSignature = "";
 	constructor(
 		private parentEl: HTMLElement,
 		private app: App,
@@ -196,6 +200,12 @@ export class ContentComponent extends Component {
 		notFilteredTasks: Task[],
 		forceRefresh: boolean = false,
 	) {
+		const updateSignatures = () => {
+			this.lastAllTasksSignature = this.computeTaskSignature(tasks);
+			this.lastNotFilteredTasksSignature =
+				this.computeTaskSignature(notFilteredTasks);
+		};
+
 		// Allow forced refresh for cases where we know the data has changed
 		if (forceRefresh) {
 			console.log("ContentComponent: Forced refresh requested");
@@ -204,6 +214,7 @@ export class ContentComponent extends Component {
 			this.pendingForceRefresh = true;
 			this.allTasks = tasks;
 			this.notFilteredTasks = notFilteredTasks;
+			updateSignatures();
 			this.applyFilters();
 			this.refreshTaskList();
 			return;
@@ -217,47 +228,23 @@ export class ContentComponent extends Component {
 			return;
 		}
 
-		// Prevent unnecessary refreshes if data hasn't actually changed
-		// Check if the array reference has changed (which indicates an update)
+		const nextAllSignature = this.computeTaskSignature(tasks);
+		const nextNotFilteredSignature =
+			this.computeTaskSignature(notFilteredTasks);
 		if (
-			this.allTasks === tasks &&
-			this.notFilteredTasks === notFilteredTasks
+			nextAllSignature === this.lastAllTasksSignature &&
+			nextNotFilteredSignature === this.lastNotFilteredTasksSignature
 		) {
 			console.log(
-				"ContentComponent: Same array references, skipping refresh",
+				"ContentComponent: Task signatures unchanged, skipping refresh",
 			);
 			return;
 		}
 
-		// Additional check for actual content changes
-		if (
-			this.allTasks.length === tasks.length &&
-			this.notFilteredTasks.length === notFilteredTasks.length &&
-			tasks.length > 0
-		) {
-			// Quick check - if same length and not empty, check if first few tasks are identical
-			const sampleSize = Math.min(5, tasks.length);
-			let unchanged = true;
-			for (let i = 0; i < sampleSize; i++) {
-				if (
-					this.allTasks[i]?.id !== tasks[i]?.id ||
-					this.allTasks[i]?.originalMarkdown !==
-						tasks[i]?.originalMarkdown
-				) {
-					unchanged = false;
-					break;
-				}
-			}
-			if (unchanged) {
-				console.log(
-					"ContentComponent: Tasks unchanged, skipping refresh",
-				);
-				return;
-			}
-		}
-
 		this.allTasks = tasks;
 		this.notFilteredTasks = notFilteredTasks;
+		this.lastAllTasksSignature = nextAllSignature;
+		this.lastNotFilteredTasksSignature = nextNotFilteredSignature;
 		this.applyFilters();
 		this.refreshTaskList();
 	}
@@ -346,6 +333,21 @@ export class ContentComponent extends Component {
 	private filterTasks(query: string) {
 		this.applyFilters(); // Re-apply all filters including the new text query
 		this.refreshTaskList();
+	}
+
+	private computeTaskSignature(tasks: Task[]): string {
+		if (!tasks || tasks.length === 0) return "";
+		return tasks
+			.map((task) =>
+				[
+					task.id,
+					task.completed ? "1" : "0",
+					task.originalMarkdown ?? "",
+					task.content ?? "",
+					task.metadata ? JSON.stringify(task.metadata) : "",
+				].join("|"),
+			)
+			.join(";");
 	}
 
 	private cleanupComponents() {
@@ -583,6 +585,7 @@ export class ContentComponent extends Component {
 				this.currentViewId, // Pass currentViewId
 				this.app,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -643,6 +646,7 @@ export class ContentComponent extends Component {
 				childTasks,
 				taskMap,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -823,6 +827,7 @@ export class ContentComponent extends Component {
 				this.currentViewId,
 				this.app,
 				this.plugin,
+				this.params.selectionManager // Pass selection manager
 			);
 			// Attach events
 			taskComponent.onTaskSelected = this.selectTask.bind(this);
@@ -936,6 +941,7 @@ export class ContentComponent extends Component {
 								childTasks,
 								taskMap,
 								this.plugin,
+								this.params.selectionManager // Pass selection manager
 							);
 							newRoot.onTaskSelected = this.selectTask.bind(this);
 							newRoot.onTaskCompleted = (t) => {

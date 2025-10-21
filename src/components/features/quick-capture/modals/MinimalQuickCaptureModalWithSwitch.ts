@@ -52,7 +52,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 	onOpen() {
 		// Store modal instance reference for suggest system
 		(this.modalEl as any).__minimalQuickCaptureModal = this;
-		this.modalEl.toggleClass('tg-minimal-capture-modal', true);
+		this.modalEl.toggleClass("tg-minimal-capture-modal", true);
 
 		// Set up the suggest system
 		if (this.minimalSuggest) {
@@ -69,7 +69,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 		// Setup markdown editor only if not already initialized
 		if (this.contentContainer && !this.markdownEditor) {
 			const editorContainer = this.contentContainer.querySelector(
-				".quick-capture-minimal-editor"
+				".quick-capture-minimal-editor",
 			) as HTMLElement;
 			if (editorContainer) {
 				this.setupMarkdownEditor(editorContainer);
@@ -80,7 +80,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 				if (this.markdownEditor?.editor?.editor) {
 					this.universalSuggest =
 						this.suggestManager.enableForMinimalModal(
-							this.markdownEditor.editor.editor
+							this.markdownEditor.editor.editor,
 						);
 					this.universalSuggest.enable();
 				}
@@ -163,19 +163,22 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 					this.tempTargetFilePath = file.path;
 					this.taskMetadata.targetFile = file.path;
 					this.markdownEditor?.editor?.focus();
-				}
+				},
 			);
 
 			// Update tempTargetFilePath when manually edited
 			this.targetFileEl.addEventListener("blur", () => {
 				if (this.targetFileEl) {
-					this.tempTargetFilePath = this.targetFileEl.textContent || "";
+					this.tempTargetFilePath =
+						this.targetFileEl.textContent || "";
 					this.taskMetadata.targetFile = this.tempTargetFilePath;
 				}
 			});
 
 			// Show quick action buttons
-			const buttonsContainer = this.contentContainer?.querySelector(".quick-capture-minimal-quick-actions");
+			const buttonsContainer = this.contentContainer?.querySelector(
+				".quick-capture-minimal-quick-actions",
+			);
 			if (buttonsContainer) {
 				(buttonsContainer as HTMLElement).style.display = "flex";
 			}
@@ -187,11 +190,15 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			});
 
 			// Get the template value and resolve it immediately
-			const templateValue = this.taskMetadata.customFileName || this.plugin.settings.quickCapture.defaultFileNameTemplate || "{{DATE:YYYY-MM-DD}} - ";
+			const templateValue =
+				this.taskMetadata.customFileName ||
+				this.plugin.settings.quickCapture.defaultFileNameTemplate ||
+				"{{DATE:YYYY-MM-DD}} - Task";
 			let resolvedPath = processDateTemplates(templateValue);
 
 			// Add default folder if configured
-			const defaultFolder = this.plugin.settings.quickCapture.createFileMode?.defaultFolder?.trim();
+			const defaultFolder =
+				this.plugin.settings.quickCapture.createFileMode?.defaultFolder?.trim();
 			if (
 				this.plugin.settings?.fileSource?.enabled &&
 				defaultFolder &&
@@ -223,7 +230,9 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			});
 
 			// Keep quick action buttons visible in file mode
-			const buttonsContainer = this.contentContainer?.querySelector(".quick-capture-minimal-quick-actions");
+			const buttonsContainer = this.contentContainer?.querySelector(
+				".quick-capture-minimal-quick-actions",
+			);
 			if (buttonsContainer) {
 				(buttonsContainer as HTMLElement).style.display = "flex";
 			}
@@ -240,7 +249,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 
 		this.dateButton = leftContainer.createEl("button", {
 			cls: ["quick-action-button", "clickable-icon"],
-			attr: {"aria-label": t("Set date")},
+			attr: { "aria-label": t("Set date") },
 		});
 		setIcon(this.dateButton, "calendar");
 		this.dateButton.addEventListener("click", () => this.showDatePicker());
@@ -248,41 +257,40 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 
 		this.priorityButton = leftContainer.createEl("button", {
 			cls: ["quick-action-button", "clickable-icon"],
-			attr: {"aria-label": t("Set priority")},
+			attr: { "aria-label": t("Set priority") },
 		});
 		setIcon(this.priorityButton, "zap");
 		this.priorityButton.addEventListener("click", () =>
-			this.showPriorityMenu()
+			this.showPriorityMenu(),
 		);
 		this.updateButtonState(
 			this.priorityButton,
-			!!this.taskMetadata.priority
+			!!this.taskMetadata.priority,
 		);
 
 		this.locationButton = leftContainer.createEl("button", {
 			cls: ["quick-action-button", "clickable-icon"],
-			attr: {"aria-label": t("Set location")},
+			attr: { "aria-label": t("Set location") },
 		});
 		setIcon(this.locationButton, "folder");
 		this.locationButton.addEventListener("click", () =>
-			this.showLocationMenu()
+			this.showLocationMenu(),
 		);
 		this.updateButtonState(
 			this.locationButton,
 			this.taskMetadata.location !==
-			(this.plugin.settings.quickCapture.targetType || "fixed")
+				(this.plugin.settings.quickCapture.targetType || "fixed"),
 		);
 
 		this.tagButton = leftContainer.createEl("button", {
 			cls: ["quick-action-button", "clickable-icon"],
-			attr: {"aria-label": t("Add tags")},
+			attr: { "aria-label": t("Add tags") },
 		});
 		setIcon(this.tagButton, "tag");
-		this.tagButton.addEventListener("click", () => {
-		});
+		this.tagButton.addEventListener("click", () => {});
 		this.updateButtonState(
 			this.tagButton,
-			!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+			!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 		);
 	}
 
@@ -324,7 +332,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 							this.parseContentAndUpdateButtons();
 						}
 					},
-				}
+				},
 			);
 
 			// Focus the editor
@@ -342,7 +350,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 	 */
 	private updateButtonState(
 		button: HTMLButtonElement,
-		isActive: boolean
+		isActive: boolean,
 	): void {
 		if (isActive) {
 			button.addClass("active");
@@ -359,7 +367,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			new MouseEvent("click", {
 				clientX: x,
 				clientY: y,
-			})
+			}),
 		);
 	}
 
@@ -370,13 +378,13 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 
 	public showDatePicker(cursor?: EditorPosition, coords?: any) {
 		const quickDates = [
-			{label: t("Tomorrow"), date: moment().add(1, "day").toDate()},
+			{ label: t("Tomorrow"), date: moment().add(1, "day").toDate() },
 			{
 				label: t("Day after tomorrow"),
 				date: moment().add(2, "day").toDate(),
 			},
-			{label: t("Next week"), date: moment().add(1, "week").toDate()},
-			{label: t("Next month"), date: moment().add(1, "month").toDate()},
+			{ label: t("Next week"), date: moment().add(1, "week").toDate() },
+			{ label: t("Next month"), date: moment().add(1, "month").toDate() },
 		];
 
 		const menu = new Menu();
@@ -393,7 +401,7 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 					if (cursor && this.markdownEditor) {
 						this.replaceAtCursor(
 							cursor,
-							this.formatDate(quickDate.date)
+							this.formatDate(quickDate.date),
 						);
 					}
 				});
@@ -425,11 +433,11 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 
 	public showPriorityMenu(cursor?: EditorPosition, coords?: any) {
 		const priorities = [
-			{level: 5, label: t("Highest"), icon: "🔺"},
-			{level: 4, label: t("High"), icon: "⏫"},
-			{level: 3, label: t("Medium"), icon: "🔼"},
-			{level: 2, label: t("Low"), icon: "🔽"},
-			{level: 1, label: t("Lowest"), icon: "⏬"},
+			{ level: 5, label: t("Highest"), icon: "🔺" },
+			{ level: 4, label: t("High"), icon: "⏫" },
+			{ level: 3, label: t("Medium"), icon: "🔼" },
+			{ level: 2, label: t("Low"), icon: "🔽" },
+			{ level: 1, label: t("Lowest"), icon: "⏬" },
 		];
 
 		const menu = new Menu();
@@ -476,8 +484,8 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 				this.updateButtonState(
 					this.locationButton!,
 					this.taskMetadata.location !==
-					(this.plugin.settings.quickCapture.targetType ||
-						"fixed")
+						(this.plugin.settings.quickCapture.targetType ||
+							"fixed"),
 				);
 
 				// If called from suggest, replace the 📁 with file text
@@ -496,8 +504,8 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 				this.updateButtonState(
 					this.locationButton!,
 					this.taskMetadata.location !==
-					(this.plugin.settings.quickCapture?.targetType ||
-						"fixed")
+						(this.plugin.settings.quickCapture?.targetType ||
+							"fixed"),
 				);
 
 				// If called from suggest, replace the 📁 with daily note text
@@ -549,8 +557,8 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 		if (cm && cm.replaceRange) {
 			cm.replaceRange(
 				replacement,
-				{line: cursor.line, ch: cursor.ch - 1},
-				cursor
+				{ line: cursor.line, ch: cursor.ch - 1 },
+				cursor,
 			);
 		}
 	}
@@ -644,25 +652,25 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 				// Update button states based on existing taskMetadata
 				this.updateButtonState(
 					this.dateButton!,
-					!!this.taskMetadata.dueDate
+					!!this.taskMetadata.dueDate,
 				);
 				this.updateButtonState(
 					this.priorityButton!,
-					!!this.taskMetadata.priority
+					!!this.taskMetadata.priority,
 				);
 				this.updateButtonState(
 					this.tagButton!,
 					!!(
 						this.taskMetadata.tags &&
 						this.taskMetadata.tags.length > 0
-					)
+					),
 				);
 				this.updateButtonState(
 					this.locationButton!,
 					!!(
 						this.taskMetadata.location ||
 						this.taskMetadata.targetFile
-					)
+					),
 				);
 				return;
 			}
@@ -706,15 +714,15 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			// Update button states
 			this.updateButtonState(
 				this.dateButton!,
-				!!this.taskMetadata.dueDate
+				!!this.taskMetadata.dueDate,
 			);
 			this.updateButtonState(
 				this.priorityButton!,
-				!!this.taskMetadata.priority
+				!!this.taskMetadata.priority,
 			);
 			this.updateButtonState(
 				this.tagButton!,
-				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 			);
 			this.updateButtonState(
 				this.locationButton!,
@@ -723,26 +731,26 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 					this.taskMetadata.targetFile ||
 					metadata.project ||
 					metadata.location
-				)
+				),
 			);
 		} catch (error) {
 			console.error("Error parsing content:", error);
 			// On error, still update button states
 			this.updateButtonState(
 				this.dateButton!,
-				!!this.taskMetadata.dueDate
+				!!this.taskMetadata.dueDate,
 			);
 			this.updateButtonState(
 				this.priorityButton!,
-				!!this.taskMetadata.priority
+				!!this.taskMetadata.priority,
 			);
 			this.updateButtonState(
 				this.tagButton!,
-				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0)
+				!!(this.taskMetadata.tags && this.taskMetadata.tags.length > 0),
 			);
 			this.updateButtonState(
 				this.locationButton!,
-				!!(this.taskMetadata.location || this.taskMetadata.targetFile)
+				!!(this.taskMetadata.location || this.taskMetadata.targetFile),
 			);
 		}
 	}

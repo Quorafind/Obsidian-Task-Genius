@@ -24,6 +24,9 @@ export class FluentDataManager extends Component {
 	private onLoadingStateChanged?: (isLoading: boolean) => void;
 	private onUpdateNeeded?: (source: string) => void;
 
+	// Batch operation state flag
+	private isBatchOperating = false;
+
 	constructor(
 		private plugin: TaskProgressBarPlugin,
 		private getCurrentViewId: () => string,
@@ -35,7 +38,7 @@ export class FluentDataManager extends Component {
 			searchQuery: string;
 			filterInputValue: string;
 		},
-		private isInitializing: () => boolean
+		private isInitializing: () => boolean,
 	) {
 		super();
 	}
@@ -61,7 +64,7 @@ export class FluentDataManager extends Component {
 		try {
 			console.log(
 				"[FluentData] loadTasks started, showLoading:",
-				showLoading
+				showLoading,
 			);
 
 			// Notify loading state
@@ -74,21 +77,21 @@ export class FluentDataManager extends Component {
 
 			if (this.plugin.dataflowOrchestrator) {
 				console.log(
-					"[FluentData] Using dataflow orchestrator to load tasks"
+					"[FluentData] Using dataflow orchestrator to load tasks",
 				);
 				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
 				console.log("[FluentData] Getting all tasks from queryAPI...");
 				loadedTasks = await queryAPI.getAllTasks();
 				console.log(
-					`[FluentData] Loaded ${loadedTasks.length} tasks from dataflow`
+					`[FluentData] Loaded ${loadedTasks.length} tasks from dataflow`,
 				);
 			} else {
 				console.log(
-					"[FluentData] Dataflow not available, using preloaded tasks"
+					"[FluentData] Dataflow not available, using preloaded tasks",
 				);
 				loadedTasks = this.plugin.preloadedTasks || [];
 				console.log(
-					`[FluentData] Loaded ${loadedTasks.length} preloaded tasks`
+					`[FluentData] Loaded ${loadedTasks.length} preloaded tasks`,
 				);
 			}
 
@@ -153,19 +156,19 @@ export class FluentDataManager extends Component {
 			tasks,
 			viewId as any,
 			this.plugin,
-			filterOptions
+			filterOptions,
 		);
 
 		// Apply additional fluent-specific filters if needed
 		if (filterOptions.v2Filters) {
 			filteredTasks = this.applyV2Filters(
 				filteredTasks,
-				filterOptions.v2Filters
+				filterOptions.v2Filters,
 			);
 		}
 
 		console.log(
-			`[FluentData] Filtered ${filteredTasks.length} tasks from ${tasks.length} total`
+			`[FluentData] Filtered ${filteredTasks.length} tasks from ${tasks.length} total`,
 		);
 
 		return filteredTasks;
@@ -174,12 +177,15 @@ export class FluentDataManager extends Component {
 	/**
 	 * Apply fluent-specific filters (pure function - returns filtered tasks)
 	 * @param tasks - Tasks to filter
-	 * @param filters - V2 filter configuration
+	 * @param filters - fluent filter configuration
 	 * @returns Filtered tasks
 	 */
 	private applyV2Filters(tasks: Task[], filters: any): Task[] {
 		const viewId = this.getCurrentViewId();
 		let result = [...tasks]; // Copy array to avoid mutation
+
+		const normalizeProjectId = (value?: string | null): string =>
+			(value ?? "").trim().toLowerCase();
 
 		// Status filter
 		if (filters.status && filters.status !== "all") {
@@ -214,17 +220,28 @@ export class FluentDataManager extends Component {
 
 		// Project filter - Skip for Inbox view
 		if (filters.project && viewId !== "inbox") {
-			result = result.filter(
-				(task) => task.metadata?.project === filters.project
-			);
+			const targetProject = normalizeProjectId(filters.project);
+			result = result.filter((task) => {
+				const directProject = normalizeProjectId(
+					task.metadata?.project,
+				);
+				const tgProject = normalizeProjectId(
+					task.metadata?.tgProject?.name,
+				);
+				return (
+					targetProject.length > 0 &&
+					(targetProject === directProject ||
+						targetProject === tgProject)
+				);
+			});
 		}
 
 		// Tags filter
 		if (filters.tags && filters.tags.length > 0) {
 			result = result.filter((task) => {
 				if (!task.metadata?.tags) return false;
-				return filters.tags!.some((tag: string) =>
-					task.metadata!.tags!.includes(tag)
+				return filters.tags.some((tag: string) =>
+					task.metadata.tags.includes(tag),
 				);
 			});
 		}
@@ -236,7 +253,7 @@ export class FluentDataManager extends Component {
 					if (!task.metadata?.dueDate) return false;
 					return (
 						new Date(task.metadata.dueDate) >=
-						filters.dateRange!.start!
+						filters.dateRange.start
 					);
 				});
 			}
@@ -244,8 +261,7 @@ export class FluentDataManager extends Component {
 				result = result.filter((task) => {
 					if (!task.metadata?.dueDate) return false;
 					return (
-						new Date(task.metadata.dueDate) <=
-						filters.dateRange!.end!
+						new Date(task.metadata.dueDate) <= filters.dateRange.end
 					);
 				});
 			}
@@ -254,7 +270,7 @@ export class FluentDataManager extends Component {
 		// Assignee filter
 		if (filters.assignee) {
 			result = result.filter(
-				(task) => task.metadata?.assignee === filters.assignee
+				(task) => task.metadata?.assignee === filters.assignee,
 			);
 		}
 
@@ -269,6 +285,15 @@ export class FluentDataManager extends Component {
 		// Add debounced view update to prevent rapid successive refreshes
 		const debouncedViewUpdate = debounce(async () => {
 			console.log("[FluentData] debouncedViewUpdate triggered");
+
+			// Skip update during batch operation to prevent list flashing
+			if (this.isBatchOperating) {
+				console.log(
+					"[FluentData] Skipping update during batch operation",
+				);
+				return;
+			}
+
 			if (!this.isInitializing()) {
 				// Load tasks and notify parent
 				await this.loadTasks(false);
@@ -285,16 +310,43 @@ export class FluentDataManager extends Component {
 		}, 400);
 
 		// Register dataflow event listeners
-		if (
-			isDataflowEnabled(this.plugin) &&
-			this.plugin.dataflowOrchestrator
-		) {
+		if (isDataflowEnabled(this.plugin)) {
+			// Listen for batch operation start
+			this.registerEvent(
+				on(this.plugin.app, Events.BATCH_OPERATION_START, (payload) => {
+					console.log(
+						`[FluentData] Batch operation started: ${payload.count} tasks`,
+					);
+					this.isBatchOperating = true;
+				}),
+			);
+
+			// Listen for batch operation complete
+			this.registerEvent(
+				on(
+					this.plugin.app,
+					Events.BATCH_OPERATION_COMPLETE,
+					async (payload) => {
+						console.log(
+							`[FluentData] Batch operation complete: ${payload.successCount} succeeded, ${payload.failCount} failed`,
+						);
+						this.isBatchOperating = false;
+
+						// Immediately refresh view after batch operation (skip debounce)
+						if (!this.isInitializing()) {
+							await this.loadTasks(false);
+							this.onUpdateNeeded?.("batch-operation-complete");
+						}
+					},
+				),
+			);
+
 			// Listen for cache ready event
 			this.registerEvent(
 				on(this.plugin.app, Events.CACHE_READY, async () => {
 					await this.loadTasks();
 					this.onUpdateNeeded?.("cache-ready");
-				})
+				}),
 			);
 
 			// Listen for task cache updates
@@ -302,16 +354,16 @@ export class FluentDataManager extends Component {
 				on(
 					this.plugin.app,
 					Events.TASK_CACHE_UPDATED,
-					debouncedViewUpdate
-				)
+					debouncedViewUpdate,
+				),
 			);
 		} else {
 			// Legacy event support
 			this.registerEvent(
 				this.plugin.app.workspace.on(
 					"task-genius:task-cache-updated",
-					debouncedViewUpdate
-				)
+					debouncedViewUpdate,
+				),
 			);
 		}
 
@@ -327,12 +379,12 @@ export class FluentDataManager extends Component {
 							leafId !== "global-filter")
 					) {
 						console.log(
-							"[FluentData] Filter changed, notifying update needed"
+							"[FluentData] Filter changed, notifying update needed",
 						);
 						debouncedApplyFilter();
 					}
-				}
-			)
+				},
+			),
 		);
 	}
 

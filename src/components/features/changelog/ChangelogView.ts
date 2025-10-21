@@ -50,7 +50,9 @@ export class ChangelogView extends ItemView {
 		}
 
 		const isBeta = manifestVersion.toLowerCase().includes("beta");
-		const cached = getCachedChangelog(manifestVersion, isBeta);
+		const cached = getCachedChangelog(manifestVersion, isBeta, this.app);
+
+		console.log("[TG]", cached);
 		if (!cached) {
 			return;
 		}
@@ -72,7 +74,7 @@ export class ChangelogView extends ItemView {
 			markdown: "",
 			sourceUrl: "",
 		};
-		void this.render();
+		this.render();
 	}
 
 	async setContent(content: ChangelogContent) {
@@ -85,7 +87,7 @@ export class ChangelogView extends ItemView {
 	showError(message: string) {
 		this.isLoading = false;
 		this.error = message;
-		void this.render();
+		this.render();
 	}
 
 	private async render(): Promise<void> {

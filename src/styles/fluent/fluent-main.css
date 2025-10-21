@@ -1,4 +1,4 @@
-/* V2 View Main Layout */
+/* fluent View Main Layout */
 .task-genius-fluent-view {
 	height: 100%;
 	overflow: hidden;
@@ -104,9 +104,10 @@
 }
 
 /* New Task Button */
-.fluent-new-task-btn {
+button.fluent-new-task-btn {
 	width: 100%;
 	margin-top: 12px;
+	box-shadow: unset;
 	padding: 10px;
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
@@ -121,7 +122,7 @@
 	transition: background-color 0.15s;
 }
 
-.fluent-new-task-btn:hover {
+button.fluent-new-task-btn:hover {
 	background-color: var(--interactive-accent-hover);
 }
 
@@ -256,6 +257,10 @@
 	transition: background-color 0.15s;
 }
 
+.fluent-project-item.fluent-add-project {
+	margin: 0 8px;
+}
+
 .fluent-project-item:hover {
 	background-color: var(--background-modifier-hover);
 }
@@ -373,6 +378,29 @@
 
 .fluent-project-item.is-virtual:hover {
 	background-color: var(--background-modifier-hover);
+}
+
+/* Disabled project list styles - used when showing full projects overview */
+.tg-project-list-disabled {
+	pointer-events: none;
+	opacity: 0.5;
+	position: relative;
+}
+
+.tg-project-list-disabled::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: var(--background-modifier-cover);
+	opacity: 0.3;
+	z-index: 1;
+}
+
+.tg-project-list-disabled .fluent-project-item {
+	cursor: not-allowed;
 }
 
 /* Main Container */

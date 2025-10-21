@@ -232,6 +232,19 @@ export class EditorState {
 			};
 		},
 	};
+
+	// Add transactionExtender mock for tests
+	static transactionExtender = {
+		of: (
+			f: (
+				tr: Transaction
+			) => TransactionSpec | readonly TransactionSpec[] | null
+		) => {
+			return {
+				extend: f,
+			};
+		},
+	};
 }
 
 export class Annotation<T> {

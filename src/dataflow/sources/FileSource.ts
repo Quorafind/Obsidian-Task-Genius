@@ -60,7 +60,7 @@ export class FileSource {
 	constructor(
 		private app: App,
 		initialConfig?: Partial<FileSourceConfiguration>,
-		private fileFilterManager?: FileFilterManager
+		private fileFilterManager?: FileFilterManager,
 	) {
 		this.config = new FileSourceConfig(initialConfig);
 	}
@@ -68,7 +68,7 @@ export class FileSource {
 	/**
 	 * Initialize FileSource and start listening for events
 	 */
-	initialize(): void {
+	async initialize(): Promise<void> {
 		if (this.isInitialized) return;
 		if (!this.config.isEnabled()) return;
 
@@ -82,18 +82,19 @@ export class FileSource {
 		// Subscribe to file events
 		this.subscribeToFileEvents();
 
-		// Delay initial scan to ensure vault is fully loaded
-		setTimeout(() => {
-			this.performInitialScan();
-		}, 1000); // 1 second delay
-
 		this.isInitialized = true;
 		this.stats.initialized = true;
+
+		try {
+			await this.performInitialScan();
+		} catch (error) {
+			console.error("[FileSource] Initial scan failed", error);
+		}
 
 		console.log(
 			`[FileSource] Initialized with strategies: ${this.config
 				.getEnabledStrategies()
-				.join(", ")}`
+				.join(", ")}`,
 		);
 	}
 
@@ -107,7 +108,7 @@ export class FileSource {
 				if (payload?.path) {
 					this.handleFileUpdate(payload.path, payload.reason);
 				}
-			})
+			}),
 		);
 
 		// Subscribe to more granular events if they exist
@@ -120,8 +121,8 @@ export class FileSource {
 					if (payload?.path) {
 						this.handleFileMetadataChange(payload.path);
 					}
-				}
-			)
+				},
+			),
 		);
 
 		this.eventRefs.push(
@@ -132,8 +133,8 @@ export class FileSource {
 					if (payload?.path) {
 						this.handleFileContentChange(payload.path);
 					}
-				}
-			)
+				},
+			),
 		);
 	}
 
@@ -161,7 +162,7 @@ export class FileSource {
 			} catch (error) {
 				console.error(
 					`[FileSource] Error processing file update for ${filePath}:`,
-					error
+					error,
 				);
 			}
 		}, this.DEBOUNCE_DELAY);
@@ -190,7 +191,7 @@ export class FileSource {
 	 */
 	private async processFileUpdate(
 		filePath: string,
-		reason: string
+		reason: string,
 	): Promise<void> {
 		if (reason === "delete") {
 			await this.removeFileTask(filePath);
@@ -231,12 +232,12 @@ export class FileSource {
 			return this.evaluateRecognitionStrategies(
 				filePath,
 				fileContent,
-				fileCache
+				fileCache,
 			);
 		} catch (error) {
 			console.error(
 				`[FileSource] Error reading file ${filePath}:`,
-				error
+				error,
 			);
 			return false;
 		}
@@ -248,10 +249,10 @@ export class FileSource {
 	private evaluateRecognitionStrategies(
 		filePath: string,
 		fileContent: string,
-		fileCache: CachedMetadata | null
+		fileCache: CachedMetadata | null,
 	): boolean {
 		const config = this.config.getConfig();
-		const {recognitionStrategies} = config;
+		const { recognitionStrategies } = config;
 
 		// Check metadata strategy
 		if (recognitionStrategies.metadata.enabled) {
@@ -260,7 +261,7 @@ export class FileSource {
 					filePath,
 					fileContent,
 					fileCache,
-					recognitionStrategies.metadata
+					recognitionStrategies.metadata,
 				)
 			) {
 				return true;
@@ -274,7 +275,7 @@ export class FileSource {
 					filePath,
 					fileContent,
 					fileCache,
-					recognitionStrategies.tags
+					recognitionStrategies.tags,
 				)
 			) {
 				return true;
@@ -288,7 +289,7 @@ export class FileSource {
 					filePath,
 					fileContent,
 					fileCache,
-					recognitionStrategies.templates
+					recognitionStrategies.templates,
 				)
 			) {
 				return true;
@@ -302,7 +303,7 @@ export class FileSource {
 					filePath,
 					fileContent,
 					fileCache,
-					recognitionStrategies.paths
+					recognitionStrategies.paths,
 				)
 			) {
 				return true;
@@ -319,17 +320,17 @@ export class FileSource {
 		filePath: string,
 		fileContent: string,
 		fileCache: CachedMetadata | null,
-		config: any
+		config: any,
 	): boolean {
 		if (!fileCache?.frontmatter) return false;
 
-		const {taskFields, requireAllFields} = config;
+		const { taskFields, requireAllFields } = config;
 		const frontmatter = fileCache.frontmatter;
 
 		const matchingFields = taskFields.filter(
 			(field: string) =>
 				frontmatter.hasOwnProperty(field) &&
-				frontmatter[field] !== undefined
+				frontmatter[field] !== undefined,
 		);
 
 		if (requireAllFields) {
@@ -346,11 +347,11 @@ export class FileSource {
 		filePath: string,
 		fileContent: string,
 		fileCache: CachedMetadata | null,
-		config: any
+		config: any,
 	): boolean {
 		if (!fileCache?.tags) return false;
 
-		const {taskTags, matchMode} = config;
+		const { taskTags, matchMode } = config;
 		const fileTags = fileCache.tags.map((tag) => tag.tag);
 
 		return taskTags.some((taskTag: string) => {
@@ -376,7 +377,7 @@ export class FileSource {
 		filePath: string,
 		fileContent: string,
 		fileCache: CachedMetadata | null,
-		config: TemplateRecognitionConfig
+		config: TemplateRecognitionConfig,
 	): boolean {
 		if (
 			!config.enabled ||
@@ -414,7 +415,7 @@ export class FileSource {
 		filePath: string,
 		fileContent: string,
 		fileCache: CachedMetadata | null,
-		config: PathRecognitionConfig
+		config: PathRecognitionConfig,
 	): boolean {
 		if (
 			!config.enabled ||
@@ -435,7 +436,7 @@ export class FileSource {
 				case "prefix":
 					if (normalizedPath.startsWith(normalizedPattern)) {
 						console.log(
-							`[FileSource] Path matches prefix pattern: ${pattern} for ${filePath}`
+							`[FileSource] Path matches prefix pattern: ${pattern} for ${filePath}`,
 						);
 						return true;
 					}
@@ -446,14 +447,14 @@ export class FileSource {
 						const regex = new RegExp(normalizedPattern);
 						if (regex.test(normalizedPath)) {
 							console.log(
-								`[FileSource] Path matches regex pattern: ${pattern} for ${filePath}`
+								`[FileSource] Path matches regex pattern: ${pattern} for ${filePath}`,
 							);
 							return true;
 						}
 					} catch (e) {
 						console.warn(
 							`[FileSource] Invalid regex pattern: ${pattern}`,
-							e
+							e,
 						);
 					}
 					break;
@@ -463,7 +464,7 @@ export class FileSource {
 						this.matchGlobPattern(normalizedPath, normalizedPattern)
 					) {
 						console.log(
-							`[FileSource] Path matches glob pattern: ${pattern} for ${filePath}`
+							`[FileSource] Path matches glob pattern: ${pattern} for ${filePath}`,
 						);
 						return true;
 					}
@@ -500,7 +501,7 @@ export class FileSource {
 		} catch (e) {
 			console.warn(
 				`[FileSource] Failed to compile glob pattern: ${pattern}`,
-				e
+				e,
 			);
 			return false;
 		}
@@ -510,7 +511,7 @@ export class FileSource {
 	 * Create a new file task
 	 */
 	async createFileTask(
-		filePath: string
+		filePath: string,
 	): Promise<Task<FileSourceTaskMetadata> | null> {
 		const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 		if (!file) return null;
@@ -522,7 +523,7 @@ export class FileSource {
 			const fileTask = await this.buildFileTask(
 				filePath,
 				fileContent,
-				fileCache
+				fileCache,
 			);
 			if (!fileTask) return null;
 
@@ -539,7 +540,7 @@ export class FileSource {
 		} catch (error) {
 			console.error(
 				`[FileSource] Error creating file task for ${filePath}:`,
-				error
+				error,
 			);
 			return null;
 		}
@@ -549,7 +550,7 @@ export class FileSource {
 	 * Update an existing file task
 	 */
 	async updateFileTask(
-		filePath: string
+		filePath: string,
 	): Promise<Task<FileSourceTaskMetadata> | null> {
 		// For Phase 1, just recreate the task
 		// Phase 2 will add smart update detection
@@ -569,7 +570,7 @@ export class FileSource {
 		// Update statistics
 		this.stats.trackedFileCount = Math.max(
 			0,
-			this.stats.trackedFileCount - 1
+			this.stats.trackedFileCount - 1,
 		);
 
 		// Emit removal event
@@ -591,7 +592,7 @@ export class FileSource {
 	private async buildFileTask(
 		filePath: string,
 		fileContent: string,
-		fileCache: CachedMetadata | null
+		fileCache: CachedMetadata | null,
 	): Promise<Task<FileSourceTaskMetadata> | null> {
 		const config = this.config.getConfig();
 		const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
@@ -601,7 +602,7 @@ export class FileSource {
 		const strategy = this.getMatchingStrategy(
 			filePath,
 			fileContent,
-			fileCache
+			fileCache,
 		);
 		if (!strategy) return null;
 
@@ -609,7 +610,7 @@ export class FileSource {
 		const content = this.generateTaskContent(
 			filePath,
 			fileContent,
-			fileCache
+			fileCache,
 		);
 		const safeContent =
 			typeof content === "string"
@@ -621,7 +622,7 @@ export class FileSource {
 			filePath,
 			fileContent,
 			fileCache,
-			strategy
+			strategy,
 		);
 
 		// Create the file task
@@ -657,7 +658,7 @@ export class FileSource {
 	private getMatchingStrategy(
 		filePath: string,
 		fileContent: string,
-		fileCache: CachedMetadata | null
+		fileCache: CachedMetadata | null,
 	): { name: RecognitionStrategy; criteria: string } | null {
 		const config = this.config.getConfig();
 
@@ -667,10 +668,10 @@ export class FileSource {
 				filePath,
 				fileContent,
 				fileCache,
-				config.recognitionStrategies.metadata
+				config.recognitionStrategies.metadata,
 			)
 		) {
-			return {name: "metadata", criteria: "frontmatter"};
+			return { name: "metadata", criteria: "frontmatter" };
 		}
 
 		if (
@@ -679,10 +680,10 @@ export class FileSource {
 				filePath,
 				fileContent,
 				fileCache,
-				config.recognitionStrategies.tags
+				config.recognitionStrategies.tags,
 			)
 		) {
-			return {name: "tag", criteria: "file-tags"};
+			return { name: "tag", criteria: "file-tags" };
 		}
 
 		// Check path strategy
@@ -692,7 +693,7 @@ export class FileSource {
 				filePath,
 				fileContent,
 				fileCache,
-				config.recognitionStrategies.paths
+				config.recognitionStrategies.paths,
 			)
 		) {
 			return {
@@ -714,7 +715,7 @@ export class FileSource {
 						fileCache?.frontmatter?.template === templatePath ||
 						fileCache?.frontmatter?.templateFile === templatePath
 					);
-				}
+				},
 			);
 
 			if (matchesTemplate) {
@@ -734,7 +735,7 @@ export class FileSource {
 	private generateTaskContent(
 		filePath: string,
 		fileContent: string,
-		fileCache: CachedMetadata | null
+		fileCache: CachedMetadata | null,
 	): string {
 		const config = this.config.getConfig().fileTaskProperties;
 		const fileName = filePath.split("/").pop() || filePath;
@@ -804,7 +805,7 @@ export class FileSource {
 		filePath: string,
 		fileContent: string,
 		fileCache: CachedMetadata | null,
-		strategy: { name: RecognitionStrategy; criteria: string }
+		strategy: { name: RecognitionStrategy; criteria: string },
 	): Partial<FileSourceTaskMetadata> {
 		const config = this.config.getConfig();
 		const frontmatter = fileCache?.frontmatter || {};
@@ -846,21 +847,20 @@ export class FileSource {
 			: config.fileTaskProperties.defaultStatus;
 		if (rawStatus && status !== rawStatus) {
 			console.log(
-				`[FileSource] Mapped status '${rawStatus}' to '${status}' for ${filePath}`
+				`[FileSource] Mapped status '${rawStatus}' to '${status}' for ${filePath}`,
 			);
 		}
 
-
-			// TODO: Future enhancement - read frontmatter.repeat and map into FileSourceTaskMetadata (e.g., as recurrence)
+		// TODO: Future enhancement - read frontmatter.repeat and map into FileSourceTaskMetadata (e.g., as recurrence)
 
 		// Extract standard task metadata
 		const metadata: Partial<FileSourceTaskMetadata> = {
 			dueDate: this.parseDate(frontmatter.dueDate || frontmatter.due),
 			startDate: this.parseDate(
-				frontmatter.startDate || frontmatter.start
+				frontmatter.startDate || frontmatter.start,
 			),
 			scheduledDate: this.parseDate(
-				frontmatter.scheduledDate || frontmatter.scheduled
+				frontmatter.scheduledDate || frontmatter.scheduled,
 			),
 			priority:
 				frontmatter.priority ||
@@ -918,7 +918,7 @@ export class FileSource {
 	 */
 	private updateFileTaskCache(
 		filePath: string,
-		task: Task<FileSourceTaskMetadata>
+		task: Task<FileSourceTaskMetadata>,
 	): void {
 		const frontmatterHash = this.generateFrontmatterHash(filePath);
 
@@ -943,7 +943,7 @@ export class FileSource {
 		// Simple hash of frontmatter JSON
 		const frontmatterStr = JSON.stringify(
 			fileCache.frontmatter,
-			Object.keys(fileCache.frontmatter).sort()
+			Object.keys(fileCache.frontmatter).sort(),
 		);
 		return this.simpleHash(frontmatterStr);
 	}
@@ -966,7 +966,7 @@ export class FileSource {
 	 */
 	private shouldUpdateFileTask(
 		filePath: string,
-		changeType: "metadata" | "content"
+		changeType: "metadata" | "content",
 	): boolean {
 		// Simple check for Phase 1 - always update if file is tracked
 		return this.fileTaskCache.has(filePath);
@@ -977,7 +977,7 @@ export class FileSource {
 	 */
 	private updateStatistics(
 		strategy: RecognitionStrategy,
-		delta: number
+		delta: number,
 	): void {
 		this.stats.recognitionBreakdown[strategy] += delta;
 		this.stats.trackedFileCount += delta;
@@ -990,7 +990,7 @@ export class FileSource {
 	 */
 	private emitFileTaskUpdate(
 		action: "created" | "updated" | "removed",
-		task: Task<FileSourceTaskMetadata>
+		task: Task<FileSourceTaskMetadata>,
 	): void {
 		const seq = Seq.next();
 		this.lastUpdateSeq = seq;
@@ -1024,7 +1024,7 @@ export class FileSource {
 		if (this.fileFilterManager) {
 			const include = this.fileFilterManager.shouldIncludePath(
 				filePath,
-				"file"
+				"file",
 			);
 			if (!include) return false;
 		}
@@ -1040,7 +1040,7 @@ export class FileSource {
 
 		const mdFiles = this.app.vault.getMarkdownFiles();
 		console.log(
-			`[FileSource] Found ${mdFiles.length} markdown files to check`
+			`[FileSource] Found ${mdFiles.length} markdown files to check`,
 		);
 
 		let scannedCount = 0;
@@ -1052,7 +1052,7 @@ export class FileSource {
 				relevantCount++;
 				try {
 					const shouldBeTask = await this.shouldCreateFileTask(
-						file.path
+						file.path,
 					);
 					if (shouldBeTask) {
 						const task = await this.createFileTask(file.path);
@@ -1064,40 +1064,40 @@ export class FileSource {
 				} catch (error) {
 					console.error(
 						`[FileSource] Error scanning ${file.path}:`,
-						error
+						error,
 					);
 				}
 			}
 		}
 
 		console.log(
-			`[FileSource] Initial scan complete: ${mdFiles.length} total files, ${relevantCount} relevant, ${scannedCount} scanned, ${taskCount} file tasks created`
+			`[FileSource] Initial scan complete: ${mdFiles.length} total files, ${relevantCount} relevant, ${scannedCount} scanned, ${taskCount} file tasks created`,
 		);
 
 		if (taskCount === 0 && relevantCount > 0) {
 			console.log(
-				`[FileSource] No file tasks created. Check if your files match the configured recognition strategies:`
+				`[FileSource] No file tasks created. Check if your files match the configured recognition strategies:`,
 			);
 			const config = this.config.getConfig();
 			if (config.recognitionStrategies.metadata.enabled) {
 				console.log(
 					`[FileSource] - Metadata strategy: requires frontmatter with fields: ${config.recognitionStrategies.metadata.taskFields.join(
-						", "
-					)}`
+						", ",
+					)}`,
 				);
 			}
 			if (config.recognitionStrategies.tags.enabled) {
 				console.log(
 					`[FileSource] - Tag strategy: requires tags: ${config.recognitionStrategies.tags.taskTags.join(
-						", "
-					)}`
+						", ",
+					)}`,
 				);
 			}
 			if (config.recognitionStrategies.paths.enabled) {
 				console.log(
 					`[FileSource] - Path strategy: requires files in paths: ${config.recognitionStrategies.paths.taskPaths.join(
-						", "
-					)}`
+						", ",
+					)}`,
 				);
 			}
 		}
@@ -1128,7 +1128,7 @@ export class FileSource {
 	 * Get current statistics
 	 */
 	getStats(): FileSourceStats {
-		return {...this.stats};
+		return { ...this.stats };
 	}
 
 	/**
@@ -1150,14 +1150,14 @@ export class FileSource {
 	 * Sync FileSource status mapping from plugin TaskStatus settings
 	 */
 	public syncStatusMappingFromSettings(
-		taskStatuses: Record<string, string>
+		taskStatuses: Record<string, string>,
 	): void {
 		try {
 			this.config.syncWithTaskStatuses(taskStatuses);
 		} catch (e) {
 			console.warn(
 				"[FileSource] Failed to sync status mapping from settings",
-				e
+				e,
 			);
 		}
 	}
@@ -1215,7 +1215,7 @@ export class FileSource {
 		this.stats = {
 			initialized: false,
 			trackedFileCount: 0,
-			recognitionBreakdown: {metadata: 0, tag: 0, template: 0, path: 0},
+			recognitionBreakdown: { metadata: 0, tag: 0, template: 0, path: 0 },
 			lastUpdate: 0,
 			lastUpdateSeq: 0,
 		};

@@ -25,6 +25,7 @@ import TaskProgressBarPlugin from "@/index";
 import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 // Import algorithm functions (optional for now, could be used within views)
 // import { calculateEventLayout, determineEventColor } from './algorithm';
+import { CalendarSpecificConfig } from "@/common/setting-definition";
 
 // Define the types for the view modes
 type CalendarViewMode = "year" | "month" | "week" | "day" | "agenda";
@@ -62,11 +63,10 @@ export class CalendarComponent extends Component {
 
 	// Performance optimization: Cache badge events by date
 	private badgeEventsCache: Map<string, CalendarEvent[]> = new Map();
-	private badgeEventsCacheVersion: number = 0;
-
+	private badgeEventsCacheVersion = 0;
 
 	// Per-view override from Bases (firstDayOfWeek, hideWeekends, ...)
-	private configOverride: Partial<import("@/common/setting-definition").CalendarSpecificConfig> | null = null;
+	private configOverride: Partial<CalendarSpecificConfig> | null = null;
 
 	constructor(
 		app: App,
@@ -78,7 +78,7 @@ export class CalendarComponent extends Component {
 			onTaskCompleted?: (task: Task) => void;
 			onEventContextMenu?: (ev: MouseEvent, event: CalendarEvent) => void;
 		} = {},
-		private viewId: string = "calendar" // 新增：视图ID参数
+		private viewId: string = "calendar", // 新增：视图ID参数
 	) {
 		super();
 		this.app = app;
@@ -88,14 +88,13 @@ export class CalendarComponent extends Component {
 
 		this.headerEl = this.containerEl.createDiv("calendar-header");
 		this.viewContainerEl = this.containerEl.createDiv(
-			"calendar-view-container"
+			"calendar-view-container",
 		);
 
 		const viewMode = this.app.loadLocalStorage("task-genius:calendar-view");
 		if (viewMode) {
 			this.currentViewMode = viewMode as CalendarViewMode;
 		}
-
 
 		console.log("CalendarComponent initialized with params:", this.params);
 	}
@@ -112,7 +111,6 @@ export class CalendarComponent extends Component {
 	override onunload() {
 		super.onunload();
 		// Detach the active view component if it exists
-
 
 		if (this.activeViewComponent) {
 			this.removeChild(this.activeViewComponent);
@@ -140,7 +138,6 @@ export class CalendarComponent extends Component {
 		this.processTasks();
 		// Only update the currently active view
 
-
 		if (this.activeViewComponent) {
 			this.activeViewComponent.updateEvents(this.events);
 		} else {
@@ -161,7 +158,7 @@ export class CalendarComponent extends Component {
 
 			this.app.saveLocalStorage(
 				"task-genius:calendar-view",
-				this.currentViewMode
+				this.currentViewMode,
 			);
 		}
 	}
@@ -178,7 +175,6 @@ export class CalendarComponent extends Component {
 			this.currentDate.add(1, unit);
 		}
 		this.render(); // Re-render header and update the view
-
 	}
 
 	/**
@@ -225,7 +221,7 @@ export class CalendarComponent extends Component {
 		const prevButton = new ButtonComponent(navGroup.createDiv());
 		prevButton.buttonEl.toggleClass(
 			["calendar-nav-button", "prev-button"],
-			true
+			true,
 		);
 		prevButton.setIcon("chevron-left");
 		prevButton.onClick(() => this.navigate("prev"));
@@ -234,7 +230,7 @@ export class CalendarComponent extends Component {
 		const todayButton = new ButtonComponent(navGroup.createDiv());
 		todayButton.buttonEl.toggleClass(
 			["calendar-nav-button", "today-button"],
-			true
+			true,
 		);
 		todayButton.setButtonText(t("Today"));
 		todayButton.onClick(() => this.goToToday());
@@ -243,14 +239,14 @@ export class CalendarComponent extends Component {
 		const nextButton = new ButtonComponent(navGroup.createDiv());
 		nextButton.buttonEl.toggleClass(
 			["calendar-nav-button", "next-button"],
-			true
+			true,
 		);
 		nextButton.setIcon("chevron-right");
 		nextButton.onClick(() => this.navigate("next"));
 
 		// Current date display
 		const currentDisplay = this.headerEl.createSpan(
-			"calendar-current-date"
+			"calendar-current-date",
 		);
 		currentDisplay.textContent = this.getCurrentDateDisplay();
 
@@ -292,10 +288,10 @@ export class CalendarComponent extends Component {
 					.addOption("day", t("Day"))
 					.addOption("agenda", t("Agenda"))
 					.onChange((value) =>
-						this.setView(value as CalendarViewMode)
+						this.setView(value as CalendarViewMode),
 					)
 					.setValue(this.currentViewMode);
-			}
+			},
 		);
 	}
 
@@ -310,7 +306,7 @@ export class CalendarComponent extends Component {
 			"Rendering current view:",
 			this.currentViewMode,
 			this.params,
-			this.params?.onTaskSelected
+			this.params?.onTaskSelected,
 		);
 		switch (this.currentViewMode) {
 			case "month":
@@ -332,7 +328,7 @@ export class CalendarComponent extends Component {
 						getBadgeEventsForDate:
 							this.getBadgeEventsForDate.bind(this),
 					},
-					effMonth
+					effMonth,
 				);
 				break;
 			case "week":
@@ -354,7 +350,7 @@ export class CalendarComponent extends Component {
 						getBadgeEventsForDate:
 							this.getBadgeEventsForDate.bind(this),
 					},
-					effWeek
+					effWeek,
 				);
 				break;
 			case "day":
@@ -369,7 +365,7 @@ export class CalendarComponent extends Component {
 						onEventHover: this.onEventHover,
 						onEventContextMenu: this.onEventContextMenu,
 						onEventComplete: this.onEventComplete,
-					}
+					},
 				);
 				break;
 			case "agenda":
@@ -384,7 +380,7 @@ export class CalendarComponent extends Component {
 						onEventHover: this.onEventHover,
 						onEventContextMenu: this.onEventContextMenu,
 						onEventComplete: this.onEventComplete,
-					}
+					},
 				);
 				break;
 			case "year":
@@ -403,13 +399,13 @@ export class CalendarComponent extends Component {
 						onMonthClick: this.onMonthClick,
 						onMonthHover: this.onMonthHover,
 					},
-					effYear
+					effYear,
 				);
 				break;
 			default:
 				this.viewContainerEl.empty(); // Clear container if view is unknown
 				this.viewContainerEl.setText(
-					`View mode "${this.currentViewMode}" not implemented yet.`
+					`View mode "${this.currentViewMode}" not implemented yet.`,
 				);
 				nextViewComponent = null; // Ensure no view is active
 		}
@@ -445,7 +441,7 @@ export class CalendarComponent extends Component {
 			"view-month",
 			"view-week",
 			"view-day",
-			"view-agenda"
+			"view-agenda",
 		);
 		if (this.activeViewComponent) {
 			this.viewContainerEl.addClass(`view-${this.currentViewMode}`);
@@ -457,7 +453,7 @@ export class CalendarComponent extends Component {
 			"Active component:",
 			this.activeViewComponent
 				? this.activeViewComponent.constructor.name
-				: "None"
+				: "None",
 		);
 	}
 
@@ -517,8 +513,12 @@ export class CalendarComponent extends Component {
 					task.metadata.dueDate &&
 					task.metadata.startDate !== task.metadata.dueDate
 				) {
-					const sMoment = moment(task.metadata.startDate).startOf("day");
-					const dMoment = moment(task.metadata.dueDate).startOf("day");
+					const sMoment = moment(task.metadata.startDate).startOf(
+						"day",
+					);
+					const dMoment = moment(task.metadata.dueDate).startOf(
+						"day",
+					);
 					if (sMoment.isBefore(dMoment)) {
 						end = dMoment.add(1, "day").toDate();
 						effectiveStart = sMoment.toDate();
@@ -547,7 +547,7 @@ export class CalendarComponent extends Component {
 		this.events.sort((a, b) => a.start.getTime() - b.start.getTime());
 
 		console.log(
-			`Processed ${this.events.length} events from ${this.tasks.length} tasks (including ICS events as tasks).`
+			`Processed ${this.events.length} events from ${this.tasks.length} tasks (including ICS events as tasks).`,
 		);
 	}
 
@@ -565,7 +565,7 @@ export class CalendarComponent extends Component {
 	 */
 	private precomputeBadgeEventsForRange(
 		startDate: Date,
-		endDate: Date
+		endDate: Date,
 	): void {
 		// Convert dates to YYYY-MM-DD format for consistent comparison
 		const formatDateKey = (date: Date): string => {
@@ -600,7 +600,7 @@ export class CalendarComponent extends Component {
 				const eventDateNormalized = new Date(
 					eventDate.getFullYear(),
 					eventDate.getMonth(),
-					eventDate.getDate()
+					eventDate.getDate(),
 				);
 				const eventDateKey = formatDateKey(eventDateNormalized);
 
@@ -625,7 +625,7 @@ export class CalendarComponent extends Component {
 		});
 
 		console.log(
-			`Pre-computed badge events for range ${startKey} to ${endKey}. Cache size: ${this.badgeEventsCache.size}`
+			`Pre-computed badge events for range ${startKey} to ${endKey}. Cache size: ${this.badgeEventsCache.size}`,
 		);
 	}
 
@@ -640,7 +640,7 @@ export class CalendarComponent extends Component {
 		const day = date.getDate();
 		const normalizedDate = new Date(year, month, day);
 		const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
-			day
+			day,
 		).padStart(2, "0")}`;
 
 		// Check if we have cached data for this date
@@ -702,7 +702,6 @@ export class CalendarComponent extends Component {
 
 		switch (this.currentViewMode) {
 			case "month": {
-
 				// For month view, compute for the entire grid (including previous/next month days)
 				const startOfMonth = this.currentDate.clone().startOf("month");
 				const endOfMonth = this.currentDate.clone().endOf("month");
@@ -729,7 +728,6 @@ export class CalendarComponent extends Component {
 			}
 
 			case "week": {
-
 				const startOfWeek = this.currentDate.clone().startOf("week");
 				const endOfWeek = this.currentDate.clone().endOf("week");
 				startDate = startOfWeek.toDate();
@@ -762,7 +760,7 @@ export class CalendarComponent extends Component {
 	 * Map ICS priority to task priority
 	 */
 	private mapIcsPriorityToTaskPriority(
-		icsPriority?: number
+		icsPriority?: number,
 	): number | undefined {
 		if (icsPriority === undefined) return undefined;
 
@@ -812,16 +810,16 @@ export class CalendarComponent extends Component {
 				if (startOfWeek.month() !== endOfWeek.month()) {
 					if (startOfWeek.year() !== endOfWeek.year()) {
 						return `${startOfWeek.format(
-							"MMM D, YYYY"
+							"MMM D, YYYY",
 						)} - ${endOfWeek.format("MMM D, YYYY")}`;
 					} else {
 						return `${startOfWeek.format(
-							"MMM D"
+							"MMM D",
 						)} - ${endOfWeek.format("MMM D, YYYY")}`;
 					}
 				} else {
 					return `${startOfWeek.format("MMM D")} - ${endOfWeek.format(
-						"D, YYYY"
+						"D, YYYY",
 					)}`;
 				}
 			case "day":
@@ -830,7 +828,7 @@ export class CalendarComponent extends Component {
 				// Example: Agenda showing the next 7 days
 				const endOfAgenda = this.currentDate.clone().add(6, "days");
 				return `${this.currentDate.format(
-					"MMM D"
+					"MMM D",
 				)} - ${endOfAgenda.format("MMM D, YYYY")}`;
 			default:
 				return this.currentDate.format("MMMM YYYY");
@@ -852,7 +850,7 @@ export class CalendarComponent extends Component {
 			"Event clicked:",
 			event,
 			this.params,
-			this.params?.onTaskSelected
+			this.params?.onTaskSelected,
 		);
 		this.params?.onTaskSelected?.(event);
 	};
@@ -879,7 +877,7 @@ export class CalendarComponent extends Component {
 		day: number,
 		options: {
 			behavior: "open-quick-capture" | "open-task-view";
-		}
+		},
 	) => {
 		if (this.currentViewMode === "year") {
 			this.setView("day");
@@ -889,8 +887,8 @@ export class CalendarComponent extends Component {
 			new QuickCaptureModal(
 				this.app,
 				this.plugin,
-				{dueDate: moment(day).toDate()},
-				true
+				{ dueDate: moment(day).toDate() },
+				true,
 			).open();
 		} else if (options.behavior === "open-task-view") {
 			this.setView("day");
@@ -938,18 +936,27 @@ export class CalendarComponent extends Component {
 
 	// Allow external overrides (e.g., from Bases) and compute effective config
 	public setConfigOverride(
-		override: Partial<import("@/common/setting-definition").CalendarSpecificConfig> | null
+		override: Partial<
+			import("@/common/setting-definition").CalendarSpecificConfig
+		> | null,
 	): void {
 		this.configOverride = override ?? null;
 		// Re-render to apply new config
 		this.render();
 	}
 
-	private getEffectiveCalendarConfig(): Partial<import("@/common/setting-definition").CalendarSpecificConfig> {
-		const baseCfg = this.plugin.settings.viewConfiguration.find((v) => v.id === this.viewId)?.specificConfig as Partial<import("@/common/setting-definition").CalendarSpecificConfig> | undefined;
-		return {...(baseCfg ?? {}), ...(this.configOverride ?? {})};
+	private getEffectiveCalendarConfig(): Partial<
+		import("@/common/setting-definition").CalendarSpecificConfig
+	> {
+		const baseCfg = this.plugin.settings.viewConfiguration.find(
+			(v) => v.id === this.viewId,
+		)?.specificConfig as
+			| Partial<
+					import("@/common/setting-definition").CalendarSpecificConfig
+			  >
+			| undefined;
+		return { ...(baseCfg ?? {}), ...(this.configOverride ?? {}) };
 	}
-
 }
 
 // Helper function (example - might move to a utils file)

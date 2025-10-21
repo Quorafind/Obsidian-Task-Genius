@@ -4,7 +4,7 @@
 	overflow-y: hidden;
 }
 
-.onboarding-view:has(.component-showcase) .onboarding-header {
+.onboarding-view:has(.component-showcase, .intro-line) .onboarding-header {
 	padding: calc(var(--onboarding-spacing) * 2) var(--onboarding-spacing)
 		var(--size-4-2) var(--onboarding-spacing);
 }

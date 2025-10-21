@@ -280,6 +280,13 @@
 	gap: var(--size-4-2); /* Add spacing between events */
 }
 
+.full-calendar-container .calendar-timeline-events-container.is-empty {
+	color: var(--text-faint);
+	font-style: italic;
+	text-align: center;
+	padding: var(--size-4-8);
+}
+
 /* Style adjustments for events previously timed */
 .full-calendar-container .calendar-event-timed {
 	/* Remove absolute positioning */
@@ -292,6 +299,37 @@
 	/* Using gap on parent container now */
 	/* margin-bottom: var(--size-4-2); */
 	width: 100%; /* Ensure it takes full width */
+	border-radius: var(--radius-s);
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.full-calendar-container .calendar-event-timed:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-s);
+}
+
+/* Specific styles for day view timed events */
+.full-calendar-container .calendar-event-day-timed {
+	position: relative;
+	width: 100%;
+	min-height: 2.5em;
+	padding: var(--size-4-2);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.full-calendar-container .calendar-event-day-timed:hover {
+	background-color: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-s);
+}
+
+.full-calendar-container .calendar-event-day-timed.is-completed {
+	background-color: var(--background-modifier-success-hover);
+	opacity: 0.7;
+	text-decoration: line-through;
 }
 
 /* Keep internal styles */
@@ -300,16 +338,13 @@
 	font-weight: bold;
 	padding: 1px 3px;
 	background-color: rgba(0, 0, 0, 0.1); /* Slight background for time */
+	border-radius: var(--radius-s);
+	margin-bottom: var(--size-4-1);
+	display: inline-block;
+	width: fit-content;
 }
 
 .full-calendar-container .calendar-event-title {
-	font-size: var(--font-ui-small);
-	padding: 2px 3px;
-	flex-grow: 1;
-	/* Allow text wrapping within the event box */
-	white-space: normal;
-	word-wrap: break-word;
-
 	font-size: var(--font-ui-small);
 	padding: 2px 3px;
 	flex-grow: 1;

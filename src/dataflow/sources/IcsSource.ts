@@ -23,7 +23,7 @@ export class IcsSource {
 	/**
 	 * Initialize the ICS source and start listening for calendar updates
 	 */
-	initialize(): void {
+	async initialize(): Promise<void> {
 		if (this.isInitialized) return;
 
 		console.log("[IcsSource] Initializing ICS event source...");
@@ -31,28 +31,27 @@ export class IcsSource {
 		// Subscribe to ICS manager updates first so we don't miss early signals
 		this.subscribeToIcsUpdates();
 
-		// Initial load of ICS events (may be no-op if manager not ready yet)
-		this.loadAndEmitIcsEvents();
-
-		// Fallback: retry until ICS manager becomes available (up to ~30s)
-		this.ensureManagerAndLoad(0);
+		if (this.getIcsManager()) {
+			await this.loadAndEmitIcsEvents();
+		} else {
+			await this.ensureManagerAndLoad();
+		}
 
 		this.isInitialized = true;
 	}
 	/**
 	 * Ensure ICS manager becomes available shortly after startup and then load
 	 */
-	private ensureManagerAndLoad(attempt: number): void {
+	private async ensureManagerAndLoad(): Promise<void> {
 		const maxAttempts = 30; // ~30s with 1s interval
-		if (this.getIcsManager()) {
-			this.loadAndEmitIcsEvents();
-			return;
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			if (this.getIcsManager()) {
+				await this.loadAndEmitIcsEvents();
+				return;
+			}
+			await this.delay(1000);
 		}
-		if (attempt >= maxAttempts) {
-			console.warn("[IcsSource] ICS manager not available after retries");
-			return;
-		}
-		setTimeout(() => this.ensureManagerAndLoad(attempt + 1), 1000);
+		console.warn("[IcsSource] ICS manager not available after retries");
 	}
 
 	/**
@@ -137,6 +136,10 @@ export class IcsSource {
 	async refresh(): Promise<void> {
 		console.log("[IcsSource] Manual refresh triggered");
 		await this.loadAndEmitIcsEvents();
+	}
+
+	private async delay(ms: number): Promise<void> {
+		await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/**

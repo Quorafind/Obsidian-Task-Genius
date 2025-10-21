@@ -45,7 +45,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	private previewMarkdownEl: HTMLElement | null = null;
 	private previewPlainEl: HTMLElement | null = null;
 	private markdownRenderer: MarkdownRendererComponent | null = null;
-	private timeParsingService: TimeParsingService;
+	public timeParsingService: TimeParsingService;
 	private universalSuggest: UniversalEditorSuggest | null = null;
 
 	// Date input references
@@ -68,20 +68,23 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 		app: App,
 		plugin: TaskProgressBarPlugin,
 		metadata?: TaskMetadata,
-		useFullFeaturedMode: boolean = false
+		useFullFeaturedMode: boolean = false,
 	) {
 		// Determine initial mode from local storage, default to checkbox
 		let initialMode: QuickCaptureMode = "checkbox";
 		try {
-			const stored = app.loadLocalStorage(LAST_USED_MODE_KEY) as string | null;
-			if (stored === "checkbox" || stored === "file") initialMode = stored;
+			const stored = app.loadLocalStorage(LAST_USED_MODE_KEY) as
+				| string
+				| null;
+			if (stored === "checkbox" || stored === "file")
+				initialMode = stored;
 		} catch {}
 
 		super(app, plugin, initialMode, metadata);
 
 		// Initialize time parsing service
 		this.timeParsingService = new TimeParsingService(
-			this.plugin.settings.timeParsing || DEFAULT_TIME_PARSING_CONFIG
+			this.plugin.settings.timeParsing || DEFAULT_TIME_PARSING_CONFIG,
 		);
 	}
 
@@ -92,7 +95,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 		// Setup markdown editor only if not already initialized
 		if (this.contentContainer && !this.markdownEditor) {
 			const editorContainer = this.contentContainer.querySelector(
-				".quick-capture-modal-editor"
+				".quick-capture-modal-editor",
 			) as HTMLElement;
 			if (editorContainer) {
 				this.setupMarkdownEditor(editorContainer);
@@ -103,7 +106,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				if (this.markdownEditor?.editor?.editor) {
 					this.universalSuggest =
 						this.suggestManager.enableForQuickCaptureModal(
-							this.markdownEditor.editor.editor
+							this.markdownEditor.editor.editor,
 						);
 					this.universalSuggest.enable();
 				}
@@ -181,7 +184,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				this.app,
 				this.previewMarkdownEl,
 				"",
-				false
+				false,
 			);
 		}
 
@@ -233,13 +236,13 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 
 		// Update editor title
 		const editorTitle = this.contentContainer?.querySelector(
-			".quick-capture-section-title"
+			".quick-capture-section-title",
 		);
 		if (editorTitle) {
 			editorTitle.setText(
 				this.currentMode === "file"
 					? t("File Content")
-					: t("Task Content")
+					: t("Task Content"),
 			);
 		}
 
@@ -272,17 +275,23 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 		}
 
 		// Create new file name input
-		this.fileNameInput = new FileNameInput(this.app, fileNameContainer, {
-			placeholder: t("Enter file name..."),
-			defaultValue:
-				this.plugin.settings.quickCapture.defaultFileNameTemplate ||
-				"{{DATE:YYYY-MM-DD}} - ",
-			currentFolder:
-				this.plugin.settings.quickCapture.createFileMode?.defaultFolder,
-			onChange: (value) => {
-				this.taskMetadata.customFileName = value;
+		this.fileNameInput = new FileNameInput(
+			this.app,
+			this.plugin,
+			fileNameContainer,
+			{
+				placeholder: t("Enter file name..."),
+				defaultValue:
+					this.plugin.settings.quickCapture.defaultFileNameTemplate ||
+					"{{DATE:YYYY-MM-DD}} - Task",
+				currentFolder:
+					this.plugin.settings.quickCapture.createFileMode
+						?.defaultFolder,
+				onChange: (value) => {
+					this.taskMetadata.customFileName = value;
+				},
 			},
-		});
+		);
 
 		// Set initial value if exists
 		if (this.taskMetadata.customFileName) {
@@ -325,7 +334,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 					targetFileEl.textContent = file.path;
 					this.tempTargetFilePath = file.path;
 					this.markdownEditor?.editor?.focus();
-				}
+				},
 			);
 		}
 	}
@@ -352,7 +361,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 					this.taskMetadata.status = status;
 					this.updatePreview();
 				},
-			}
+			},
 		);
 		statusComponent.load();
 
@@ -382,7 +391,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				.setValue(
 					this.taskMetadata.startDate
 						? this.formatDate(this.taskMetadata.startDate)
-						: ""
+						: "",
 				)
 				.onChange((value) => {
 					if (value) {
@@ -406,7 +415,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				.setValue(
 					this.taskMetadata.dueDate
 						? this.formatDate(this.taskMetadata.dueDate)
-						: ""
+						: "",
 				)
 				.onChange((value) => {
 					if (value) {
@@ -430,7 +439,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				.setValue(
 					this.taskMetadata.scheduledDate
 						? this.formatDate(this.taskMetadata.scheduledDate)
-						: ""
+						: "",
 				)
 				.onChange((value) => {
 					if (value) {
@@ -566,7 +575,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 						// Update preview in both modes
 						this.updatePreview();
 					},
-				}
+				},
 			);
 
 			// Focus the editor
@@ -586,13 +595,13 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 		if (this.currentMode === "checkbox") {
 			if (this.markdownRenderer) {
 				this.markdownRenderer.render(
-					this.processContentWithMetadata(this.capturedContent)
+					this.processContentWithMetadata(this.capturedContent),
 				);
 			}
 		} else {
 			if (this.previewPlainEl) {
 				const snapshot = this.capturedContent;
-				void this.computeFileModePreviewContent(snapshot).then(
+				this.computeFileModePreviewContent(snapshot).then(
 					(finalContent) => {
 						if (
 							this.previewPlainEl &&
@@ -600,7 +609,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 						) {
 							this.previewPlainEl.textContent = finalContent;
 						}
-					}
+					},
 				);
 			}
 		}
@@ -610,7 +619,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	 * Build preview content for file mode by mirroring saveContent's file-mode processing
 	 */
 	private async computeFileModePreviewContent(
-		content: string
+		content: string,
 	): Promise<string> {
 		const processedContent = this.processContentWithMetadata(content);
 		return this.buildFileModeContent(content, processedContent, {
@@ -656,13 +665,16 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				const originalIndent = indentMatch[1];
 				processedLines.push(
 					originalIndent +
-						this.cleanTemporaryMarks(cleanedLine.trim())
+						this.cleanTemporaryMarks(cleanedLine.trim()),
 				);
 			} else if (isTaskOrList) {
 				// Process as task
 				if (cleanedLine.trim().match(/^(-|\d+\.|\*|\+)\s+\[[^\]]+\]/)) {
 					processedLines.push(
-						this.addLineMetadataToTask(cleanedLine, lineParseResult)
+						this.addLineMetadataToTask(
+							cleanedLine,
+							lineParseResult,
+						),
 					);
 				} else {
 					// Convert to task
@@ -673,12 +685,12 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 						cleanedLine
 							.trim()
 							.substring(listPrefix?.length || 0)
-							.trim()
+							.trim(),
 					);
 					const statusMark = this.taskMetadata.status || " ";
 					const taskLine = `${listPrefix} [${statusMark}] ${restOfLine}`;
 					processedLines.push(
-						this.addLineMetadataToTask(taskLine, lineParseResult)
+						this.addLineMetadataToTask(taskLine, lineParseResult),
 					);
 				}
 			} else {
@@ -687,7 +699,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 				const cleanedContent = this.cleanTemporaryMarks(cleanedLine);
 				const taskLine = `- [${statusMark}] ${cleanedContent}`;
 				processedLines.push(
-					this.addLineMetadataToTask(taskLine, lineParseResult)
+					this.addLineMetadataToTask(taskLine, lineParseResult),
 				);
 			}
 		}
@@ -700,7 +712,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	 */
 	private addLineMetadataToTask(
 		taskLine: string,
-		lineParseResult: LineParseResult
+		lineParseResult: LineParseResult,
 	): string {
 		const metadata = this.generateLineMetadata(lineParseResult);
 		if (!metadata) return taskLine;
@@ -727,7 +739,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[start:: ${formattedDate}]`
-					: `🛫 ${formattedDate}`
+					: `🛫 ${formattedDate}`,
 			);
 		}
 		if (dueDate) {
@@ -735,7 +747,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[due:: ${formattedDate}]`
-					: `📅 ${formattedDate}`
+					: `📅 ${formattedDate}`,
 			);
 		}
 		if (scheduledDate) {
@@ -743,7 +755,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[scheduled:: ${formattedDate}]`
-					: `⏳ ${formattedDate}`
+					: `⏳ ${formattedDate}`,
 			);
 		}
 
@@ -758,7 +770,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 					1: "lowest",
 				};
 				metadata.push(
-					`[priority:: ${priorityMap[this.taskMetadata.priority]}]`
+					`[priority:: ${priorityMap[this.taskMetadata.priority]}]`,
 				);
 			} else {
 				const priorityIcons = ["⏬", "🔽", "🔼", "⏫", "🔺"];
@@ -775,7 +787,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[${projectPrefix}:: ${this.taskMetadata.project}]`
-					: `#${projectPrefix}/${this.taskMetadata.project}`
+					: `#${projectPrefix}/${this.taskMetadata.project}`,
 			);
 		}
 
@@ -788,7 +800,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[context:: ${this.taskMetadata.context}]`
-					: `${contextPrefix}${this.taskMetadata.context}`
+					: `${contextPrefix}${this.taskMetadata.context}`,
 			);
 		}
 
@@ -797,7 +809,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			metadata.push(
 				useDataviewFormat
 					? `[repeat:: ${this.taskMetadata.recurrence}]`
-					: `🔁 ${this.taskMetadata.recurrence}`
+					: `🔁 ${this.taskMetadata.recurrence}`,
 			);
 		}
 
@@ -866,7 +878,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 			this.taskMetadata.scheduledDate = aggregatedScheduledDate;
 			if (this.scheduledDateInput) {
 				this.scheduledDateInput.value = this.formatDate(
-					aggregatedScheduledDate
+					aggregatedScheduledDate,
 				);
 			}
 		}
@@ -876,7 +888,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	 * Check if metadata field was manually set
 	 */
 	private isManuallySet(
-		field: "startDate" | "dueDate" | "scheduledDate"
+		field: "startDate" | "dueDate" | "scheduledDate",
 	): boolean {
 		return this.taskMetadata.manuallySet?.[field] || false;
 	}
@@ -885,7 +897,7 @@ export class QuickCaptureModal extends BaseQuickCaptureModal {
 	 * Mark metadata field as manually set
 	 */
 	private markAsManuallySet(
-		field: "startDate" | "dueDate" | "scheduledDate"
+		field: "startDate" | "dueDate" | "scheduledDate",
 	): void {
 		if (!this.taskMetadata.manuallySet) {
 			this.taskMetadata.manuallySet = {};

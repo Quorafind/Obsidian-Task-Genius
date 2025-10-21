@@ -16,7 +16,19 @@ export const Events = {
   ICS_EVENTS_UPDATED: "task-genius:ics-events-updated",
   FILE_TASK_UPDATED: "task-genius:file-task-updated",
   FILE_TASK_REMOVED: "task-genius:file-task-removed",
+  BATCH_OPERATION_START: "task-genius:batch-operation-start",
+  BATCH_OPERATION_COMPLETE: "task-genius:batch-operation-complete",
 } as const;
+
+// Batch operation payload types
+export interface BatchOperationStartPayload {
+	count: number;
+}
+
+export interface BatchOperationCompletePayload {
+	successCount: number;
+	failCount: number;
+}
 
 export type SeqClock = { next(): number };
 
@@ -44,4 +56,9 @@ export const onTaskCacheUpdated = (app: App, handler: (payload: any) => void) =>
   on(app, Events.TASK_CACHE_UPDATED, handler);
 export const emitTaskCacheUpdated = (app: App, payload: any) =>
   emit(app, Events.TASK_CACHE_UPDATED, payload);
+
+export const emitBatchOperationStart = (app: App, payload: BatchOperationStartPayload) =>
+  emit(app, Events.BATCH_OPERATION_START, payload);
+export const emitBatchOperationComplete = (app: App, payload: BatchOperationCompletePayload) =>
+  emit(app, Events.BATCH_OPERATION_COMPLETE, payload);
 

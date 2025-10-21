@@ -1,4 +1,12 @@
-import { App, Component, Menu, setIcon, Keymap } from "obsidian";
+import {
+	App,
+	Component,
+	Menu,
+	setIcon,
+	Keymap,
+	Platform,
+	Workspace,
+} from "obsidian";
 import { Task } from "@/types/task";
 import { MarkdownRendererComponent } from "@/components/ui/renderers/MarkdownRenderer";
 import "@/styles/task-list.css";
@@ -10,6 +18,8 @@ import { TaskProgressBarSettings } from "@/common/setting-definition";
 import { InlineEditor, InlineEditorOptions } from "./InlineEditor";
 import { InlineEditorManager } from "./InlineEditorManager";
 import { sanitizePriorityForClass } from "@/utils/task/priority-utils";
+import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
+import { showBulkOperationsMenu } from "./BulkOperationsMenu";
 
 export class TaskListItemComponent extends Component {
 	public element: HTMLElement;
@@ -33,17 +43,25 @@ export class TaskListItemComponent extends Component {
 	// Use shared editor manager instead of individual editors
 	private static editorManager: InlineEditorManager | null = null;
 
+	// Selection management
+	private selectionManager: TaskSelectionManager | null = null;
+	private isTaskSelectedState: boolean = false;
+
 	constructor(
 		private task: Task,
 		private viewMode: string,
 		private app: App,
-		private plugin: TaskProgressBarPlugin
+		private plugin: TaskProgressBarPlugin,
+		selectionManager?: TaskSelectionManager,
 	) {
 		super();
 
+		// Store selection manager reference
+		this.selectionManager = selectionManager || null;
+
 		this.element = createEl("div", {
 			cls: "task-item",
-			attr: {"data-task-id": this.task.id},
+			attr: { "data-task-id": this.task.id },
 		});
 
 		this.settings = this.plugin.settings;
@@ -52,7 +70,7 @@ export class TaskListItemComponent extends Component {
 		if (!TaskListItemComponent.editorManager) {
 			TaskListItemComponent.editorManager = new InlineEditorManager(
 				this.app,
-				this.plugin
+				this.plugin,
 			);
 		}
 	}
@@ -68,7 +86,7 @@ export class TaskListItemComponent extends Component {
 					try {
 						await this.onTaskUpdate(originalTask, updatedTask);
 						console.log(
-							"listItem onTaskUpdate completed successfully"
+							"listItem onTaskUpdate completed successfully",
 						);
 						// Don't update task reference here - let onContentEditFinished handle it
 					} catch (error) {
@@ -81,7 +99,7 @@ export class TaskListItemComponent extends Component {
 			},
 			onContentEditFinished: (
 				targetEl: HTMLElement,
-				updatedTask: Task
+				updatedTask: Task,
 			) => {
 				// Update the task reference with the saved task
 				this.task = updatedTask;
@@ -94,13 +112,13 @@ export class TaskListItemComponent extends Component {
 
 				// Release the editor from the manager
 				TaskListItemComponent.editorManager?.releaseEditor(
-					this.task.id
+					this.task.id,
 				);
 			},
 			onMetadataEditFinished: (
 				targetEl: HTMLElement,
 				updatedTask: Task,
-				fieldType: string
+				fieldType: string,
 			) => {
 				// Update the task reference with the saved task
 				this.task = updatedTask;
@@ -110,7 +128,7 @@ export class TaskListItemComponent extends Component {
 
 				// Release the editor from the manager
 				TaskListItemComponent.editorManager?.releaseEditor(
-					this.task.id
+					this.task.id,
 				);
 			},
 			useEmbeddedEditor: true, // Enable Obsidian's embedded editor
@@ -118,7 +136,7 @@ export class TaskListItemComponent extends Component {
 
 		return TaskListItemComponent.editorManager!.getEditor(
 			this.task,
-			editorOptions
+			editorOptions,
 		);
 	}
 
@@ -128,20 +146,69 @@ export class TaskListItemComponent extends Component {
 	private isCurrentlyEditing(): boolean {
 		return (
 			TaskListItemComponent.editorManager?.hasActiveEditor(
-				this.task.id
+				this.task.id,
 			) || false
 		);
 	}
 
 	onload() {
+		// Register selection change listener
+		if (this.selectionManager) {
+			this.registerEvent(
+				(this.app.workspace as Workspace).on(
+					"task-genius:selection-changed",
+					() => {
+						this.updateSelectionVisualState();
+					},
+				),
+			);
+
+			// Setup long press detection for mobile
+			if (Platform.isMobile) {
+				this.selectionManager.longPressDetector.startDetection(
+					this.element,
+					{
+						onLongPress: () => {
+							this.selectionManager?.enterSelectionMode();
+							this.handleMultiSelect();
+						},
+					},
+				);
+			}
+		}
+
 		this.registerDomEvent(this.element, "contextmenu", (event) => {
 			console.log("contextmenu", event, this.task);
+
+			// Check if we have multiple selections
+			if (
+				this.selectionManager &&
+				this.selectionManager.getSelectedCount() > 1
+			) {
+				// Show bulk operations menu
+				event.preventDefault();
+				event.stopPropagation();
+
+				showBulkOperationsMenu(
+					event,
+					this.app,
+					this.plugin,
+					this.selectionManager,
+					() => {
+						// Refresh view after operation
+						// The parent view should handle this via task updates
+					},
+				);
+				return;
+			}
+
 			if (this.onTaskContextMenu) {
 				this.onTaskContextMenu(event, this.task);
 			}
 		});
 
 		this.renderTaskItem();
+		this.updateSelectionVisualState();
 	}
 
 	private renderTaskItem() {
@@ -162,7 +229,7 @@ export class TaskListItemComponent extends Component {
 				const checkbox = createTaskCheckbox(
 					this.task.status,
 					this.task,
-					el
+					el,
 				);
 
 				this.registerDomEvent(checkbox, "click", (event) => {
@@ -177,7 +244,7 @@ export class TaskListItemComponent extends Component {
 						checkbox.dataset.task = "x";
 					}
 				});
-			}
+			},
 		);
 
 		this.element.appendChild(checkboxEl);
@@ -237,7 +304,7 @@ export class TaskListItemComponent extends Component {
 			if (sanitizedPriority) {
 				classes.push(`priority-${sanitizedPriority}`);
 			}
-			const priorityEl = createDiv({cls: classes});
+			const priorityEl = createDiv({ cls: classes });
 
 			// Priority icon based on level
 			let icon = "•";
@@ -248,7 +315,25 @@ export class TaskListItemComponent extends Component {
 		}
 
 		// Click handler to select task
-		this.registerDomEvent(this.element, "click", () => {
+		this.registerDomEvent(this.element, "click", (e) => {
+			// Check for multi-select with Shift key
+			if (this.selectionManager && e.shiftKey) {
+				e.stopPropagation();
+				this.handleMultiSelect();
+				return;
+			}
+
+			// Check if in selection mode
+			if (
+				this.selectionManager &&
+				this.selectionManager.isSelectionMode
+			) {
+				e.stopPropagation();
+				this.handleMultiSelect();
+				return;
+			}
+
+			// Normal single selection
 			if (this.onTaskSelected) {
 				this.onTaskSelected(this.task);
 			}
@@ -262,7 +347,7 @@ export class TaskListItemComponent extends Component {
 		if (this.task.metadata.cancelledDate) {
 			this.renderDateMetadata(
 				"cancelled",
-				this.task.metadata.cancelledDate
+				this.task.metadata.cancelledDate,
 			);
 		}
 
@@ -279,7 +364,7 @@ export class TaskListItemComponent extends Component {
 			if (this.task.metadata.scheduledDate) {
 				this.renderDateMetadata(
 					"scheduled",
-					this.task.metadata.scheduledDate
+					this.task.metadata.scheduledDate,
 				);
 			}
 
@@ -297,7 +382,7 @@ export class TaskListItemComponent extends Component {
 			if (this.task.metadata.completedDate) {
 				this.renderDateMetadata(
 					"completed",
-					this.task.metadata.completedDate
+					this.task.metadata.completedDate,
 				);
 			}
 
@@ -305,7 +390,7 @@ export class TaskListItemComponent extends Component {
 			if (this.task.metadata.createdDate) {
 				this.renderDateMetadata(
 					"created",
-					this.task.metadata.createdDate
+					this.task.metadata.createdDate,
 				);
 			}
 		}
@@ -353,7 +438,7 @@ export class TaskListItemComponent extends Component {
 			| "completed"
 			| "cancelled"
 			| "created",
-		dateValue: number
+		dateValue: number,
 	) {
 		const dateEl = this.metadataEl.createEl("div", {
 			cls: ["task-date", `task-${type}-date`],
@@ -399,10 +484,10 @@ export class TaskListItemComponent extends Component {
 			dateText = this.settings.useRelativeTimeForDate
 				? getRelativeTimeString(date)
 				: date.toLocaleDateString("en-US", {
-					year: "numeric",
-					month: "long",
-					day: "numeric",
-				});
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+					});
 		}
 
 		if (cssClass) {
@@ -435,7 +520,7 @@ export class TaskListItemComponent extends Component {
 						this.getInlineEditor().showMetadataEditor(
 							dateEl,
 							fieldType,
-							dateString
+							dateString,
 						);
 					}
 				}
@@ -481,7 +566,7 @@ export class TaskListItemComponent extends Component {
 					this.getInlineEditor().showMetadataEditor(
 						projectEl,
 						"project",
-						this.task.metadata.project || ""
+						this.task.metadata.project || "",
 					);
 				}
 			});
@@ -511,7 +596,7 @@ export class TaskListItemComponent extends Component {
 							this.getInlineEditor().showMetadataEditor(
 								tagsContainer,
 								"tags",
-								tagsString
+								tagsString,
 							);
 						}
 					});
@@ -533,7 +618,7 @@ export class TaskListItemComponent extends Component {
 					this.getInlineEditor().showMetadataEditor(
 						recurrenceEl,
 						"recurrence",
-						this.task.metadata.recurrence || ""
+						this.task.metadata.recurrence || "",
 					);
 				}
 			});
@@ -554,7 +639,7 @@ export class TaskListItemComponent extends Component {
 					this.getInlineEditor().showMetadataEditor(
 						onCompletionEl,
 						"onCompletion",
-						this.task.metadata.onCompletion || ""
+						this.task.metadata.onCompletion || "",
 					);
 				}
 			});
@@ -566,7 +651,7 @@ export class TaskListItemComponent extends Component {
 			cls: "task-dependson",
 		});
 		dependsOnEl.textContent = `⛔ ${this.task.metadata.dependsOn?.join(
-			", "
+			", ",
 		)}`;
 
 		// Make dependsOn clickable for editing only if inline editor is enabled
@@ -577,7 +662,7 @@ export class TaskListItemComponent extends Component {
 					this.getInlineEditor().showMetadataEditor(
 						dependsOnEl,
 						"dependsOn",
-						this.task.metadata.dependsOn?.join(", ") || ""
+						this.task.metadata.dependsOn?.join(", ") || "",
 					);
 				}
 			});
@@ -598,7 +683,7 @@ export class TaskListItemComponent extends Component {
 					this.getInlineEditor().showMetadataEditor(
 						idEl,
 						"id",
-						this.task.metadata.id || ""
+						this.task.metadata.id || "",
 					);
 				}
 			});
@@ -618,7 +703,7 @@ export class TaskListItemComponent extends Component {
 		// Create the add metadata button
 		const addBtn = addButtonContainer.createEl("button", {
 			cls: "add-metadata-btn",
-			attr: {"aria-label": "Add metadata"},
+			attr: { "aria-label": "Add metadata" },
 		});
 		setIcon(addBtn, "plus");
 
@@ -636,19 +721,19 @@ export class TaskListItemComponent extends Component {
 		const menu = new Menu();
 
 		const availableFields = [
-			{key: "project", label: "Project", icon: "folder"},
-			{key: "tags", label: "Tags", icon: "tag"},
-			{key: "context", label: "Context", icon: "at-sign"},
-			{key: "dueDate", label: "Due Date", icon: "calendar"},
-			{key: "startDate", label: "Start Date", icon: "play"},
-			{key: "scheduledDate", label: "Scheduled Date", icon: "clock"},
-			{key: "cancelledDate", label: "Cancelled Date", icon: "x"},
-			{key: "completedDate", label: "Completed Date", icon: "check"},
-			{key: "priority", label: "Priority", icon: "alert-triangle"},
-			{key: "recurrence", label: "Recurrence", icon: "repeat"},
-			{key: "onCompletion", label: "On Completion", icon: "flag"},
-			{key: "dependsOn", label: "Depends On", icon: "link"},
-			{key: "id", label: "Task ID", icon: "hash"},
+			{ key: "project", label: "Project", icon: "folder" },
+			{ key: "tags", label: "Tags", icon: "tag" },
+			{ key: "context", label: "Context", icon: "at-sign" },
+			{ key: "dueDate", label: "Due Date", icon: "calendar" },
+			{ key: "startDate", label: "Start Date", icon: "play" },
+			{ key: "scheduledDate", label: "Scheduled Date", icon: "clock" },
+			{ key: "cancelledDate", label: "Cancelled Date", icon: "x" },
+			{ key: "completedDate", label: "Completed Date", icon: "check" },
+			{ key: "priority", label: "Priority", icon: "alert-triangle" },
+			{ key: "recurrence", label: "Recurrence", icon: "repeat" },
+			{ key: "onCompletion", label: "On Completion", icon: "flag" },
+			{ key: "dependsOn", label: "Depends On", icon: "link" },
+			{ key: "id", label: "Task ID", icon: "hash" },
 		];
 
 		// Filter out fields that already have values
@@ -695,7 +780,7 @@ export class TaskListItemComponent extends Component {
 		if (fieldsToShow.length === 0) {
 			menu.addItem((item) => {
 				item.setTitle(
-					"All metadata fields are already set"
+					"All metadata fields are already set",
 				).setDisabled(true);
 			});
 		} else {
@@ -712,7 +797,7 @@ export class TaskListItemComponent extends Component {
 
 							editor.showMetadataEditor(
 								tempContainer,
-								field.key as any
+								field.key as any,
 							);
 						});
 				});
@@ -747,13 +832,13 @@ export class TaskListItemComponent extends Component {
 			this.markdownRenderer = new MarkdownRendererComponent(
 				this.app,
 				this.contentEl,
-				this.task.filePath
+				this.task.filePath,
 			);
 			this.addChild(this.markdownRenderer);
 
 			// Render the markdown content - 使用最新的 originalMarkdown
 			this.markdownRenderer.render(
-				this.task.originalMarkdown || "\u200b"
+				this.task.originalMarkdown || "\u200b",
 			);
 
 			// Re-register the click event for editing after rendering
@@ -780,11 +865,11 @@ export class TaskListItemComponent extends Component {
 			// If disabled, always use multi-line (traditional) layout
 			this.contentMetadataContainer.toggleClass(
 				"multi-line-content",
-				true
+				true,
 			);
 			this.contentMetadataContainer.toggleClass(
 				"single-line-content",
-				false
+				false,
 			);
 			return;
 		}
@@ -804,11 +889,11 @@ export class TaskListItemComponent extends Component {
 		// Apply appropriate layout class using Obsidian's toggleClass method
 		this.contentMetadataContainer.toggleClass(
 			"multi-line-content",
-			isMultiLine
+			isMultiLine,
 		);
 		this.contentMetadataContainer.toggleClass(
 			"single-line-content",
-			!isMultiLine
+			!isMultiLine,
 		);
 	}
 
@@ -818,6 +903,9 @@ export class TaskListItemComponent extends Component {
 	private registerContentClickHandler() {
 		// Make content clickable for editing or navigation
 		this.registerDomEvent(this.contentEl, "click", async (e) => {
+			if (Keymap.isModifier(e, "Shift")) {
+				return;
+			}
 			// Check if modifier key is pressed (Cmd/Ctrl)
 			if (Keymap.isModEvent(e)) {
 				// Open task in file
@@ -893,6 +981,33 @@ export class TaskListItemComponent extends Component {
 			this.element.classList.add("selected");
 		} else {
 			this.element.classList.remove("selected");
+		}
+	}
+
+	/**
+	 * Handle multi-select toggle
+	 */
+	private handleMultiSelect(): void {
+		if (!this.selectionManager) return;
+
+		this.selectionManager.toggleSelection(this.task.id);
+		this.updateSelectionVisualState();
+	}
+
+	/**
+	 * Update visual state based on selection
+	 */
+	private updateSelectionVisualState(): void {
+		if (!this.selectionManager) return;
+
+		const isSelected = this.selectionManager.isTaskSelected(this.task.id);
+		this.isTaskSelectedState = isSelected;
+
+		// Update visual state
+		if (isSelected) {
+			this.element.classList.add("task-item-selected");
+		} else {
+			this.element.classList.remove("task-item-selected");
 		}
 	}
 

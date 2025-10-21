@@ -12,6 +12,8 @@
 	border-bottom: 1px solid var(--background-modifier-border);
 	cursor: pointer;
 	gap: var(--size-2-3);
+
+	min-height: 40px;
 }
 
 .task-item:hover {

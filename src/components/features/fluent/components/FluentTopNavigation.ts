@@ -9,6 +9,7 @@ import {
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
 import { t } from "@/translations/helper";
+import { Events, on } from "@/dataflow/events/Events";
 
 export type ViewMode = "list" | "kanban" | "tree" | "calendar";
 
@@ -30,7 +31,7 @@ export class TopNavigation extends Component {
 		private onSortClick: () => void,
 		private onSettingsClick: () => void,
 		availableModes?: ViewMode[],
-		private onToggleSidebar?: () => void
+		private onToggleSidebar?: () => void,
 	) {
 		super();
 		this.containerEl = containerEl;
@@ -43,30 +44,65 @@ export class TopNavigation extends Component {
 			}
 		}
 
-		this.updateNotificationCount();
+		// Render UI first (fast, synchronous)
 		this.render();
+
+		// Then update notification count asynchronously
+		this.updateNotificationCount();
+
+		// Listen for dataflow events to refresh notification count
+		this.setupEventListeners();
+	}
+
+	private setupEventListeners() {
+		// Listen for cache ready event (when dataflow initializes)
+		this.registerEvent(
+			on(this.plugin.app, Events.CACHE_READY, () => {
+				this.updateNotificationCount();
+			}),
+		);
+
+		// Listen for task cache updates
+		this.registerEvent(
+			on(this.plugin.app, Events.TASK_CACHE_UPDATED, () => {
+				this.updateNotificationCount();
+			}),
+		);
 	}
 
 	private async updateNotificationCount() {
-		let tasks: Task[] = [];
-		if (this.plugin.dataflowOrchestrator) {
-			const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
-			tasks = await queryAPI.getAllTasks();
-		} else {
-			tasks = this.plugin.preloadedTasks || [];
+		try {
+			let tasks: Task[] = [];
+
+			// Wait for dataflow to be ready if it's still initializing
+			if (this.plugin.dataflowOrchestrator) {
+				const queryAPI = this.plugin.dataflowOrchestrator.getQueryAPI();
+				tasks = await queryAPI.getAllTasks();
+			} else if (this.plugin.preloadedTasks) {
+				tasks = this.plugin.preloadedTasks;
+			} else {
+				// Dataflow not ready yet, will be called again when ready
+				return;
+			}
+
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			this.notificationCount = tasks.filter((task: Task) => {
+				if (task.completed) return false;
+				const dueDate = task.metadata?.dueDate
+					? new Date(task.metadata.dueDate)
+					: null;
+				return dueDate && dueDate <= today;
+			}).length;
+
+			this.updateNotificationBadge();
+		} catch (error) {
+			console.warn(
+				"[FluentTopNavigation] Failed to update notification count:",
+				error,
+			);
 		}
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-
-		this.notificationCount = tasks.filter((task: Task) => {
-			if (task.completed) return false;
-			const dueDate = task.metadata?.dueDate
-				? new Date(task.metadata.dueDate)
-				: null;
-			return dueDate && dueDate <= today;
-		}).length;
-
-		this.updateNotificationBadge();
 	}
 
 	private render() {
@@ -75,12 +111,12 @@ export class TopNavigation extends Component {
 
 		// Hide entire navigation if no view modes are available
 		if (this.availableModes.length === 0) {
-			this.containerEl.style.display = "none";
+			this.containerEl.hide();
 			return;
 		}
 
 		// Show navigation when modes are available
-		this.containerEl.style.display = "";
+		this.containerEl.show();
 
 		// Left section - Hamburger menu (mobile) and Search
 		const leftSection = this.containerEl.createDiv({
@@ -122,11 +158,13 @@ export class TopNavigation extends Component {
 			cls: "fluent-notification-badge",
 			text: String(this.notificationCount),
 		});
-		if (this.notificationCount === 0) {
-			badge.hide();
+		// Don't hide badge initially - let updateNotificationCount decide
+		// This prevents badge from disappearing during async load
+		if (this.notificationCount > 0) {
+			badge.show();
 		}
-		notificationBtn.addEventListener("click", (e) =>
-			this.showNotifications(e)
+		this.registerDomEvent(notificationBtn, "click", (e) =>
+			this.showNotifications(e),
 		);
 
 		// Settings button
@@ -134,14 +172,16 @@ export class TopNavigation extends Component {
 			cls: "fluent-nav-icon-button",
 		});
 		setIcon(settingsBtn, "settings");
-		settingsBtn.addEventListener("click", () => this.onSettingsClick());
+		this.registerDomEvent(settingsBtn, "click", () =>
+			this.onSettingsClick(),
+		);
 	}
 
 	private createViewTab(
 		container: HTMLElement,
 		mode: ViewMode,
 		icon: string,
-		label: string
+		label: string,
 	) {
 		const tab = container.createEl("button", {
 			cls: ["fluent-view-tab", "clickable-icon"],
@@ -155,13 +195,16 @@ export class TopNavigation extends Component {
 		setIcon(tab.createDiv({ cls: "fluent-view-tab-icon" }), icon);
 		tab.createSpan({ text: label });
 
-		tab.addEventListener("click", () => {
-			this.setViewMode(mode);
-			this.onViewModeChange(mode);
+		this.registerDomEvent(tab, "click", () => {
+			// Only trigger view change if switching to a different mode
+			if (this.currentViewMode !== mode) {
+				this.setViewMode(mode);
+				this.onViewModeChange(mode);
+			}
 		});
 	}
 
-	private setViewMode(mode: ViewMode) {
+	public setViewMode(mode: ViewMode) {
 		this.currentViewMode = mode;
 
 		this.containerEl.querySelectorAll(".fluent-view-tab").forEach((tab) => {
@@ -169,7 +212,7 @@ export class TopNavigation extends Component {
 		});
 
 		const activeTab = this.containerEl.querySelector(
-			`[data-mode="${mode}"]`
+			`[data-mode="${mode}"]`,
 		);
 		if (activeTab) {
 			activeTab.addClass("is-active");
@@ -206,7 +249,7 @@ export class TopNavigation extends Component {
 		} else {
 			menu.addItem((item) => {
 				item.setTitle(
-					`${overdueTasks.length} overdue tasks`
+					`${overdueTasks.length} overdue tasks`,
 				).setDisabled(true);
 			});
 
@@ -220,7 +263,7 @@ export class TopNavigation extends Component {
 							new Notice(
 								t("Task: {{content}}", {
 									content: task.content || "",
-								})
+								}),
 							);
 						});
 				});
@@ -232,7 +275,7 @@ export class TopNavigation extends Component {
 
 	private updateNotificationBadge() {
 		const badge = this.containerEl.querySelector(
-			".fluent-notification-badge"
+			".fluent-notification-badge",
 		);
 		if (badge instanceof HTMLElement) {
 			badge.textContent = String(this.notificationCount);
@@ -278,7 +321,7 @@ export class TopNavigation extends Component {
 					this.viewTabsContainer,
 					mode,
 					config.icon,
-					config.label
+					config.label,
 				);
 			}
 		}
@@ -289,12 +332,12 @@ export class TopNavigation extends Component {
 
 		// Hide entire navigation if no modes available
 		if (modes.length === 0) {
-			this.containerEl.style.display = "none";
+			this.containerEl.hide();
 			return;
 		}
 
 		// Show navigation when modes are available
-		this.containerEl.style.display = "";
+		this.containerEl.show();
 
 		// If current mode is no longer available, switch to first available mode
 		if (!modes.includes(this.currentViewMode)) {
@@ -305,10 +348,10 @@ export class TopNavigation extends Component {
 
 		// Update center section visibility (this should always be visible now since we handle empty modes above)
 		const centerSection = this.containerEl.querySelector(
-			".fluent-nav-center"
+			".fluent-nav-center",
 		) as HTMLElement;
 		if (centerSection) {
-			centerSection.style.display = "";
+			centerSection.show();
 			// Re-render the view tabs
 			if (!this.viewTabsContainer) {
 				this.viewTabsContainer = centerSection.createDiv({

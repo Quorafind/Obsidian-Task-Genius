@@ -1959,7 +1959,17 @@ const translations = {
   "Quick capture configured": "已配置快速捕获",
   "Workflow settings enabled": "已启用工作流设置",
   "Advanced features enabled": "已启用高级功能",
-  "File parsing customized": "已自定义文件解析"
+  "File parsing customized": "已自定义文件解析",
+
+  // Quick Capture File Name Templates
+  "Quick Name Templates": "快速名称模板",
+  "Quick Name Templates:": "快速名称模板：",
+  "Manage file name templates for quick selection in File mode": "管理文件模式中快速选择的文件名模板",
+  "Enter template...": "输入模板...",
+  "Add Template": "添加模板",
+  "Select a template...": "选择模板...",
+  "Enter file name...": "输入文件名...",
+  "File Name": "文件名"
 };
 
 export default translations;

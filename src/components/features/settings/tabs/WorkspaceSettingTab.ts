@@ -1,7 +1,11 @@
 import { Menu, Setting, setIcon } from "obsidian";
 import { TaskProgressBarSettingTab } from "@/setting";
 import TaskProgressBarPlugin from "@/index";
-import { WorkspaceData } from "@/types/workspace";
+import {
+	WorkspaceData,
+	ModuleDefinition,
+	SidebarComponentType,
+} from "@/types/workspace";
 import { t } from "@/translations/helper";
 import {
 	CreateWorkspaceModal,
@@ -9,7 +13,10 @@ import {
 	DeleteWorkspaceModal,
 } from "@/components/ui/modals/WorkspaceModals";
 
-export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab, containerEl: HTMLElement) {
+export function renderWorkspaceSettingsTab(
+	settingTab: TaskProgressBarSettingTab,
+	containerEl: HTMLElement,
+) {
 	const workspacesSection = containerEl.createDiv();
 	workspacesSection.addClass("workspaces-settings-section");
 
@@ -23,8 +30,8 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 	descEl.addClass("workspaces-description");
 	descEl.setText(
 		t(
-			"Manage workspaces to organize different contexts with their own settings and filters."
-		)
+			"Manage workspaces to organize different contexts with their own settings and filters.",
+		),
 	);
 
 	if (!settingTab.plugin.workspaceManager) {
@@ -38,7 +45,7 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 	const currentWorkspace =
 		settingTab.plugin.workspaceManager.getActiveWorkspace();
 	const isDefault = settingTab.plugin.workspaceManager.isDefaultWorkspace(
-		currentWorkspace.id
+		currentWorkspace.id,
 	);
 
 	new Setting(workspacesSection)
@@ -46,7 +53,7 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 		.setDesc(
 			`${currentWorkspace.name}${
 				isDefault ? " (" + t("Default") + ")" : ""
-			}`
+			}`,
 		)
 		.addButton((button) => {
 			button.setButtonText(t("Switch Workspace")).onClick((evt) => {
@@ -69,7 +76,9 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 
 		const isCurrentActive = workspace.id === currentWorkspace.id;
 		const isDefaultWs =
-			settingTab.plugin.workspaceManager!.isDefaultWorkspace(workspace.id);
+			settingTab.plugin.workspaceManager!.isDefaultWorkspace(
+				workspace.id,
+			);
 
 		if (isCurrentActive) {
 			workspaceItemEl.addClass("workspace-item-active");
@@ -78,22 +87,31 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 		const setting = new Setting(workspaceItemEl);
 
 		// Add workspace icon to the name
-		const nameWithIcon = setting.nameEl.createDiv({cls: "workspace-name-with-icon"});
-		const iconEl = nameWithIcon.createDiv({cls: "workspace-list-icon"});
+		const nameWithIcon = setting.nameEl.createDiv({
+			cls: "workspace-name-with-icon",
+		});
+		const iconEl = nameWithIcon.createDiv({ cls: "workspace-list-icon" });
 		setIcon(iconEl, workspace.icon || "layers");
-		nameWithIcon.createSpan({text: workspace.name});
 
-		setting.setDesc(
-			isDefaultWs
-				? t("Default workspace")
-				: t("Last updated: {{date}}", {
-					interpolation: {
-						date: new Date(
-							workspace.updatedAt
-						).toLocaleDateString(),
-					},
-				})
-		)
+		// Apply workspace color to icon
+		if (workspace.color) {
+			iconEl.style.color = workspace.color;
+		}
+
+		nameWithIcon.createSpan({ text: workspace.name });
+
+		setting
+			.setDesc(
+				isDefaultWs
+					? t("Default workspace")
+					: t("Last updated: {{date}}", {
+							interpolation: {
+								date: new Date(
+									workspace.updatedAt,
+								).toLocaleDateString(),
+							},
+						}),
+			)
 			.addButton((button) => {
 				if (isCurrentActive) {
 					button.setButtonText(t("Active")).setDisabled(true);
@@ -103,13 +121,25 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 							to: workspace.id,
 						});
 						await settingTab.plugin.workspaceManager!.setActiveWorkspace(
-							workspace.id
+							workspace.id,
 						);
-						this.display();
+						settingTab.display();
 					});
 				}
 			})
-			.addButton((button) => {
+			.addExtraButton((button) => {
+				button
+					.setIcon("settings-2")
+					.setTooltip(t("Configure hidden modules"))
+					.onClick(() => {
+						showHiddenModulesConfig(
+							settingTab,
+							workspace,
+							workspaceItemEl,
+						);
+					});
+			})
+			.addExtraButton((button) => {
 				button
 					.setIcon("edit")
 					.setTooltip(t("Rename"))
@@ -117,13 +147,11 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 						showRenameWorkspaceDialog(settingTab, workspace);
 					});
 			})
-			.addButton((button) => {
+			.addExtraButton((button) => {
 				if (isDefaultWs) {
 					button
 						.setIcon("trash")
-						.setTooltip(
-							t("Default workspace cannot be deleted")
-						);
+						.setTooltip(t("Default workspace cannot be deleted"));
 					button.setDisabled(true);
 				} else {
 					button
@@ -150,7 +178,10 @@ export function renderWorkspaceSettingsTab(settingTab: TaskProgressBarSettingTab
 		});
 }
 
-function showWorkspaceSelector(settingTab: TaskProgressBarSettingTab, event: MouseEvent) {
+function showWorkspaceSelector(
+	settingTab: TaskProgressBarSettingTab,
+	event: MouseEvent,
+) {
 	if (!settingTab.plugin.workspaceManager) return;
 
 	const menu = new Menu();
@@ -164,7 +195,7 @@ function showWorkspaceSelector(settingTab: TaskProgressBarSettingTab, event: Mou
 				.setIcon("layers")
 				.onClick(async () => {
 					await settingTab.plugin.workspaceManager?.setActiveWorkspace(
-						workspace.id
+						workspace.id,
 					);
 					console.log("[TG-WORKSPACE] settings:menu switch", {
 						to: workspace.id,
@@ -190,7 +221,10 @@ function showCreateWorkspaceDialog(settingTab: TaskProgressBarSettingTab) {
 	}).open();
 }
 
-function showRenameWorkspaceDialog(settingTab: TaskProgressBarSettingTab, workspace: WorkspaceData) {
+function showRenameWorkspaceDialog(
+	settingTab: TaskProgressBarSettingTab,
+	workspace: WorkspaceData,
+) {
 	if (!settingTab.plugin.workspaceManager) return;
 
 	new RenameWorkspaceModal(settingTab.plugin, workspace, () => {
@@ -198,10 +232,296 @@ function showRenameWorkspaceDialog(settingTab: TaskProgressBarSettingTab, worksp
 	}).open();
 }
 
-function showDeleteWorkspaceDialog(settingTab: TaskProgressBarSettingTab, workspace: WorkspaceData) {
+function showDeleteWorkspaceDialog(
+	settingTab: TaskProgressBarSettingTab,
+	workspace: WorkspaceData,
+) {
 	if (!settingTab.plugin.workspaceManager) return;
 
 	new DeleteWorkspaceModal(settingTab.plugin, workspace, () => {
 		settingTab.display();
 	}).open();
+}
+
+/**
+ * Get all available modules that can be hidden
+ */
+function getAvailableModules(plugin: TaskProgressBarPlugin): {
+	views: ModuleDefinition[];
+	sidebarComponents: ModuleDefinition[];
+} {
+	// Get view modules from plugin settings
+	const views: ModuleDefinition[] = plugin.settings.viewConfiguration.map(
+		(view) => ({
+			id: view.id,
+			name: view.name,
+			icon: view.icon,
+			type: "view" as const,
+		}),
+	);
+
+	// Define sidebar component modules (Fluent interface only)
+	const sidebarComponents: ModuleDefinition[] = [
+		{
+			id: "projects-list",
+			name: t("Projects List"),
+			icon: "folders",
+			type: "sidebar" as const,
+		},
+		{
+			id: "other-views",
+			name: t("Other Views"),
+			icon: "layout-list",
+			type: "sidebar" as const,
+		},
+	];
+
+	return { views, sidebarComponents };
+}
+
+/**
+ * Render hidden modules configuration for a workspace
+ */
+function renderHiddenModulesConfig(
+	containerEl: HTMLElement,
+	plugin: TaskProgressBarPlugin,
+	workspace: WorkspaceData,
+	onUpdate: () => void,
+) {
+	const modulesContainer = containerEl.createDiv({
+		cls: "workspace-hidden-modules-container",
+	});
+
+	// Title
+	const titleEl = modulesContainer.createDiv({
+		cls: "workspace-hidden-modules-title",
+	});
+	setIcon(titleEl.createSpan(), "eye-off");
+	titleEl.createSpan({ text: t("Hidden Modules Configuration") });
+
+	// Description
+	modulesContainer.createDiv({
+		cls: "workspace-hidden-modules-desc",
+		text: t(
+			"Configure which modules should be hidden in this workspace. Hidden views will not appear in the sidebar.",
+		),
+	});
+
+	const modules = getAvailableModules(plugin);
+	let hiddenModules = workspace.settings.hiddenModules || {
+		views: [],
+		sidebarComponents: [],
+	};
+
+	const groupsContainer = modulesContainer.createDiv({
+		cls: "workspace-module-groups",
+	});
+
+	// Helper function to render a module group
+	const renderModuleGroup = (
+		groupTitle: string,
+		groupIcon: string,
+		moduleList: ModuleDefinition[],
+		initialHiddenList: string[],
+		moduleType: "views" | "sidebarComponents",
+	) => {
+		let hiddenList = [...initialHiddenList];
+
+		const groupEl = groupsContainer.createDiv({
+			cls: "workspace-module-group",
+		});
+
+		// Group header
+		const headerEl = groupEl.createDiv({
+			cls: "workspace-module-group-header",
+		});
+		const iconEl = headerEl.createDiv({
+			cls: "workspace-module-group-icon",
+		});
+		setIcon(iconEl, groupIcon);
+		headerEl.createDiv({
+			cls: "workspace-module-group-title",
+			text: groupTitle,
+		});
+
+		const hiddenCount = hiddenList.length;
+		const totalCount = moduleList.length;
+		headerEl.createDiv({
+			cls: "workspace-module-group-count",
+			text: t("{{hidden}}/{{total}} hidden", {
+				interpolation: {
+					hidden: hiddenCount.toString(),
+					total: totalCount.toString(),
+				},
+			}),
+		});
+
+		// Module list
+		const listEl = groupEl.createDiv({ cls: "workspace-module-list" });
+
+		moduleList.forEach((module) => {
+			const isHidden = hiddenList.includes(module.id);
+			const itemEl = listEl.createDiv({ cls: "workspace-module-item" });
+			if (isHidden) {
+				itemEl.addClass("is-hidden");
+			}
+
+			// Checkbox
+			const checkboxContainer = itemEl.createDiv({
+				cls: "workspace-module-checkbox",
+			});
+			const checkbox = checkboxContainer.createEl("input", {
+				type: "checkbox",
+			});
+			checkbox.checked = !isHidden; // Checked means visible (not hidden)
+
+			// Icon
+			const iconContainer = itemEl.createDiv({
+				cls: "workspace-module-icon",
+			});
+			setIcon(iconContainer, module.icon);
+
+			// Label
+			itemEl.createDiv({
+				cls: "workspace-module-label",
+				text: module.name,
+			});
+
+			const toggleVisibility = async () => {
+				const newHiddenList = [...hiddenList];
+				const index = newHiddenList.indexOf(module.id);
+				const shouldBeVisible = checkbox.checked;
+
+				if (shouldBeVisible && index !== -1) {
+					newHiddenList.splice(index, 1);
+				} else if (!shouldBeVisible && index === -1) {
+					newHiddenList.push(module.id);
+				}
+
+				try {
+					switch (moduleType) {
+						case "views":
+							await plugin.workspaceManager?.setHiddenViews(
+								[...newHiddenList],
+								workspace.id,
+							);
+							break;
+						case "sidebarComponents":
+							await plugin.workspaceManager?.setHiddenSidebarComponents(
+								newHiddenList as SidebarComponentType[],
+								workspace.id,
+							);
+							break;
+					}
+
+					const refreshed = plugin.workspaceManager?.getWorkspace(
+						workspace.id,
+					);
+					if (refreshed?.settings?.hiddenModules) {
+						hiddenModules = refreshed.settings.hiddenModules;
+					} else {
+						hiddenModules = {
+							views: [],
+							sidebarComponents: [],
+						};
+					}
+
+					// Update local state from the refreshed data (after normalization)
+					switch (moduleType) {
+						case "views":
+							hiddenList = hiddenModules.views || [];
+							break;
+						case "sidebarComponents":
+							hiddenList = hiddenModules.sidebarComponents || [];
+							break;
+					}
+
+					itemEl.toggleClass("is-hidden", !shouldBeVisible);
+
+					const countBadge = headerEl.querySelector(
+						".workspace-module-group-count",
+					);
+					if (countBadge) {
+						countBadge.textContent = t(
+							"{{hidden}}/{{total}} hidden",
+							{
+								interpolation: {
+									hidden: hiddenList.length.toString(),
+									total: totalCount.toString(),
+								},
+							},
+						);
+					}
+
+					onUpdate();
+				} catch (error) {
+					console.error(
+						"[WorkspaceSettings] Failed to update hidden modules",
+						error,
+					);
+					checkbox.checked = !checkbox.checked;
+				}
+			};
+
+			checkbox.addEventListener("change", () => {
+				toggleVisibility();
+			});
+			itemEl.addEventListener("click", (e) => {
+				if (e.target !== checkbox) {
+					checkbox.checked = !checkbox.checked;
+					toggleVisibility();
+				}
+			});
+		});
+	};
+
+	// Render all module groups
+	renderModuleGroup(
+		t("Views"),
+		"layout-list",
+		modules.views,
+		hiddenModules.views || [],
+		"views",
+	);
+
+	renderModuleGroup(
+		t("Sidebar Components"),
+		"sidebar",
+		modules.sidebarComponents,
+		hiddenModules.sidebarComponents || [],
+		"sidebarComponents",
+	);
+}
+
+/**
+ * Show or hide hidden modules configuration for a workspace
+ */
+function showHiddenModulesConfig(
+	settingTab: TaskProgressBarSettingTab,
+	workspace: WorkspaceData,
+	workspaceItemEl: HTMLElement,
+) {
+	// Check if config is already shown
+	const existingConfig = workspaceItemEl.querySelector(
+		".workspace-hidden-modules-container",
+	);
+
+	if (existingConfig) {
+		// Remove if already shown (toggle off)
+		existingConfig.remove();
+		return;
+	}
+
+	// Render the config using the new CSS class-based approach
+	renderHiddenModulesConfig(
+		workspaceItemEl,
+		settingTab.plugin,
+		workspace,
+		() => {
+			// Update callback - trigger any necessary refreshes
+			console.log(
+				`[WorkspaceSettings] Hidden modules updated for workspace ${workspace.id}`,
+			);
+		},
+	);
 }

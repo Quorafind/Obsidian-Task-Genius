@@ -28,6 +28,8 @@ export async function createDataflow(
     plugin,
     projectOptions
   );
+  // Expose orchestrator immediately so early consumers can subscribe to events
+  plugin.dataflowOrchestrator = orchestrator;
   
   console.log("[createDataflow] Initializing dataflow orchestrator...");
   try {
@@ -36,6 +38,9 @@ export async function createDataflow(
     console.log(`[createDataflow] Dataflow orchestrator ready (took ${elapsed}ms)`);
   } catch (error) {
     console.error("[createDataflow] Failed to initialize orchestrator:", error);
+    if (plugin.dataflowOrchestrator === orchestrator) {
+      plugin.dataflowOrchestrator = undefined;
+    }
     throw error;
   }
   

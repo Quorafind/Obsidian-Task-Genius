@@ -86,3 +86,43 @@
 	font-weight: bold;
 	line-height: 1;
 }
+
+/* Bulk Date Picker Modal Styles */
+.bulk-date-picker-modal .modal-content {
+	min-width: 320px;
+}
+
+/* Bulk Date Offset Modal Styles */
+.bulk-date-offset-modal .modal-content {
+	min-width: 400px;
+	max-width: 500px;
+}
+
+.bulk-offset-button-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: var(--size-2-3);
+}
+
+.bulk-offset-button-container button {
+	width: 100%;
+}
+
+.bulk-offset-custom-section {
+	margin-top: var(--size-4-6);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.bulk-offset-custom-section label {
+	display: block;
+	margin-bottom: var(--size-2-3);
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.modal-description {
+	margin-bottom: var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}

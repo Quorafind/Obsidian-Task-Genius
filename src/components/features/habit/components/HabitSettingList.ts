@@ -128,7 +128,7 @@ export class HabitList {
 						.onClick(() => {
 							this.deleteHabit(habit);
 						});
-				}
+				},
 			);
 		});
 	}
@@ -148,7 +148,7 @@ export class HabitList {
 					// 更新已有习惯
 					const habits = this.plugin.settings.habit.habits;
 					const index = habits.findIndex(
-						(h) => h.id === habitData.id
+						(h) => h.id === habitData.id,
 					);
 					if (index > -1) {
 						habits[index] = updatedHabit;
@@ -161,10 +161,10 @@ export class HabitList {
 				// 保存设置并刷新显示
 				this.plugin.saveSettings();
 				// 重新初始化习惯索引，通知视图刷新
-				void this.plugin.habitManager?.initializeHabits();
+				this.plugin.habitManager?.initializeHabits();
 				this.render();
 				new Notice(habitData ? t("Habit updated") : t("Habit added"));
-			}
+			},
 		);
 
 		dialog.open();
@@ -180,7 +180,7 @@ export class HabitList {
 		content.setText(
 			t(`Are you sure you want to delete the habit `) +
 				`"${habitName}"?` +
-				t("This action cannot be undone.")
+				t("This action cannot be undone."),
 		);
 
 		modal.contentEl.createDiv(
@@ -209,19 +209,19 @@ export class HabitList {
 
 						const habits = this.plugin.settings.habit.habits;
 						const index = habits.findIndex(
-							(h) => h.id === habit.id
+							(h) => h.id === habit.id,
 						);
 						if (index > -1) {
 							habits.splice(index, 1);
 							this.plugin.saveSettings();
 							// 重新初始化习惯索引，通知视图刷新
-							void this.plugin.habitManager?.initializeHabits();
+							this.plugin.habitManager?.initializeHabits();
 							this.render();
 							new Notice(t("Habit deleted"));
 						}
 						modal.close();
 					});
-			}
+			},
 		);
 
 		modal.open();

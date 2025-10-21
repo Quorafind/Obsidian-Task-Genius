@@ -13,11 +13,15 @@ export class WorkspaceSelector {
 	private plugin: TaskProgressBarPlugin;
 	private currentWorkspaceId: string;
 	private onWorkspaceChange: (workspaceId: string) => void;
+	private selectorButton: HTMLDivElement | null = null;
+	private workspaceIconEl: HTMLDivElement | null = null;
+	private workspaceNameEl: HTMLSpanElement | null = null;
+	private workspaceLabelEl: HTMLDivElement | null = null;
 
 	constructor(
 		containerEl: HTMLElement,
 		plugin: TaskProgressBarPlugin,
-		onWorkspaceChange: (workspaceId: string) => void
+		onWorkspaceChange: (workspaceId: string) => void,
 	) {
 		this.containerEl = containerEl;
 		this.plugin = plugin;
@@ -25,36 +29,27 @@ export class WorkspaceSelector {
 			plugin.workspaceManager?.getActiveWorkspace().id || "";
 		this.onWorkspaceChange = onWorkspaceChange;
 
-		this.render();
+		this.initialize();
+		this.updateActiveWorkspaceView();
 	}
 
-	private render() {
+	private initialize() {
 		this.containerEl.empty();
 		this.containerEl.addClass("workspace-selector");
 
 		if (!this.plugin.workspaceManager) return;
 
-		const currentWorkspace =
-			this.plugin.workspaceManager.getActiveWorkspace();
-		const isDefault = this.plugin.workspaceManager.isDefaultWorkspace(
-			currentWorkspace.id
-		);
-
-		const selectorButton = this.containerEl.createDiv({
+		this.selectorButton = this.containerEl.createDiv({
 			cls: "workspace-selector-button",
 		});
 
-		const workspaceInfo = selectorButton.createDiv({
+		const workspaceInfo = this.selectorButton.createDiv({
 			cls: "workspace-info",
 		});
 
-		const workspaceIcon = workspaceInfo.createDiv({
+		this.workspaceIconEl = workspaceInfo.createDiv({
 			cls: "workspace-icon",
 		});
-		// Use a color scheme for workspaces if needed
-		workspaceIcon.style.backgroundColor =
-			this.getWorkspaceColor(currentWorkspace);
-		setIcon(workspaceIcon, currentWorkspace.icon || "layers");
 
 		const workspaceDetails = workspaceInfo.createDiv({
 			cls: "workspace-details",
@@ -64,25 +59,48 @@ export class WorkspaceSelector {
 			cls: "workspace-name-container",
 		});
 
-		nameContainer.createSpan({
+		this.workspaceNameEl = nameContainer.createSpan({
 			cls: "workspace-name",
-			text: currentWorkspace.name,
 		});
 
-		workspaceDetails.createDiv({
+		this.workspaceLabelEl = workspaceDetails.createDiv({
 			cls: "workspace-label",
 			text: t("Workspace"),
 		});
 
-		const dropdownIcon = selectorButton.createDiv({
+		const dropdownIcon = this.selectorButton.createDiv({
 			cls: "workspace-dropdown-icon",
 		});
 		setIcon(dropdownIcon, "chevron-down");
 
-		selectorButton.addEventListener("click", (e) => {
-			e.preventDefault();
-			this.showWorkspaceMenu(e);
+		this.selectorButton.addEventListener("click", (event) => {
+			event.preventDefault();
+			this.showWorkspaceMenu(event);
 		});
+	}
+
+	private updateActiveWorkspaceView() {
+		if (!this.plugin.workspaceManager) return;
+
+		if (!this.selectorButton) {
+			this.initialize();
+			if (!this.selectorButton) return;
+		}
+
+		const workspace = this.plugin.workspaceManager.getActiveWorkspace();
+		if (!workspace) return;
+
+		this.currentWorkspaceId = workspace.id;
+
+		if (this.workspaceIconEl) {
+			this.workspaceIconEl.style.backgroundColor =
+				this.getWorkspaceColor(workspace);
+			setIcon(this.workspaceIconEl, workspace.icon || "layers");
+		}
+
+		if (this.workspaceNameEl) {
+			this.workspaceNameEl.setText(workspace.name);
+		}
 	}
 
 	private getWorkspaceColor(workspace: WorkspaceData): string {
@@ -126,9 +144,12 @@ export class WorkspaceSelector {
 				item.setTitle(title)
 					.setIcon(workspace.icon || "layers")
 					.onClick(async () => {
+						if (workspace.id === this.currentWorkspaceId) {
+							return;
+						}
 						await this.onWorkspaceChange(workspace.id);
 						this.currentWorkspaceId = workspace.id;
-						this.render();
+						this.updateActiveWorkspaceView();
 					});
 
 				if (workspace.id === currentWorkspace.id) {
@@ -151,7 +172,7 @@ export class WorkspaceSelector {
 		// Only show rename/delete for non-default workspaces
 		if (
 			!this.plugin.workspaceManager.isDefaultWorkspace(
-				currentWorkspace.id
+				currentWorkspace.id,
 			)
 		) {
 			menu.addItem((item) => {
@@ -190,7 +211,7 @@ export class WorkspaceSelector {
 							this.plugin.settingTab.openTab("workspaces");
 						}
 					}, 100);
-				});
+			});
 		});
 
 		menu.showAtMouseEvent(event);
@@ -200,13 +221,13 @@ export class WorkspaceSelector {
 		new CreateWorkspaceModal(this.plugin, (workspace) => {
 			this.onWorkspaceChange(workspace.id);
 			this.currentWorkspaceId = workspace.id;
-			this.render();
+			this.updateActiveWorkspaceView();
 		}).open();
 	}
 
 	private showRenameWorkspaceDialog(workspace: WorkspaceData) {
 		new RenameWorkspaceModal(this.plugin, workspace, () => {
-			this.render();
+			this.updateActiveWorkspaceView();
 		}).open();
 	}
 
@@ -215,12 +236,13 @@ export class WorkspaceSelector {
 			// After deletion, workspace manager will automatically switch to default
 			this.currentWorkspaceId =
 				this.plugin.workspaceManager?.getActiveWorkspace().id || "";
-			this.render();
+			this.updateActiveWorkspaceView();
 		}).open();
 	}
 
 	public setWorkspace(workspaceId: string) {
+		if (workspaceId === this.currentWorkspaceId) return;
 		this.currentWorkspaceId = workspaceId;
-		this.render();
+		this.updateActiveWorkspaceView();
 	}
 }

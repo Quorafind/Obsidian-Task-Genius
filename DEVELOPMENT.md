@@ -8,6 +8,7 @@
 - [Project Architecture](#project-architecture)
 - [Code Style Guide](#code-style-guide)
 - [Testing Strategy](#testing-strategy)
+- [CLA](#cla)
 - [Getting Help](#getting-help)
 - [Questions?](#questions)
 
@@ -374,6 +375,39 @@ jest.mock('obsidian', () => ({
 }));
 ```
 
+## CLA
+
+Contributor License Agreement (CLA) for Task Genius
+
+Important: Please read this carefully before contributing.
+
+By submitting a contribution (pull request, issue, comment, or any other form of contribution) to this project, you agree to the following terms:
+
+### License Grant
+
+1.  **Grant of Rights**: You grant Quorafind the perpetual, worldwide, non-exclusive, royalty-free, irrevocable right to use, reproduce, modify, and distribute your contributions under one or more licenses, including but not limited to:
+    * (a) The Project's Public License: The project's primary public-facing license, which is currently the **Functional Source License 1.1 (FSL 1.1)**, and the subsequent **Apache License 2.0** it is converted to.
+    * (b) Proprietary Commercial Licenses: Any other proprietary license of Quorafind's choosing. This allows us to offer the software to commercial customers under terms different from the public license if needed in the future.
+
+2.  **Original Work**: You confirm that:
+    * You are the original author of the contribution.
+    * You have the legal right to grant the above license.
+    * Your contribution does not violate any third-party rights.
+    * Your contribution is submitted voluntarily.
+
+3.  **No Warranty**: Contributions are provided "as-is" without warranty of any kind.
+
+### Why We Need This
+
+Our mission is to build the best task management tool for Obsidian and keep it free for everyone. To achieve this sustainably, our project operates under a specific licensing model, and your agreement is essential.
+
+* **Commitment to Free Use:** The compiled, ready-to-use Task Genius plugin is and will remain **free for all users**, including for commercial purposes. We want everyone to benefit from it without a paywall.
+* **Protecting the Source Code:** To ensure the project's long-term health and fund its development, we release the **source code** under the Functional Source License 1.1 (FSL 1.1). This prevents others from simply taking our code, rebranding it, and selling it as a competing product.
+
+* **Your Role as a Contributor:** This CLA is the bridge between your contribution and our project. It grants us the legal clarity to incorporate your code into our BSL-licensed project. This single agreement allows us to continue developing, maintaining, and distributing the plugin for the benefit of the entire community.
+
+By signing, you help us protect the project's future while keeping the plugin itself free for all. Thank you for your contribution!
+
 ## Getting Help
 
 1. Check existing issues on GitHub
@@ -383,8 +417,6 @@ jest.mock('obsidian', () => ({
    - Steps to reproduce
    - Expected vs actual behavior
    - Console logs
-
----
 
 ## Questions?
 

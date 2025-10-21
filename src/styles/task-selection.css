@@ -1,0 +1,254 @@
+/* Task Multi-Selection Styles */
+
+/* Selection mode indicator overlay */
+.task-view.selection-mode {
+	position: relative;
+}
+
+.task-view.selection-mode::before {
+	content: "";
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	background: rgba(var(--interactive-accent-rgb), 0.03);
+	z-index: 0;
+}
+
+/* Selected task item styling */
+.task-item.task-item-selected {
+	background-color: rgba(var(--interactive-accent-rgb), 0.15) !important;
+	border-left: 3px solid var(--interactive-accent);
+	padding-left: 13px; /* Compensate for border */
+	position: relative;
+}
+
+/* Selection count badge */
+.task-selection-badge {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	padding: 8px 16px;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-radius: 16px;
+	font-weight: 600;
+	font-size: 14px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	animation: slideInUp 0.2s ease-out;
+}
+
+@keyframes slideInUp {
+	from {
+		transform: translateY(20px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+.task-selection-badge .selection-count {
+	font-weight: bold;
+}
+
+/* Long press feedback on mobile */
+@media (pointer: coarse) {
+	.task-item.long-press-active {
+		background-color: rgba(var(--interactive-accent-rgb), 0.1);
+		transform: scale(0.98);
+		transition: all 0.2s ease;
+	}
+}
+
+/* Hover effect when in selection mode */
+.task-view.selection-mode .task-item:not(.task-item-selected):hover {
+	background-color: rgba(var(--interactive-accent-rgb), 0.08);
+	border-left: 2px solid rgba(var(--interactive-accent-rgb), 0.5);
+	padding-left: 14px;
+}
+
+/* Shift key indicator (optional visual feedback) */
+.task-view.shift-key-active .task-item {
+	cursor: crosshair;
+}
+
+/* Bulk operations menu styling */
+.task-bulk-operations-menu {
+	min-width: 200px;
+}
+
+.task-bulk-operations-menu .menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.task-bulk-operations-menu .menu-item-icon {
+	opacity: 0.7;
+}
+
+/* Selection mode exit button */
+.task-selection-exit-hint {
+	position: fixed;
+	top: 60px;
+	right: 20px;
+	padding: 6px 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	font-size: 12px;
+	color: var(--text-muted);
+	z-index: 999;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-selection-exit-hint kbd {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 2px 6px;
+	font-family: var(--font-monospace);
+	font-size: 11px;
+}
+
+/* Tree view selection styles */
+.tree-item.task-item-selected {
+	background-color: rgba(var(--interactive-accent-rgb), 0.15) !important;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.tree-item.task-item-selected .tree-item-inner {
+	font-weight: 500;
+}
+
+/* Disabled state for non-selectable items */
+.task-item.selection-disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.task-item.selection-disabled:hover {
+	background-color: transparent;
+}
+
+/* Selection checkbox visual (if adding explicit checkboxes) */
+.task-item-selection-checkbox {
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--text-muted);
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+	flex-shrink: 0;
+	transition: all 0.2s ease;
+}
+
+.task-item-selected .task-item-selection-checkbox {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+.task-item-selected .task-item-selection-checkbox::after {
+	content: "✓";
+	color: var(--text-on-accent);
+	font-size: 12px;
+	font-weight: bold;
+}
+
+/* Fade in/out animations for selection mode */
+.task-selection-mode-enter {
+	animation: fadeIn 0.2s ease-out;
+}
+
+.task-selection-mode-exit {
+	animation: fadeOut 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+	.task-selection-badge {
+		bottom: 70px; /* Account for mobile bottom nav */
+	}
+
+	.task-item.task-item-selected {
+		border-left-width: 4px; /* More prominent on mobile */
+		padding-left: 12px;
+	}
+
+	.task-selection-exit-hint {
+		display: none; /* Hide ESC hint on mobile */
+	}
+}
+
+/* Dark theme adjustments */
+.theme-dark .task-item.task-item-selected {
+	background-color: rgba(var(--interactive-accent-rgb), 0.2) !important;
+}
+
+.theme-dark .task-selection-badge {
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Light theme adjustments */
+.theme-light .task-item.task-item-selected {
+	background-color: rgba(var(--interactive-accent-rgb), 0.12) !important;
+}
+
+.theme-light .task-selection-badge {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Compact mode adjustments */
+.task-view.compact-mode .task-item.task-item-selected {
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+
+/* Accessibility: High contrast mode */
+@media (prefers-contrast: high) {
+	.task-item.task-item-selected {
+		border-left-width: 4px;
+		background-color: rgba(var(--interactive-accent-rgb), 0.25) !important;
+	}
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+	.task-item.task-item-selected,
+	.task-selection-badge,
+	.task-selection-exit-hint {
+		animation: none;
+		transition: none;
+	}
+}

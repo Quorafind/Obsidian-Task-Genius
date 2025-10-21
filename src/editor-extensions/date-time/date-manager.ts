@@ -458,14 +458,29 @@ function applyDateOperations(
 	operations: DateOperation[],
 	plugin: TaskProgressBarPlugin
 ): TransactionSpec {
+	// Early validation: ensure line number is within bounds
+	if (lineNumber < 1 || lineNumber > tr.newDoc.lines) {
+		console.warn(
+			`[AutoDateManager] Line number ${lineNumber} is out of bounds (doc has ${tr.newDoc.lines} lines)`
+		);
+		return tr;
+	}
+
 	// IMPORTANT: Use the NEW document state, not the old one
 	const line = tr.newDoc.line(lineNumber);
+
+	// Validate line boundaries
+	if (line.from > tr.newDoc.length || line.to > tr.newDoc.length) {
+		console.warn(
+			`[AutoDateManager] Line boundaries invalid: from=${line.from}, to=${line.to}, doc length=${tr.newDoc.length}`
+		);
+		return tr;
+	}
+
 	let lineText = line.text;
 	const changes = [];
 
-	console.log(
-		`[AutoDateManager] applyDateOperations - Working with line: "${lineText}"`
-	);
+	// Removed verbose logging
 
 	for (const operation of operations) {
 		if (operation.type === "add") {
@@ -501,22 +516,21 @@ function applyDateOperations(
 
 			const absolutePosition = line.from + insertPosition;
 
-			console.log(
-				`[AutoDateManager] Inserting ${operation.dateType} date:`
-			);
-			console.log(`  - Insert position (relative): ${insertPosition}`);
-			console.log(`  - Line.from: ${line.from}`);
-			console.log(`  - Absolute position: ${absolutePosition}`);
-			console.log(`  - Date text: "${dateText}"`);
-			console.log(
-				`  - Text at insert point: "${lineText.substring(
-					insertPosition
-				)}"`
-			);
+			// Ensure position is within document bounds
+			// Clamp to document length to prevent range errors
+			const safePosition = Math.min(absolutePosition, tr.newDoc.length);
+			const clampedPosition = Math.max(0, safePosition);
+
+			// Keep minimal logging for debugging
+			if (clampedPosition !== absolutePosition) {
+				console.log(
+					`[AutoDateManager] Position adjusted: ${absolutePosition} -> ${clampedPosition} (doc length: ${tr.newDoc.length})`
+				);
+			}
 
 			changes.push({
-				from: absolutePosition,
-				to: absolutePosition,
+				from: clampedPosition,
+				to: clampedPosition,
 				insert: dateText,
 			});
 
@@ -574,9 +588,19 @@ function applyDateOperations(
 				const absoluteFrom = line.from + matchToRemove.start;
 				const absoluteTo = line.from + matchToRemove.end;
 
+				// Ensure positions are within document bounds
+				const safeFrom = Math.min(
+					Math.max(0, absoluteFrom),
+					tr.newDoc.length
+				);
+				const safeTo = Math.min(
+					Math.max(0, absoluteTo),
+					tr.newDoc.length
+				);
+
 				changes.push({
-					from: absoluteFrom,
-					to: absoluteTo,
+					from: safeFrom,
+					to: safeTo,
 					insert: "",
 				});
 
@@ -589,8 +613,104 @@ function applyDateOperations(
 	}
 
 	if (changes.length > 0) {
+		// CRITICAL FIX: When multiple transaction filters run in sequence,
+		// positions must be handled very carefully.
+
+		// Our positions are calculated relative to tr.newDoc (after previous changes).
+		// However, when returning changes, CodeMirror expects them to be relative
+		// to the state AFTER tr.changes is applied, which IS tr.newDoc.
+		// So our positions should actually be correct as-is!
+
+		// The issue might be that we're seeing the document length at one point
+		// but by the time the changes are applied, something else has modified it.
+
+		// Let's validate and ensure our positions don't exceed bounds
+		const docLength = tr.newDoc.length;
+		const validatedChanges = changes.map((change, i) => {
+			// Ensure positions are within the document bounds of newDoc
+			let validFrom = Math.min(Math.max(0, change.from), docLength);
+			let validTo = Math.min(Math.max(0, change.to), docLength);
+
+			// Ensure from <= to
+			if (validFrom > validTo) {
+				validTo = validFrom;
+			}
+
+			// Log only if positions changed
+			if (change.from !== validFrom || change.to !== validTo) {
+				console.log(
+					`[AutoDateManager] Position adjusted: (${change.from},${change.to}) -> (${validFrom},${validTo})`
+				);
+			}
+
+			return {
+				from: validFrom,
+				to: validTo,
+				insert: change.insert,
+			};
+		});
+
+		// Check if there are existing changes
+		let existingChanges: Array<{
+			fromA: number;
+			toA: number;
+			fromB: number;
+			toB: number;
+			inserted: string;
+		}> = [];
+		tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+			existingChanges.push({
+				fromA,
+				toA,
+				fromB,
+				toB,
+				inserted: inserted.toString(),
+			});
+		});
+
+		// Only log if there are existing changes (indicating multiple filters)
+		if (existingChanges.length > 0) {
+			console.log(
+				`[AutoDateManager] Processing with ${existingChanges.length} existing changes from other filters`
+			);
+		}
+
+		// IMPORTANT: When we return changes combined with tr.changes,
+		// our change positions should be relative to the document state
+		// AFTER tr.changes is applied (which is tr.newDoc).
+		// This is exactly what we have, so we should be good.
+
+		// Let's also add an extra safety check
+		const finalChanges = validatedChanges.filter((change) => {
+			if (change.from > docLength || change.to > docLength) {
+				console.error(
+					`[AutoDateManager] ERROR: Change position exceeds document length! from=${change.from}, to=${change.to}, docLength=${docLength}`
+				);
+				return false;
+			}
+			return true;
+		});
+
+		// Rebuild a single combined change list relative to the ORIGINAL doc
+		// 1) Take the original transaction's changes as specs (relative to startState)
+		const baseChangeSpecs: { from: number; to: number; insert: string }[] =
+			[];
+		tr.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+			baseChangeSpecs.push({
+				from: fromA,
+				to: toA,
+				insert: inserted.toString(),
+			});
+		});
+		// 2) Map our additional changes (currently in newDoc space) back to startState
+		const inverse = tr.changes.invert(tr.startState.doc);
+		const mappedFinalChanges = finalChanges.map((c) => ({
+			from: inverse.mapPos(c.from, -1),
+			to: inverse.mapPos(c.to, -1),
+			insert: c.insert,
+		}));
 		return {
-			changes: [tr.changes, ...changes],
+			changes: [...baseChangeSpecs, ...mappedFinalChanges],
 			selection: tr.selection,
 			annotations: [
 				taskStatusChangeAnnotation.of("autoDateManager.dateUpdate"),
@@ -687,16 +807,16 @@ function findMetadataInsertPosition(
 	for (let i = 0; i < remainingText.length; i++) {
 		const char = remainingText[i];
 		const nextChar = remainingText[i + 1];
-		const twoChars = char + (nextChar || '');
+		const twoChars = char + (nextChar || "");
 
 		// Handle [[wiki links]] - they are part of content
-		if (twoChars === '[[') {
+		if (twoChars === "[[") {
 			inLink++;
 			contentEnd = position + i + 2;
 			i++; // Skip next char
 			continue;
 		}
-		if (twoChars === ']]' && inLink > 0) {
+		if (twoChars === "]]" && inLink > 0) {
 			inLink--;
 			contentEnd = position + i + 2;
 			i++; // Skip next char
@@ -710,7 +830,7 @@ function findMetadataInsertPosition(
 		}
 
 		// Check for dataview metadata [field:: value]
-		if (char === '[' && !inDataview) {
+		if (char === "[" && !inDataview) {
 			const afterBracket = remainingText.slice(i + 1);
 			if (afterBracket.match(/^[a-zA-Z]+::/)) {
 				// This is dataview metadata, stop here
@@ -719,8 +839,12 @@ function findMetadataInsertPosition(
 		}
 
 		// Check for tags (only if preceded by whitespace or at start)
-		if (char === '#') {
-			if (i === 0 || remainingText[i - 1] === ' ' || remainingText[i - 1] === '\t') {
+		if (char === "#") {
+			if (
+				i === 0 ||
+				remainingText[i - 1] === " " ||
+				remainingText[i - 1] === "\t"
+			) {
 				// Check if this is actually a tag (followed by word characters)
 				const afterHash = remainingText.slice(i + 1);
 				if (afterHash.match(/^[\w-]+/)) {
@@ -731,7 +855,7 @@ function findMetadataInsertPosition(
 		}
 
 		// Check for date emojis (these are metadata markers)
-		const dateEmojis = ['📅', '🚀', '✅', '❌', '🛫', '▶️', '⏰', '🏁'];
+		const dateEmojis = ["📅", "🚀", "✅", "❌", "🛫", "▶️", "⏰", "🏁"];
 		if (dateEmojis.includes(char)) {
 			// Check if this is followed by a date pattern
 			const afterEmoji = remainingText.slice(i + 1);
@@ -748,7 +872,7 @@ function findMetadataInsertPosition(
 	position = contentEnd;
 
 	// Trim trailing whitespace
-	while (position > taskMatch[0].length && lineText[position - 1] === ' ') {
+	while (position > taskMatch[0].length && lineText[position - 1] === " ") {
 		position--;
 	}
 
@@ -827,9 +951,11 @@ function findMetadataInsertPosition(
 		}
 	}
 
-	console.log(
-		`[AutoDateManager] Final insert position for ${dateType}: ${position}`
-	);
+	// Final validation: ensure position doesn't exceed line length
+	position = Math.min(position, lineText.length);
+	position = Math.max(0, position);
+
+	// Removed verbose logging
 	return position;
 }
 
@@ -845,18 +971,25 @@ function findCompletedDateInsertPosition(
 ): number {
 	// Use centralized block reference detection
 	const blockRef = detectBlockReference(lineText);
+	let position: number;
+
 	if (blockRef) {
 		// Insert before the block reference ID
 		// Remove trailing space if exists
-		let position = blockRef.index;
+		position = blockRef.index;
 		if (position > 0 && lineText[position - 1] === " ") {
 			position--;
 		}
-		return position;
+	} else {
+		// If no block reference, insert at the very end
+		position = lineText.length;
 	}
 
-	// If no block reference, insert at the very end
-	return lineText.length;
+	// Validate position is within bounds
+	position = Math.min(position, lineText.length);
+	position = Math.max(0, position);
+
+	return position;
 }
 
 /**

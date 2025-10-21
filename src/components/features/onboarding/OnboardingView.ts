@@ -23,6 +23,7 @@ import { TaskGuideStep } from "./steps/TaskGuideStep";
 import { CompleteStep } from "./steps/CompleteStep";
 import { SettingsCheckStep } from "./steps/SettingsCheckStep";
 import { ConfigCheckTransition } from "@/components/features/onboarding/steps/intro/ConfigCheckTransition";
+import { FluentViewSettings } from "@/common/setting-definition";
 
 export const ONBOARDING_VIEW_TYPE = "task-genius-onboarding";
 
@@ -346,8 +347,34 @@ export class OnboardingView extends ItemView {
 	 * Handle skip button click
 	 */
 	private async handleSkip() {
+		// Auto-enable Fluent Layout for first-time users skipping onboarding
+		if (!this.plugin.settings.fluentView) {
+			this.plugin.settings.fluentView = {
+				enableFluent: true,
+			};
+		} else {
+			this.plugin.settings.fluentView.enableFluent = true;
+		}
+
+		// Ensure fluentConfig is initialized if needed
+		if (!this.plugin.settings.fluentView.fluentConfig) {
+			this.plugin.settings.fluentView.fluentConfig = {
+				enableWorkspaces: true,
+				defaultWorkspace: "default",
+				maxOtherViewsBeforeOverflow: 5,
+			};
+		}
+
+		await this.plugin.saveSettings();
+
+		// Mark onboarding as skipped
 		await this.configManager.skipOnboarding();
 		this.onComplete();
+
+		// Auto-open Task Genius View
+		await this.plugin.activateTaskView();
+
+		// Close onboarding view
 		this.leaf.detach();
 	}
 
@@ -359,23 +386,26 @@ export class OnboardingView extends ItemView {
 		const isFluent = state.uiMode === "fluent";
 
 		if (!this.plugin.settings.fluentView) {
-			(this.plugin.settings as any).experimental = {
-				enableV2: false,
-				showV2Ribbon: false,
+			this.plugin.settings.fluentView = {
+				enableFluent: isFluent,
+				fluentConfig: {
+					enableWorkspaces: true,
+					defaultWorkspace: "default",
+					maxOtherViewsBeforeOverflow: 5,
+				},
+				useWorkspaceSideLeaves: !!state.useSideLeaves,
 			};
 		}
 
-		this.plugin.settings.fluentView!.enableFluent = isFluent;
+		this.plugin.settings.fluentView.enableFluent = isFluent;
 
-		// Prepare v2 config and set placement option when Fluent is chosen
+		// Prepare fluent config and set placement option when Fluent is chosen
 		if (!this.plugin.settings.fluentView) {
-			(this.plugin.settings.fluentView as any).fluentConfig = {
+			(
+				this.plugin.settings.fluentView as FluentViewSettings
+			).fluentConfig = {
 				enableWorkspaces: true,
 				defaultWorkspace: "default",
-				showTopNavigation: true,
-				showNewSidebar: true,
-				allowViewSwitching: true,
-				persistViewMode: true,
 				maxOtherViewsBeforeOverflow: 5,
 			};
 		}

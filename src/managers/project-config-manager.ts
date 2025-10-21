@@ -114,6 +114,13 @@ export class ProjectConfigManager {
 	}
 
 	/**
+	 * Get the configured project config file name
+	 */
+	getConfigFileName(): string {
+		return this.configFileName;
+	}
+
+	/**
 	 * Get project configuration for a given file path
 	 */
 	async getProjectConfig(

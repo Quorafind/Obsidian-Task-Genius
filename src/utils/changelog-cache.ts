@@ -36,11 +36,25 @@ const isChangelogCacheEntry = (
 };
 
 const sanitizeCachePayload = (value: unknown): ChangelogCachePayload => {
-	if (!value || typeof value !== "object") {
+	if (!value) {
 		return {};
 	}
 
-	const payload = value as Partial<Record<CacheChannel, unknown>>;
+	let payloadCandidate: unknown = value;
+
+	if (typeof payloadCandidate === "string") {
+		try {
+			payloadCandidate = JSON.parse(payloadCandidate);
+		} catch {
+			return {};
+		}
+	}
+
+	if (!payloadCandidate || typeof payloadCandidate !== "object") {
+		return {};
+	}
+
+	const payload = payloadCandidate as Partial<Record<CacheChannel, unknown>>;
 	const sanitized: ChangelogCachePayload = {};
 
 	if (isChangelogCacheEntry(payload.stable)) {
@@ -66,13 +80,21 @@ const getStorage = (): Storage | null => {
 	}
 };
 
-const loadCache = (app?: App): ChangelogCachePayload => {
+const loadCache = (app: App): ChangelogCachePayload => {
 	try {
-		if (typeof app?.loadLocalStorage === "function") {
-			return sanitizeCachePayload(app.loadLocalStorage(STORAGE_KEY));
+		const raw = app.loadLocalStorage(STORAGE_KEY);
+		if (!raw) {
+			return {};
 		}
+
+		console.log("[ChangelogCache]", raw);
+
+		return sanitizeCachePayload(raw);
 	} catch (error) {
-		console.warn("[ChangelogCache] Failed to load via app localStorage", error);
+		console.warn(
+			"[ChangelogCache] Failed to load via app localStorage",
+			error,
+		);
 	}
 
 	const storage = getStorage();
@@ -88,19 +110,25 @@ const loadCache = (app?: App): ChangelogCachePayload => {
 
 		return sanitizeCachePayload(JSON.parse(raw));
 	} catch (error) {
-		console.warn("[ChangelogCache] Failed to load via window localStorage", error);
+		console.warn(
+			"[ChangelogCache] Failed to load via window localStorage",
+			error,
+		);
 		return {};
 	}
 };
 
-const saveCache = (cache: ChangelogCachePayload, app?: App): void => {
+const saveCache = (cache: ChangelogCachePayload, app: App): void => {
 	try {
-		if (typeof app?.saveLocalStorage === "function") {
-			app.saveLocalStorage(STORAGE_KEY, cache);
-			return;
-		}
+		const serialized =
+			!cache.stable && !cache.beta ? "{}" : JSON.stringify(cache);
+		app.saveLocalStorage(STORAGE_KEY, serialized);
+		return;
 	} catch (error) {
-		console.warn("[ChangelogCache] Failed to save via app localStorage", error);
+		console.warn(
+			"[ChangelogCache] Failed to save via app localStorage",
+			error,
+		);
 	}
 
 	const storage = getStorage();
@@ -116,14 +144,17 @@ const saveCache = (cache: ChangelogCachePayload, app?: App): void => {
 
 		storage.setItem(STORAGE_KEY, JSON.stringify(cache));
 	} catch (error) {
-		console.warn("[ChangelogCache] Failed to save via window localStorage", error);
+		console.warn(
+			"[ChangelogCache] Failed to save via window localStorage",
+			error,
+		);
 	}
 };
 
 export const getCachedChangelog = (
 	version: string,
 	isBeta: boolean,
-	app?: App,
+	app: App,
 ): ChangelogCacheEntry | null => {
 	const cache = loadCache(app);
 	const channel = getChannelKey(isBeta);
@@ -137,7 +168,7 @@ export const getCachedChangelog = (
 
 export const getLatestCachedChangelog = (
 	isBeta: boolean,
-	app?: App,
+	app: App,
 ): ChangelogCacheEntry | null => {
 	const cache = loadCache(app);
 	const channel = getChannelKey(isBeta);
@@ -148,7 +179,7 @@ export const cacheChangelog = (
 	version: string,
 	isBeta: boolean,
 	data: Pick<ChangelogCacheEntry, "markdown" | "sourceUrl">,
-	app?: App,
+	app: App,
 ): void => {
 	const cache = loadCache(app);
 	const channel = getChannelKey(isBeta);

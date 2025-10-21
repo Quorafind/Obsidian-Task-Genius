@@ -350,7 +350,7 @@
 	background-color: var(--interactive-hover);
 }
 
-/* V2 Container specific styles for mobile */
+/* fluent Container specific styles for mobile */
 .is-mobile .tg-fluent-container .task-details {
 	position: fixed;
 	right: 0;

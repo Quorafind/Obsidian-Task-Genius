@@ -275,6 +275,11 @@ export interface CompletedTaskMoverSettings {
 	incompletedDefaultHeadingName: string;
 }
 
+export interface QuickCaptureTemplateDefinition {
+	name: string;
+	template: string;
+}
+
 /** Define the structure for quick capture settings */
 export interface QuickCaptureSettings {
 	enableQuickCapture: boolean;
@@ -304,6 +309,7 @@ export interface QuickCaptureSettings {
 	lastUsedMode?: "checkbox" | "file"; // Last used save strategy mode
 	defaultFileNameTemplate?: string; // Default template for file names
 	defaultFileLocation?: string; // Default folder for new files
+	fileNameTemplates?: QuickCaptureTemplateDefinition[]; // List of file name templates for quick selection
 	createFileMode?: {
 		defaultFolder: string; // Default folder for file creation
 		useTemplate: boolean; // Whether to use a template for new files
@@ -428,7 +434,6 @@ export interface BetaTestSettings {
 
 export interface FluentViewSettings {
 	enableFluent: boolean;
-	showFluentRibbon: boolean;
 	workspaces?: Array<{
 		id: string;
 		name: string;
@@ -439,33 +444,15 @@ export interface FluentViewSettings {
 	fluentConfig?: {
 		enableWorkspaces: boolean;
 		defaultWorkspace?: string;
-		showTopNavigation: boolean;
-		showNewSidebar: boolean;
-		allowViewSwitching: boolean;
-		persistViewMode: boolean;
 		maxOtherViewsBeforeOverflow?: number; // how many other views to show before overflow menu
 	};
 }
 
 export interface ExperimentalSettings {
-	enableFluent: boolean;
-	showFluentRibbon: boolean;
-	workspaces?: Array<{
-		id: string;
-		name: string;
-		color: string;
-		settings?: any;
-	}>;
-	useWorkspaceSideLeaves?: boolean;
-	fluentConfig?: {
-		enableWorkspaces: boolean;
-		defaultWorkspace?: string;
-		showTopNavigation: boolean;
-		showNewSidebar: boolean;
-		allowViewSwitching: boolean;
-		persistViewMode: boolean;
-		maxOtherViewsBeforeOverflow?: number; // how many other views to show before overflow menu
-	};
+	// Experimental feature 1
+	experimentalFeature1: boolean;
+	// Experimental feature 2
+	experimentalFeature2: boolean;
 }
 
 /** Project path mapping configuration */
@@ -544,7 +531,7 @@ export interface ProjectNamingStrategy {
 	enabled: boolean;
 }
 
-/** Custom project definition for V2 */
+/** Custom project definition for fluent */
 export interface CustomProject {
 	id: string;
 	name: string; // Internal name with dashes for metadata
@@ -568,7 +555,7 @@ export interface ProjectConfiguration {
 	metadataMappings: MetadataMapping[];
 	/** Default project naming strategy */
 	defaultProjectNaming: ProjectNamingStrategy;
-	/** Custom projects for V2 */
+	/** Custom projects for fluent */
 	customProjects?: CustomProject[];
 }
 
@@ -1031,8 +1018,27 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 		keepOpenAfterCapture: false,
 		rememberLastMode: true,
 		lastUsedMode: "checkbox",
-		defaultFileNameTemplate: "{{DATE:YYYY-MM-DD}} - ",
+		defaultFileNameTemplate: "{{DATE:YYYY-MM-DD}} - Task",
 		defaultFileLocation: "",
+		fileNameTemplates: [
+			{ name: "{{DATE:YYYY-MM-DD}}", template: "{{DATE:YYYY-MM-DD}}" },
+			{
+				name: "{{DATE:YYYY-MM-DD}} - Meeting",
+				template: "{{DATE:YYYY-MM-DD}} - Meeting",
+			},
+			{
+				name: "{{DATE:YYYY-MM-DD}} - Task",
+				template: "{{DATE:YYYY-MM-DD}} - Task",
+			},
+			{
+				name: "Project - {{DATE:YYYY-MM}}",
+				template: "Project - {{DATE:YYYY-MM}}",
+			},
+			{
+				name: "Notes - {{DATE:YYYY-MM-DD-HHmm}}",
+				template: "Notes - {{DATE:YYYY-MM-DD-HHmm}}",
+			},
+		],
 		createFileMode: {
 			defaultFolder: "",
 			useTemplate: false,
@@ -1201,7 +1207,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	enableIndexer: true, // Enable indexer by default
 	enableView: true, // Enable view by default
 	enableInlineEditor: true, // Enable inline editing by default
-	enableDynamicMetadataPositioning: true, // Enable intelligent metadata positioning by default
+	enableDynamicMetadataPositioning: false, // Enable intelligent metadata positioning by default
 	defaultViewMode: "list", // Global default view mode for all views
 
 	// Global Filter Defaults
@@ -1645,10 +1651,6 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 	customDateFormats: [],
 
 	// Experimental Defaults
-	experimental: {
-		enableFluent: false,
-		showFluentRibbon: false,
-	},
 
 	// Onboarding Defaults
 	onboarding: {
@@ -1728,6 +1730,23 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 			autoDetect: true,
 			caseSensitive: false,
 		},
+	},
+
+	fluentView: {
+		enableFluent: true,
+		workspaces: [
+			{
+				id: "default",
+				name: "Default",
+				color: "#3498db",
+			},
+		],
+		fluentConfig: {
+			enableWorkspaces: true,
+			defaultWorkspace: "default",
+			maxOtherViewsBeforeOverflow: 5,
+		},
+		useWorkspaceSideLeaves: false,
 	},
 };
 

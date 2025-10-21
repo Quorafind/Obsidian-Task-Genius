@@ -70,7 +70,7 @@ export class DataflowOrchestrator {
 		private vault: Vault,
 		private metadataCache: MetadataCache,
 		private plugin: any, // Plugin instance for parser access
-		projectOptions?: Partial<ProjectConfigManagerOptions>
+		projectOptions?: Partial<ProjectConfigManagerOptions>,
 	) {
 		// Initialize components
 		this.queryAPI = new QueryAPI(app, vault, metadataCache);
@@ -79,7 +79,7 @@ export class DataflowOrchestrator {
 			app,
 			vault,
 			metadataCache,
-			projectOptions
+			projectOptions,
 		);
 		this.augmentor = new Augmentor({
 			app,
@@ -97,7 +97,7 @@ export class DataflowOrchestrator {
 		} catch (e) {
 			console.warn(
 				"[DataflowOrchestrator][init] Failed to sync settings to Augmentor",
-				e
+				e,
 			);
 		}
 		this.storage = this.repository.getStorage();
@@ -107,40 +107,45 @@ export class DataflowOrchestrator {
 			const ffSettingsEarly = this.plugin.settings?.fileFilter;
 			console.log(
 				"[DataflowOrchestrator] Early FileFilter settings:",
-				JSON.stringify(ffSettingsEarly, null, 2)
+				JSON.stringify(ffSettingsEarly, null, 2),
 			);
 			if (ffSettingsEarly) {
 				this.fileFilterManager = new FileFilterManager(ffSettingsEarly);
 				console.log(
 					"[DataflowOrchestrator] Created FileFilterManager early with stats:",
-					this.fileFilterManager.getStats()
+					this.fileFilterManager.getStats(),
 				);
 				// Provide to repository's indexer for inline filtering immediately
 				(this.repository as any).setFileFilterManager?.(
-					this.fileFilterManager
+					this.fileFilterManager,
 				);
 				console.log(
-					"[DataflowOrchestrator] Provided FileFilterManager to repository indexer"
+					"[DataflowOrchestrator] Provided FileFilterManager to repository indexer",
 				);
 			} else {
 				console.log(
-					"[DataflowOrchestrator] No FileFilter settings found, FileFilterManager not created"
+					"[DataflowOrchestrator] No FileFilter settings found, FileFilterManager not created",
 				);
 			}
 		} catch (e) {
 			console.warn(
 				"[DataflowOrchestrator] Failed early FileFilterManager init",
-				e
+				e,
 			);
 		}
 
 		// Initialize debounced restore handler (default ON) - trailing only
 		this.restoreByFilterDebounced = debounce(
 			() => {
-				void this.restoreByFilter();
+				this.restoreByFilter().catch((error) => {
+					console.error(
+						"[DataflowOrchestrator] restoreByFilter failed:",
+						error,
+					);
+				});
 			},
 			500,
-			false
+			false,
 		);
 
 		// Initialize worker orchestrator with settings
@@ -158,9 +163,9 @@ export class DataflowOrchestrator {
 				focusHeading: this.plugin.settings.focusHeading || "",
 				fileParsingConfig: undefined,
 				fileMetadataInheritance:
-				this.plugin.settings.fileMetadataInheritance,
+					this.plugin.settings.fileMetadataInheritance,
 				enableCustomDateFormats:
-				this.plugin.settings.enableCustomDateFormats,
+					this.plugin.settings.enableCustomDateFormats,
 				customDateFormats: this.plugin.settings.customDateFormats,
 				// Include tag prefixes for custom dataview field support
 				projectTagPrefix: this.plugin.settings.projectTagPrefix,
@@ -190,7 +195,7 @@ export class DataflowOrchestrator {
 		this.workerOrchestrator = new WorkerOrchestrator(
 			taskWorkerManager,
 			projectWorkerManager,
-			{enableWorkerProcessing}
+			{ enableWorkerProcessing },
 		);
 
 		// Initialize Obsidian event source
@@ -202,28 +207,28 @@ export class DataflowOrchestrator {
 		// Initialize TimeParsingService with plugin settings
 		this.timeParsingService = new TimeParsingService(
 			this.plugin.settings?.timeParsing ||
-			({
-				enabled: true,
-				supportedLanguages: ["en", "zh"],
-				dateKeywords: {
-					start: ["start", "begin", "from"],
-					due: ["due", "deadline", "by", "until"],
-					scheduled: ["scheduled", "on", "at"],
-				},
-				removeOriginalText: true,
-				perLineProcessing: true,
-				realTimeReplacement: true,
-				timePatterns: {
-					singleTime: [],
-					timeRange: [],
-					rangeSeparators: ["-", "~", "～"],
-				},
-				timeDefaults: {
-					preferredFormat: "24h",
-					defaultPeriod: "AM",
-					midnightCrossing: "next-day",
-				},
-			} as EnhancedTimeParsingConfig)
+				({
+					enabled: true,
+					supportedLanguages: ["en", "zh"],
+					dateKeywords: {
+						start: ["start", "begin", "from"],
+						due: ["due", "deadline", "by", "until"],
+						scheduled: ["scheduled", "on", "at"],
+					},
+					removeOriginalText: true,
+					perLineProcessing: true,
+					realTimeReplacement: true,
+					timePatterns: {
+						singleTime: [],
+						timeRange: [],
+						rangeSeparators: ["-", "~", "～"],
+					},
+					timeDefaults: {
+						preferredFormat: "24h",
+						defaultPeriod: "AM",
+						midnightCrossing: "next-day",
+					},
+				} as EnhancedTimeParsingConfig),
 		);
 
 		// Initialize FileSource (conditionally based on settings)
@@ -231,24 +236,24 @@ export class DataflowOrchestrator {
 			this.fileSource = new FileSource(
 				app,
 				this.plugin.settings.fileSource,
-				this.fileFilterManager
+				this.fileFilterManager,
 			);
 			console.log(
 				"[DataflowOrchestrator] FileSource constructed with filterManager=",
-				!!this.fileFilterManager
+				!!this.fileFilterManager,
 			);
 			// Keep FileSource status mapping in sync with Task Status settings
 			try {
 				this.fileSource.syncStatusMappingFromSettings(
-					this.plugin.settings.taskStatuses
+					this.plugin.settings.taskStatuses,
 				);
 				console.log(
-					"[DataflowOrchestrator] Synced FileSource status mapping from settings"
+					"[DataflowOrchestrator] Synced FileSource status mapping from settings",
 				);
 			} catch (e) {
 				console.warn(
 					"[DataflowOrchestrator] Failed to sync FileSource status mapping on init",
-					e
+					e,
 				);
 			}
 		}
@@ -264,39 +269,39 @@ export class DataflowOrchestrator {
 		try {
 			// Initialize QueryAPI and Repository
 			console.log(
-				"[DataflowOrchestrator] Initializing QueryAPI and Repository..."
+				"[DataflowOrchestrator] Initializing QueryAPI and Repository...",
 			);
 
 			// Initialize or sync FileFilterManager from settings (do not recreate if already exists)
 			const ffSettings = this.plugin.settings?.fileFilter;
 			console.log(
 				"[DataflowOrchestrator] Initialize(): FileFilter settings:",
-				JSON.stringify(ffSettings, null, 2)
+				JSON.stringify(ffSettings, null, 2),
 			);
 			if (ffSettings) {
 				if (!this.fileFilterManager) {
 					this.fileFilterManager = new FileFilterManager(ffSettings);
 					console.log(
 						"[DataflowOrchestrator] Initialize(): Created FileFilterManager with stats:",
-						this.fileFilterManager.getStats()
+						this.fileFilterManager.getStats(),
 					);
 				} else {
 					this.fileFilterManager.updateConfig(ffSettings);
 					console.log(
 						"[DataflowOrchestrator] Initialize(): Updated FileFilterManager config; stats:",
-						this.fileFilterManager.getStats()
+						this.fileFilterManager.getStats(),
 					);
 				}
 				// Provide to repository's indexer for inline filtering
 				(this.repository as any).setFileFilterManager?.(
-					this.fileFilterManager
+					this.fileFilterManager,
 				);
 				console.log(
-					"[DataflowOrchestrator] Initialize(): Provided FileFilterManager to repository indexer"
+					"[DataflowOrchestrator] Initialize(): Provided FileFilterManager to repository indexer",
 				);
 			} else {
 				console.log(
-					"[DataflowOrchestrator] Initialize(): No FileFilter settings"
+					"[DataflowOrchestrator] Initialize(): No FileFilter settings",
 				);
 			}
 			await this.queryAPI.initialize();
@@ -304,12 +309,12 @@ export class DataflowOrchestrator {
 			// Load persisted suppressed file sets for cross-restart restore
 			try {
 				const supInline = await this.storage.loadMeta<string[]>(
-					"filter:suppressedInline"
+					"filter:suppressedInline",
 				);
 				if (Array.isArray(supInline))
 					this.suppressedInline = new Set(supInline);
 				const supFiles = await this.storage.loadMeta<string[]>(
-					"filter:suppressedFileTasks"
+					"filter:suppressedFileTasks",
 				);
 				if (Array.isArray(supFiles))
 					this.suppressedFileTasks = new Set(supFiles);
@@ -320,7 +325,7 @@ export class DataflowOrchestrator {
 			} catch (e) {
 				console.warn(
 					"[DataflowOrchestrator] Failed loading suppressed sets",
-					e
+					e,
 				);
 			}
 
@@ -330,12 +335,12 @@ export class DataflowOrchestrator {
 			// Check if we have cached data
 			const taskCount = (await this.queryAPI.getAllTasks()).length;
 			console.log(
-				`[DataflowOrchestrator] Found ${taskCount} cached tasks`
+				`[DataflowOrchestrator] Found ${taskCount} cached tasks`,
 			);
 
 			if (taskCount === 0) {
 				console.log(
-					"[DataflowOrchestrator] No cached tasks found, performing initial scan..."
+					"[DataflowOrchestrator] No cached tasks found, performing initial scan...",
 				);
 
 				// Get all markdown and canvas files
@@ -346,7 +351,7 @@ export class DataflowOrchestrator {
 				const allFiles = [...mdFiles, ...canvasFiles];
 
 				console.log(
-					`[DataflowOrchestrator] Found ${allFiles.length} files to process`
+					`[DataflowOrchestrator] Found ${allFiles.length} files to process`,
 				);
 
 				// Process in batches for performance
@@ -358,42 +363,52 @@ export class DataflowOrchestrator {
 
 				// Persist the initial index
 				console.log(
-					"[DataflowOrchestrator] Persisting initial index..."
+					"[DataflowOrchestrator] Persisting initial index...",
 				);
 				await this.repository.persist();
 
 				const finalTaskCount = (await this.queryAPI.getAllTasks())
 					.length;
 				console.log(
-					`[DataflowOrchestrator] Initial scan complete, indexed ${finalTaskCount} tasks`
+					`[DataflowOrchestrator] Initial scan complete, indexed ${finalTaskCount} tasks`,
 				);
 			} else {
 				console.log(
-					"[DataflowOrchestrator] Using cached tasks, skipping initial scan"
+					"[DataflowOrchestrator] Using cached tasks, skipping initial scan",
 				);
-			}
-
-			// Initialize ObsidianSource to start listening for events
-			console.log(
-				"[DataflowOrchestrator] Initializing ObsidianSource..."
-			);
-			this.obsidianSource.onload();
-
-			// Initialize IcsSource to start listening for calendar events
-			console.log("[DataflowOrchestrator] Initializing IcsSource...");
-			this.icsSource.initialize();
-
-			// Initialize FileSource to start file recognition
-			if (this.fileSource) {
-				console.log(
-					"[DataflowOrchestrator] Initializing FileSource..."
-				);
-				this.fileSource.initialize();
 			}
 
 			// Subscribe to file update events from ObsidianSource and ICS events
 			console.log("[DataflowOrchestrator] Subscribing to events...");
 			this.subscribeToEvents();
+
+			// Initialize ObsidianSource to start listening for events
+			console.log(
+				"[DataflowOrchestrator] Initializing ObsidianSource...",
+			);
+			this.obsidianSource.onload();
+
+			// Initialize IcsSource to start listening for calendar events
+			console.log("[DataflowOrchestrator] Initializing IcsSource...");
+			this.icsSource.initialize().catch((error) => {
+				console.error(
+					"[DataflowOrchestrator] IcsSource initialization failed:",
+					error,
+				);
+			});
+
+			// Initialize FileSource to start file recognition
+			if (this.fileSource) {
+				console.log(
+					"[DataflowOrchestrator] Initializing FileSource...",
+				);
+				this.fileSource.initialize().catch((error) => {
+					console.error(
+						"[DataflowOrchestrator] FileSource initialization failed:",
+						error,
+					);
+				});
+			}
 
 			// Emit initial ready event
 			emit(this.app, Events.CACHE_READY, {
@@ -404,12 +419,12 @@ export class DataflowOrchestrator {
 
 			const elapsed = Date.now() - startTime;
 			console.log(
-				`[DataflowOrchestrator] Initialization complete (took ${elapsed}ms)`
+				`[DataflowOrchestrator] Initialization complete (took ${elapsed}ms)`,
 			);
 		} catch (error) {
 			console.error(
 				"[DataflowOrchestrator] Initialization failed:",
-				error
+				error,
 			);
 			throw error;
 		}
@@ -422,26 +437,26 @@ export class DataflowOrchestrator {
 		// Listen for ICS events updates
 		this.eventRefs.push(
 			on(this.app, Events.ICS_EVENTS_UPDATED, async (payload: any) => {
-				const {events, seq} = payload;
+				const { events, seq } = payload;
 				console.log(
 					`[DataflowOrchestrator] ICS_EVENTS_UPDATED: ${
 						events?.length || 0
-					} events`
+					} events`,
 				);
 
 				// Update repository with ICS events
 				if (events) {
 					await this.repository.updateIcsEvents(events, seq);
 				}
-			})
+			}),
 		);
 
 		// Listen for file updates from ObsidianSource
 		this.eventRefs.push(
 			on(this.app, Events.FILE_UPDATED, async (payload: any) => {
-				const {path, reason} = payload;
+				const { path, reason } = payload;
 				console.log(
-					`[DataflowOrchestrator] FILE_UPDATED event: ${path} (${reason})`
+					`[DataflowOrchestrator] FILE_UPDATED event: ${path} (${reason})`,
 				);
 
 				if (reason === "delete") {
@@ -450,20 +465,20 @@ export class DataflowOrchestrator {
 				} else {
 					// Process file update (create, modify, rename, frontmatter)
 					const file = this.vault.getAbstractFileByPath(
-						path
+						path,
 					) as TFile;
 					if (file) {
 						await this.processFile(file);
 					}
 				}
-			})
+			}),
 		);
 
 		// Listen for batch updates from Repository only
 		// ObsidianSource uses FILE_UPDATED events instead
 		this.eventRefs.push(
 			on(this.app, Events.TASK_CACHE_UPDATED, async (payload: any) => {
-				const {changedFiles, sourceSeq} = payload;
+				const { changedFiles, sourceSeq } = payload;
 
 				// Skip if this is our own event (avoid infinite loop)
 				// Check sourceSeq to identify origin from our own processing
@@ -474,27 +489,27 @@ export class DataflowOrchestrator {
 				// Skip if no sourceSeq (likely from ObsidianSource - deprecated path)
 				if (!sourceSeq) {
 					console.log(
-						`[DataflowOrchestrator] Ignoring TASK_CACHE_UPDATED without sourceSeq`
+						`[DataflowOrchestrator] Ignoring TASK_CACHE_UPDATED without sourceSeq`,
 					);
 					return;
 				}
 
 				if (changedFiles && Array.isArray(changedFiles)) {
 					console.log(
-						`[DataflowOrchestrator] Batch update for ${changedFiles.length} files`
+						`[DataflowOrchestrator] Batch update for ${changedFiles.length} files`,
 					);
 
 					// Process each file
 					for (const filePath of changedFiles) {
 						const file = this.vault.getAbstractFileByPath(
-							filePath
+							filePath,
 						) as TFile;
 						if (file) {
 							await this.processFile(file);
 						}
 					}
 				}
-			})
+			}),
 		);
 
 		// Listen for WriteAPI completion events to trigger re-processing
@@ -503,9 +518,9 @@ export class DataflowOrchestrator {
 				this.app,
 				Events.WRITE_OPERATION_COMPLETE,
 				async (payload: any) => {
-					const {path, taskId} = payload;
+					const { path, taskId } = payload;
 					console.log(
-						`[DataflowOrchestrator] WRITE_OPERATION_COMPLETE: ${path}, taskId: ${taskId}`
+						`[DataflowOrchestrator] WRITE_OPERATION_COMPLETE: ${path}, taskId: ${taskId}`,
 					);
 
 					// If we have a taskId, it means a specific task was updated
@@ -513,7 +528,7 @@ export class DataflowOrchestrator {
 					if (!taskId) {
 						// No specific task, process the entire file
 						const file = this.vault.getAbstractFileByPath(
-							path
+							path,
 						) as TFile;
 						if (file) {
 							// Process immediately without debounce for WriteAPI operations
@@ -521,32 +536,32 @@ export class DataflowOrchestrator {
 							await this.processFileImmediate(file, true);
 						}
 					}
-				}
-			)
+				},
+			),
 		);
 
 		// Listen for direct task updates (from inline editing)
 		this.eventRefs.push(
 			on(this.app, Events.TASK_UPDATED, async (payload: any) => {
-				const {task} = payload;
+				const { task } = payload;
 				if (task) {
 					console.log(
-						`[DataflowOrchestrator] TASK_UPDATED: ${task.id} in ${task.filePath}`
+						`[DataflowOrchestrator] TASK_UPDATED: ${task.id} in ${task.filePath}`,
 					);
 					// Update the single task directly in the repository
 					await this.repository.updateSingleTask(task);
 				}
-			})
+			}),
 		);
 
 		// Listen for task deletion events
 		this.eventRefs.push(
 			on(this.app, Events.TASK_DELETED, async (payload: any) => {
-				const {taskId, filePath, deletedTaskIds, mode} = payload;
+				const { taskId, filePath, deletedTaskIds, mode } = payload;
 				console.log(
 					`[DataflowOrchestrator] TASK_DELETED: ${taskId} in ${filePath}, mode: ${mode}, deleted: ${
 						deletedTaskIds?.length || 1
-					} tasks`
+					} tasks`,
 				);
 
 				// Remove deleted tasks from repository
@@ -558,40 +573,40 @@ export class DataflowOrchestrator {
 
 				// Process the file to update remaining tasks' line numbers
 				const file = this.vault.getAbstractFileByPath(
-					filePath
+					filePath,
 				) as TFile;
 				if (file) {
 					await this.processFileImmediate(file, true);
 				}
-			})
+			}),
 		);
 
 		// Listen for FileSource file task updates
 		if (this.fileSource) {
 			this.eventRefs.push(
 				on(this.app, Events.FILE_TASK_UPDATED, async (payload: any) => {
-					const {task} = payload;
+					const { task } = payload;
 					console.log(
-						`[DataflowOrchestrator] FILE_TASK_UPDATED: ${task?.filePath}`
+						`[DataflowOrchestrator] FILE_TASK_UPDATED: ${task?.filePath}`,
 					);
 
 					if (task) {
 						await this.repository.updateFileTask(task);
 					}
-				})
+				}),
 			);
 
 			this.eventRefs.push(
 				on(this.app, Events.FILE_TASK_REMOVED, async (payload: any) => {
-					const {filePath} = payload;
+					const { filePath } = payload;
 					console.log(
-						`[DataflowOrchestrator] FILE_TASK_REMOVED: ${filePath}`
+						`[DataflowOrchestrator] FILE_TASK_REMOVED: ${filePath}`,
 					);
 
 					if (filePath) {
 						await this.repository.removeFileTask(filePath);
 					}
-				})
+				}),
 			);
 		}
 	}
@@ -622,7 +637,7 @@ export class DataflowOrchestrator {
 	 */
 	private async processFileImmediate(
 		file: TFile,
-		forceInvalidate: boolean = false
+		forceInvalidate: boolean = false,
 	): Promise<void> {
 		const filePath = file.path;
 
@@ -656,19 +671,19 @@ export class DataflowOrchestrator {
 			) {
 				// Use cached augmented tasks - file hasn't changed and we have augmented data
 				console.log(
-					`[DataflowOrchestrator] Using cached augmented tasks for ${filePath} (mtime match)`
+					`[DataflowOrchestrator] Using cached augmented tasks for ${filePath} (mtime match)`,
 				);
 				augmentedTasks = augmentedCached.data;
 				// Apply inline filter even when using cached augmented tasks
 				const includeInlineCached = this.fileFilterManager
 					? this.fileFilterManager.shouldIncludePath(
-						filePath,
-						"inline"
-					)
+							filePath,
+							"inline",
+						)
 					: true;
 				console.log(
 					"[DataflowOrchestrator] Inline filter decision (cached augmented)",
-					{filePath, includeInline: includeInlineCached}
+					{ filePath, includeInline: includeInlineCached },
 				);
 				if (!includeInlineCached) {
 					augmentedTasks = [];
@@ -687,22 +702,22 @@ export class DataflowOrchestrator {
 						filePath,
 						rawCached,
 						fileContent,
-						mtime
+						mtime,
 					)
 				) {
 					// Use cached raw tasks but re-augment (project data might have changed)
 					console.log(
-						`[DataflowOrchestrator] Re-augmenting cached raw tasks for ${filePath}`
+						`[DataflowOrchestrator] Re-augmenting cached raw tasks for ${filePath}`,
 					);
 					const includeInlineReaugment = this.fileFilterManager
 						? this.fileFilterManager.shouldIncludePath(
-							filePath,
-							"inline"
-						)
+								filePath,
+								"inline",
+							)
 						: true;
 					console.log(
 						"[DataflowOrchestrator] Inline filter decision (re-augment cached raw)",
-						{filePath, includeInline: includeInlineReaugment}
+						{ filePath, includeInline: includeInlineReaugment },
 					);
 					rawTasks = includeInlineReaugment ? rawCached.data : [];
 					projectData = await this.projectResolver.get(filePath);
@@ -710,11 +725,11 @@ export class DataflowOrchestrator {
 					// Parse the file from scratch
 					if (forceInvalidate) {
 						console.log(
-							`[DataflowOrchestrator] Parsing ${filePath} (forced invalidation from WriteAPI)`
+							`[DataflowOrchestrator] Parsing ${filePath} (forced invalidation from WriteAPI)`,
 						);
 					} else {
 						console.log(
-							`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`
+							`[DataflowOrchestrator] Parsing ${filePath} (cache miss or mtime mismatch)`,
 						);
 					}
 
@@ -725,52 +740,52 @@ export class DataflowOrchestrator {
 					try {
 						const taskWorkerManager = this.workerOrchestrator[
 							"taskWorkerManager"
-							] as TaskWorkerManager | undefined;
+						] as TaskWorkerManager | undefined;
 						if (taskWorkerManager) {
 							taskWorkerManager.updateSettings({
 								preferMetadataFormat:
 									this.plugin.settings.preferMetadataFormat ||
 									"tasks",
 								customDateFormats:
-								this.plugin.settings.customDateFormats,
+									this.plugin.settings.customDateFormats,
 								fileMetadataInheritance:
-								this.plugin.settings
-									.fileMetadataInheritance,
+									this.plugin.settings
+										.fileMetadataInheritance,
 								ignoreHeading:
-								this.plugin.settings.ignoreHeading,
+									this.plugin.settings.ignoreHeading,
 								focusHeading: this.plugin.settings.focusHeading,
 								// Include tag prefixes for custom dataview field support
 								projectTagPrefix:
-								this.plugin.settings.projectTagPrefix,
+									this.plugin.settings.projectTagPrefix,
 								contextTagPrefix:
-								this.plugin.settings.contextTagPrefix,
+									this.plugin.settings.contextTagPrefix,
 								areaTagPrefix:
-								this.plugin.settings.areaTagPrefix,
+									this.plugin.settings.areaTagPrefix,
 							});
 						}
 					} catch (e) {
 						console.warn(
 							"[DataflowOrchestrator] Failed to update worker settings for single-file parse:",
-							e
+							e,
 						);
 					}
 
 					// Apply inline filter for parse path
 					const includeInlineParse = this.fileFilterManager
 						? this.fileFilterManager.shouldIncludePath(
-							filePath,
-							"inline"
-						)
+								filePath,
+								"inline",
+							)
 						: true;
 					console.log(
 						"[DataflowOrchestrator] Inline filter decision (parse path)",
-						{filePath, includeInline: includeInlineParse}
+						{ filePath, includeInline: includeInlineParse },
 					);
 					if (includeInlineParse) {
 						// Parse the file using workers (single-file path)
 						rawTasks = await this.workerOrchestrator.parseFileTasks(
 							file,
-							"high"
+							"high",
 						);
 					} else {
 						rawTasks = [];
@@ -781,7 +796,7 @@ export class DataflowOrchestrator {
 						filePath,
 						rawTasks,
 						fileContent,
-						mtime
+						mtime,
 					);
 				}
 
@@ -814,7 +829,7 @@ export class DataflowOrchestrator {
 			await this.repository.updateFile(
 				filePath,
 				augmentedTasks,
-				this.lastProcessedSeq
+				this.lastProcessedSeq,
 			);
 		} catch (error) {
 			console.error(`Error processing file ${filePath}:`, error);
@@ -841,7 +856,7 @@ export class DataflowOrchestrator {
 
 		if (this.workerOrchestrator) {
 			this.workerOrchestrator.setWorkerProcessingEnabled(
-				enableWorkerProcessing
+				enableWorkerProcessing,
 			);
 		}
 
@@ -871,7 +886,7 @@ export class DataflowOrchestrator {
 		} catch (e) {
 			console.warn(
 				"[DataflowOrchestrator] Failed to update project config options on settings update",
-				e
+				e,
 			);
 		}
 
@@ -884,7 +899,7 @@ export class DataflowOrchestrator {
 		try {
 			console.debug(
 				"[DataflowOrchestrator][updateSettings] fileMetadataInheritance =",
-				settings.fileMetadataInheritance
+				settings.fileMetadataInheritance,
 			);
 			this.augmentor.updateSettings({
 				fileMetadataInheritance: settings.fileMetadataInheritance,
@@ -892,7 +907,7 @@ export class DataflowOrchestrator {
 		} catch (e) {
 			console.warn(
 				"[DataflowOrchestrator] Failed to sync settings to Augmentor",
-				e
+				e,
 			);
 		}
 
@@ -902,20 +917,25 @@ export class DataflowOrchestrator {
 			this.fileSource = new FileSource(
 				this.app,
 				settings.fileSource,
-				this.fileFilterManager
+				this.fileFilterManager,
 			);
-			this.fileSource.initialize();
+			this.fileSource.initialize().catch((error) => {
+				console.error(
+					"[DataflowOrchestrator] FileSource initialization failed:",
+					error,
+				);
+			});
 			// Sync status mapping from Task Status settings on creation
 			try {
 				if (settings?.taskStatuses) {
 					this.fileSource.syncStatusMappingFromSettings(
-						settings.taskStatuses
+						settings.taskStatuses,
 					);
 				}
 			} catch (e) {
 				console.warn(
 					"[DataflowOrchestrator] Failed to sync FileSource status mapping on settings create",
-					e
+					e,
 				);
 			}
 		} else if (!settings?.fileSource?.enabled && this.fileSource) {
@@ -931,12 +951,12 @@ export class DataflowOrchestrator {
 		if (this.fileSource && settings?.taskStatuses) {
 			try {
 				this.fileSource.syncStatusMappingFromSettings(
-					settings.taskStatuses
+					settings.taskStatuses,
 				);
 			} catch (e) {
 				console.warn(
 					"[DataflowOrchestrator] Failed to sync FileSource status mapping on settings update",
-					e
+					e,
 				);
 			}
 		}
@@ -945,9 +965,7 @@ export class DataflowOrchestrator {
 		try {
 			const taskWorkerManager = this.workerOrchestrator?.[
 				"taskWorkerManager"
-				] as
-				| TaskWorkerManager
-				| undefined;
+			] as TaskWorkerManager | undefined;
 			if (taskWorkerManager) {
 				taskWorkerManager.updateSettings({
 					preferMetadataFormat: settings.preferMetadataFormat,
@@ -965,7 +983,7 @@ export class DataflowOrchestrator {
 		} catch (e) {
 			console.warn(
 				"[DataflowOrchestrator] Failed to sync parser settings to TaskWorkerManager on settings update",
-				e
+				e,
 			);
 		}
 
@@ -974,13 +992,13 @@ export class DataflowOrchestrator {
 		if (settings?.fileFilter) {
 			if (!this.fileFilterManager) {
 				this.fileFilterManager = new FileFilterManager(
-					settings.fileFilter
+					settings.fileFilter,
 				);
 			} else {
 				this.fileFilterManager.updateConfig(settings.fileFilter);
 			}
 			(this.repository as any).setFileFilterManager?.(
-				this.fileFilterManager
+				this.fileFilterManager,
 			);
 			fileFilterChanged = true;
 		}
@@ -989,7 +1007,7 @@ export class DataflowOrchestrator {
 			const newEnabled: boolean = Boolean(settings?.fileFilter?.enabled);
 			const rulesCount = Array.isArray(settings?.fileFilter?.rules)
 				? settings.fileFilter.rules.filter((r: any) => r?.enabled)
-					.length
+						.length
 				: 0;
 			console.log("[TG Index Filter] settingsChange", {
 				enabled: newEnabled,
@@ -1002,7 +1020,12 @@ export class DataflowOrchestrator {
 			console.log("[TG Index Filter] action", {
 				action: "PRUNE_THEN_RESTORE",
 			});
-			void this.pruneByFilter();
+			this.pruneByFilter().catch((error) => {
+				console.error(
+					"[DataflowOrchestrator] pruneByFilter failed:",
+					error,
+				);
+			});
 			this.restoreByFilterDebounced?.();
 		}
 	}
@@ -1024,7 +1047,7 @@ export class DataflowOrchestrator {
 			for (const p of files) {
 				const includeInline = this.fileFilterManager.shouldIncludePath(
 					p,
-					"inline"
+					"inline",
 				);
 				if (!includeInline) {
 					toClear.set(p, []);
@@ -1046,7 +1069,7 @@ export class DataflowOrchestrator {
 			for (const p of fileTaskPaths) {
 				const includeFile = this.fileFilterManager.shouldIncludePath(
 					p,
-					"file"
+					"file",
 				);
 				if (!includeFile) {
 					await this.repository.removeFileTask(p);
@@ -1058,16 +1081,16 @@ export class DataflowOrchestrator {
 			try {
 				await (this.storage as any).saveMeta?.(
 					"filter:suppressedInline",
-					Array.from(this.suppressedInline)
+					Array.from(this.suppressedInline),
 				);
 				await (this.storage as any).saveMeta?.(
 					"filter:suppressedFileTasks",
-					Array.from(this.suppressedFileTasks)
+					Array.from(this.suppressedFileTasks),
 				);
 			} catch (e) {
 				console.warn(
 					"[DataflowOrchestrator] persist suppressed meta after prune failed",
-					e
+					e,
 				);
 			}
 			const elapsed = Date.now() - start;
@@ -1094,21 +1117,21 @@ export class DataflowOrchestrator {
 		try {
 			const start = Date.now();
 			let inlineCandidates: string[] = Array.from(
-				this.suppressedInline
+				this.suppressedInline,
 			).filter((p) =>
-				this.fileFilterManager!.shouldIncludePath(p, "inline")
+				this.fileFilterManager?.shouldIncludePath(p, "inline"),
 			);
 			const fileTaskCandidates: string[] = Array.from(
-				this.suppressedFileTasks
+				this.suppressedFileTasks,
 			).filter((p) =>
-				this.fileFilterManager!.shouldIncludePath(p, "file")
+				this.fileFilterManager?.shouldIncludePath(p, "file"),
 			);
 
 			// Fallback: if we have no suppressed inline candidates (e.g., previous session), derive from cache keys
 			if (inlineCandidates.length === 0) {
 				try {
 					const indexed = new Set(
-						await this.repository.getIndexedFilePaths()
+						await this.repository.getIndexedFilePaths(),
 					);
 					const augPaths =
 						(await (this.storage as any).listAugmentedPaths?.()) ||
@@ -1119,19 +1142,19 @@ export class DataflowOrchestrator {
 					inlineCandidates = Array.from(union).filter(
 						(p) =>
 							!indexed.has(p) &&
-							this.fileFilterManager!.shouldIncludePath(
+							this.fileFilterManager?.shouldIncludePath(
 								p,
-								"inline"
-							)
+								"inline",
+							),
 					);
 					console.log(
 						"[DataflowOrchestrator] restoreByFilter fallback candidates",
-						{extra: inlineCandidates.length}
+						{ extra: inlineCandidates.length },
 					);
 				} catch (e) {
 					console.warn(
 						"[DataflowOrchestrator] fallback candidate discovery failed",
-						e
+						e,
 					);
 				}
 			}
@@ -1144,22 +1167,21 @@ export class DataflowOrchestrator {
 				for (const path of batch) {
 					try {
 						const file = this.vault.getAbstractFileByPath(
-							path
+							path,
 						) as TFile | null;
 						if (!file) {
 							this.suppressedInline.delete(path);
 							continue;
 						}
 						// Try augmented cache
-						const augmented = await this.storage.loadAugmented(
-							path
-						);
+						const augmented =
+							await this.storage.loadAugmented(path);
 						if (augmented?.data?.length !== undefined) {
 							await this.repository.updateFile(
 								path,
 								augmented.data,
 								undefined,
-								{forceEmit: true}
+								{ forceEmit: true },
 							);
 							restoredFromAugmented++;
 							this.suppressedInline.delete(path);
@@ -1168,9 +1190,8 @@ export class DataflowOrchestrator {
 						// Try raw cache and re-augment
 						const raw = await this.storage.loadRaw(path);
 						if (raw?.data) {
-							const projectData = await this.projectResolver.get(
-								path
-							);
+							const projectData =
+								await this.projectResolver.get(path);
 							const fileCache =
 								this.metadataCache.getFileCache(file);
 							const augmentContext: AugmentContext = {
@@ -1183,12 +1204,11 @@ export class DataflowOrchestrator {
 								},
 								tasks: raw.data,
 							};
-							const augmentedTasks = await this.augmentor.merge(
-								augmentContext
-							);
+							const augmentedTasks =
+								await this.augmentor.merge(augmentContext);
 							await this.repository.updateFile(
 								path,
-								augmentedTasks
+								augmentedTasks,
 							);
 							restoredFromRaw++;
 							this.suppressedInline.delete(path);
@@ -1203,22 +1223,22 @@ export class DataflowOrchestrator {
 						try {
 							await this.storage.saveMeta(
 								"filter:suppressedInline",
-								Array.from(this.suppressedInline)
+								Array.from(this.suppressedInline),
 							);
 							await this.storage.saveMeta(
 								"filter:suppressedFileTasks",
-								Array.from(this.suppressedFileTasks)
+								Array.from(this.suppressedFileTasks),
 							);
 						} catch (e) {
 							console.warn(
 								"[DataflowOrchestrator] persist suppressed meta failed",
-								e
+								e,
 							);
 						}
 
 						console.warn(
 							"[DataflowOrchestrator] restore inline failed",
-							{path, e}
+							{ path, e },
 						);
 					}
 				}
@@ -1232,12 +1252,12 @@ export class DataflowOrchestrator {
 			) {
 				const batch = inlineCandidates.slice(
 					i,
-					i + this.RESTORE_BATCH_SIZE
+					i + this.RESTORE_BATCH_SIZE,
 				);
 				await processInlineBatch(batch);
 				if (i + this.RESTORE_BATCH_SIZE < inlineCandidates.length) {
 					await new Promise((r) =>
-						setTimeout(r, this.RESTORE_BATCH_INTERVAL_MS)
+						setTimeout(r, this.RESTORE_BATCH_INTERVAL_MS),
 					);
 				}
 			}
@@ -1254,7 +1274,7 @@ export class DataflowOrchestrator {
 				} catch (e) {
 					console.warn(
 						"[DataflowOrchestrator] restore file-task emit failed",
-						{path, e}
+						{ path, e },
 					);
 				}
 			}
@@ -1278,7 +1298,7 @@ export class DataflowOrchestrator {
 	 */
 	getWorkerStatus(): { enabled: boolean; metrics?: any } {
 		if (!this.workerOrchestrator) {
-			return {enabled: false};
+			return { enabled: false };
 		}
 
 		return {
@@ -1292,7 +1312,7 @@ export class DataflowOrchestrator {
 	 */
 	private async parseFile(
 		file: TFile,
-		tgProject?: TgProject
+		tgProject?: TgProject,
 	): Promise<Task[]> {
 		const extension = file.extension.toLowerCase();
 
@@ -1308,18 +1328,18 @@ export class DataflowOrchestrator {
 			// Create parser with plugin settings using consistent config generation
 			const parserConfig = getConfig(
 				this.plugin.settings.preferMetadataFormat || "tasks",
-				this.plugin
+				this.plugin,
 			);
 
 			// Debug: log effective specialTagPrefixes for verification
 			console.debug(
-				"[TPB] Parser specialTagPrefixes:",
-				parserConfig.specialTagPrefixes
+				"[TG] Parser specialTagPrefixes:",
+				parserConfig.specialTagPrefixes,
 			);
 
 			const parser = new ConfigurableTaskParser(
 				parserConfig,
-				this.timeParsingService
+				this.timeParsingService,
 			);
 
 			// Legacy code for reference (now replaced by getConfig)
@@ -1335,7 +1355,7 @@ export class DataflowOrchestrator {
 				file.path,
 				fileMetadata,
 				undefined,
-				tgProject
+				tgProject,
 			);
 			tasks.push(...markdownTasks);
 
@@ -1346,7 +1366,7 @@ export class DataflowOrchestrator {
 			// Parse canvas tasks using the static method
 			const canvasTasks = await CanvasParser.parseCanvas(
 				this.plugin,
-				file
+				file,
 			);
 			tasks.push(...canvasTasks);
 		}
@@ -1359,7 +1379,7 @@ export class DataflowOrchestrator {
 	 */
 	async processBatch(
 		files: TFile[],
-		useWorkers: boolean = true
+		useWorkers: boolean = true,
 	): Promise<void> {
 		const updates = new Map<string, Task[]>();
 		let skippedCount = 0;
@@ -1370,23 +1390,23 @@ export class DataflowOrchestrator {
 		if (shouldUseWorkers) {
 			// Use WorkerOrchestrator for parallel processing
 			console.log(
-				`[DataflowOrchestrator] Using workers to process ${files.length} files in parallel`
+				`[DataflowOrchestrator] Using workers to process ${files.length} files in parallel`,
 			);
 
 			try {
 				// Configure worker manager with plugin settings
 				const taskWorkerManager = this.workerOrchestrator[
 					"taskWorkerManager"
-					] as TaskWorkerManager;
+				] as TaskWorkerManager;
 				if (taskWorkerManager) {
 					taskWorkerManager.updateSettings({
 						preferMetadataFormat:
 							this.plugin.settings.preferMetadataFormat ||
 							"tasks",
 						customDateFormats:
-						this.plugin.settings.customDateFormats,
+							this.plugin.settings.customDateFormats,
 						fileMetadataInheritance:
-						this.plugin.settings.fileMetadataInheritance,
+							this.plugin.settings.fileMetadataInheritance,
 						projectConfig: this.plugin.settings.projectConfig,
 						ignoreHeading: this.plugin.settings.ignoreHeading,
 						focusHeading: this.plugin.settings.focusHeading,
@@ -1399,11 +1419,11 @@ export class DataflowOrchestrator {
 
 				// Parse all files in parallel using workers (raw parsing only, no project data)
 				console.log(
-					`[DataflowOrchestrator] Parsing ${files.length} files with workers (raw extraction)...`
+					`[DataflowOrchestrator] Parsing ${files.length} files with workers (raw extraction)...`,
 				);
 				const parsedResults = await this.workerOrchestrator.batchParse(
 					files,
-					"normal"
+					"normal",
 				);
 
 				// Compute project data in parallel with storage operations
@@ -1411,7 +1431,7 @@ export class DataflowOrchestrator {
 				for (const file of files) {
 					projectDataPromises.set(
 						file.path,
-						this.projectResolver.get(file.path)
+						this.projectResolver.get(file.path),
 					);
 				}
 
@@ -1423,9 +1443,9 @@ export class DataflowOrchestrator {
 						// Apply inline file filter early in worker path
 						const includeInline = this.fileFilterManager
 							? this.fileFilterManager.shouldIncludePath(
-								filePath,
-								"inline"
-							)
+									filePath,
+									"inline",
+								)
 							: true;
 						if (!includeInline) {
 							updates.set(filePath, []);
@@ -1433,9 +1453,8 @@ export class DataflowOrchestrator {
 						}
 
 						// Get file modification time for caching
-						const fileStat = await this.vault.adapter.stat(
-							filePath
-						);
+						const fileStat =
+							await this.vault.adapter.stat(filePath);
 						const mtime = fileStat?.mtime;
 						const fileContent = await this.vault.cachedRead(file);
 
@@ -1444,13 +1463,12 @@ export class DataflowOrchestrator {
 							filePath,
 							rawTasks,
 							fileContent,
-							mtime
+							mtime,
 						);
 
 						// Get project data for augmentation (already computing in parallel)
-						const projectData = await projectDataPromises.get(
-							filePath
-						);
+						const projectData =
+							await projectDataPromises.get(filePath);
 
 						// Wait for storage to complete
 						await storePromise;
@@ -1464,33 +1482,32 @@ export class DataflowOrchestrator {
 							projectName: projectData?.tgProject?.name,
 							projectMeta: projectData
 								? {
-									...(projectData.enhancedMetadata || {}),
-									tgProject: projectData.tgProject, // Include tgProject in projectMeta
-								}
+										...(projectData.enhancedMetadata || {}),
+										tgProject: projectData.tgProject, // Include tgProject in projectMeta
+									}
 								: {},
 							tasks: rawTasks,
 						};
-						const augmentedTasks = await this.augmentor.merge(
-							augmentContext
-						);
+						const augmentedTasks =
+							await this.augmentor.merge(augmentContext);
 
 						// Always update for newly parsed files
 						updates.set(filePath, augmentedTasks);
 					} catch (error) {
 						console.error(
 							`Error processing parsed result for ${filePath}:`,
-							error
+							error,
 						);
 					}
 				}
 
 				console.log(
-					`[DataflowOrchestrator] Worker processing complete, parsed ${parsedResults.size} files`
+					`[DataflowOrchestrator] Worker processing complete, parsed ${parsedResults.size} files`,
 				);
 			} catch (error) {
 				console.error(
 					"[DataflowOrchestrator] Worker processing failed, falling back to sequential:",
-					error
+					error,
 				);
 				// Fall back to sequential processing
 				await this.processBatchSequential(files, updates, skippedCount);
@@ -1502,7 +1519,7 @@ export class DataflowOrchestrator {
 
 		if (skippedCount > 0) {
 			console.log(
-				`[DataflowOrchestrator] Skipped ${skippedCount} unchanged files`
+				`[DataflowOrchestrator] Skipped ${skippedCount} unchanged files`,
 			);
 		}
 
@@ -1522,7 +1539,7 @@ export class DataflowOrchestrator {
 	private async processBatchSequential(
 		files: TFile[],
 		updates: Map<string, Task[]>,
-		skippedCount: number
+		skippedCount: number,
 	): Promise<number> {
 		let localSkippedCount = 0;
 
@@ -1541,9 +1558,9 @@ export class DataflowOrchestrator {
 				// Apply inline file filter early for all branches
 				const includeInlineEarly = this.fileFilterManager
 					? this.fileFilterManager.shouldIncludePath(
-						filePath,
-						"inline"
-					)
+							filePath,
+							"inline",
+						)
 					: true;
 				if (!includeInlineEarly) {
 					updates.set(filePath, []);
@@ -1552,9 +1569,8 @@ export class DataflowOrchestrator {
 				}
 
 				// Check both raw and augmented cache
-				const augmentedCached = await this.storage.loadAugmented(
-					filePath
-				);
+				const augmentedCached =
+					await this.storage.loadAugmented(filePath);
 
 				if (
 					rawCached &&
@@ -1563,7 +1579,7 @@ export class DataflowOrchestrator {
 						filePath,
 						rawCached,
 						fileContent,
-						mtime
+						mtime,
 					)
 				) {
 					// Use cached augmented tasks directly - no need to re-augment
@@ -1578,16 +1594,15 @@ export class DataflowOrchestrator {
 						filePath,
 						rawCached,
 						fileContent,
-						mtime
+						mtime,
 					)
 				) {
 					// Have raw cache but not augmented, need to re-augment
 					const rawTasks = rawCached.data;
 
 					// Get project data
-					const projectData = await this.projectResolver.get(
-						filePath
-					);
+					const projectData =
+						await this.projectResolver.get(filePath);
 
 					// Augment tasks
 					const fileMetadata = this.metadataCache.getFileCache(file);
@@ -1601,9 +1616,8 @@ export class DataflowOrchestrator {
 						},
 						tasks: rawTasks,
 					};
-					const augmentedTasks = await this.augmentor.merge(
-						augmentContext
-					);
+					const augmentedTasks =
+						await this.augmentor.merge(augmentContext);
 
 					// Always add to updates - Repository will handle change detection
 					updates.set(filePath, augmentedTasks);
@@ -1611,19 +1625,18 @@ export class DataflowOrchestrator {
 				} else {
 					// Parse file as it has changed or is new
 					// Get project data first for parsing
-					const projectData = await this.projectResolver.get(
-						filePath
-					);
+					const projectData =
+						await this.projectResolver.get(filePath);
 					// Apply file filter scope: skip inline parsing when scope === 'file'
 					const includeInline = this.fileFilterManager
 						? this.fileFilterManager.shouldIncludePath(
-							filePath,
-							"inline"
-						)
+								filePath,
+								"inline",
+							)
 						: true;
 					console.log(
 						"[DataflowOrchestrator] Inline filter decision",
-						{filePath, includeInline}
+						{ filePath, includeInline },
 					);
 					const rawTasks = includeInline
 						? await this.parseFile(file, projectData.tgProject)
@@ -1634,7 +1647,7 @@ export class DataflowOrchestrator {
 						filePath,
 						rawTasks,
 						fileContent,
-						mtime
+						mtime,
 					);
 
 					// Augment tasks
@@ -1649,16 +1662,15 @@ export class DataflowOrchestrator {
 						},
 						tasks: rawTasks,
 					};
-					const augmentedTasks = await this.augmentor.merge(
-						augmentContext
-					);
+					const augmentedTasks =
+						await this.augmentor.merge(augmentContext);
 
 					updates.set(filePath, augmentedTasks);
 				}
 			} catch (error) {
 				console.error(
 					`Error processing file ${file.path} sequentially:`,
-					error
+					error,
 				);
 			}
 		}

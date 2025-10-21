@@ -26,7 +26,7 @@ function parseTasksWithConfigurableParser(
 	filePath: string,
 	content: string,
 	settings: TaskWorkerSettings,
-	fileMetadata?: Record<string, any>
+	fileMetadata?: Record<string, any>,
 ): Task[] {
 	try {
 		// Create a mock plugin object with settings for getConfig
@@ -35,15 +35,15 @@ function parseTasksWithConfigurableParser(
 
 		// Debug: show incoming prefixes and effective specialTagPrefixes keys
 		try {
-			console.debug("[TPB][Worker] incoming prefixes", {
+			console.debug("[TG][Worker] incoming prefixes", {
 				preferMetadataFormat: settings.preferMetadataFormat,
 				projectTagPrefix: settings.projectTagPrefix,
 				contextTagPrefix: settings.contextTagPrefix,
 				areaTagPrefix: settings.areaTagPrefix,
 			});
 			console.debug(
-				"[TPB][Worker] specialTagPrefixes keys (before)",
-				Object.keys(config.specialTagPrefixes || {})
+				"[TG][Worker] specialTagPrefixes keys (before)",
+				Object.keys(config.specialTagPrefixes || {}),
 			);
 		} catch {}
 
@@ -63,8 +63,8 @@ function parseTasksWithConfigurableParser(
 			};
 			try {
 				console.debug(
-					"[TPB][Worker] specialTagPrefixes keys (after)",
-					Object.keys(config.specialTagPrefixes)
+					"[TG][Worker] specialTagPrefixes keys (after)",
+					Object.keys(config.specialTagPrefixes),
 				);
 			} catch {}
 		}
@@ -87,7 +87,7 @@ function parseTasksWithConfigurableParser(
 			filePath,
 			fileMetadata,
 			undefined, // No project config in worker
-			undefined // No tgProject in worker
+			undefined, // No tgProject in worker
 		);
 
 		// Apply heading filters if specified
@@ -133,8 +133,8 @@ function parseTasksWithConfigurableParser(
 						ignoreHeadings.some((ignoreHeading) =>
 							taskHeading
 								.toLowerCase()
-								.includes(ignoreHeading.toLowerCase())
-						)
+								.includes(ignoreHeading.toLowerCase()),
+						),
 					)
 				) {
 					return false;
@@ -158,8 +158,8 @@ function parseTasksWithConfigurableParser(
 						focusHeadings.some((focusHeading) =>
 							taskHeading
 								.toLowerCase()
-								.includes(focusHeading.toLowerCase())
-						)
+								.includes(focusHeading.toLowerCase()),
+						),
 					)
 				) {
 					return false;
@@ -171,7 +171,7 @@ function parseTasksWithConfigurableParser(
 	} catch (error) {
 		console.warn(
 			"Configurable parser failed, falling back to legacy parser:",
-			error
+			error,
 		);
 		// Fallback to legacy parsing if configurable parser fails
 		return parseTasksFromContentLegacy(
@@ -179,7 +179,7 @@ function parseTasksWithConfigurableParser(
 			content,
 			settings.preferMetadataFormat,
 			settings.ignoreHeading,
-			settings.focusHeading
+			settings.focusHeading,
 		);
 	}
 }
@@ -192,7 +192,7 @@ function parseTasksFromContentLegacy(
 	content: string,
 	format: "tasks" | "dataview",
 	ignoreHeading: string,
-	focusHeading: string
+	focusHeading: string,
 ): Task[] {
 	// Basic fallback parsing for critical errors
 	const lines = content.split("\n");
@@ -235,7 +235,7 @@ function extractDateFromPath(
 		useDailyNotePathAsDate: boolean;
 		dailyNoteFormat: string;
 		dailyNotePath: string;
-	}
+	},
 ): number | undefined {
 	if (!settings.useDailyNotePathAsDate) return undefined;
 
@@ -264,7 +264,7 @@ function extractDateFromPath(
 			{
 				...settings,
 				dailyNotePath: "", // Clear dailyNotePath for recursive calls
-			}
+			},
 		);
 	}
 
@@ -285,7 +285,7 @@ function processFile(
 	fileExtension: string,
 	stats: FileStats,
 	settings: TaskWorkerSettings,
-	metadata?: { fileCache?: any }
+	metadata?: { fileCache?: any },
 ): TaskParseResult {
 	const startTime = performance.now();
 	try {
@@ -302,7 +302,7 @@ function processFile(
 			// Use canvas parser for .canvas files
 			const mockPlugin = { settings };
 			const canvasParser = new CanvasParser(
-				getConfig(settings.preferMetadataFormat, mockPlugin)
+				getConfig(settings.preferMetadataFormat, mockPlugin),
 			);
 			tasks = canvasParser.parseCanvasFile(content, filePath);
 		} else if (fileExtension === SupportedFileType.MARKDOWN) {
@@ -311,12 +311,12 @@ function processFile(
 				filePath,
 				content,
 				settings,
-				fileMetadata
+				fileMetadata,
 			);
 		} else {
 			// Unsupported file type
 			console.warn(
-				`Worker: Unsupported file type: ${fileExtension} for file: ${filePath}`
+				`Worker: Unsupported file type: ${fileExtension} for file: ${filePath}`,
 			);
 			tasks = [];
 		}
@@ -334,13 +334,13 @@ function processFile(
 			try {
 				const fileMetadataParser = new FileMetadataTaskParser(
 					settings.fileParsingConfig,
-					settings.projectConfig?.metadataConfig?.detectionMethods
+					settings.projectConfig?.metadataConfig?.detectionMethods,
 				);
 
 				const fileMetadataResult = fileMetadataParser.parseFileForTasks(
 					filePath,
 					content,
-					metadata?.fileCache
+					metadata?.fileCache,
 				);
 
 				// Add file metadata tasks to the result
@@ -350,13 +350,13 @@ function processFile(
 				if (fileMetadataResult.errors.length > 0) {
 					console.warn(
 						`Worker: File metadata parsing errors for ${filePath}:`,
-						fileMetadataResult.errors
+						fileMetadataResult.errors,
 					);
 				}
 			} catch (error) {
 				console.error(
 					`Worker: Error in file metadata parsing for ${filePath}:`,
-					error
+					error,
 				);
 			}
 		}
@@ -432,7 +432,7 @@ function processBatch(
 		stats: FileStats;
 		metadata?: { fileCache?: any };
 	}[],
-	settings: TaskWorkerSettings
+	settings: TaskWorkerSettings,
 ): BatchIndexResult {
 	const startTime = performance.now();
 	const results: { filePath: string; taskCount: number }[] = [];
@@ -447,7 +447,7 @@ function processBatch(
 				file.extension,
 				file.stats,
 				settings,
-				file.metadata
+				file.metadata,
 			);
 			totalTasks += parseResult.stats.totalTasks;
 			results.push({
@@ -457,7 +457,7 @@ function processBatch(
 		} catch (error) {
 			console.error(
 				`Worker: Error in batch processing for file ${file.path}:`,
-				error
+				error,
 			);
 			failedFiles++;
 		}
@@ -502,7 +502,7 @@ self.onmessage = async (event) => {
 					message.fileExtension,
 					message.stats,
 					settings,
-					message.metadata
+					message.metadata,
 				);
 				self.postMessage(result);
 			} catch (error) {
@@ -519,7 +519,7 @@ self.onmessage = async (event) => {
 		} else {
 			console.error(
 				"Worker: Unknown or invalid command message:",
-				message
+				message,
 			);
 			self.postMessage({
 				type: "error",

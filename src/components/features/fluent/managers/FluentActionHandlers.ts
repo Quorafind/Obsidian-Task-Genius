@@ -1,10 +1,19 @@
 import { App, Component, Menu, Notice, TFile } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
-import { Task } from "@/types/task";
-import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModal";
+import { StandardTaskMetadata, Task } from "@/types/task";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 import { ConfirmModal } from "@/components/ui/modals/ConfirmModal";
 import { createTaskCheckbox } from "@/components/features/task/view/details";
 import { emitTaskSelected } from "@/components/features/fluent/events/ui-event";
+import { DatePickerModal } from "@/components/ui/date-picker/DatePickerModal";
+import { TextPromptModal } from "@/components/ui/modals/TextPromptModal";
+import type { CreateTaskArgs } from "@/dataflow/api/WriteAPI";
+import {
+	getExistingDateTypes as getExistingDateTypesFromTask,
+	postponeDate as postponeDateUtil,
+	smartPostponeRelatedDates,
+	TaskDateType,
+} from "@/utils/dateOperations";
 import { t } from "@/translations/helper";
 import { ViewMode } from "../components/FluentTopNavigation";
 
@@ -41,7 +50,7 @@ export class FluentActionHandlers extends Component {
 		private app: App,
 		private plugin: TaskProgressBarPlugin,
 		private getWorkspaceId: () => string,
-		private useSideLeaves: () => boolean
+		private useSideLeaves: () => boolean,
 	) {
 		super();
 	}
@@ -123,7 +132,7 @@ export class FluentActionHandlers extends Component {
 			return;
 		}
 
-		const updatedTask = {...task, completed: !task.completed};
+		const updatedTask = { ...task, completed: !task.completed };
 
 		if (updatedTask.completed) {
 			updatedTask.metadata.completedDate = Date.now();
@@ -150,7 +159,8 @@ export class FluentActionHandlers extends Component {
 	 */
 	async handleTaskUpdate(
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
+		successMessage?: string,
 	): Promise<void> {
 		if (!this.plugin.writeAPI) {
 			console.error("WriteAPI not available");
@@ -160,7 +170,7 @@ export class FluentActionHandlers extends Component {
 		try {
 			const updates = this.extractChangedFields(
 				originalTask,
-				updatedTask
+				updatedTask,
 			);
 			const writeResult = await this.plugin.writeAPI.updateTask({
 				taskId: originalTask.id,
@@ -176,10 +186,10 @@ export class FluentActionHandlers extends Component {
 			// Notify about task update
 			this.onTaskUpdated?.(originalTask.id, updated);
 
-			new Notice(t("Task updated"));
+			new Notice(successMessage ?? t("Task updated"));
 		} catch (error) {
 			console.error("Failed to update task:", error);
-			new Notice("Failed to update task");
+			new Notice(t("Failed to update task"));
 		}
 	}
 
@@ -188,7 +198,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	async handleKanbanTaskStatusUpdate(
 		task: Task,
-		newStatusMark: string
+		newStatusMark: string,
 	): Promise<void> {
 		const isCompleted = this.isCompletedMark(newStatusMark);
 		const completedDate = isCompleted ? Date.now() : undefined;
@@ -218,85 +228,464 @@ export class FluentActionHandlers extends Component {
 			item.onClick(() => {
 				this.toggleTaskCompletion(task);
 			});
-		})
-			.addItem((item) => {
-				item.setIcon("square-pen");
-				item.setTitle(t("Switch status"));
-				const submenu = item.setSubmenu();
+		});
 
-				// Get unique statuses from taskStatusMarks
-				const statusMarks = this.plugin.settings.taskStatusMarks;
-				const uniqueStatuses = new Map<string, string>();
+		menu.addItem((item) => {
+			item.setIcon("square-pen");
+			item.setTitle(t("Switch status"));
+			const submenu = item.setSubmenu();
 
-				// Build a map of unique mark -> status name to avoid duplicates
-				for (const status of Object.keys(statusMarks)) {
-					const mark =
-						statusMarks[status as keyof typeof statusMarks];
-					if (!Array.from(uniqueStatuses.values()).includes(mark)) {
-						uniqueStatuses.set(status, mark);
-					}
+			// Get unique statuses from taskStatusMarks
+			const statusMarks = this.plugin.settings.taskStatusMarks;
+			const uniqueStatuses = new Map<string, string>();
+
+			// Build a map of unique mark -> status name to avoid duplicates
+			for (const status of Object.keys(statusMarks)) {
+				const mark = statusMarks[status as keyof typeof statusMarks];
+				if (!Array.from(uniqueStatuses.values()).includes(mark)) {
+					uniqueStatuses.set(status, mark);
 				}
+			}
 
-				// Create menu items from unique statuses
-				for (const [status, mark] of uniqueStatuses) {
-					submenu.addItem((item) => {
-						item.titleEl.createEl(
-							"span",
-							{
-								cls: "status-option-checkbox",
-							},
-							(el) => {
-								createTaskCheckbox(mark, task, el);
-							}
-						);
-						item.titleEl.createEl("span", {
-							cls: "status-option",
-							text: status,
-						});
-						item.onClick(async () => {
-							const willComplete = this.isCompletedMark(mark);
-							const updatedTask = {
-								...task,
-								status: mark,
-								completed: willComplete,
-							};
-
-							if (!task.completed && willComplete) {
-								updatedTask.metadata.completedDate = Date.now();
-							} else if (task.completed && !willComplete) {
-								updatedTask.metadata.completedDate = undefined;
-							}
-
-							await this.handleTaskUpdate(task, updatedTask);
-						});
+			// Create menu items from unique statuses
+			for (const [status, mark] of uniqueStatuses) {
+				submenu.addItem((subItem) => {
+					subItem.titleEl.createEl(
+						"span",
+						{
+							cls: "status-option-checkbox",
+						},
+						(el) => {
+							createTaskCheckbox(mark, task, el);
+						},
+					);
+					subItem.titleEl.createEl("span", {
+						cls: "status-option",
+						text: status,
 					});
-				}
-			})
-			.addSeparator()
-			.addItem((item) => {
-				item.setTitle(t("Edit"));
-				item.setIcon("pencil");
-				item.onClick(() => {
-					this.handleTaskSelection(task);
+					subItem.onClick(async () => {
+						const willComplete = this.isCompletedMark(mark);
+						const updatedTask = {
+							...task,
+							status: mark,
+							completed: willComplete,
+						};
+
+						if (!task.completed && willComplete) {
+							updatedTask.metadata.completedDate = Date.now();
+						} else if (task.completed && !willComplete) {
+							updatedTask.metadata.completedDate = undefined;
+						}
+
+						await this.handleTaskUpdate(task, updatedTask);
+					});
 				});
-			})
-			.addItem((item) => {
-				item.setTitle(t("Edit in File"));
-				item.setIcon("pencil");
-				item.onClick(() => {
-					this.editTask(task);
+			}
+		});
+
+		this.addPriorityMenuItems(menu, task);
+		this.addDateMenuItems(menu, task);
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Set Project"));
+			item.setIcon("folder");
+			item.onClick(() => {
+				this.setProject(task);
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle(t("Add Tags"));
+			item.setIcon("tag");
+			item.onClick(() => {
+				this.addTags(task);
+			});
+		});
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Duplicate Task"));
+			item.setIcon("copy");
+			item.onClick(() => {
+				this.duplicateTask(task);
+			});
+		});
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Edit"));
+			item.setIcon("pencil");
+			item.onClick(() => {
+				this.handleTaskSelection(task);
+			});
+		});
+		menu.addItem((item) => {
+			item.setTitle(t("Edit in File"));
+			item.setIcon("pencil");
+			item.onClick(() => {
+				this.editTask(task);
+			});
+		});
+
+		menu.addSeparator();
+		menu.addItem((item) => {
+			item.setTitle(t("Delete Task"));
+			item.setIcon("trash");
+			item.onClick(() => {
+				this.confirmAndDeleteTask(event, task);
+			});
+		});
+
+		menu.showAtMouseEvent(event);
+	}
+
+	private addPriorityMenuItems(menu: Menu, task: Task): void {
+		menu.addSeparator();
+
+		menu.addItem((item) => {
+			const subMenu = item
+				.setTitle(t("Set Priority"))
+				.setIcon("flag")
+				.setSubmenu();
+
+			const priorityLevels = [
+				{ level: 5, label: "Highest", icon: "alert-triangle" },
+				{ level: 4, label: "High", icon: "arrow-up" },
+				{ level: 3, label: "Medium", icon: "minus" },
+				{ level: 2, label: "Low", icon: "arrow-down" },
+				{ level: 1, label: "Lowest", icon: "chevron-down" },
+			] as const;
+
+			priorityLevels.forEach(({ level, label, icon }) => {
+				subMenu.addItem((subItem) => {
+					subItem
+						.setTitle(t(label))
+						.setIcon(icon)
+						.setChecked(task.metadata.priority === level)
+						.onClick(() => {
+							this.setPriority(task, level);
+						});
 				});
-			})
-			.addSeparator()
-			.addItem((item) => {
-				item.setTitle(t("Delete Task"));
-				item.setIcon("trash");
+			});
+		});
+	}
+
+	private async setPriority(task: Task, priority: number): Promise<void> {
+		const updatedTask: Task = {
+			...task,
+			metadata: {
+				...task.metadata,
+				priority,
+			},
+		};
+
+		await this.handleTaskUpdate(task, updatedTask, t("Priority updated"));
+	}
+
+	private addDateMenuItems(menu: Menu, task: Task): void {
+		menu.addSeparator();
+
+		const existingDates = this.getExistingDateTypes(task);
+		const dateTypes: TaskDateType[] = [
+			"dueDate",
+			"startDate",
+			"scheduledDate",
+		];
+
+		dateTypes.forEach((dateType) => {
+			menu.addItem((item) => {
+				item.setTitle(t(`Set ${this.getDateLabel(dateType)}`));
+				item.setIcon("calendar");
 				item.onClick(() => {
-					this.confirmAndDeleteTask(event, task);
+					this.openDatePicker(task, dateType);
 				});
 			});
 
-		menu.showAtMouseEvent(event);
+			if (existingDates.includes(dateType)) {
+				this.addPostponeDateMenu(menu, task, dateType);
+			}
+		});
+	}
+
+	private addPostponeDateMenu(
+		menu: Menu,
+		task: Task,
+		dateType: TaskDateType,
+	): void {
+		menu.addItem((item) => {
+			const subMenu = item
+				.setTitle(t(`Postpone ${this.getDateLabel(dateType)}`))
+				.setIcon("calendar-plus")
+				.setSubmenu();
+
+			const quickOptions = [
+				{ days: 1, label: "1 day" },
+				{ days: 2, label: "2 days" },
+				{ days: 3, label: "3 days" },
+				{ days: 7, label: "1 week" },
+			] as const;
+
+			quickOptions.forEach(({ days, label }) => {
+				subMenu.addItem((subItem) => {
+					subItem.setTitle(t(label)).onClick(() => {
+						this.postponeDate(task, dateType, days);
+					});
+				});
+			});
+
+			subMenu.addSeparator();
+			subMenu.addItem((subItem) => {
+				subItem
+					.setTitle(t("Custom..."))
+					.setIcon("calendar")
+					.onClick(() => {
+						this.openDatePicker(task, dateType, true);
+					});
+			});
+		});
+	}
+
+	private async postponeDate(
+		task: Task,
+		dateType: TaskDateType,
+		offsetDays: number,
+	): Promise<void> {
+		try {
+			const currentTimestamp = task.metadata?.[dateType];
+			if (typeof currentTimestamp !== "number") {
+				new Notice(t("No date to postpone"));
+				return;
+			}
+
+			const newTimestamp = postponeDateUtil(currentTimestamp, offsetDays);
+			const updatedMetadata = smartPostponeRelatedDates(
+				task,
+				dateType,
+				newTimestamp,
+				offsetDays,
+			);
+
+			const updatedTask: Task = {
+				...task,
+				metadata: updatedMetadata,
+			};
+
+			const action = offsetDays > 0 ? "postponed" : "advanced";
+			const message = `${this.getDateLabel(dateType)} ${action} by ${Math.abs(offsetDays)} day(s)`;
+
+			await this.handleTaskUpdate(task, updatedTask, t(message));
+		} catch (error) {
+			console.error(
+				"[FluentActionHandlers] Failed to postpone date:",
+				error,
+			);
+			new Notice(t("Failed to postpone date"));
+		}
+	}
+
+	private openDatePicker(
+		task: Task,
+		dateType: TaskDateType,
+		isPostpone: boolean = false,
+	): void {
+		const currentDate = task.metadata?.[dateType];
+		const initialDate =
+			typeof currentDate === "number"
+				? new Date(currentDate).toISOString().split("T")[0]
+				: undefined;
+
+		const modal = new DatePickerModal(
+			this.app,
+			this.plugin,
+			initialDate,
+			this.getDateMark(dateType),
+		);
+
+		modal.onDateSelected = async (dateStr: string | null) => {
+			if (!dateStr) return;
+
+			const newTimestamp = new Date(dateStr).getTime();
+			if (Number.isNaN(newTimestamp)) {
+				new Notice(t("Invalid date selected"));
+				return;
+			}
+
+			if (isPostpone && typeof currentDate === "number") {
+				const offsetDays = Math.round(
+					(newTimestamp - currentDate) / (24 * 60 * 60 * 1000),
+				);
+
+				const updatedMetadata = smartPostponeRelatedDates(
+					task,
+					dateType,
+					newTimestamp,
+					offsetDays,
+				);
+
+				const updatedTask: Task = {
+					...task,
+					metadata: updatedMetadata,
+				};
+
+				await this.handleTaskUpdate(
+					task,
+					updatedTask,
+					t(`${this.getDateLabel(dateType)} updated`),
+				);
+			} else {
+				const updatedTask: Task = {
+					...task,
+					metadata: {
+						...task.metadata,
+						[dateType]: newTimestamp,
+					},
+				};
+
+				await this.handleTaskUpdate(
+					task,
+					updatedTask,
+					t(`${this.getDateLabel(dateType)} updated`),
+				);
+			}
+		};
+
+		modal.open();
+	}
+
+	private async setProject(task: Task): Promise<void> {
+		const currentProject = task.metadata?.project || "";
+		const newProject = await new TextPromptModal(this.app, this.plugin, {
+			title: t("Set Project"),
+			placeholder: t("Enter project name"),
+			initialValue: currentProject,
+			okLabel: t("Save"),
+			cancelLabel: t("Cancel"),
+			allowEmpty: true,
+			suggestion: "project",
+		}).openAndWait();
+
+		if (newProject === null) {
+			return;
+		}
+
+		const normalized = newProject.trim();
+
+		const updatedTask: Task = {
+			...task,
+			metadata: {
+				...task.metadata,
+				project: normalized || undefined,
+			},
+		};
+
+		await this.handleTaskUpdate(task, updatedTask, t("Project updated"));
+	}
+
+	private async addTags(task: Task): Promise<void> {
+		const newTagsInput = await new TextPromptModal(this.app, this.plugin, {
+			title: t("Add Tags"),
+			placeholder: t("tag-one, tag-two"),
+			okLabel: t("Add"),
+			cancelLabel: t("Cancel"),
+			suggestion: "tag",
+		}).openAndWait();
+		if (newTagsInput === null) {
+			return;
+		}
+
+		const tags = newTagsInput
+			.split(",")
+			.map((tag) => tag.trim())
+			.filter(Boolean);
+
+		if (tags.length === 0) {
+			return;
+		}
+
+		const existingTags = task.metadata.tags ?? [];
+		const mergedTags = Array.from(new Set([...existingTags, ...tags]));
+
+		const updatedTask: Task = {
+			...task,
+			metadata: {
+				...task.metadata,
+				tags: mergedTags,
+			},
+		};
+
+		await this.handleTaskUpdate(task, updatedTask, t("Tags added"));
+	}
+
+	private async duplicateTask(task: Task): Promise<void> {
+		try {
+			if (!this.plugin.writeAPI) {
+				new Notice(t("WriteAPI not available"));
+				return;
+			}
+
+			const formatDate = (timestamp?: number): string | undefined => {
+				if (typeof timestamp !== "number") {
+					return undefined;
+				}
+				return new Date(timestamp).toISOString().split("T")[0];
+			};
+
+			const tags = task.metadata.tags ?? [];
+
+			const duplicateArgs: CreateTaskArgs = {
+				content: `${task.content} (Copy)`,
+				filePath: task.filePath,
+				completed: false,
+				tags: tags.length > 0 ? [...tags] : undefined,
+				project: task.metadata.project,
+				context: task.metadata.context,
+				priority: task.metadata.priority,
+				startDate: formatDate(task.metadata.startDate),
+				dueDate: formatDate(task.metadata.dueDate),
+			};
+
+			const result = await this.plugin.writeAPI.createTask(duplicateArgs);
+
+			if (result.success) {
+				new Notice(t("Task duplicated"));
+				this.onTaskUpdated?.(task.id, task);
+			} else {
+				throw new Error(result.error || "Failed to duplicate task");
+			}
+		} catch (error) {
+			console.error(
+				"[FluentActionHandlers] Failed to duplicate task:",
+				error,
+			);
+			new Notice(t("Failed to duplicate task"));
+		}
+	}
+	private getExistingDateTypes(task: Task): TaskDateType[] {
+		return getExistingDateTypesFromTask(task);
+	}
+
+	private getDateLabel(dateType: TaskDateType): string {
+		switch (dateType) {
+			case "startDate":
+				return "Start Date";
+			case "scheduledDate":
+				return "Scheduled Date";
+			case "dueDate":
+			default:
+				return "Due Date";
+		}
+	}
+
+	private getDateMark(dateType: TaskDateType): string {
+		switch (dateType) {
+			case "scheduledDate":
+				return "⏳";
+			case "startDate":
+				return "🚀";
+			case "dueDate":
+			default:
+				return "📅";
+		}
 	}
 
 	/**
@@ -307,7 +696,7 @@ export class FluentActionHandlers extends Component {
 		if (!(file instanceof TFile)) return;
 		const leaf = this.app.workspace.getLeaf(false);
 		await leaf.openFile(file, {
-			eState: {line: task.line},
+			eState: { line: task.line },
 		});
 	}
 
@@ -362,7 +751,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	private async deleteTask(
 		task: Task,
-		deleteChildren: boolean
+		deleteChildren: boolean,
 	): Promise<void> {
 		if (!this.plugin.writeAPI) {
 			console.error("WriteAPI not available for deleteTask");
@@ -389,14 +778,14 @@ export class FluentActionHandlers extends Component {
 			} else {
 				new Notice(
 					t("Failed to delete task") +
-					": " +
-					(result.error || "Unknown error")
+						": " +
+						(result.error || "Unknown error"),
 				);
 			}
 		} catch (error) {
 			console.error("Error deleting task:", error);
 			new Notice(
-				t("Failed to delete task") + ": " + (error as any).message
+				t("Failed to delete task") + ": " + (error as any).message,
 			);
 		}
 	}
@@ -452,7 +841,7 @@ export class FluentActionHandlers extends Component {
 		try {
 			const lower = mark.toLowerCase();
 			const completedCfg = String(
-				this.plugin.settings.taskStatuses?.completed || "x"
+				this.plugin.settings.taskStatuses?.completed || "x",
 			);
 			const completedSet = completedCfg
 				.split("|")
@@ -469,7 +858,7 @@ export class FluentActionHandlers extends Component {
 	 */
 	private extractChangedFields(
 		originalTask: Task,
-		updatedTask: Task
+		updatedTask: Task,
 	): Partial<Task> {
 		const changes: Partial<Task> = {};
 
@@ -501,8 +890,12 @@ export class FluentActionHandlers extends Component {
 		];
 
 		for (const field of metadataFields) {
-			const originalValue = (originalTask.metadata as any)?.[field];
-			const updatedValue = (updatedTask.metadata as any)?.[field];
+			const originalValue = (
+				originalTask.metadata as StandardTaskMetadata
+			)?.[field];
+			const updatedValue = (
+				updatedTask.metadata as StandardTaskMetadata
+			)?.[field];
 
 			if (field === "tags") {
 				const origTags = originalValue || [];
@@ -515,7 +908,7 @@ export class FluentActionHandlers extends Component {
 					hasMetadataChanges = true;
 				}
 			} else if (originalValue !== updatedValue) {
-				(metadataChanges as any)[field] = updatedValue;
+				(metadataChanges as StandardTaskMetadata)[field] = updatedValue;
 				hasMetadataChanges = true;
 			}
 		}
