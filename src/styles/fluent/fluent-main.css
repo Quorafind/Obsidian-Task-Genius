@@ -923,3 +923,13 @@ button.fluent-new-task-btn:hover {
 		right: 160px;
 	}
 }
+
+.view-content.task-genius-fluent-view.task-genius-view {
+	container-type: inline-size;
+}
+
+@container (width < 800px) {
+	button.fluent-view-tab.clickable-icon span {
+		display: none;
+	}
+}
