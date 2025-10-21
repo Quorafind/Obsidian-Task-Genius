@@ -15,7 +15,7 @@ export class FilterDropdown extends Component {
 
 	constructor(
 		options: FilterDropdownOptions,
-		private plugin: TaskProgressBarPlugin
+		private plugin: TaskProgressBarPlugin,
 	) {
 		super();
 		this.options = options.options;
@@ -27,10 +27,10 @@ export class FilterDropdown extends Component {
 	override onload(): void {
 		this.element = this.createDropdownElement();
 		this.searchInput = this.element.querySelector(
-			".filter-dropdown-search"
+			".filter-dropdown-search",
 		) as HTMLInputElement;
 		this.listContainer = this.element.querySelector(
-			".filter-dropdown-list"
+			".filter-dropdown-list",
 		) as HTMLElement;
 
 		this.renderCategoryList();
@@ -121,7 +121,7 @@ export class FilterDropdown extends Component {
 	}
 
 	private renderCategoryList(): void {
-		this.listContainer.empty(); // Use empty() instead of innerHTML = ""
+		this.listContainer.empty();
 		this.searchInput.placeholder = "Filter categories...";
 		this.searchInput.value = ""; // Ensure search is cleared when showing categories
 
@@ -132,7 +132,7 @@ export class FilterDropdown extends Component {
 				true, // has arrow
 				false, // not back button
 				false, // not value item
-				category.id
+				category.id,
 			);
 			this.listContainer.appendChild(item);
 		});
@@ -144,7 +144,7 @@ export class FilterDropdown extends Component {
 		this.searchInput.value = ""; // Clear search on category change
 		this.searchInput.placeholder = `Filter ${category.label.toLowerCase()}...`;
 
-		this.listContainer.empty(); // Use empty() instead of innerHTML = ""
+		this.listContainer.empty();
 
 		// Add back button
 		const backButton = this.createListItem(
@@ -154,7 +154,7 @@ export class FilterDropdown extends Component {
 				this.renderCategoryList();
 			},
 			false, // no arrow
-			true // is back button
+			true, // is back button
 		);
 		this.listContainer.appendChild(backButton);
 
@@ -172,18 +172,18 @@ export class FilterDropdown extends Component {
 
 	private renderFilterValues(
 		values: string[],
-		searchTerm: string = ""
+		searchTerm: string = "",
 	): void {
 		// Remove existing value items and empty state, keeping back button and separator
 		const itemsToRemove = this.listContainer.querySelectorAll(
-			".filter-dropdown-value-item, .filter-dropdown-empty"
+			".filter-dropdown-value-item, .filter-dropdown-empty",
 		);
 		itemsToRemove.forEach((item) => item.remove());
 
 		const filteredValues = searchTerm
 			? values.filter((value) =>
-					value.toLowerCase().includes(searchTerm.toLowerCase())
-			  )
+					value.toLowerCase().includes(searchTerm.toLowerCase()),
+				)
 			: values;
 
 		if (filteredValues.length === 0) {
@@ -203,7 +203,7 @@ export class FilterDropdown extends Component {
 					},
 					false, // no arrow
 					false, // not back button
-					true // is value item
+					true, // is value item
 				);
 				this.listContainer.appendChild(item);
 			});
@@ -218,7 +218,7 @@ export class FilterDropdown extends Component {
 		hasArrow: boolean = false,
 		isBackButton: boolean = false,
 		isValueItem: boolean = false,
-		categoryId: string = ""
+		categoryId: string = "",
 	): HTMLElement {
 		const item = createEl("div", { cls: "filter-dropdown-item" });
 		if (isBackButton) item.classList.add("filter-dropdown-back");
@@ -265,14 +265,14 @@ export class FilterDropdown extends Component {
 				if (this.currentCategory) {
 					this.renderFilterValues(
 						this.currentCategory.options,
-						searchTerm
+						searchTerm,
 					);
 				} else {
 					this.filterCategoryList(searchTerm);
 				}
 			},
 			150,
-			false // Changed to false: debounce triggers after user stops typing
+			false, // Changed to false: debounce triggers after user stops typing
 		);
 
 		this.registerDomEvent(this.searchInput, "input", debouncedSearch);
@@ -317,7 +317,7 @@ export class FilterDropdown extends Component {
 				// Go back if backspace is pressed in empty search within a category
 				const backButton =
 					this.listContainer.querySelector<HTMLElement>(
-						".filter-dropdown-back"
+						".filter-dropdown-back",
 					);
 				backButton?.click(); // Simulate click on back button
 			}
@@ -335,8 +335,8 @@ export class FilterDropdown extends Component {
 			(category) =>
 				category.label.toLowerCase().includes(lowerSearchTerm) ||
 				category.options.some((option) =>
-					option.toLowerCase().includes(lowerSearchTerm)
-				)
+					option.toLowerCase().includes(lowerSearchTerm),
+				),
 		);
 
 		if (filteredOptions.length === 0) {
@@ -347,7 +347,7 @@ export class FilterDropdown extends Component {
 		} else {
 			filteredOptions.forEach((category) => {
 				const matchingValues = category.options.filter((option) =>
-					option.toLowerCase().includes(lowerSearchTerm)
+					option.toLowerCase().includes(lowerSearchTerm),
 				);
 
 				const itemContainer = this.listContainer.createEl("div", {
@@ -385,7 +385,7 @@ export class FilterDropdown extends Component {
 									e.preventDefault();
 									this.onSelect(category.id, value);
 								}
-							}
+							},
 						);
 					});
 				} else {
@@ -393,7 +393,7 @@ export class FilterDropdown extends Component {
 					const categoryItem = this.createListItem(
 						category.label,
 						() => this.showCategoryValues(category),
-						true // has arrow
+						true, // has arrow
 					);
 					itemContainer.appendChild(categoryItem);
 				}
@@ -405,13 +405,13 @@ export class FilterDropdown extends Component {
 	private getVisibleFocusableItems(): HTMLElement[] {
 		return Array.from(
 			this.listContainer.querySelectorAll<HTMLElement>(
-				`.filter-dropdown-item, .filter-dropdown-value-preview`
-			)
+				`.filter-dropdown-item, .filter-dropdown-value-preview`,
+			),
 		).filter(
 			(el) =>
 				el.offsetParent !== null &&
 				window.getComputedStyle(el).visibility !== "hidden" &&
-				window.getComputedStyle(el).display !== "none"
+				window.getComputedStyle(el).display !== "none",
 		);
 	}
 

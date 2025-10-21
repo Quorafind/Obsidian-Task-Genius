@@ -64,7 +64,7 @@ export class TaskFilterComponent extends Component {
 		hostEl: HTMLElement,
 		app: App,
 		private leafId?: string | undefined,
-		plugin?: TaskProgressBarPlugin
+		plugin?: TaskProgressBarPlugin,
 	) {
 		super();
 		this.hostEl = hostEl;
@@ -75,8 +75,8 @@ export class TaskFilterComponent extends Component {
 	onload() {
 		const savedState = this.leafId
 			? this.app.loadLocalStorage(
-					`task-genius-view-filter-${this.leafId}`
-			  )
+					`task-genius-view-filter-${this.leafId}`,
+				)
 			: this.app.loadLocalStorage("task-genius-view-filter");
 
 		console.log("savedState", savedState, this.leafId);
@@ -91,7 +91,7 @@ export class TaskFilterComponent extends Component {
 			if (savedState) {
 				// If it exists but failed validation
 				console.warn(
-					"Task Filter: Invalid data in local storage. Resetting to default state."
+					"Task Filter: Invalid data in local storage. Resetting to default state.",
 				);
 			}
 			// Initialize with default state
@@ -117,7 +117,7 @@ export class TaskFilterComponent extends Component {
 			});
 
 		// Clear the host element
-		this.hostEl.empty(); // Obsidian's way to clear innerHTML and managed children
+		this.hostEl.empty();
 	}
 
 	close() {
@@ -151,7 +151,7 @@ export class TaskFilterComponent extends Component {
 		});
 
 		const rootConditionDropdown = new DropdownComponent(
-			rootConditionSection
+			rootConditionSection,
 		)
 			.addOptions({
 				any: t("Any"),
@@ -199,7 +199,7 @@ export class TaskFilterComponent extends Component {
 					},
 					(iconEl) => {
 						setIcon(iconEl, "plus");
-					}
+					},
 				);
 				el.createEl("span", {
 					cls: "add-filter-group-btn-text",
@@ -209,7 +209,7 @@ export class TaskFilterComponent extends Component {
 				this.registerDomEvent(el, "click", () => {
 					this.addFilterGroup();
 				});
-			}
+			},
 		);
 
 		// Filter Configuration Buttons Section (only show if plugin is available)
@@ -233,13 +233,13 @@ export class TaskFilterComponent extends Component {
 						(iconEl) => {
 							setIcon(iconEl, "save");
 							setTooltip(el, t("Save Current Filter"));
-						}
+						},
 					);
 
 					this.registerDomEvent(el, "click", () => {
 						this.openSaveConfigModal();
 					});
-				}
+				},
 			);
 
 			// Load Configuration Button
@@ -257,13 +257,13 @@ export class TaskFilterComponent extends Component {
 						(iconEl) => {
 							setIcon(iconEl, "folder-open");
 							setTooltip(el, t("Load Saved Filter"));
-						}
+						},
 					);
 
 					this.registerDomEvent(el, "click", () => {
 						this.openLoadConfigModal();
 					});
-				}
+				},
 			);
 		}
 
@@ -304,9 +304,9 @@ export class TaskFilterComponent extends Component {
 					},
 					(iconEl) => {
 						setIcon(iconEl, "grip-vertical");
-					}
+					},
 				);
-			}
+			},
 		);
 
 		groupHeaderLeft.createEl("label", {
@@ -326,13 +326,13 @@ export class TaskFilterComponent extends Component {
 				this.saveStateToLocalStorage();
 				this.updateFilterConjunctions(
 					newGroupEl.querySelector(".filters-list") as HTMLElement,
-					selectedValue
+					selectedValue,
 				);
 			})
 			.setValue(groupData.groupCondition);
 		groupConditionSelect.selectEl.toggleClass(
 			["group-condition-select", "compact-select"],
-			true
+			true,
 		);
 
 		groupHeaderLeft.createEl("span", {
@@ -370,7 +370,7 @@ export class TaskFilterComponent extends Component {
 			.setTooltip(t("Remove filter group"))
 			.onClick(() => {
 				const filtersListElForSortable = newGroupEl.querySelector(
-					".filters-list"
+					".filters-list",
 				) as HTMLElement;
 				if (
 					filtersListElForSortable &&
@@ -384,7 +384,7 @@ export class TaskFilterComponent extends Component {
 
 				this.rootFilterState.filterGroups =
 					this.rootFilterState.filterGroups.filter(
-						(g) => g.id !== groupData.id
+						(g) => g.id !== groupData.id,
 					);
 				this.saveStateToLocalStorage();
 				newGroupEl.remove();
@@ -392,7 +392,7 @@ export class TaskFilterComponent extends Component {
 				if (
 					nextSibling &&
 					nextSibling.classList.contains(
-						"filter-group-separator-container"
+						"filter-group-separator-container",
 					)
 				) {
 					nextSibling.remove();
@@ -401,7 +401,7 @@ export class TaskFilterComponent extends Component {
 					if (
 						prevSibling &&
 						prevSibling.classList.contains(
-							"filter-group-separator-container"
+							"filter-group-separator-container",
 						)
 					) {
 						prevSibling.remove();
@@ -421,7 +421,7 @@ export class TaskFilterComponent extends Component {
 		groupData.filters.forEach((filterData) => {
 			const filterElement = this.createFilterItemElement(
 				filterData,
-				groupData
+				groupData,
 			);
 			filtersListEl.appendChild(filterElement);
 		});
@@ -444,7 +444,7 @@ export class TaskFilterComponent extends Component {
 					},
 					(iconEl) => {
 						setIcon(iconEl, "plus");
-					}
+					},
 				);
 				el.createEl("span", {
 					cls: "add-filter-btn-text",
@@ -454,7 +454,7 @@ export class TaskFilterComponent extends Component {
 				this.registerDomEvent(el, "click", () => {
 					this.addFilterToGroup(groupData, filtersListEl);
 				});
-			}
+			},
 		);
 
 		return newGroupEl;
@@ -462,12 +462,12 @@ export class TaskFilterComponent extends Component {
 
 	private addFilterGroup(
 		groupDataToClone: FilterGroup | null = null,
-		insertAfterElement: HTMLElement | null = null
+		insertAfterElement: HTMLElement | null = null,
 	): void {
 		// Ensure the container is initialized
 		if (!this.filterGroupsContainerEl) {
 			console.warn(
-				"TaskFilterComponent: filterGroupsContainerEl not initialized yet"
+				"TaskFilterComponent: filterGroupsContainerEl not initialized yet",
 			);
 			return;
 		}
@@ -496,8 +496,8 @@ export class TaskFilterComponent extends Component {
 
 		const groupIndex = insertAfterElement
 			? this.rootFilterState.filterGroups.findIndex(
-					(g) => g.id === insertAfterElement.id
-			  ) + 1
+					(g) => g.id === insertAfterElement.id,
+				) + 1
 			: this.rootFilterState.filterGroups.length;
 
 		this.rootFilterState.filterGroups.splice(groupIndex, 0, newGroupData);
@@ -510,7 +510,7 @@ export class TaskFilterComponent extends Component {
 		) {
 			this.filterGroupsContainerEl.insertBefore(
 				newGroupElement,
-				insertAfterElement.nextSibling
+				insertAfterElement.nextSibling,
 			);
 		} else {
 			this.filterGroupsContainerEl.appendChild(newGroupElement);
@@ -522,7 +522,7 @@ export class TaskFilterComponent extends Component {
 		) {
 			this.addFilterToGroup(
 				newGroupData,
-				newGroupElement.querySelector(".filters-list") as HTMLElement
+				newGroupElement.querySelector(".filters-list") as HTMLElement,
 			);
 		} else if (
 			groupDataToClone &&
@@ -531,7 +531,7 @@ export class TaskFilterComponent extends Component {
 		) {
 			this.addFilterToGroup(
 				newGroupData,
-				newGroupElement.querySelector(".filters-list") as HTMLElement
+				newGroupElement.querySelector(".filters-list") as HTMLElement,
 			);
 		}
 
@@ -542,7 +542,7 @@ export class TaskFilterComponent extends Component {
 	// --- Filter Item Management ---
 	private createFilterItemElement(
 		filterData: Filter,
-		groupData: FilterGroup
+		groupData: FilterGroup,
 	): HTMLElement {
 		const newFilterEl = this.hostEl.createEl("div", {
 			attr: { id: filterData.id },
@@ -592,13 +592,13 @@ export class TaskFilterComponent extends Component {
 				filterData,
 				propertySelect,
 				conditionSelect,
-				valueInput
+				valueInput,
 			);
 		});
 
 		const toggleValueInputVisibility = (
 			currentCond: string,
-			propertyType: string
+			propertyType: string,
 		) => {
 			const conditionsRequiringValue = [
 				"equals",
@@ -668,13 +668,13 @@ export class TaskFilterComponent extends Component {
 			.setTooltip(t("Remove filter"))
 			.onClick(() => {
 				groupData.filters = groupData.filters.filter(
-					(f) => f.id !== filterData.id
+					(f) => f.id !== filterData.id,
 				);
 				this.saveStateToLocalStorage();
 				newFilterEl.remove();
 				this.updateFilterConjunctions(
 					newFilterEl.parentElement as HTMLElement,
-					groupData.groupCondition
+					groupData.groupCondition,
 				);
 			});
 		removeFilterBtn.extraSettingsEl.addClasses([
@@ -687,7 +687,7 @@ export class TaskFilterComponent extends Component {
 			filterData,
 			propertySelect,
 			conditionSelect,
-			valueInput
+			valueInput,
 		);
 
 		return newFilterEl;
@@ -695,7 +695,7 @@ export class TaskFilterComponent extends Component {
 
 	private addFilterToGroup(
 		groupData: FilterGroup,
-		filtersListEl: HTMLElement
+		filtersListEl: HTMLElement,
 	): void {
 		const newFilterId = this.generateId();
 		const newFilterData: Filter = {
@@ -709,7 +709,7 @@ export class TaskFilterComponent extends Component {
 
 		const newFilterElement = this.createFilterItemElement(
 			newFilterData,
-			groupData
+			groupData,
 		);
 		filtersListEl.appendChild(newFilterElement);
 
@@ -721,7 +721,7 @@ export class TaskFilterComponent extends Component {
 		filterData: Filter,
 		propertySelect: DropdownComponent,
 		conditionSelect: DropdownComponent,
-		valueInput: HTMLInputElement
+		valueInput: HTMLInputElement,
 	): void {
 		const property = filterData.property;
 
@@ -892,14 +892,14 @@ export class TaskFilterComponent extends Component {
 
 		conditionSelect.selectEl.empty();
 		conditionOptions.forEach((opt) =>
-			conditionSelect.addOption(opt.value, opt.text)
+			conditionSelect.addOption(opt.value, opt.text),
 		);
 
 		const currentSelectedCondition = filterData.condition;
 		let conditionChanged = false;
 		if (
 			conditionOptions.some(
-				(opt) => opt.value === currentSelectedCondition
+				(opt) => opt.value === currentSelectedCondition,
 			)
 		) {
 			conditionSelect.setValue(currentSelectedCondition);
@@ -964,13 +964,13 @@ export class TaskFilterComponent extends Component {
 	// --- UI Updates (Conjunctions, Separators) ---
 	private updateFilterConjunctions(
 		filtersListEl: HTMLElement | null,
-		groupCondition: "all" | "any" | "none" = "all"
+		groupCondition: "all" | "any" | "none" = "all",
 	): void {
 		if (!filtersListEl) return;
 		const filters = filtersListEl.querySelectorAll(".filter-item");
 		filters.forEach((filter, index) => {
 			const conjunctionElement = filter.querySelector(
-				".filter-conjunction"
+				".filter-conjunction",
 			) as HTMLElement;
 			if (conjunctionElement) {
 				if (index !== 0) {
@@ -1002,7 +1002,7 @@ export class TaskFilterComponent extends Component {
 			.forEach((sep) => sep.remove());
 
 		const groups = Array.from(
-			this.filterGroupsContainerEl?.children || []
+			this.filterGroupsContainerEl?.children || [],
 		).filter((child) => child.classList.contains("filter-group"));
 
 		if (groups.length > 1) {
@@ -1023,7 +1023,7 @@ export class TaskFilterComponent extends Component {
 					separator.textContent = separatorText.toUpperCase();
 					group.parentNode?.insertBefore(
 						separatorContainer,
-						group.nextSibling
+						group.nextSibling,
 					);
 				}
 			});
@@ -1054,12 +1054,12 @@ export class TaskFilterComponent extends Component {
 
 				const movedGroup = this.rootFilterState.filterGroups.splice(
 					sortableEvent.oldDraggableIndex,
-					1
+					1,
 				)[0];
 				this.rootFilterState.filterGroups.splice(
 					sortableEvent.newDraggableIndex,
 					0,
-					movedGroup
+					movedGroup,
 				);
 				this.saveStateToLocalStorage();
 				this.updateGroupSeparators();
@@ -1070,7 +1070,7 @@ export class TaskFilterComponent extends Component {
 	// --- Filter State Management ---
 	private updateFilterState(
 		filterGroups: FilterGroup[],
-		rootCondition: "all" | "any" | "none"
+		rootCondition: "all" | "any" | "none",
 	): void {
 		this.rootFilterState.filterGroups = filterGroups;
 		this.rootFilterState.rootCondition = rootCondition;
@@ -1116,7 +1116,7 @@ export class TaskFilterComponent extends Component {
 				} catch (error) {
 					console.warn(
 						"Error destroying filter list sortable:",
-						error
+						error,
 					);
 					(listEl as any).sortableInstance = undefined;
 				}
@@ -1130,14 +1130,14 @@ export class TaskFilterComponent extends Component {
 
 	// --- Local Storage Management ---
 	private saveStateToLocalStorage(
-		triggerRealtimeUpdate: boolean = true
+		triggerRealtimeUpdate: boolean = true,
 	): void {
 		if (this.app) {
 			this.app.saveLocalStorage(
 				this.leafId
 					? `task-genius-view-filter-${this.leafId}`
 					: "task-genius-view-filter",
-				this.rootFilterState
+				this.rootFilterState,
 			);
 
 			// 只有在需要实时更新时才触发事件
@@ -1146,7 +1146,7 @@ export class TaskFilterComponent extends Component {
 				this.app.workspace.trigger(
 					"task-genius:filter-changed",
 					this.rootFilterState,
-					this.leafId || undefined
+					this.leafId || undefined,
 				);
 			}
 		}
@@ -1164,7 +1164,7 @@ export class TaskFilterComponent extends Component {
 			(config) => {
 				// Optional: Handle successful save
 				console.log("Filter configuration saved:", config.name);
-			}
+			},
 		);
 		modal.open();
 	}
@@ -1182,7 +1182,7 @@ export class TaskFilterComponent extends Component {
 				// Load the configuration
 				this.loadFilterState(config.filterState);
 				console.log("Filter configuration loaded:", config.name);
-			}
+			},
 		);
 		modal.open();
 	}
