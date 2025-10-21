@@ -90,10 +90,12 @@ export class TaskTimerExporter {
 		const backupData = {
 			version: this.EXPORT_VERSION,
 			backupDate: new Date().toISOString(),
-			activeTimers: activeTimers.map(timer => ({
+			activeTimers: activeTimers.map((timer) => ({
 				...timer,
-				currentDuration: this.timerManager.getCurrentDuration(timer.taskId)
-			}))
+				currentDuration: this.timerManager.getCurrentDuration(
+					timer.taskId,
+				),
+			})),
 		};
 
 		return JSON.stringify(backupData, null, 2);
@@ -107,7 +109,7 @@ export class TaskTimerExporter {
 	restoreFromBackup(backupData: string): boolean {
 		try {
 			const backup = JSON.parse(backupData);
-			
+
 			if (!backup.activeTimers || !Array.isArray(backup.activeTimers)) {
 				return false;
 			}
@@ -121,26 +123,32 @@ export class TaskTimerExporter {
 					segments.push({
 						startTime: timerData.startTime,
 						endTime: timerData.pausedTime,
-						duration: timerData.pausedTime ? 
-							timerData.pausedTime - timerData.startTime - (timerData.totalPausedDuration || 0) : 
-							undefined
+						duration: timerData.pausedTime
+							? timerData.pausedTime -
+								timerData.startTime -
+								(timerData.totalPausedDuration || 0)
+							: undefined,
 					});
 				}
-				
+
 				const restoredTimer: TimerState = {
 					taskId: timerData.taskId,
 					filePath: timerData.filePath,
 					blockId: timerData.blockId,
 					segments: segments,
-					status: timerData.status as 'idle' | 'running' | 'paused',
+					status: timerData.status as "idle" | "running" | "paused",
 					createdAt: timerData.createdAt,
 					// Keep legacy fields for reference
 					legacyStartTime: timerData.startTime,
 					legacyPausedTime: timerData.pausedTime,
-					legacyTotalPausedDuration: timerData.totalPausedDuration || 0
+					legacyTotalPausedDuration:
+						timerData.totalPausedDuration || 0,
 				};
 
-				localStorage.setItem(timerData.taskId, JSON.stringify(restoredTimer));
+				(window as any).app.saveLocalStorage(
+					timerData.taskId,
+					JSON.stringify(restoredTimer),
+				);
 			}
 
 			return true;
@@ -161,7 +169,7 @@ export class TaskTimerExporter {
 		newestTimer: string | null;
 	} {
 		const activeTimers = this.timerManager.getAllActiveTimers();
-		
+
 		let totalDuration = 0;
 		let oldestTime = Number.MAX_SAFE_INTEGER;
 		let newestTime = 0;
@@ -187,7 +195,7 @@ export class TaskTimerExporter {
 			activeTimers: activeTimers.length,
 			totalDuration,
 			oldestTimer,
-			newestTimer
+			newestTimer,
 		};
 	}
 
@@ -202,33 +210,43 @@ export class TaskTimerExporter {
 
 		for (const timer of activeTimers) {
 			// Skip active timers if not requested
-			if (!includeActive && (timer.status === 'running' || timer.status === 'paused')) {
+			if (
+				!includeActive &&
+				(timer.status === "running" || timer.status === "paused")
+			) {
 				continue;
 			}
 
-			const currentDuration = this.timerManager.getCurrentDuration(timer.taskId);
-			
+			const currentDuration = this.timerManager.getCurrentDuration(
+				timer.taskId,
+			);
+
 			// Get the first and last segments for export
 			const firstSegment = timer.segments[0];
 			const lastSegment = timer.segments[timer.segments.length - 1];
-			
+
 			exportTimers.push({
 				taskId: timer.taskId,
 				filePath: timer.filePath,
 				blockId: timer.blockId,
-				startTime: firstSegment ? firstSegment.startTime : timer.createdAt,
-				endTime: lastSegment && lastSegment.endTime ? lastSegment.endTime : undefined,
+				startTime: firstSegment
+					? firstSegment.startTime
+					: timer.createdAt,
+				endTime:
+					lastSegment && lastSegment.endTime
+						? lastSegment.endTime
+						: undefined,
 				duration: currentDuration,
 				status: timer.status,
 				createdAt: timer.createdAt,
-				totalPausedDuration: timer.legacyTotalPausedDuration || 0
+				totalPausedDuration: timer.legacyTotalPausedDuration || 0,
 			});
 		}
 
 		return {
 			version: this.EXPORT_VERSION,
 			exportDate: new Date().toISOString(),
-			timers: exportTimers
+			timers: exportTimers,
 		};
 	}
 
@@ -247,17 +265,24 @@ export class TaskTimerExporter {
 		for (const timerData of data.timers) {
 			try {
 				// Only import completed timers to avoid conflicts
-				if (timerData.status === 'idle' || timerData.endTime) {
+				if (timerData.status === "idle" || timerData.endTime) {
 					// Store as historical data (could be extended for analytics)
 					const historyKey = `taskTimer_history_${timerData.blockId}_${timerData.startTime}`;
-					localStorage.setItem(historyKey, JSON.stringify({
-						...timerData,
-						importedAt: Date.now()
-					}));
+					(window as any).app.saveLocalStorage(
+						historyKey,
+						JSON.stringify({
+							...timerData,
+							importedAt: Date.now(),
+						}),
+					);
 					importedCount++;
 				}
 			} catch (error) {
-				console.warn("Failed to import timer:", timerData.taskId, error);
+				console.warn(
+					"Failed to import timer:",
+					timerData.taskId,
+					error,
+				);
 			}
 		}
 
@@ -271,7 +296,7 @@ export class TaskTimerExporter {
 	 * @returns true if data is valid
 	 */
 	private validateImportData(data: any): data is TimerExportData {
-		if (!data || typeof data !== 'object') {
+		if (!data || typeof data !== "object") {
 			return false;
 		}
 
@@ -281,9 +306,13 @@ export class TaskTimerExporter {
 
 		// Validate each timer entry
 		for (const timer of data.timers) {
-			if (!timer.taskId || !timer.filePath || !timer.blockId || 
-				typeof timer.startTime !== 'number' || 
-				typeof timer.duration !== 'number') {
+			if (
+				!timer.taskId ||
+				!timer.filePath ||
+				!timer.blockId ||
+				typeof timer.startTime !== "number" ||
+				typeof timer.duration !== "number"
+			) {
 				return false;
 			}
 		}
@@ -297,19 +326,19 @@ export class TaskTimerExporter {
 	 * @returns YAML string
 	 */
 	private convertToYAML(obj: any, indent: number = 0): string {
-		const spaces = '  '.repeat(indent);
-		let yaml = '';
+		const spaces = "  ".repeat(indent);
+		let yaml = "";
 
 		if (Array.isArray(obj)) {
 			for (const item of obj) {
 				yaml += `${spaces}- ${this.convertToYAML(item, indent + 1).trim()}\n`;
 			}
-		} else if (obj !== null && typeof obj === 'object') {
+		} else if (obj !== null && typeof obj === "object") {
 			for (const [key, value] of Object.entries(obj)) {
 				if (Array.isArray(value)) {
 					yaml += `${spaces}${key}:\n`;
 					yaml += this.convertToYAML(value, indent + 1);
-				} else if (value !== null && typeof value === 'object') {
+				} else if (value !== null && typeof value === "object") {
 					yaml += `${spaces}${key}:\n`;
 					yaml += this.convertToYAML(value, indent + 1);
 				} else {
@@ -331,34 +360,34 @@ export class TaskTimerExporter {
 	private parseYAML(yamlString: string): any {
 		// This is a very basic YAML parser for our specific use case
 		// For production use, consider using a proper YAML library
-		const lines = yamlString.split('\n');
+		const lines = yamlString.split("\n");
 		const result: any = {};
 		let currentObject = result;
 		const objectStack: any[] = [result];
-		let currentKey = '';
+		let currentKey = "";
 
 		for (const line of lines) {
 			const trimmedLine = line.trim();
-			if (!trimmedLine || trimmedLine.startsWith('#')) continue;
+			if (!trimmedLine || trimmedLine.startsWith("#")) continue;
 
 			const indent = line.length - line.trimLeft().length;
-			const colonIndex = trimmedLine.indexOf(':');
+			const colonIndex = trimmedLine.indexOf(":");
 
 			if (colonIndex > 0) {
 				const key = trimmedLine.substring(0, colonIndex).trim();
 				const value = trimmedLine.substring(colonIndex + 1).trim();
 
-				if (value === '') {
+				if (value === "") {
 					// This is a parent key
 					currentObject[key] = {};
 					currentKey = key;
-				} else if (value === '[]') {
+				} else if (value === "[]") {
 					currentObject[key] = [];
 				} else {
 					// This is a key-value pair
 					currentObject[key] = this.parseYAMLValue(value);
 				}
-			} else if (trimmedLine.startsWith('- ')) {
+			} else if (trimmedLine.startsWith("- ")) {
 				// This is an array item
 				if (!Array.isArray(currentObject[currentKey])) {
 					currentObject[currentKey] = [];
@@ -378,11 +407,11 @@ export class TaskTimerExporter {
 	 */
 	private parseYAMLValue(value: string): any {
 		value = value.trim();
-		
-		if (value === 'true') return true;
-		if (value === 'false') return false;
-		if (value === 'null') return null;
-		
+
+		if (value === "true") return true;
+		if (value === "false") return false;
+		if (value === "null") return null;
+
 		// Try to parse as number
 		const numValue = Number(value);
 		if (!isNaN(numValue) && isFinite(numValue)) {
@@ -390,8 +419,10 @@ export class TaskTimerExporter {
 		}
 
 		// Remove quotes if present
-		if ((value.startsWith('"') && value.endsWith('"')) ||
-			(value.startsWith("'") && value.endsWith("'"))) {
+		if (
+			(value.startsWith('"') && value.endsWith('"')) ||
+			(value.startsWith("'") && value.endsWith("'"))
+		) {
 			return value.slice(1, -1);
 		}
 
@@ -404,9 +435,13 @@ export class TaskTimerExporter {
 	 * @returns Escaped string
 	 */
 	private yamlEscape(value: any): string {
-		if (typeof value === 'string') {
+		if (typeof value === "string") {
 			// Quote strings that contain special characters
-			if (value.includes(':') || value.includes('\n') || value.includes('#')) {
+			if (
+				value.includes(":") ||
+				value.includes("\n") ||
+				value.includes("#")
+			) {
 				return `"${value.replace(/"/g, '\\"')}"`;
 			}
 		}

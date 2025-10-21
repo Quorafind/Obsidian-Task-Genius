@@ -79,7 +79,7 @@ export class ProjectsComponent extends Component {
 			onTaskCompleted?: (task: Task) => void;
 			onTaskUpdate?: (task: Task, updatedTask: Task) => Promise<void>;
 			onTaskContextMenu?: (event: MouseEvent, task: Task) => void;
-		} = {}
+		} = {},
 	) {
 		super();
 	}
@@ -105,8 +105,8 @@ export class ProjectsComponent extends Component {
 		this.initializeViewMode();
 
 		// Load project tree view preference from localStorage
-		const savedTreeView = localStorage.getItem(
-			"task-genius-project-tree-view"
+		const savedTreeView = this.app.loadLocalStorage(
+			"task-genius-project-tree-view",
 		);
 		this.isProjectTreeView = savedTreeView === "true";
 
@@ -116,7 +116,7 @@ export class ProjectsComponent extends Component {
 			this.taskListContainerEl,
 			this.plugin,
 			this.app,
-			"projects"
+			"projects",
 		);
 
 		// Connect event handlers
@@ -239,7 +239,7 @@ export class ProjectsComponent extends Component {
 						.onClick(() => {
 							this.toggleLeftColumnVisibility();
 						});
-				}
+				},
 			);
 		}
 
@@ -293,7 +293,7 @@ export class ProjectsComponent extends Component {
 	public setTasks(tasks: Task[]) {
 		this.allTasks = tasks;
 		this.allTasksMap = new Map(
-			this.allTasks.map((task) => [task.id, task])
+			this.allTasks.map((task) => [task.id, task]),
 		);
 		this.buildProjectsIndex();
 		this.renderProjectsList();
@@ -306,7 +306,7 @@ export class ProjectsComponent extends Component {
 				[],
 				this.isTreeView,
 				this.allTasksMap,
-				t("Select a project to see related tasks")
+				t("Select a project to see related tasks"),
 			);
 			this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 		}
@@ -350,13 +350,13 @@ export class ProjectsComponent extends Component {
 			this.projectTreeComponent = new ProjectTreeComponent(
 				this.projectsListEl,
 				this.app,
-				this.plugin
+				this.plugin,
 			);
 
 			// Set up event handlers
 			this.projectTreeComponent.onNodeSelected = (
 				selectedNodes: Set<string>,
-				tasks: Task[]
+				tasks: Task[],
 			) => {
 				this.selectedProjects.projects = Array.from(selectedNodes);
 				this.updateSelectedTasks();
@@ -368,7 +368,7 @@ export class ProjectsComponent extends Component {
 			};
 
 			this.projectTreeComponent.onMultiSelectToggled = (
-				isMultiSelect: boolean
+				isMultiSelect: boolean,
 			) => {
 				this.selectedProjects.isMultiSelect = isMultiSelect;
 				if (
@@ -379,7 +379,7 @@ export class ProjectsComponent extends Component {
 						[],
 						this.isTreeView,
 						this.allTasksMap,
-						t("Select a project to see related tasks")
+						t("Select a project to see related tasks"),
 					);
 					this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 				}
@@ -389,7 +389,7 @@ export class ProjectsComponent extends Component {
 			if (this.projectTree) {
 				this.projectTreeComponent.setTree(
 					this.projectTree,
-					this.allTasks
+					this.allTasks,
 				);
 			}
 		} else {
@@ -401,7 +401,7 @@ export class ProjectsComponent extends Component {
 
 			// Sort projects alphabetically
 			const sortedProjects = Array.from(
-				this.allProjectsMap.keys()
+				this.allProjectsMap.keys(),
 			).sort();
 
 			// Render each project
@@ -477,7 +477,7 @@ export class ProjectsComponent extends Component {
 				this.registerDomEvent(projectItem, "click", (e) => {
 					this.handleProjectSelection(
 						project,
-						e.ctrlKey || e.metaKey
+						e.ctrlKey || e.metaKey,
 					);
 				});
 			});
@@ -513,7 +513,7 @@ export class ProjectsComponent extends Component {
 					[],
 					this.isTreeView,
 					this.allTasksMap,
-					t("Select a project to see related tasks")
+					t("Select a project to see related tasks"),
 				);
 				this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 				return;
@@ -558,7 +558,7 @@ export class ProjectsComponent extends Component {
 					[],
 					this.isTreeView,
 					this.allTasksMap,
-					t("Select a project to see related tasks")
+					t("Select a project to see related tasks"),
 				);
 				this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 				this.updateTgProjectPropsButton(null);
@@ -568,7 +568,7 @@ export class ProjectsComponent extends Component {
 		// Update tree component if it exists
 		if (this.projectTreeComponent) {
 			this.projectTreeComponent.setMultiSelectMode(
-				this.selectedProjects.isMultiSelect
+				this.selectedProjects.isMultiSelect,
 			);
 		}
 	}
@@ -580,7 +580,7 @@ export class ProjectsComponent extends Component {
 		this.isTreeView = getInitialViewMode(this.app, this.plugin, "projects");
 		// Update the toggle button icon to match the initial state
 		const viewToggleBtn = this.taskContainerEl?.querySelector(
-			".view-toggle-btn"
+			".view-toggle-btn",
 		) as HTMLElement;
 		if (viewToggleBtn) {
 			setIcon(viewToggleBtn, this.isTreeView ? "git-branch" : "list");
@@ -592,7 +592,7 @@ export class ProjectsComponent extends Component {
 
 		// Update toggle button icon
 		const viewToggleBtn = this.taskContainerEl.querySelector(
-			".view-toggle-btn"
+			".view-toggle-btn",
 		) as HTMLElement;
 		if (viewToggleBtn) {
 			setIcon(viewToggleBtn, this.isTreeView ? "git-branch" : "list");
@@ -611,7 +611,7 @@ export class ProjectsComponent extends Component {
 				[],
 				this.isTreeView,
 				this.allTasksMap,
-				t("Select a project to see related tasks")
+				t("Select a project to see related tasks"),
 			);
 			this.updateTaskListHeader(t("Tasks"), `0 ${t("tasks")}`);
 			return;
@@ -622,7 +622,7 @@ export class ProjectsComponent extends Component {
 			this.filteredTasks = filterTasksByProjectPaths(
 				this.allTasks,
 				this.selectedProjects.projects,
-				this.plugin.settings.projectPathSeparator || "/"
+				this.plugin.settings.projectPathSeparator || "/",
 			);
 		} else {
 			// Get tasks from all selected projects (OR logic)
@@ -638,18 +638,18 @@ export class ProjectsComponent extends Component {
 
 			// Convert task IDs to actual task objects
 			this.filteredTasks = this.allTasks.filter((task) =>
-				resultTaskIds.has(task.id)
+				resultTaskIds.has(task.id),
 			);
 		}
 
 		const viewConfig = this.plugin.settings.viewConfiguration.find(
-			(view) => view.id === "projects"
+			(view) => view.id === "projects",
 		);
 		if (viewConfig?.sortCriteria && viewConfig.sortCriteria.length > 0) {
 			this.filteredTasks = sortTasks(
 				this.filteredTasks,
 				viewConfig.sortCriteria,
-				this.plugin.settings
+				this.plugin.settings,
 			);
 		} else {
 			// Sort tasks by priority and due date
@@ -680,14 +680,14 @@ export class ProjectsComponent extends Component {
 
 	private updateTaskListHeader(title: string, countText: string) {
 		const taskHeaderEl = this.taskContainerEl.querySelector(
-			".projects-task-title"
+			".projects-task-title",
 		);
 		if (taskHeaderEl) {
 			taskHeaderEl.textContent = title;
 		}
 
 		const taskCountEl = this.taskContainerEl.querySelector(
-			".projects-task-count"
+			".projects-task-count",
 		);
 		if (taskCountEl) {
 			taskCountEl.textContent = countText;
@@ -706,7 +706,7 @@ export class ProjectsComponent extends Component {
 		) {
 			// Hide progress bar container if it exists
 			const progressContainer = this.taskContainerEl.querySelector(
-				".projects-header-progress"
+				".projects-header-progress",
 			);
 			if (progressContainer) {
 				progressContainer.remove();
@@ -719,12 +719,12 @@ export class ProjectsComponent extends Component {
 
 		// Get or create progress container
 		let progressContainer = this.taskContainerEl.querySelector(
-			".projects-header-progress"
+			".projects-header-progress",
 		) as HTMLElement;
 
 		if (!progressContainer) {
 			const headerMainContent = this.taskContainerEl.querySelector(
-				".projects-header-main-content"
+				".projects-header-main-content",
 			);
 			if (headerMainContent) {
 				progressContainer = headerMainContent.createDiv({
@@ -754,22 +754,22 @@ export class ProjectsComponent extends Component {
 			// Calculate percentages
 			const completedPercentage =
 				Math.round(
-					(progressData.completed / progressData.total) * 10000
+					(progressData.completed / progressData.total) * 10000,
 				) / 100;
 			const inProgressPercentage = progressData.inProgress
 				? Math.round(
-						(progressData.inProgress / progressData.total) * 10000
-				  ) / 100
+						(progressData.inProgress / progressData.total) * 10000,
+					) / 100
 				: 0;
 			const abandonedPercentage = progressData.abandoned
 				? Math.round(
-						(progressData.abandoned / progressData.total) * 10000
-				  ) / 100
+						(progressData.abandoned / progressData.total) * 10000,
+					) / 100
 				: 0;
 			const plannedPercentage = progressData.planned
 				? Math.round(
-						(progressData.planned / progressData.total) * 10000
-				  ) / 100
+						(progressData.planned / progressData.total) * 10000,
+					) / 100
 				: 0;
 
 			// Create progress segments
@@ -847,7 +847,7 @@ export class ProjectsComponent extends Component {
 				} else if (displayMode === "both") {
 					// Add text to the existing progress bar container
 					const progressBarEl = progressContainer.querySelector(
-						".cm-task-progress-bar"
+						".cm-task-progress-bar",
 					);
 					if (progressBarEl) {
 						const textEl = progressBarEl.createDiv({
@@ -901,7 +901,7 @@ export class ProjectsComponent extends Component {
 	 * Follows the same logic as progress-bar-widget.ts
 	 */
 	private getTaskStatus(
-		task: Task
+		task: Task,
 	): "completed" | "inProgress" | "abandoned" | "notStarted" | "planned" {
 		// If task is marked as completed in the task object
 		if (task.completed) {
@@ -943,7 +943,7 @@ export class ProjectsComponent extends Component {
 	 * Helper to determine the non-completed status of a task mark
 	 */
 	private determineNonCompletedStatus(
-		mark: string
+		mark: string,
 	): "inProgress" | "abandoned" | "notStarted" | "planned" {
 		const inProgressMarks =
 			this.plugin?.settings.taskStatuses?.inProgress?.split("|") || [
@@ -962,7 +962,7 @@ export class ProjectsComponent extends Component {
 		}
 
 		const plannedMarks = this.plugin?.settings.taskStatuses?.planned?.split(
-			"|"
+			"|",
 		) || ["?"];
 		if (plannedMarks.includes(mark)) {
 			return "planned";
@@ -982,7 +982,7 @@ export class ProjectsComponent extends Component {
 	 * Helper to determine the specific task status
 	 */
 	private determineTaskStatus(
-		mark: string
+		mark: string,
 	): "completed" | "inProgress" | "abandoned" | "notStarted" | "planned" {
 		const completedMarks =
 			this.plugin?.settings.taskStatuses?.completed?.split("|") || [
@@ -1009,7 +1009,7 @@ export class ProjectsComponent extends Component {
 		}
 
 		const plannedMarks = this.plugin?.settings.taskStatuses?.planned?.split(
-			"|"
+			"|",
 		) || ["?"];
 		if (plannedMarks.includes(mark)) {
 			return "planned";
@@ -1041,7 +1041,7 @@ export class ProjectsComponent extends Component {
 			title = this.selectedProjects.projects[0];
 		} else if (this.selectedProjects.projects.length > 1) {
 			title = `${this.selectedProjects.projects.length} ${t(
-				"projects selected"
+				"projects selected",
 			)}`;
 		}
 		const countText = `${this.filteredTasks.length} ${t("tasks")}`;
@@ -1052,14 +1052,14 @@ export class ProjectsComponent extends Component {
 			this.filteredTasks,
 			this.isTreeView,
 			this.allTasksMap,
-			t("No tasks in the selected projects")
+			t("No tasks in the selected projects"),
 		);
 	}
 
 	public updateTask(updatedTask: Task) {
 		// Update in our main tasks list
 		const taskIndex = this.allTasks.findIndex(
-			(t) => t.id === updatedTask.id
+			(t) => t.id === updatedTask.id,
 		);
 		let needsFullRefresh = false;
 		if (taskIndex !== -1) {
@@ -1083,7 +1083,7 @@ export class ProjectsComponent extends Component {
 		} else {
 			// Otherwise, just update the task in the filtered list and the renderer
 			const filteredIndex = this.filteredTasks.findIndex(
-				(t) => t.id === updatedTask.id
+				(t) => t.id === updatedTask.id,
 			);
 			if (filteredIndex !== -1) {
 				this.filteredTasks[filteredIndex] = updatedTask;
@@ -1103,19 +1103,19 @@ export class ProjectsComponent extends Component {
 
 		// Update button icon
 		const treeToggleBtn = this.leftColumnEl.querySelector(
-			".projects-tree-toggle-btn"
+			".projects-tree-toggle-btn",
 		) as HTMLElement;
 		if (treeToggleBtn) {
 			setIcon(
 				treeToggleBtn,
-				this.isProjectTreeView ? "git-branch" : "list"
+				this.isProjectTreeView ? "git-branch" : "list",
 			);
 		}
 
 		// Save preference to localStorage for now
-		localStorage.setItem(
+		this.app.saveLocalStorage(
 			"task-genius-project-tree-view",
-			this.isProjectTreeView.toString()
+			this.isProjectTreeView.toString(),
 		);
 
 		// Rebuild project index and re-render
@@ -1193,24 +1193,32 @@ export class ProjectsComponent extends Component {
 				this.projectPropsPopoverEl = document.body.createEl("div", {
 					cls: "tg-project-popover",
 					attr: {
-						style: "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 8px 10px; box-shadow: var(--shadow-s); max-width: 420px; z-index: 9999;"
-					}
+						style: "background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 8px 10px; box-shadow: var(--shadow-s); max-width: 420px; z-index: 9999;",
+					},
 				});
 				const list = this.projectPropsPopoverEl.createDiv({
-					cls: "tg-project-props"
+					cls: "tg-project-props",
 				});
-				this.projectPropsPopper = createPopper(btn, this.projectPropsPopoverEl, {
-					placement: "bottom-end",
-					modifiers: [
-						{ name: "offset", options: { offset: [0, 8] } },
-					],
-				});
+				this.projectPropsPopper = createPopper(
+					btn,
+					this.projectPropsPopoverEl,
+					{
+						placement: "bottom-end",
+						modifiers: [
+							{ name: "offset", options: { offset: [0, 8] } },
+						],
+					},
+				);
 				// Render-token to prevent stale async updates
 				const gen = ++this.infoRenderGen;
 
 				// Close on outside click or ESC
 
-				this.registerDomEvent(this.projectPropsPopoverEl, "mousedown", (ev) => ev.stopPropagation());
+				this.registerDomEvent(
+					this.projectPropsPopoverEl,
+					"mousedown",
+					(ev) => ev.stopPropagation(),
+				);
 
 				this.outsideClickHandler = (ev: MouseEvent) => {
 					const target = ev.target as Node;
@@ -1227,7 +1235,7 @@ export class ProjectsComponent extends Component {
 					document,
 					"mousedown",
 					this.outsideClickHandler,
-					{ capture: true }
+					{ capture: true },
 				);
 
 				this.escKeyHandler = (ev: KeyboardEvent) => {
@@ -1290,7 +1298,7 @@ export class ProjectsComponent extends Component {
 						?.projectResolver;
 					if (resolver?.get) {
 						const pdata = await resolver.get(
-							taskForResolve.filePath
+							taskForResolve.filePath,
 						);
 						enhanced = pdata?.enhancedMetadata || {};
 						configSourcePath = pdata?.configSource;
@@ -1307,7 +1315,7 @@ export class ProjectsComponent extends Component {
 				} catch (err) {
 					console.warn(
 						"[Projects] Failed to load project metadata:",
-						err
+						err,
 					);
 				}
 
@@ -1353,7 +1361,7 @@ export class ProjectsComponent extends Component {
 							const file = abs as any; // TFile
 							const fm =
 								this.app.metadataCache.getFileCache(
-									file
+									file,
 								)?.frontmatter;
 							if (fm && typeof fm === "object") {
 								// record fm keys for de-duplication
@@ -1365,7 +1373,7 @@ export class ProjectsComponent extends Component {
 											kl !== "projectname" &&
 											kl !== "project"
 										);
-									})
+									}),
 								);
 								entries.push(["—", "—"]);
 								entries.push(["sourceFile", metaPath]);
@@ -1384,7 +1392,7 @@ export class ProjectsComponent extends Component {
 					} catch (e) {
 						console.warn(
 							"[Projects] Failed to read source frontmatter:",
-							e
+							e,
 						);
 					}
 				}
@@ -1452,18 +1460,18 @@ export class ProjectsComponent extends Component {
 				entries.forEach(([k, v]) => {
 					const row = list.createDiv({
 						attr: {
-							style: "display:flex; gap:8px; align-items:center; padding:2px 0"
-						}
+							style: "display:flex; gap:8px; align-items:center; padding:2px 0",
+						},
 					});
 					const keyEl = row.createDiv({
 						attr: {
-							style: "opacity:0.7; min-width:120px;"
-						}
+							style: "opacity:0.7; min-width:120px;",
+						},
 					});
 					keyEl.setText(String(k));
 					const valEl = row.createDiv();
 					valEl.setText(
-						typeof v === "string" ? v : JSON.stringify(v)
+						typeof v === "string" ? v : JSON.stringify(v),
 					);
 				});
 			});

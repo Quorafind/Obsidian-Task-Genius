@@ -8,7 +8,10 @@ import TaskProgressBarPlugin from "@/index";
 import { TwoColumnViewBase, TwoColumnViewConfig } from "./TwoColumnViewBase";
 import { ProjectTreeComponent } from "./ProjectTreeComponent";
 import { TreeNode, ProjectNodeData } from "@/types/tree";
-import { buildProjectTreeFromTasks, findNodeByPath } from "@/core/project-tree-builder";
+import {
+	buildProjectTreeFromTasks,
+	findNodeByPath,
+} from "@/core/project-tree-builder";
 import { filterTasksByProjectPaths } from "@/core/project-filter";
 import { getEffectiveProject } from "@/utils/task/task-operations";
 
@@ -17,12 +20,12 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	private allProjectsMap: Map<string, Set<string>> = new Map(); // 项目 -> 任务ID集合
 	private projectTree: TreeNode<ProjectNodeData> | null = null; // 项目树结构
 	private projectTreeComponent: ProjectTreeComponent | null = null; // 树组件
-	private viewMode: 'list' | 'tree' = 'list'; // 视图模式
+	private viewMode: "list" | "tree" = "list"; // 视图模式
 
 	constructor(
 		parentEl: HTMLElement,
 		app: App,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
 	) {
 		// 配置基类需要的参数
 		const config: TwoColumnViewConfig = {
@@ -62,7 +65,9 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 
 		// 更新项目计数
 		if (this.countEl) {
-			const projectCount = this.projectTree ? this.projectTree.children.length : this.allProjectsMap.size;
+			const projectCount = this.projectTree
+				? this.projectTree.children.length
+				: this.allProjectsMap.size;
 			this.countEl.setText(`${projectCount} projects`);
 		}
 	}
@@ -75,7 +80,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		this.itemsListEl.empty();
 
 		// 根据视图模式渲染
-		if (this.viewMode === 'tree' && this.projectTree) {
+		if (this.viewMode === "tree" && this.projectTree) {
 			// 渲染树状视图
 			this.renderTreeView();
 		} else {
@@ -156,7 +161,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		this.projectTreeComponent = new ProjectTreeComponent(
 			this.itemsListEl,
 			this.app,
-			this.plugin
+			this.plugin,
 		);
 
 		// 设置事件处理
@@ -173,13 +178,15 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 
 		// 加载组件
 		this.addChild(this.projectTreeComponent);
-		
+
 		// 构建树
 		this.projectTreeComponent.buildTree(this.allTasks);
-		
+
 		// 恢复之前的选择
 		if (this.selectedItems.items.length > 0) {
-			this.projectTreeComponent.setSelectedPaths(new Set(this.selectedItems.items));
+			this.projectTreeComponent.setSelectedPaths(
+				new Set(this.selectedItems.items),
+			);
 		}
 	}
 
@@ -187,11 +194,11 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	 * 切换视图模式
 	 */
 	public toggleViewMode(): void {
-		this.viewMode = this.viewMode === 'list' ? 'tree' : 'list';
-		
+		this.viewMode = this.viewMode === "list" ? "tree" : "list";
+
 		// 重新渲染列表
 		this.renderItemsList();
-		
+
 		// 保存用户偏好
 		this.saveViewModePreference();
 	}
@@ -201,12 +208,12 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	 */
 	private saveViewModePreference(): void {
 		try {
-			localStorage.setItem(
-				'task-progress-bar-project-view-mode',
-				this.viewMode
+			this.app.saveLocalStorage(
+				"task-progress-bar-project-view-mode",
+				this.viewMode,
 			);
 		} catch (error) {
-			console.warn('Failed to save view mode preference:', error);
+			console.warn("Failed to save view mode preference:", error);
 		}
 	}
 
@@ -215,12 +222,14 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	 */
 	private loadViewModePreference(): void {
 		try {
-			const savedMode = localStorage.getItem('task-progress-bar-project-view-mode');
-			if (savedMode === 'tree' || savedMode === 'list') {
+			const savedMode = this.app.loadLocalStorage(
+				"task-progress-bar-project-view-mode",
+			);
+			if (savedMode === "tree" || savedMode === "list") {
 				this.viewMode = savedMode;
 			}
 		} catch (error) {
-			console.warn('Failed to load view mode preference:', error);
+			console.warn("Failed to load view mode preference:", error);
 		}
 	}
 
@@ -235,13 +244,13 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		}
 
 		// 根据视图模式使用不同的筛选逻辑
-		if (this.viewMode === 'tree' && this.projectTree) {
+		if (this.viewMode === "tree" && this.projectTree) {
 			// 树状模式：使用包含式筛选（选父含子）
 			const separator = this.plugin.settings.projectPathSeparator || "/";
 			this.filteredTasks = filterTasksByProjectPaths(
 				this.allTasks,
 				this.selectedItems.items,
-				separator
+				separator,
 			);
 		} else {
 			// 列表模式：保持原有逻辑
@@ -258,7 +267,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 
 			// 将任务ID转换为实际任务对象
 			this.filteredTasks = this.allTasks.filter((task) =>
-				resultTaskIds.has(task.id)
+				resultTaskIds.has(task.id),
 			);
 		}
 
@@ -292,10 +301,10 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	onload(): void {
 		// 加载视图模式偏好
 		this.loadViewModePreference();
-		
+
 		// 调用父类的 onload
 		super.onload();
-		
+
 		// 在 onload 完成后添加视图切换按钮
 		this.addViewToggleButton();
 	}
@@ -307,26 +316,40 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		// 确保 leftHeaderEl 存在
 		if (this.leftHeaderEl) {
 			// 查找多选按钮
-			const multiSelectBtn = this.leftHeaderEl.querySelector('.projects-multi-select-btn');
-			
+			const multiSelectBtn = this.leftHeaderEl.querySelector(
+				".projects-multi-select-btn",
+			);
+
 			// 创建视图切换按钮
 			const viewToggleBtn = this.leftHeaderEl.createDiv({
-				cls: 'projects-view-toggle-btn'
+				cls: "projects-view-toggle-btn",
 			});
-			
+
 			// 如果找到多选按钮，将视图切换按钮插入到它后面
 			if (multiSelectBtn && multiSelectBtn.parentNode) {
-				multiSelectBtn.parentNode.insertBefore(viewToggleBtn, multiSelectBtn.nextSibling);
+				multiSelectBtn.parentNode.insertBefore(
+					viewToggleBtn,
+					multiSelectBtn.nextSibling,
+				);
 			}
-			
-			setIcon(viewToggleBtn, this.viewMode === 'tree' ? 'git-branch' : 'list');
-			viewToggleBtn.setAttribute('aria-label', t('Toggle tree/list view'));
-			viewToggleBtn.setAttribute('title', t('Toggle tree/list view'));
-			
-			this.registerDomEvent(viewToggleBtn, 'click', () => {
+
+			setIcon(
+				viewToggleBtn,
+				this.viewMode === "tree" ? "git-branch" : "list",
+			);
+			viewToggleBtn.setAttribute(
+				"aria-label",
+				t("Toggle tree/list view"),
+			);
+			viewToggleBtn.setAttribute("title", t("Toggle tree/list view"));
+
+			this.registerDomEvent(viewToggleBtn, "click", () => {
 				this.toggleViewMode();
 				// 更新按钮图标
-				setIcon(viewToggleBtn, this.viewMode === 'tree' ? 'git-branch' : 'list');
+				setIcon(
+					viewToggleBtn,
+					this.viewMode === "tree" ? "git-branch" : "list",
+				);
 			});
 		}
 	}
@@ -337,7 +360,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 	public updateTask(updatedTask: Task): void {
 		let needsFullRefresh = false;
 		const taskIndex = this.allTasks.findIndex(
-			(t) => t.id === updatedTask.id
+			(t) => t.id === updatedTask.id,
 		);
 
 		if (taskIndex !== -1) {
@@ -361,7 +384,7 @@ export class ProjectViewComponent extends TwoColumnViewBase<string> {
 		} else {
 			// 否则，只更新过滤列表中的任务和渲染器
 			const filteredIndex = this.filteredTasks.findIndex(
-				(t) => t.id === updatedTask.id
+				(t) => t.id === updatedTask.id,
 			);
 			if (filteredIndex !== -1) {
 				this.filteredTasks[filteredIndex] = updatedTask;

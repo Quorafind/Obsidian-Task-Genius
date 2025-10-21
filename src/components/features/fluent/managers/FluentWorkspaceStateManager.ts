@@ -61,7 +61,7 @@ export class FluentWorkspaceStateManager extends Component {
 			viewMode: ViewMode;
 		},
 		private getCurrentFilterState: () => RootFilterState | null,
-		private getLiveFilterState: () => RootFilterState | null
+		private getLiveFilterState: () => RootFilterState | null,
 	) {
 		super();
 	}
@@ -75,9 +75,9 @@ export class FluentWorkspaceStateManager extends Component {
 
 		this.saveFilterStateToWorkspace(snapshot);
 
-		localStorage.setItem(
+		this.app.saveLocalStorage(
 			"task-genius-fluent-current-workspace",
-			snapshot.workspaceId
+			snapshot.workspaceId,
 		);
 	}
 
@@ -86,8 +86,8 @@ export class FluentWorkspaceStateManager extends Component {
 	 */
 	loadWorkspaceLayout(): string | null {
 		// Load current workspace from localStorage
-		const savedCurrentWorkspace = localStorage.getItem(
-			"task-genius-fluent-current-workspace"
+		const savedCurrentWorkspace = this.app.loadLocalStorage(
+			"task-genius-fluent-current-workspace",
 		);
 
 		if (savedCurrentWorkspace) {
@@ -217,19 +217,19 @@ export class FluentWorkspaceStateManager extends Component {
 					console.log("[FluentWorkspace] overrides saved quietly", {
 						workspaceId,
 						viewId,
-					})
+					}),
 				)
 				.catch((e) => {
 					console.error(
 						"[FluentWorkspace] failed to save overrides",
-						e
+						e,
 					);
 					new Notice(
-						"Failed to save workspace state. Recent changes may be lost."
+						"Failed to save workspace state. Recent changes may be lost.",
 					);
 				});
 		},
-		500
+		500,
 	);
 
 	/**
@@ -284,31 +284,25 @@ export class FluentWorkspaceStateManager extends Component {
 			effectiveSettings.fluentActiveViewId = activeViewId;
 		}
 
-		console.log(
-			"[FluentWorkspace] saveFilterStateImmediately",
-			{
-				workspaceId,
-				viewId,
-				activeViewId,
-			}
-		);
+		console.log("[FluentWorkspace] saveFilterStateImmediately", {
+			workspaceId,
+			viewId,
+			activeViewId,
+		});
 
 		try {
 			await this.plugin.workspaceManager.saveOverridesQuietly(
 				workspaceId,
-				effectiveSettings
+				effectiveSettings,
 			);
-			console.log(
-				"[FluentWorkspace] immediate save completed",
-				{ workspaceId, viewId }
-			);
+			console.log("[FluentWorkspace] immediate save completed", {
+				workspaceId,
+				viewId,
+			});
 		} catch (e) {
-			console.error(
-				"[FluentWorkspace] immediate save failed",
-				e
-			);
+			console.error("[FluentWorkspace] immediate save failed", e);
 			new Notice(
-				"Failed to save workspace state. Recent changes may be lost."
+				"Failed to save workspace state. Recent changes may be lost.",
 			);
 		}
 	}
@@ -384,14 +378,16 @@ export class FluentWorkspaceStateManager extends Component {
 	 * Get saved workspace ID from localStorage
 	 */
 	getSavedWorkspaceId(): string | null {
-		return localStorage.getItem("task-genius-fluent-current-workspace");
+		return this.app.loadLocalStorage(
+			"task-genius-fluent-current-workspace",
+		);
 	}
 
 	/**
 	 * Clear workspace state from localStorage
 	 */
 	clearWorkspaceState(): void {
-		localStorage.removeItem("task-genius-fluent-current-workspace");
+		this.app.saveLocalStorage("task-genius-fluent-current-workspace", null);
 	}
 
 	/**

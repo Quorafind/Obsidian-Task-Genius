@@ -364,6 +364,9 @@ export default class TaskProgressBarPlugin extends Plugin {
 				);
 			}
 
+			// Check if user upgraded from intermediate version and show onboarding
+			await this.checkMigrationAndMaybeShowOnboarding();
+
 			// Check and show onboarding for first-time users
 			this.checkAndShowOnboarding();
 
@@ -1757,6 +1760,76 @@ export default class TaskProgressBarPlugin extends Plugin {
 		timelineLeaves.forEach((leaf) => leaf.detach());
 		const changelogLeaves = workspace.getLeavesOfType(CHANGELOG_VIEW_TYPE);
 		changelogLeaves.forEach((leaf) => leaf.detach());
+	}
+
+	/**
+	 * Compare two semantic version strings
+	 * Returns: -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
+	 */
+	private compareVersions(v1: string, v2: string): number {
+		if (v1 === v2) return 0;
+
+		const v1Parts = v1.split(".").map((n) => parseInt(n, 10) || 0);
+		const v2Parts = v2.split(".").map((n) => parseInt(n, 10) || 0);
+
+		const maxLength = Math.max(v1Parts.length, v2Parts.length);
+
+		for (let i = 0; i < maxLength; i++) {
+			const p1 = v1Parts[i] || 0;
+			const p2 = v2Parts[i] || 0;
+
+			if (p1 < p2) return -1;
+			if (p1 > p2) return 1;
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Check if user upgraded from 9.8.14 < version < 9.9.0 and show onboarding
+	 * This ensures users who upgraded from intermediate versions see the setup guide
+	 */
+	private async checkMigrationAndMaybeShowOnboarding(): Promise<void> {
+		try {
+			// Get version info from VersionManager
+			const versionResult =
+				await this.versionManager.checkVersionChange();
+			const previousVersion = versionResult.versionInfo.previous;
+
+			// Get last version from changelog settings
+			const lastVersion = this.settings.changelog?.lastVersion || "";
+
+			// Get current version
+			const currentVersion = this.manifest?.version;
+			if (!currentVersion) {
+				return;
+			}
+
+			// Check if user upgraded from >9.8.14 and <9.9.0
+			// AND hasn't seen the 9.9.0 onboarding yet
+			if (
+				previousVersion &&
+				this.compareVersions(previousVersion, "9.8.14") > 0 &&
+				this.compareVersions(previousVersion, "9.9.0") < 0 &&
+				lastVersion !== "9.9.0"
+			) {
+				console.log(
+					`[TG] Migration detected: ${previousVersion} -> ${currentVersion}, opening onboarding`,
+				);
+
+				// Directly open onboarding view (same pattern as maybeShowChangelog)
+				this.openOnboardingView();
+
+				// Mark as shown by updating lastVersion
+				this.settings.changelog.lastVersion = currentVersion;
+				await this.saveSettings();
+			}
+		} catch (error) {
+			console.error(
+				"[TG] Failed to check migration onboarding:",
+				error,
+			);
+		}
 	}
 
 	private maybeShowChangelog(): void {

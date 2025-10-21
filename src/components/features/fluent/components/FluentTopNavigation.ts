@@ -5,6 +5,7 @@ import {
 	SearchComponent,
 	Platform,
 	Component,
+	TFile,
 } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
@@ -90,10 +91,25 @@ export class TopNavigation extends Component {
 
 			this.notificationCount = tasks.filter((task: Task) => {
 				if (task.completed) return false;
-				const dueDate = task.metadata?.dueDate
-					? new Date(task.metadata.dueDate)
-					: null;
-				return dueDate && dueDate <= today;
+
+				// Only include tasks with dueDate or scheduledDate
+				const dueDate = task.metadata?.dueDate;
+				const scheduledDate = task.metadata?.scheduledDate;
+
+				if (!dueDate && !scheduledDate) return false;
+
+				// Check if either date is overdue
+				if (dueDate) {
+					const dueDateObj = new Date(dueDate);
+					if (dueDateObj < today) return true;
+				}
+
+				if (scheduledDate) {
+					const scheduledDateObj = new Date(scheduledDate);
+					if (scheduledDateObj < today) return true;
+				}
+
+				return false;
 			}).length;
 
 			this.updateNotificationBadge();
@@ -232,15 +248,28 @@ export class TopNavigation extends Component {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-		const overdueTasks = tasks
-			.filter((task: Task) => {
-				if (task.completed) return false;
-				const dueDate = task.metadata?.dueDate
-					? new Date(task.metadata.dueDate)
-					: null;
-				return dueDate && dueDate <= today;
-			})
-			.slice(0, 10);
+		const overdueTasks = tasks.filter((task: Task) => {
+			if (task.completed) return false;
+
+			// Only include tasks with dueDate or scheduledDate
+			const dueDate = task.metadata?.dueDate;
+			const scheduledDate = task.metadata?.scheduledDate;
+
+			if (!dueDate && !scheduledDate) return false;
+
+			// Check if either date is overdue
+			if (dueDate) {
+				const dueDateObj = new Date(dueDate);
+				if (dueDateObj < today) return true;
+			}
+
+			if (scheduledDate) {
+				const scheduledDateObj = new Date(scheduledDate);
+				if (scheduledDateObj < today) return true;
+			}
+
+			return false;
+		});
 
 		if (overdueTasks.length === 0) {
 			menu.addItem((item) => {
@@ -255,22 +284,30 @@ export class TopNavigation extends Component {
 
 			menu.addSeparator();
 
-			overdueTasks.forEach((task) => {
+			overdueTasks.slice(0, 10).forEach((task) => {
 				menu.addItem((item) => {
 					item.setTitle(task.content || t("Untitled task"))
 						.setIcon("alert-circle")
-						.onClick(() => {
-							new Notice(
-								t("Task: {{content}}", {
-									content: task.content || "",
-								}),
-							);
+						.onClick(async () => {
+							await this.navigateToTask(task);
 						});
 				});
 			});
 		}
 
 		menu.showAtMouseEvent(event);
+	}
+
+	private async navigateToTask(task: Task): Promise<void> {
+		const file = this.plugin.app.vault.getFileByPath(task.filePath);
+		if (!(file instanceof TFile)) {
+			new Notice(t("Task file not found"));
+			return;
+		}
+		const leaf = this.plugin.app.workspace.getLeaf(false);
+		await leaf.openFile(file, {
+			eState: { line: task.line },
+		});
 	}
 
 	private updateNotificationBadge() {

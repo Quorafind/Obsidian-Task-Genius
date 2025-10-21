@@ -14,6 +14,7 @@ import {
 import { moment } from "obsidian";
 import { processDateTemplates } from "@/utils/file/file-operations";
 import { FileSuggest } from "@/components/ui/inputs/AutoComplete";
+import { DatePickerModal } from "@/components/ui/date-picker/DatePickerModal";
 
 /**
  * Minimal Quick Capture Modal extending the base class
@@ -413,7 +414,32 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 			item.setTitle(t("Choose date..."));
 			item.setIcon("calendar-days");
 			item.onClick(() => {
-				// TODO: Implement full date picker integration
+				// Open full date picker modal
+				const datePickerModal = new DatePickerModal(
+					this.app,
+					this.plugin,
+					this.taskMetadata.dueDate
+						? moment(this.taskMetadata.dueDate).format("YYYY-MM-DD")
+						: undefined,
+					"📅"
+				);
+
+				datePickerModal.onDateSelected = (selectedDate: string | null) => {
+					if (selectedDate) {
+						this.taskMetadata.dueDate = moment(selectedDate).toDate();
+						this.updateButtonState(this.dateButton!, true);
+
+						// If called from suggest, replace the ~ with date text
+						if (cursor && this.markdownEditor) {
+							this.replaceAtCursor(
+								cursor,
+								this.formatDate(this.taskMetadata.dueDate),
+							);
+						}
+					}
+				};
+
+				datePickerModal.open();
 			});
 		});
 

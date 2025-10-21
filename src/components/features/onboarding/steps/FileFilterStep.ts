@@ -78,8 +78,7 @@ export class FileFilterStep {
 						await plugin.saveSettings();
 						// Re-render to show/hide configuration
 						this.render(
-							container.parentElement
-								?.previousElementSibling as HTMLElement,
+							container.parentElement as HTMLElement,
 							container.parentElement
 								?.parentElement as HTMLElement,
 							{} as OnboardingController,

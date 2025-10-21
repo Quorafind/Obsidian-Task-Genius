@@ -1,3 +1,4 @@
+import { App } from "obsidian";
 import { TaskTimerSettings } from "../common/setting-definition";
 
 /**
@@ -17,7 +18,7 @@ export interface TimerState {
 	filePath: string;
 	blockId: string;
 	segments: TimeSegment[]; // Array of time segments
-	status: 'idle' | 'running' | 'paused';
+	status: "idle" | "running" | "paused";
 	createdAt: number;
 	// Legacy fields for backward compatibility
 	legacyStartTime?: number;
@@ -35,7 +36,7 @@ export interface LegacyTimerState {
 	startTime: number;
 	pausedTime?: number;
 	totalPausedDuration: number;
-	status: 'idle' | 'running' | 'paused';
+	status: "idle" | "running" | "paused";
 	createdAt: number;
 }
 
@@ -59,7 +60,9 @@ export class TaskTimerManager {
 	public generateBlockId(prefix?: string): string {
 		const actualPrefix = prefix || this.settings.blockRefPrefix;
 		const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
-		const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+		const random = Math.floor(Math.random() * 10000)
+			.toString()
+			.padStart(4, "0");
 		return `${actualPrefix}-${timestamp}-${random}`;
 	}
 
@@ -81,24 +84,30 @@ export class TaskTimerManager {
 	 */
 	startTimer(filePath: string, existingBlockId?: string): string {
 		try {
-			console.log(`[TaskTimerManager] Starting timer for file: ${filePath}, blockId: ${existingBlockId || 'new'}`);
-			
+			console.log(
+				`[TaskTimerManager] Starting timer for file: ${filePath}, blockId: ${existingBlockId || "new"}`,
+			);
+
 			const blockId = existingBlockId || this.generateBlockId();
 			const taskId = this.getStorageKey(filePath, blockId);
 			const now = Date.now();
 
 			if (!blockId) {
-				console.error("[TaskTimerManager] Failed to generate or use block ID");
+				console.error(
+					"[TaskTimerManager] Failed to generate or use block ID",
+				);
 				throw new Error("Block ID generation failed");
 			}
 
 			// Check if timer already exists
 			const existingTimer = this.getTimerState(taskId);
-			
+
 			if (existingTimer) {
-				console.log(`[TaskTimerManager] Found existing timer with status: ${existingTimer.status}`);
+				console.log(
+					`[TaskTimerManager] Found existing timer with status: ${existingTimer.status}`,
+				);
 				// Resume existing timer
-				if (existingTimer.status === 'paused') {
+				if (existingTimer.status === "paused") {
 					this.resumeTimer(taskId);
 				}
 				return blockId;
@@ -109,26 +118,41 @@ export class TaskTimerManager {
 				taskId,
 				filePath,
 				blockId,
-				segments: [{
-					startTime: now
-				}],
-				status: 'running',
-				createdAt: now
+				segments: [
+					{
+						startTime: now,
+					},
+				],
+				status: "running",
+				createdAt: now,
 			};
 
 			// Save timer state
 			try {
-				localStorage.setItem(taskId, JSON.stringify(timerState));
+				((window as any).app as App).saveLocalStorage(
+					taskId,
+					JSON.stringify(timerState),
+				);
 				this.addToActiveList(taskId);
-				console.log(`[TaskTimerManager] Successfully created new timer: ${taskId}`);
+				console.log(
+					`[TaskTimerManager] Successfully created new timer: ${taskId}`,
+				);
 			} catch (storageError) {
-				console.error("[TaskTimerManager] Failed to save timer to localStorage:", storageError);
-				throw new Error("Failed to save timer state - localStorage may be full or unavailable");
+				console.error(
+					"[TaskTimerManager] Failed to save timer to localStorage:",
+					storageError,
+				);
+				throw new Error(
+					"Failed to save timer state - localStorage may be full or unavailable",
+				);
 			}
 
 			return blockId;
 		} catch (error) {
-			console.error("[TaskTimerManager] Critical error starting timer:", error);
+			console.error(
+				"[TaskTimerManager] Critical error starting timer:",
+				error,
+			);
 			throw error; // Re-throw to let caller handle
 		}
 	}
@@ -139,22 +163,26 @@ export class TaskTimerManager {
 	 */
 	pauseTimer(taskId: string): void {
 		const timerState = this.getTimerState(taskId);
-		if (!timerState || timerState.status !== 'running') {
+		if (!timerState || timerState.status !== "running") {
 			return;
 		}
 
 		const now = Date.now();
-		
+
 		// Close the current segment
-		const currentSegment = timerState.segments[timerState.segments.length - 1];
+		const currentSegment =
+			timerState.segments[timerState.segments.length - 1];
 		if (currentSegment && !currentSegment.endTime) {
 			currentSegment.endTime = now;
 			currentSegment.duration = now - currentSegment.startTime;
 		}
 
-		timerState.status = 'paused';
+		timerState.status = "paused";
 
-		localStorage.setItem(taskId, JSON.stringify(timerState));
+		(window as any).app.saveLocalStorage(
+			taskId,
+			JSON.stringify(timerState),
+		);
 	}
 
 	/**
@@ -163,20 +191,23 @@ export class TaskTimerManager {
 	 */
 	resumeTimer(taskId: string): void {
 		const timerState = this.getTimerState(taskId);
-		if (!timerState || timerState.status !== 'paused') {
+		if (!timerState || timerState.status !== "paused") {
 			return;
 		}
 
 		const now = Date.now();
-		
+
 		// Create a new segment for the resumed work
 		timerState.segments.push({
-			startTime: now
+			startTime: now,
 		});
-		
-		timerState.status = 'running';
 
-		localStorage.setItem(taskId, JSON.stringify(timerState));
+		timerState.status = "running";
+
+		(window as any).app.saveLocalStorage(
+			taskId,
+			JSON.stringify(timerState),
+		);
 	}
 
 	/**
@@ -190,14 +221,19 @@ export class TaskTimerManager {
 		}
 
 		const now = Date.now();
-		
-		// Clear all segments and start fresh
-		timerState.segments = [{
-			startTime: now
-		}];
-		timerState.status = 'running';
 
-		localStorage.setItem(taskId, JSON.stringify(timerState));
+		// Clear all segments and start fresh
+		timerState.segments = [
+			{
+				startTime: now,
+			},
+		];
+		timerState.status = "running";
+
+		(window as any).app.saveLocalStorage(
+			taskId,
+			JSON.stringify(timerState),
+		);
 	}
 
 	/**
@@ -208,18 +244,21 @@ export class TaskTimerManager {
 	completeTimer(taskId: string): string {
 		try {
 			console.log(`[TaskTimerManager] Completing timer: ${taskId}`);
-			
+
 			const timerState = this.getTimerState(taskId);
 			if (!timerState) {
-				console.warn(`[TaskTimerManager] Timer not found for completion: ${taskId}`);
+				console.warn(
+					`[TaskTimerManager] Timer not found for completion: ${taskId}`,
+				);
 				return "";
 			}
 
 			const now = Date.now();
-			
+
 			// Close the current segment if running
-			if (timerState.status === 'running') {
-				const currentSegment = timerState.segments[timerState.segments.length - 1];
+			if (timerState.status === "running") {
+				const currentSegment =
+					timerState.segments[timerState.segments.length - 1];
 				if (currentSegment && !currentSegment.endTime) {
 					currentSegment.endTime = now;
 					currentSegment.duration = now - currentSegment.startTime;
@@ -228,29 +267,43 @@ export class TaskTimerManager {
 
 			// Calculate total duration from all segments
 			const totalDuration = this.calculateTotalDuration(timerState);
-			console.log(`[TaskTimerManager] Total duration from ${timerState.segments.length} segments: ${totalDuration}ms`);
+			console.log(
+				`[TaskTimerManager] Total duration from ${timerState.segments.length} segments: ${totalDuration}ms`,
+			);
 
 			// Validate duration
 			if (totalDuration < 0) {
-				console.error(`[TaskTimerManager] Invalid duration calculated: ${totalDuration}ms`);
+				console.error(
+					`[TaskTimerManager] Invalid duration calculated: ${totalDuration}ms`,
+				);
 				return this.formatDuration(0);
 			}
 
 			// Remove from storage
 			try {
 				this.removeTimer(taskId);
-				console.log(`[TaskTimerManager] Successfully removed completed timer from storage`);
+				console.log(
+					`[TaskTimerManager] Successfully removed completed timer from storage`,
+				);
 			} catch (removalError) {
-				console.error("[TaskTimerManager] Failed to remove timer from storage:", removalError);
+				console.error(
+					"[TaskTimerManager] Failed to remove timer from storage:",
+					removalError,
+				);
 				// Continue anyway - we can still return the duration
 			}
 
 			// Format and return duration
 			const formattedDuration = this.formatDuration(totalDuration);
-			console.log(`[TaskTimerManager] Timer completed successfully, duration: ${formattedDuration}`);
+			console.log(
+				`[TaskTimerManager] Timer completed successfully, duration: ${formattedDuration}`,
+			);
 			return formattedDuration;
 		} catch (error) {
-			console.error("[TaskTimerManager] Critical error completing timer:", error);
+			console.error(
+				"[TaskTimerManager] Critical error completing timer:",
+				error,
+			);
 			// Return empty string to prevent crashes, but log the issue
 			return "";
 		}
@@ -263,38 +316,54 @@ export class TaskTimerManager {
 	 */
 	getTimerState(taskId: string): TimerState | null {
 		try {
-			const stored = localStorage.getItem(taskId);
+			const stored = (window as any).app.localStorage(taskId);
 			if (!stored) {
 				return null;
 			}
 
 			const parsed = JSON.parse(stored);
-			
+
 			// Check if this is a legacy format that needs migration
 			if (this.isLegacyFormat(parsed)) {
-				console.log(`[TaskTimerManager] Migrating legacy timer state for ${taskId}`);
-				const migrated = this.migrateLegacyState(parsed as LegacyTimerState);
+				console.log(
+					`[TaskTimerManager] Migrating legacy timer state for ${taskId}`,
+				);
+				const migrated = this.migrateLegacyState(
+					parsed as LegacyTimerState,
+				);
 				// Save migrated state
-				localStorage.setItem(taskId, JSON.stringify(migrated));
+				(window as any).app.saveLocalStorage(
+					taskId,
+					JSON.stringify(migrated),
+				);
 				return migrated;
 			}
-			
+
 			// Validate the parsed state structure
 			if (!this.validateTimerState(parsed)) {
-				console.error(`[TaskTimerManager] Invalid timer state structure for ${taskId}:`, parsed);
+				console.error(
+					`[TaskTimerManager] Invalid timer state structure for ${taskId}:`,
+					parsed,
+				);
 				// Clean up corrupted data
-				localStorage.removeItem(taskId);
+				(window as any).app.saveLocalStorage(taskId, null);
 				return null;
 			}
-			
+
 			return parsed as TimerState;
 		} catch (error) {
-			console.error(`[TaskTimerManager] Error retrieving timer state for ${taskId}:`, error);
+			console.error(
+				`[TaskTimerManager] Error retrieving timer state for ${taskId}:`,
+				error,
+			);
 			// Clean up corrupted data
 			try {
-				localStorage.removeItem(taskId);
+				(window as any).app.saveLocalStorage(taskId, null);
 			} catch (cleanupError) {
-				console.error("[TaskTimerManager] Failed to clean up corrupted timer data:", cleanupError);
+				console.error(
+					"[TaskTimerManager] Failed to clean up corrupted timer data:",
+					cleanupError,
+				);
 			}
 			return null;
 		}
@@ -308,9 +377,9 @@ export class TaskTimerManager {
 	private isLegacyFormat(state: any): boolean {
 		return (
 			state &&
-			typeof state.startTime === 'number' &&
+			typeof state.startTime === "number" &&
 			!state.segments &&
-			typeof state.totalPausedDuration === 'number'
+			typeof state.totalPausedDuration === "number"
 		);
 	}
 
@@ -321,22 +390,25 @@ export class TaskTimerManager {
 	 */
 	private migrateLegacyState(legacy: LegacyTimerState): TimerState {
 		const segments: TimeSegment[] = [];
-		
+
 		// Create segment from legacy data
-		if (legacy.status === 'running') {
+		if (legacy.status === "running") {
 			// Running timer - create an open segment
 			segments.push({
-				startTime: legacy.startTime + legacy.totalPausedDuration
+				startTime: legacy.startTime + legacy.totalPausedDuration,
 			});
-		} else if (legacy.status === 'paused' && legacy.pausedTime) {
+		} else if (legacy.status === "paused" && legacy.pausedTime) {
 			// Paused timer - create a closed segment
 			segments.push({
 				startTime: legacy.startTime + legacy.totalPausedDuration,
 				endTime: legacy.pausedTime,
-				duration: legacy.pausedTime - legacy.startTime - legacy.totalPausedDuration
+				duration:
+					legacy.pausedTime -
+					legacy.startTime -
+					legacy.totalPausedDuration,
 			});
 		}
-		
+
 		return {
 			taskId: legacy.taskId,
 			filePath: legacy.filePath,
@@ -347,7 +419,7 @@ export class TaskTimerManager {
 			// Keep legacy fields for reference
 			legacyStartTime: legacy.startTime,
 			legacyPausedTime: legacy.pausedTime,
-			legacyTotalPausedDuration: legacy.totalPausedDuration
+			legacyTotalPausedDuration: legacy.totalPausedDuration,
 		};
 	}
 
@@ -359,12 +431,12 @@ export class TaskTimerManager {
 	private validateTimerState(state: any): state is TimerState {
 		return (
 			state &&
-			typeof state.taskId === 'string' &&
-			typeof state.filePath === 'string' &&
-			typeof state.blockId === 'string' &&
+			typeof state.taskId === "string" &&
+			typeof state.filePath === "string" &&
+			typeof state.blockId === "string" &&
 			Array.isArray(state.segments) &&
-			typeof state.createdAt === 'number' &&
-			['idle', 'running', 'paused'].includes(state.status)
+			typeof state.createdAt === "number" &&
+			["idle", "running", "paused"].includes(state.status)
 		);
 	}
 
@@ -395,7 +467,10 @@ export class TaskTimerManager {
 	 * @param blockId Block ID
 	 * @returns Timer state or null
 	 */
-	getTimerByFileAndBlock(filePath: string, blockId: string): TimerState | null {
+	getTimerByFileAndBlock(
+		filePath: string,
+		blockId: string,
+	): TimerState | null {
 		const taskId = this.getStorageKey(filePath, blockId);
 		return this.getTimerState(taskId);
 	}
@@ -405,7 +480,7 @@ export class TaskTimerManager {
 	 * @param taskId Timer task ID
 	 */
 	removeTimer(taskId: string): void {
-		localStorage.removeItem(taskId);
+		(window as any).app.saveLocalStorage(taskId, null);
 		this.removeFromActiveList(taskId);
 	}
 
@@ -416,10 +491,10 @@ export class TaskTimerManager {
 	 */
 	private calculateTotalDuration(timerState: TimerState): number {
 		const now = Date.now();
-		
+
 		return timerState.segments.reduce((total, segment) => {
 			let segmentDuration: number;
-			
+
 			if (segment.duration) {
 				// Use cached duration if available
 				segmentDuration = segment.duration;
@@ -430,7 +505,7 @@ export class TaskTimerManager {
 				// Calculate duration for running segment
 				segmentDuration = now - segment.startTime;
 			}
-			
+
 			return total + segmentDuration;
 		}, 0);
 	}
@@ -492,7 +567,7 @@ export class TaskTimerManager {
 
 		// Use template format from settings
 		let template = this.settings.timeFormat;
-		
+
 		// Replace placeholders
 		template = template.replace("{h}", hours.toString());
 		template = template.replace("{m}", remainingMinutes.toString());
@@ -503,7 +578,7 @@ export class TaskTimerManager {
 		// Use word boundaries to avoid matching 10hrs, 20mins etc.
 		template = template.replace(/\b0hrs\b/g, "");
 		template = template.replace(/\b0mins\b/g, "");
-		
+
 		// Clean up leading/trailing spaces and multiple spaces
 		template = template.replace(/\s+/g, " ").trim();
 
@@ -515,7 +590,9 @@ export class TaskTimerManager {
 	 * @returns Array of active timer task IDs
 	 */
 	private getActiveList(): string[] {
-		const stored = localStorage.getItem(this.TIMER_LIST_KEY);
+		const stored = (window as any).app.loadLocalStorage(
+			this.TIMER_LIST_KEY,
+		);
 		if (!stored) {
 			return [];
 		}
@@ -536,7 +613,10 @@ export class TaskTimerManager {
 		const activeList = this.getActiveList();
 		if (!activeList.includes(taskId)) {
 			activeList.push(taskId);
-			localStorage.setItem(this.TIMER_LIST_KEY, JSON.stringify(activeList));
+			(window as any).app.saveLocalStorage(
+				this.TIMER_LIST_KEY,
+				JSON.stringify(activeList),
+			);
 		}
 	}
 
@@ -546,8 +626,11 @@ export class TaskTimerManager {
 	 */
 	private removeFromActiveList(taskId: string): void {
 		const activeList = this.getActiveList();
-		const filtered = activeList.filter(id => id !== taskId);
-		localStorage.setItem(this.TIMER_LIST_KEY, JSON.stringify(filtered));
+		const filtered = activeList.filter((id) => id !== taskId);
+		(window as any).app.saveLocalStorage(
+			this.TIMER_LIST_KEY,
+			JSON.stringify(filtered),
+		);
 	}
 
 	/**
