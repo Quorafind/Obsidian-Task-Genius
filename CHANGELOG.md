@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [9.9.1](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.0...9.9.1) (2025-10-21)
+
+### Refactors
+
+* implement filter notice and remove unused code ([b566533](https://github.com/Quorafind/Obsidian-Task-Genius/commit/b566533))
+* **storage:** migrate from localStorage to Obsidian app storage API ([01bbd43](https://github.com/Quorafind/Obsidian-Task-Genius/commit/01bbd43))
+
+### Styles
+
+* **fluent:** add responsive tab text hiding for narrow views ([a1fc6b6](https://github.com/Quorafind/Obsidian-Task-Genius/commit/a1fc6b6))
+
 ## [9.9.0](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.14...9.9.0) (2025-10-21)
 
 ### Shinny new things
