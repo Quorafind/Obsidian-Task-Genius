@@ -2,7 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-
 ## [9.9.0](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.14...9.9.0) (2025-10-21)
 
 ### Features
@@ -83,13 +82,13 @@ All notable changes to this project will be documented in this file.
 * **quick-capture:** migrate to QuickCaptureModalWithSwitch and improve UI ([ab8af59](https://github.com/Quorafind/Obsidian-Task-Genius/commit/ab8af59))
 * **bases:** simplify view registration and upgrade to Obsidian 1.10 ([5583f46](https://github.com/Quorafind/Obsidian-Task-Genius/commit/5583f46))
 * **fluent:** extract fluent settings and reorganize file structure ([791f2cd](https://github.com/Quorafind/Obsidian-Task-Genius/commit/791f2cd))
-* **fluent:** migrate experimental v2 to production fluent structure ([aaa4ff4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/aaa4ff4))
+* **fluent:** migrate experimental fluent to production fluent structure ([aaa4ff4](https://github.com/Quorafind/Obsidian-Task-Genius/commit/aaa4ff4))
 * **onboarding:** decompose fluent onboarding into progressive steps ([1814877](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1814877))
 * **onboarding:** integrate mode selection into intro step ([055ba03](https://github.com/Quorafind/Obsidian-Task-Genius/commit/055ba03))
 * **onboarding:** decompose monolithic modal into component architecture ([8f5daeb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8f5daeb))
-* **v2:** decompose TaskViewV2 into stateless manager classes ([68247f0](https://github.com/Quorafind/Obsidian-Task-Genius/commit/68247f0))
+* **fluent:** decompose fluent task view into stateless manager classes ([68247f0](https://github.com/Quorafind/Obsidian-Task-Genius/commit/68247f0))
 * **plugin:** simplify deferred workspace leaves loading ([498b6dc](https://github.com/Quorafind/Obsidian-Task-Genius/commit/498b6dc))
-* **v2:** rename V2 interface to Fluent and simplify command names ([c096c6c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c096c6c))
+* **fluent:** rename V2 interface to Fluent and simplify command names ([c096c6c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/c096c6c))
 * **workspace:** make search query ephemeral across workspace switches ([adc7e3e](https://github.com/Quorafind/Obsidian-Task-Genius/commit/adc7e3e))
 * **fluent:** streamline filter panel integration and fix view mode initialization ([846d3bb](https://github.com/Quorafind/Obsidian-Task-Genius/commit/846d3bb))
 
@@ -102,10 +101,6 @@ All notable changes to this project will be documented in this file.
 
 * improve CSS formatting and remove redundant type annotations ([7516261](https://github.com/Quorafind/Obsidian-Task-Genius/commit/7516261))
 * **onboarding:** improve component preview layout ([1a09c39](https://github.com/Quorafind/Obsidian-Task-Genius/commit/1a09c39))
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
 
 
 ## [9.8.14](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.13...9.8.14) (2025-09-19)
