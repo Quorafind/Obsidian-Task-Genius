@@ -20,7 +20,7 @@ let globalCache: GlobalAutoCompleteCache | null = null;
 const CACHE_DURATION = 30000; // 30 seconds
 
 // Helper function to get cached data
-async function getCachedData(
+export async function getCachedData(
 	plugin: TaskProgressBarPlugin,
 	forceRefresh: boolean = false
 ): Promise<GlobalAutoCompleteCache> {

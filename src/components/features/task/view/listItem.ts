@@ -198,7 +198,9 @@ export class TaskListItemComponent extends Component {
 						// Refresh view after operation
 						// The parent view should handle this via task updates
 					},
-				);
+				).catch((error) => {
+					console.error("Failed to show bulk operations menu:", error);
+				});
 				return;
 			}
 

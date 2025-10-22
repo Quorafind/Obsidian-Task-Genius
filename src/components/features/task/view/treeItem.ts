@@ -209,7 +209,9 @@ export class TaskTreeItemComponent extends Component {
 					() => {
 						// Optionally refresh the view after bulk operation
 					},
-				);
+				).catch((error) => {
+					console.error("Failed to show bulk operations menu:", error);
+				});
 				return;
 			}
 

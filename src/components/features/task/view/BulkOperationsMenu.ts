@@ -15,17 +15,18 @@ import type { UpdateTaskArgs } from "@/dataflow/api/WriteAPI";
 import { BulkDatePickerModal } from "@/components/ui/date-picker/BulkDatePickerModal";
 import { BulkDateOffsetModal } from "@/components/ui/date-picker/BulkDateOffsetModal";
 import { addDays } from "date-fns";
+import { getCachedData } from "@/components/ui/inputs/AutoComplete";
 
 /**
  * Create and show bulk operations menu
  */
-export function showBulkOperationsMenu(
+export async function showBulkOperationsMenu(
 	event: MouseEvent,
 	app: App,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
 	onOperationComplete: () => void,
-): void {
+): Promise<void> {
 	const menu = new Menu();
 	const selectedCount = selectionManager.getSelectedCount();
 
@@ -58,7 +59,7 @@ export function showBulkOperationsMenu(
 	addBulkSetPriorityMenu(menu, plugin, selectionManager, onOperationComplete);
 
 	// Bulk move to project
-	addBulkMoveToProjectMenu(
+	await addBulkMoveToProjectMenu(
 		menu,
 		plugin,
 		selectionManager,
@@ -337,19 +338,19 @@ function addBulkSetPriorityMenu(
 /**
  * Add bulk move to project submenu
  */
-function addBulkMoveToProjectMenu(
+async function addBulkMoveToProjectMenu(
 	menu: Menu,
 	plugin: TaskProgressBarPlugin,
 	selectionManager: TaskSelectionManager,
 	onOperationComplete: () => void,
-): void {
+): Promise<void> {
+	// Get all projects from cached data
+	const projects = await getProjectList(plugin);
+
 	menu.addItem((item) => {
 		item.setIcon("folder");
 		item.setTitle(t("Bulk move to project"));
 		const submenu = item.setSubmenu();
-
-		// Get all projects from settings
-		const projects = getProjectList(plugin);
 
 		if (projects.length === 0) {
 			submenu.addItem((subItem) => {
@@ -410,9 +411,11 @@ function addBulkDeleteMenu(
 				new ConfirmModal(plugin, {
 					title: t("Confirm bulk delete"),
 					message: t(
-						"Are you sure you want to delete {count} tasks?",
+						"Are you sure you want to delete {{count}} tasks?",
 						{
-							count: count.toString(),
+							interpolation: {
+								count: count.toString(),
+							},
 						},
 					),
 					confirmText: t("Delete"),
@@ -902,34 +905,17 @@ function showOperationResult(
 }
 
 /**
- * Get list of all projects from dataflow orchestrator
+ * Get list of all projects using cached data
  */
-function getProjectList(plugin: TaskProgressBarPlugin): string[] {
-	// Get projects from dataflow orchestrator
-	const projects = new Set<string>();
-
-	// Try to access task data through dataflow orchestrator
-	if (plugin.dataflowOrchestrator) {
-		try {
-			// Access the taskStore from dataflow orchestrator
-			const taskStore = (plugin.dataflowOrchestrator as any).taskStore;
-			if (taskStore && taskStore.getAllTasks) {
-				const allTasks = taskStore.getAllTasks();
-				for (const task of allTasks) {
-					if (task.metadata?.project) {
-						projects.add(task.metadata.project);
-					}
-				}
-			}
-		} catch (error) {
-			console.warn("Could not access tasks for project list:", error);
-		}
-	}
-
-	// Fallback: Return common project names if no tasks found
-	if (projects.size === 0) {
+async function getProjectList(
+	plugin: TaskProgressBarPlugin,
+): Promise<string[]> {
+	try {
+		// Load fresh data to ensure newly added projects appear
+		const cachedData = await getCachedData(plugin, true);
+		return cachedData.projects;
+	} catch (error) {
+		console.warn("Could not get projects from cached data:", error);
 		return [];
 	}
-
-	return Array.from(projects).sort();
 }

@@ -42,18 +42,17 @@ export class ConfirmModal extends Modal {
 		});
 
 		new ButtonComponent(buttonsContainer)
-			.setButtonText(this.params.confirmText)
-			.setCta()
+			.setButtonText(this.params.cancelText)
 			.onClick(() => {
-				this.params.onConfirm(true);
+				this.params.onConfirm(false);
 				this.close();
 			});
 
 		new ButtonComponent(buttonsContainer)
-			.setButtonText(this.params.cancelText)
+			.setButtonText(this.params.confirmText)
 			.setCta()
 			.onClick(() => {
-				this.params.onConfirm(false);
+				this.params.onConfirm(true);
 				this.close();
 			});
 	}
