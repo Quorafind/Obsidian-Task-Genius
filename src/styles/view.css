@@ -89,7 +89,9 @@
 	width: var(--size-4-9);
 	flex-shrink: 0;
 
-	transition: width 0.3s ease-in-out, flex-shrink 0.3s ease-in-out;
+	transition:
+		width 0.3s ease-in-out,
+		flex-shrink 0.3s ease-in-out;
 }
 
 .task-sidebar.collapsed .nav-item-icon {
@@ -409,12 +411,12 @@
 }
 
 .mod-left-split
-.workspace-tab-header-status-container:has(.task-genius-action-btn) {
+	.workspace-tab-header-status-container:has(.task-genius-action-btn) {
 	display: none;
 }
 
 .mod-right-split
-.workspace-tab-header-status-container:has(.task-genius-action-btn) {
+	.workspace-tab-header-status-container:has(.task-genius-action-btn) {
 	display: none;
 }
 
@@ -426,6 +428,18 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.tg-fluent-error-state {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	--icon-size: var(--size-4-12);
+	font-size: var(--font-ui-large);
+	gap: var(--size-2-2);
 }
 
 .mod-root .task-genius-tab-header {

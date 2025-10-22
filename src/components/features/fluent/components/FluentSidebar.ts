@@ -24,6 +24,7 @@ import { t } from "@/translations/helper";
 import { ViewConfigModal } from "@/components/features/task/view/modals/ViewConfigModal";
 import { TASK_SPECIFIC_VIEW_TYPE } from "@/pages/TaskSpecificView";
 import { ViewConfig, ViewFilterRule } from "@/common/setting-definition";
+import { Events, on } from "@/dataflow/events/Events";
 
 export class FluentSidebar extends Component {
 	private containerEl: HTMLElement;
@@ -74,8 +75,7 @@ export class FluentSidebar extends Component {
 		const manager = this.plugin.workspaceManager;
 		if (!manager) return true;
 		const workspaceId =
-			this.currentWorkspaceId ||
-			manager.getActiveWorkspace()?.id;
+			this.currentWorkspaceId || manager.getActiveWorkspace()?.id;
 		return !manager.isViewHidden(viewId, workspaceId);
 	}
 
@@ -168,10 +168,7 @@ export class FluentSidebar extends Component {
 
 			this.registerDomEvent(treeToggleBtn, "click", () => {
 				this.isTreeView = !this.isTreeView;
-				setIcon(
-					treeToggleBtn,
-					this.isTreeView ? "git-branch" : "list",
-				);
+				setIcon(treeToggleBtn, this.isTreeView ? "git-branch" : "list");
 				// Save preference
 				this.plugin.app.saveLocalStorage(
 					"task-genius-project-view-mode",
@@ -246,20 +243,20 @@ export class FluentSidebar extends Component {
 		this.primaryItems
 			.filter((item) => this.isViewVisible(item.id))
 			.forEach((item) => {
-			const btn = this.railEl!.createDiv({
-				cls: "fluent-rail-btn",
-				attr: { "aria-label": item.label, "data-view-id": item.id },
+				const btn = this.railEl!.createDiv({
+					cls: "fluent-rail-btn",
+					attr: { "aria-label": item.label, "data-view-id": item.id },
+				});
+				setIcon(btn, item.icon);
+				this.registerDomEvent(btn, "click", () => {
+					this.setActiveItem(item.id);
+					this.onNavigate(item.id);
+				});
+				// Add context menu handler for rail button
+				this.registerDomEvent(btn, "contextmenu", (e) => {
+					this.showViewContextMenu(e as MouseEvent, item.id);
+				});
 			});
-			setIcon(btn, item.icon);
-			this.registerDomEvent(btn, "click", () => {
-				this.setActiveItem(item.id);
-				this.onNavigate(item.id);
-			});
-			// Add context menu handler for rail button
-			this.registerDomEvent(btn, "contextmenu", (e) => {
-				this.showViewContextMenu(e as MouseEvent, item.id);
-			});
-		});
 
 		// Other view icons with overflow menu when > 5
 		if (

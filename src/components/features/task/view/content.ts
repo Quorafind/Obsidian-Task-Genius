@@ -376,9 +376,6 @@ export class ContentComponent extends Component {
 	private refreshTaskList() {
 		// Defer rendering if container is not visible yet (e.g., view hidden during init)
 		if (!this.isContainerVisible()) {
-			console.warn(
-				"ContentComponent: Cannot render: Container not visible. Queuing refresh...",
-			);
 			this.pendingForceRefresh = true;
 			if (!this.pendingVisibilityRetry) {
 				this.pendingVisibilityRetry = true;
@@ -398,9 +395,6 @@ export class ContentComponent extends Component {
 					} else {
 						this.pendingVisibilityRetry = false;
 						this.visibilityRetryCount = 0;
-						console.warn(
-							"ContentComponent: Container still not visible after retries; will wait for next trigger.",
-						);
 					}
 				};
 				tryAgain();
@@ -585,7 +579,7 @@ export class ContentComponent extends Component {
 				this.currentViewId, // Pass currentViewId
 				this.app,
 				this.plugin,
-				this.params.selectionManager // Pass selection manager
+				this.params.selectionManager, // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -646,7 +640,7 @@ export class ContentComponent extends Component {
 				childTasks,
 				taskMap,
 				this.plugin,
-				this.params.selectionManager // Pass selection manager
+				this.params.selectionManager, // Pass selection manager
 			);
 
 			// Attach event handlers
@@ -827,7 +821,7 @@ export class ContentComponent extends Component {
 				this.currentViewId,
 				this.app,
 				this.plugin,
-				this.params.selectionManager // Pass selection manager
+				this.params.selectionManager, // Pass selection manager
 			);
 			// Attach events
 			taskComponent.onTaskSelected = this.selectTask.bind(this);
@@ -941,7 +935,7 @@ export class ContentComponent extends Component {
 								childTasks,
 								taskMap,
 								this.plugin,
-								this.params.selectionManager // Pass selection manager
+								this.params.selectionManager, // Pass selection manager
 							);
 							newRoot.onTaskSelected = this.selectTask.bind(this);
 							newRoot.onTaskCompleted = (t) => {

@@ -230,6 +230,27 @@ export class FluentLayoutManager extends Component {
 			.setTooltip(t("Toggle Sidebar"))
 			.setClass("clickable-icon")
 			.onClick(() => this.toggleSidebar());
+
+		this.registerEvent(
+			this.plugin.app.workspace.on(
+				"task-genius:leaf-width-updated",
+				(width: number) => {
+					if (
+						width <= 600 &&
+						width !== 0 &&
+						!this.isSidebarCollapsed
+					) {
+						this.toggleSidebar();
+					} else if (
+						width > 600 &&
+						width !== 0 &&
+						this.isSidebarCollapsed
+					) {
+						this.toggleSidebar();
+					}
+				},
+			),
+		);
 	}
 
 	/**

@@ -1,4 +1,4 @@
-import { ItemView, Scope, WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, Scope, WorkspaceLeaf } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
 import "@/styles/fluent/fluent-main.css";
@@ -135,6 +135,17 @@ export class FluentTaskView extends ItemView {
 	 */
 	private useSideLeaves(): boolean {
 		return !!this.plugin.settings.fluentView?.useWorkspaceSideLeaves;
+	}
+
+	updateWorkspaceLeafWidth = debounce(() => {
+		this.app.workspace.trigger(
+			"task-genius:leaf-width-updated",
+			this.leaf.width,
+		);
+	}, 200);
+
+	onResize(): void {
+		this.updateWorkspaceLeafWidth();
 	}
 
 	private ensureViewModeForView(viewId: string): ViewMode {
@@ -480,21 +491,28 @@ export class FluentTaskView extends ItemView {
 				// When navigating to projects view directly, clear project selection
 				// This enables the full project overview mode
 				if (viewId === "projects") {
-					console.log("[TG] Navigating to projects overview - clearing project selection");
+					console.log(
+						"[TG] Navigating to projects overview - clearing project selection",
+					);
 					this.viewState.selectedProject = undefined;
 
 					// Clear project filter from filter state
 					try {
 						if (this.liveFilterState) {
 							const nextState = { ...this.liveFilterState };
-							nextState.filterGroups = (nextState.filterGroups || [])
+							nextState.filterGroups = (
+								nextState.filterGroups || []
+							)
 								.map((g: any) => ({
 									...g,
 									filters: (g.filters || []).filter(
 										(f: any) => f.property !== "project",
 									),
 								}))
-								.filter((g: any) => g.filters && g.filters.length > 0);
+								.filter(
+									(g: any) =>
+										g.filters && g.filters.length > 0,
+								);
 
 							this.liveFilterState = nextState as any;
 							this.currentFilterState = nextState as any;
@@ -656,6 +674,9 @@ export class FluentTaskView extends ItemView {
 		this.scope.register(null, "Escape", () => {
 			this.selectionManager.clearSelection();
 		});
+
+		// Trigger initial workspace leaf width update
+		this.updateWorkspaceLeafWidth();
 
 		console.log("[TG] Managers initialized");
 	}
@@ -856,7 +877,7 @@ export class FluentTaskView extends ItemView {
 							this.workspaceStateManager.captureFilterStateSnapshot();
 						if (snapshot) {
 							await this.workspaceStateManager.saveFilterStateImmediately(
-								snapshot
+								snapshot,
 							);
 						}
 

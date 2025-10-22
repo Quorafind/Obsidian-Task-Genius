@@ -379,6 +379,11 @@ declare module "obsidian" {
 		): EventRef;
 
 		on(
+			event: "task-genius:leaf-width-updated",
+			callback: (width: number) => void,
+		): EventRef;
+
+		on(
 			event: "task-genius:task-cache-updated",
 			callback: (cache: TaskCache) => void,
 		): EventRef;
@@ -425,6 +430,8 @@ declare module "obsidian" {
 		trigger(event: "task-genius:task-updated", task: Task): void;
 
 		trigger(event: "task-genius:task-deleted", taskId: string): void;
+
+		trigger(event: "task-genius:leaf-width-updated", width: number): void;
 
 		trigger(
 			event: "task-genius:task-cache-updated",

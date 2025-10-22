@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ## [9.9.0](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.8.14...9.9.0) (2025-10-21)
 
-### Shinny new things
+### Features
 
 - **Fluent Interface**: Brand new modern interface mode
 
