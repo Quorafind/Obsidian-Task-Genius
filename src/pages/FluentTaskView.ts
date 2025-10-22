@@ -127,7 +127,7 @@ export class FluentTaskView extends ItemView {
 	}
 
 	getIcon(): string {
-		return "layout-dashboard";
+		return "task-genius";
 	}
 
 	/**

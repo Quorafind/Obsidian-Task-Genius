@@ -241,12 +241,6 @@ export class FluentLayoutManager extends Component {
 						!this.isSidebarCollapsed
 					) {
 						this.toggleSidebar();
-					} else if (
-						width > 600 &&
-						width !== 0 &&
-						this.isSidebarCollapsed
-					) {
-						this.toggleSidebar();
 					}
 				},
 			),
