@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 
 
+## [9.9.2](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.1...9.9.2) (2025-10-23)
+
+### Features
+
+* **fluent:** add responsive sidebar auto-collapse ([d5f27b7](https://github.com/Quorafind/Obsidian-Task-Genius/commit/d5f27b7))
+
+### Bug Fixes
+
+* **fluent:** resolve filter state loading and flickering issues ([8c89618](https://github.com/Quorafind/Obsidian-Task-Genius/commit/8c89618))
+* **bulk-ops:** fix project list not showing in bulk move menu ([0f3726d](https://github.com/Quorafind/Obsidian-Task-Genius/commit/0f3726d))
+* **fluent:** remove auto-expand behavior from responsive sidebar ([9e3e95d](https://github.com/Quorafind/Obsidian-Task-Genius/commit/9e3e95d))
+
 ## [9.9.1](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.0...9.9.1) (2025-10-21)
 
 ### Refactors
