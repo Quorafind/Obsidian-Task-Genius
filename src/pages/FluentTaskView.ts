@@ -144,6 +144,67 @@ export class FluentTaskView extends ItemView {
 		);
 	}, 200);
 
+	/**
+	 * Debounced filter change handler to prevent rapid re-renders
+	 * Delay: 150ms to balance responsiveness and performance
+	 */
+	private handleFilterChanged = debounce(
+		(filterState: RootFilterState, leafId?: string) => {
+			// Only update if it's from a live filter component
+			if (
+				leafId &&
+				!leafId.startsWith("view-config-") &&
+				leafId !== "global-filter"
+			) {
+				console.log("[TG] Filter changed from live component");
+				this.liveFilterState = filterState;
+				this.currentFilterState = filterState;
+			} else if (!leafId) {
+				// No leafId means it's also a live filter change
+				console.log("[TG] Filter changed (no leafId)");
+				this.liveFilterState = filterState;
+				this.currentFilterState = filterState;
+			}
+
+			// Sync selectedProject with filter UI state (if project filter is present)
+			try {
+				const groups = filterState?.filterGroups || [];
+				const projectFilters: string[] = [];
+				for (const g of groups) {
+					for (const f of g.filters || []) {
+						if (
+							f.property === "project" &&
+							f.condition === "is" &&
+							typeof f.value === "string" &&
+							f.value.trim() !== ""
+						) {
+							projectFilters.push(f.value);
+						}
+					}
+				}
+				if (projectFilters.length > 0) {
+					this.viewState.selectedProject = projectFilters[0];
+				} else {
+					this.viewState.selectedProject = undefined;
+				}
+			} catch (e) {
+				console.warn(
+					"[TG] Failed to sync selectedProject from filter state",
+					e,
+				);
+			}
+
+			// Persist and update header UI
+			this.workspaceStateManager.saveFilterStateToWorkspace();
+			this.layoutManager.updateActionButtons();
+
+			// Apply filters and update view
+			this.filteredTasks = this.dataManager.applyFilters(this.tasks);
+			this.updateView();
+		},
+		150,
+	);
+
 	onResize(): void {
 		this.updateWorkspaceLeafWidth();
 	}
@@ -784,12 +845,11 @@ export class FluentTaskView extends ItemView {
 			(query: string) => this.actionHandlers.handleSearch(query),
 			(mode: ViewMode) => this.actionHandlers.handleViewModeChange(mode),
 			() => {
-				// Filter click - open filter modal/popover
-				// TODO: Implement filter modal
+				// Filter click callback (currently unused)
+				// Note: Filter functionality is implemented in FluentLayoutManager via addAction
 			},
 			() => {
-				// Sort click
-				// TODO: Implement sort
+				// Sort click callback (future extension point)
 			},
 			() => this.actionHandlers.handleSettingsClick(),
 		);
@@ -970,64 +1030,12 @@ export class FluentTaskView extends ItemView {
 			);
 		}
 
-		// Listen for filter change events
+		// Listen for filter change events (with debouncing to prevent flickering)
 		this.registerEvent(
 			this.app.workspace.on(
 				"task-genius:filter-changed",
 				(filterState: RootFilterState, leafId?: string) => {
-					// Only update if it's from a live filter component
-					if (
-						leafId &&
-						!leafId.startsWith("view-config-") &&
-						leafId !== "global-filter"
-					) {
-						console.log("[TG] Filter changed from live component");
-						this.liveFilterState = filterState;
-						this.currentFilterState = filterState;
-					} else if (!leafId) {
-						// No leafId means it's also a live filter change
-						console.log("[TG] Filter changed (no leafId)");
-						this.liveFilterState = filterState;
-						this.currentFilterState = filterState;
-					}
-
-					// Sync selectedProject with filter UI state (if project filter is present)
-					try {
-						const groups = filterState?.filterGroups || [];
-						const projectFilters: string[] = [];
-						for (const g of groups) {
-							for (const f of g.filters || []) {
-								if (
-									f.property === "project" &&
-									f.condition === "is" &&
-									typeof f.value === "string" &&
-									f.value.trim() !== ""
-								) {
-									projectFilters.push(f.value);
-								}
-							}
-						}
-						if (projectFilters.length > 0) {
-							this.viewState.selectedProject = projectFilters[0];
-						} else {
-							this.viewState.selectedProject = undefined;
-						}
-					} catch (e) {
-						console.warn(
-							"[TG] Failed to sync selectedProject from filter state",
-							e,
-						);
-					}
-
-					// Persist and update header UI
-					this.workspaceStateManager.saveFilterStateToWorkspace();
-					this.layoutManager.updateActionButtons();
-
-					// Apply filters and update view
-					this.filteredTasks = this.dataManager.applyFilters(
-						this.tasks,
-					);
-					this.updateView();
+					this.handleFilterChanged(filterState, leafId);
 				},
 			),
 		);

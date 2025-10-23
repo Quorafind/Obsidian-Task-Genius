@@ -604,13 +604,21 @@ export class FluentComponentManager extends Component {
 			// Set tasks on the component
 			if (typeof targetComponent.setTasks === "function") {
 				// Special handling for components that need only all tasks (single parameter)
-				// Projects overview mode (no project selected) needs all tasks to build project list
-				if (viewId === "review" || viewId === "tags" || (viewId === "projects" && !project)) {
+				// Review and tags views need all tasks to build their indices
+				if (viewId === "review" || viewId === "tags") {
 					console.log(
 						`[FluentComponent] Calling setTasks for ${viewId} with ALL tasks:`,
 						tasks.length,
 					);
 					targetComponent.setTasks(tasks);
+				} else if (viewId === "projects" && !project) {
+					// Projects overview mode: pass ALL tasks to build project index
+					// and FILTERED tasks to apply filter to project task lists
+					// This ensures: left sidebar shows all projects, right panel shows filtered tasks
+					console.log(
+						`[FluentComponent] Calling setTasks for projects with ALL tasks (${tasks.length}) and FILTERED tasks (${filteredTasks.length})`,
+					);
+					targetComponent.setTasks(tasks, filteredTasks);
 				} else {
 					// Use filtered tasks
 					let filteredTasksLocal = [...filteredTasks];

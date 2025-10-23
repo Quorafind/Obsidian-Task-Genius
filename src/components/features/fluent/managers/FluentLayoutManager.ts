@@ -564,17 +564,21 @@ export class FluentLayoutManager extends Component {
 					this.plugin,
 				);
 
-				// Set up filter state when opening
-				this.app.workspace.onLayoutReady(() => {
-					setTimeout(() => {
-						const liveFilterState = this.getLiveFilterState?.();
-						if (liveFilterState && popover.taskFilterComponent) {
-							popover.taskFilterComponent.loadFilterState(
-								liveFilterState,
-							);
-						}
-					}, 100);
-				});
+				// Set onClose callback for consistency (realtime event listeners handle the actual updates)
+				popover.onClose = (filterState) => {
+					// Realtime event listeners already handle filter changes
+					// This callback is kept for potential future extensions
+				};
+
+				// Load current filter state after popover is shown
+				setTimeout(() => {
+					const liveFilterState = this.getLiveFilterState?.();
+					if (liveFilterState && popover.taskFilterComponent) {
+						popover.taskFilterComponent.loadFilterState(
+							liveFilterState,
+						);
+					}
+				}, 100);
 
 				popover.showAtPosition({ x: e.clientX, y: e.clientY });
 			} else {
@@ -586,15 +590,15 @@ export class FluentLayoutManager extends Component {
 
 				modal.open();
 
-				// Set initial filter state
-				const liveFilterState = this.getLiveFilterState?.();
-				if (liveFilterState && modal.taskFilterComponent) {
-					setTimeout(() => {
+				// Load current filter state after modal is opened
+				setTimeout(() => {
+					const liveFilterState = this.getLiveFilterState?.();
+					if (liveFilterState && modal.taskFilterComponent) {
 						modal.taskFilterComponent.loadFilterState(
 							liveFilterState,
 						);
-					}, 100);
-				}
+					}
+				}, 100);
 			}
 		});
 

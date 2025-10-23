@@ -54,6 +54,7 @@ export class ProjectsComponent extends Component {
 	// State
 	private allTasks: Task[] = [];
 	private filteredTasks: Task[] = [];
+	private externalFilteredTasks: Task[] | null = null; // Externally filtered tasks from FluentView
 	private selectedProjects: SelectedProjects = {
 		projects: [],
 		tasks: [],
@@ -290,8 +291,9 @@ export class ProjectsComponent extends Component {
 		this.updateTgProjectPropsButton(null);
 	}
 
-	public setTasks(tasks: Task[]) {
+	public setTasks(tasks: Task[], filteredTasks?: Task[]) {
 		this.allTasks = tasks;
+		this.externalFilteredTasks = filteredTasks || null;
 		this.allTasksMap = new Map(
 			this.allTasks.map((task) => [task.id, task]),
 		);
@@ -672,6 +674,17 @@ export class ProjectsComponent extends Component {
 				const dueDateB = b.metadata.dueDate || Number.MAX_SAFE_INTEGER;
 				return dueDateA - dueDateB;
 			});
+		}
+
+		// Apply external filter if provided (from FluentView filter system)
+		// This ensures project tasks respect global filter conditions
+		if (this.externalFilteredTasks) {
+			const externalFilteredIds = new Set(
+				this.externalFilteredTasks.map((t) => t.id),
+			);
+			this.filteredTasks = this.filteredTasks.filter((task) =>
+				externalFilteredIds.has(task.id),
+			);
 		}
 
 		// Update the task list using the renderer
