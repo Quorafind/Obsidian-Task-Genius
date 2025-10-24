@@ -262,6 +262,7 @@
 	border-radius: 3px;
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
+	background-color: var(--background-secondary);
 	white-space: nowrap;
 }
 
@@ -274,15 +275,15 @@
 	align-items: center;
 	padding: 2px 6px;
 	margin-left: 4px;
-	background-color: var(--background-modifier-error);
+	background-color: var(--background-secondary);
 	border-radius: 3px;
 	font-size: var(--font-ui-small);
-	color: var(--text-error);
+	color: var(--text-normal);
 	white-space: nowrap;
 }
 
 .task-dependson:hover {
-	background-color: var(--background-modifier-error-hover);
+	/*background-color: var(--background-modifier-error-hover);*/
 	color: var(--text-error);
 }
 

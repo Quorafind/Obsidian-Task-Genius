@@ -45,7 +45,7 @@ export class TaskListItemComponent extends Component {
 
 	// Selection management
 	private selectionManager: TaskSelectionManager | null = null;
-	private isTaskSelectedState: boolean = false;
+	private isTaskSelectedState = false;
 
 	constructor(
 		private task: Task,
@@ -199,7 +199,10 @@ export class TaskListItemComponent extends Component {
 						// The parent view should handle this via task updates
 					},
 				).catch((error) => {
-					console.error("Failed to show bulk operations menu:", error);
+					console.error(
+						"Failed to show bulk operations menu:",
+						error,
+					);
 				});
 				return;
 			}

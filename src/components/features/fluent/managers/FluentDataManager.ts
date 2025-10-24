@@ -5,13 +5,15 @@ import { filterTasks } from "@/utils/task/task-filter-utils";
 import { RootFilterState } from "@/components/features/task/filter/ViewTaskFilter";
 import { isDataflowEnabled } from "@/dataflow/createDataflow";
 import { Events, on } from "@/dataflow/events/Events";
+import { sortTasks } from "@/commands/sortTaskCommands";
 
 /**
- * FluentDataManager - Stateless data loading and filtering executor
+ * FluentDataManager - Stateless data loading, filtering, and sorting executor
  *
  * Responsibilities:
  * - Load tasks from dataflow or preloaded cache (returns via callback)
  * - Apply filters to tasks (pure function, returns filtered tasks)
+ * - Apply sorting to tasks (global default first, then view-specific)
  * - Register dataflow event listeners for real-time updates
  * - Schedule and batch updates to prevent rapid re-renders
  *
@@ -171,6 +173,9 @@ export class FluentDataManager extends Component {
 			`[FluentData] Filtered ${filteredTasks.length} tasks from ${tasks.length} total`,
 		);
 
+		// Apply sorting (global default first, then view-specific)
+		filteredTasks = this.applySorting(filteredTasks, viewId);
+
 		return filteredTasks;
 	}
 
@@ -278,6 +283,39 @@ export class FluentDataManager extends Component {
 	}
 
 	/**
+	 * Apply sorting to tasks (pure function - returns sorted tasks)
+	 * Applies global default sorting first, then view-specific sorting
+	 * @param tasks - Tasks to sort
+	 * @param viewId - Current view ID
+	 * @returns Sorted tasks
+	 */
+	private applySorting(tasks: Task[], viewId: string): Task[] {
+		let result = [...tasks]; // Copy array to avoid mutation
+
+		// Get view configuration
+		const viewConfig = this.plugin.settings.viewConfiguration.find(
+			(view) => view.id === viewId,
+		);
+
+		// Collect sort criteria: global first, then view-specific
+		const globalCriteria = this.plugin.settings.sortCriteria || [];
+		const viewCriteria = viewConfig?.sortCriteria || [];
+
+		// Merge criteria: global first, then view-specific (view-specific takes precedence)
+		const mergedCriteria = [...globalCriteria, ...viewCriteria];
+
+		// Apply sorting if criteria exist
+		if (mergedCriteria.length > 0) {
+			console.log(
+				`[FluentData] Applying ${mergedCriteria.length} sort criteria to ${result.length} tasks`,
+			);
+			result = sortTasks(result, mergedCriteria, this.plugin.settings);
+		}
+
+		return result;
+	}
+
+	/**
 	 * Register dataflow event listeners for real-time updates
 	 * Notifies parent via onUpdateNeeded callback
 	 */
@@ -308,6 +346,15 @@ export class FluentDataManager extends Component {
 				this.onUpdateNeeded?.("filter-changed");
 			}
 		}, 400);
+
+		const scheduleFilterRefresh = () => {
+			if (this.isInitializing()) {
+				return;
+			}
+
+			// Re-use filter debounce so resorting happens once per burst
+			debouncedApplyFilter();
+		};
 
 		// Register dataflow event listeners
 		if (isDataflowEnabled(this.plugin)) {
@@ -385,6 +432,34 @@ export class FluentDataManager extends Component {
 					}
 				},
 			),
+		);
+
+		// Listen for view configuration changes (sort/filter updates saved from modals)
+		this.registerEvent(
+			this.plugin.app.workspace.on(
+				"task-genius:view-config-changed",
+				(payload: { reason: string; viewId?: string } | undefined) => {
+					const currentViewId = this.getCurrentViewId();
+					if (payload?.viewId && payload.viewId !== currentViewId) {
+						return;
+					}
+
+					console.log(
+						`[FluentData] View config changed (reason: ${payload?.reason ?? "unknown"})`,
+					);
+					scheduleFilterRefresh();
+				},
+			),
+		);
+
+		// Listen for global settings changes (e.g., default sort criteria updates)
+		this.registerEvent(
+			on(this.plugin.app, Events.SETTINGS_CHANGED, () => {
+				console.log(
+					"[FluentData] Settings changed event received, scheduling resort",
+				);
+				scheduleFilterRefresh();
+			}),
 		);
 	}
 
