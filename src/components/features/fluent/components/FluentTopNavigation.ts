@@ -32,7 +32,7 @@ export class TopNavigation extends Component {
 		private onSortClick: () => void,
 		private onSettingsClick: () => void,
 		availableModes?: ViewMode[],
-		private onToggleSidebar?: () => void,
+		private onToggleSidebar?: () => void
 	) {
 		super();
 		this.containerEl = containerEl;
@@ -60,14 +60,14 @@ export class TopNavigation extends Component {
 		this.registerEvent(
 			on(this.plugin.app, Events.CACHE_READY, () => {
 				this.updateNotificationCount();
-			}),
+			})
 		);
 
 		// Listen for task cache updates
 		this.registerEvent(
 			on(this.plugin.app, Events.TASK_CACHE_UPDATED, () => {
 				this.updateNotificationCount();
-			}),
+			})
 		);
 	}
 
@@ -116,7 +116,7 @@ export class TopNavigation extends Component {
 		} catch (error) {
 			console.warn(
 				"[FluentTopNavigation] Failed to update notification count:",
-				error,
+				error
 			);
 		}
 	}
@@ -180,7 +180,7 @@ export class TopNavigation extends Component {
 			badge.show();
 		}
 		this.registerDomEvent(notificationBtn, "click", (e) =>
-			this.showNotifications(e),
+			this.showNotifications(e)
 		);
 
 		// Settings button
@@ -189,7 +189,7 @@ export class TopNavigation extends Component {
 		});
 		setIcon(settingsBtn, "settings");
 		this.registerDomEvent(settingsBtn, "click", () =>
-			this.onSettingsClick(),
+			this.onSettingsClick()
 		);
 	}
 
@@ -197,7 +197,7 @@ export class TopNavigation extends Component {
 		container: HTMLElement,
 		mode: ViewMode,
 		icon: string,
-		label: string,
+		label: string
 	) {
 		const tab = container.createEl("button", {
 			cls: ["fluent-view-tab", "clickable-icon"],
@@ -228,7 +228,7 @@ export class TopNavigation extends Component {
 		});
 
 		const activeTab = this.containerEl.querySelector(
-			`[data-mode="${mode}"]`,
+			`[data-mode="${mode}"]`
 		);
 		if (activeTab) {
 			activeTab.addClass("is-active");
@@ -278,7 +278,7 @@ export class TopNavigation extends Component {
 		} else {
 			menu.addItem((item) => {
 				item.setTitle(
-					`${overdueTasks.length} overdue tasks`,
+					`${overdueTasks.length} overdue tasks`
 				).setDisabled(true);
 			});
 
@@ -312,7 +312,7 @@ export class TopNavigation extends Component {
 
 	private updateNotificationBadge() {
 		const badge = this.containerEl.querySelector(
-			".fluent-notification-badge",
+			".fluent-notification-badge"
 		);
 		if (badge instanceof HTMLElement) {
 			badge.textContent = String(this.notificationCount);
@@ -358,18 +358,25 @@ export class TopNavigation extends Component {
 					this.viewTabsContainer,
 					mode,
 					config.icon,
-					config.label,
+					config.label
 				);
 			}
 		}
 	}
 
 	public updateAvailableModes(modes: ViewMode[]) {
+		const wasEmpty = this.availableModes.length === 0;
 		this.availableModes = modes;
 
 		// Hide entire navigation if no modes available
 		if (modes.length === 0) {
 			this.containerEl.hide();
+			return;
+		}
+
+		// If transitioning from empty to non-empty, need to re-render entire UI
+		if (wasEmpty && modes.length > 0) {
+			this.render();
 			return;
 		}
 
@@ -385,7 +392,7 @@ export class TopNavigation extends Component {
 
 		// Update center section visibility (this should always be visible now since we handle empty modes above)
 		const centerSection = this.containerEl.querySelector(
-			".fluent-nav-center",
+			".fluent-nav-center"
 		) as HTMLElement;
 		if (centerSection) {
 			centerSection.show();
