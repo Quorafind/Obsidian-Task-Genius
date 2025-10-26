@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 
+## [9.9.3](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.2...9.9.3) (2025-10-26)
+
+### Features
+
+* **fluent:** add automatic sorting to data manager ([e9e8979](https://github.com/Quorafind/Obsidian-Task-Genius/commit/e9e8979))
+
+### Bug Fixes
+
+* **fluent:** resolve view mode availability and navigation rendering ([3fbdf4f](https://github.com/Quorafind/Obsidian-Task-Genius/commit/3fbdf4f))
+
 ## [9.9.2](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.1...9.9.2) (2025-10-23)
 
 ### Features
