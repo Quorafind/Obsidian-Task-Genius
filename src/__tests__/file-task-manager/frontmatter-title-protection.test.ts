@@ -71,6 +71,7 @@ describe('FileTaskManager - Frontmatter Title Protection', () => {
         templates: { enabled: false, templatePaths: [], checkTemplateMetadata: false },
         paths: { enabled: false, taskPaths: [], matchMode: 'prefix' }
       },
+      metadataMappings: [],
       fileTaskProperties: {
         contentSource: 'title',
         stripExtension: true,

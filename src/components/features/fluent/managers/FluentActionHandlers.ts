@@ -124,6 +124,13 @@ export class FluentActionHandlers extends Component {
 	}
 
 	/**
+	 * Handle editing a task directly in its source file.
+	 */
+	async handleTaskEditInFile(task: Task): Promise<void> {
+		await this.editTask(task);
+	}
+
+	/**
 	 * Toggle task completion status
 	 */
 	async toggleTaskCompletion(task: Task): Promise<void> {

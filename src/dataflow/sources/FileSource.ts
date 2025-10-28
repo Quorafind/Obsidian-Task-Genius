@@ -15,6 +15,7 @@ import type {
 	RecognitionStrategy,
 	PathRecognitionConfig,
 	TemplateRecognitionConfig,
+	MetadataMappingConfig,
 } from "@/types/file-source";
 
 import { Events, emit, Seq, on } from "../events/Events";
@@ -809,9 +810,13 @@ export class FileSource {
 	): Partial<FileSourceTaskMetadata> {
 		const config = this.config.getConfig();
 		const frontmatter = fileCache?.frontmatter || {};
+		const resolvedFrontmatter = this.applyMetadataMappings(
+			frontmatter,
+			config.metadataMappings,
+		);
 
 		// Derive status from frontmatter and eagerly map textual metadata to a symbol
-		const rawStatus = frontmatter.status ?? "";
+		const rawStatus = resolvedFrontmatter.status ?? "";
 		const toSymbol = (val: string): string => {
 			if (!val) return config.fileTaskProperties.defaultStatus;
 			// Already a single-character mark
@@ -855,20 +860,32 @@ export class FileSource {
 
 		// Extract standard task metadata
 		const metadata: Partial<FileSourceTaskMetadata> = {
-			dueDate: this.parseDate(frontmatter.dueDate || frontmatter.due),
+			dueDate: this.parseDate(
+				resolvedFrontmatter.dueDate ?? resolvedFrontmatter.due,
+			),
 			startDate: this.parseDate(
-				frontmatter.startDate || frontmatter.start,
+				resolvedFrontmatter.startDate ?? resolvedFrontmatter.start,
 			),
 			scheduledDate: this.parseDate(
-				frontmatter.scheduledDate || frontmatter.scheduled,
+				resolvedFrontmatter.scheduledDate ??
+					resolvedFrontmatter.scheduled,
 			),
+			completedDate: this.parseDate(resolvedFrontmatter.completedDate),
+			createdDate: this.parseDate(resolvedFrontmatter.createdDate),
+			recurrence:
+				typeof resolvedFrontmatter.recurrence === "string"
+					? resolvedFrontmatter.recurrence
+					: undefined,
 			priority:
-				frontmatter.priority ||
+				this.parsePriority(resolvedFrontmatter.priority) ??
 				config.fileTaskProperties.defaultPriority,
-			project: frontmatter.project,
-			context: frontmatter.context,
-			area: frontmatter.area,
-			tags: fileCache?.tags?.map((tag) => tag.tag) || [],
+			project: resolvedFrontmatter.project,
+			context: resolvedFrontmatter.context,
+			area: resolvedFrontmatter.area,
+			tags: this.mergeTags(
+				fileCache?.tags?.map((tag) => tag.tag) || [],
+				resolvedFrontmatter.tags,
+			),
 			status: status,
 			children: [],
 		};
@@ -889,6 +906,84 @@ export class FileSource {
 
 		// Map symbol back to preferred metadata value
 		return this.config.mapSymbolToMetadata(symbol);
+	}
+
+	/**
+	 * Apply configured metadata mappings to normalize frontmatter keys
+	 */
+	private applyMetadataMappings(
+		frontmatter: Record<string, any>,
+		mappings: MetadataMappingConfig[],
+	): Record<string, any> {
+		if (!Array.isArray(mappings) || mappings.length === 0) {
+			return { ...frontmatter };
+		}
+
+		const result = { ...frontmatter };
+
+		for (const mapping of mappings) {
+			if (!mapping?.enabled) continue;
+			const sourceKey = mapping.sourceKey;
+			const targetKey = mapping.targetKey;
+			if (!sourceKey || !targetKey) continue;
+
+			const value = frontmatter[sourceKey];
+			if (value !== undefined) {
+				result[targetKey] = value;
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Merge vault tags with mapped frontmatter tag values
+	 */
+	private mergeTags(existing: string[], extra: unknown): string[] {
+		const tagSet = new Set(existing);
+
+		if (Array.isArray(extra)) {
+			for (const value of extra) {
+				if (typeof value !== "string") continue;
+				const normalized = this.normalizeTag(value);
+				if (normalized) tagSet.add(normalized);
+			}
+		} else if (typeof extra === "string") {
+			const segments = extra
+				.split(/[,\s]+/)
+				.map((segment) => this.normalizeTag(segment))
+				.filter((segment): segment is string => Boolean(segment));
+
+			for (const segment of segments) {
+				tagSet.add(segment);
+			}
+		}
+
+		return Array.from(tagSet);
+	}
+
+	private normalizeTag(value: string): string | null {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+		return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+	}
+
+	private parsePriority(value: unknown): number | undefined {
+		if (value === undefined || value === null) {
+			return undefined;
+		}
+		if (typeof value === "number" && !Number.isNaN(value)) {
+			return value;
+		}
+		if (typeof value === "string") {
+			const trimmed = value.trim();
+			if (!trimmed) return undefined;
+			const parsed = Number(trimmed);
+			if (!Number.isNaN(parsed)) {
+				return parsed;
+			}
+		}
+		return undefined;
 	}
 
 	/**

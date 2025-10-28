@@ -1686,6 +1686,7 @@ export const DEFAULT_SETTINGS: TaskProgressBarSettings = {
 				matchMode: "prefix",
 			},
 		},
+		metadataMappings: [],
 		fileTaskProperties: {
 			contentSource: "filename",
 			stripExtension: true,

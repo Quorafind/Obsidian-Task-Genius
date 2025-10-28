@@ -818,7 +818,7 @@ export class FluentTaskView extends ItemView {
 				this.actionHandlers.toggleTaskCompletion(task);
 			},
 			onTaskEdit: (task) => {
-				this.actionHandlers.handleTaskSelection(task);
+				void this.actionHandlers.handleTaskEditInFile(task);
 			},
 			onTaskUpdate: async (originalTask, updatedTask) => {
 				await this.actionHandlers.handleTaskUpdate(

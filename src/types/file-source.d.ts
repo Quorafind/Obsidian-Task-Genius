@@ -82,6 +82,16 @@ export interface RecognitionStrategiesConfig {
   paths: PathRecognitionConfig;
 }
 
+/** Metadata mapping configuration for normalizing frontmatter keys */
+export interface MetadataMappingConfig {
+  /** Source frontmatter key */
+  sourceKey: string;
+  /** Target standard metadata field */
+  targetKey: string;
+  /** Whether this mapping is active */
+  enabled: boolean;
+}
+
 /** File task properties configuration */
 export interface FileTaskPropertiesConfig {
   /** Default task content source */
@@ -147,6 +157,9 @@ export interface FileSourceConfiguration {
   
   /** Recognition strategies */
   recognitionStrategies: RecognitionStrategiesConfig;
+
+  /** Metadata mappings for normalizing custom frontmatter fields */
+  metadataMappings: MetadataMappingConfig[];
   
   /** File task properties */
   fileTaskProperties: FileTaskPropertiesConfig;

@@ -14,7 +14,8 @@ import type {
   FileTaskPropertiesConfig,
   RelationshipsConfig,
   PerformanceConfig,
-  StatusMappingConfig
+  StatusMappingConfig,
+  MetadataMappingConfig
 } from "../../types/file-source";
 
 /** Default configuration for metadata-based recognition */
@@ -139,6 +140,9 @@ export const DEFAULT_STATUS_MAPPING_CONFIG: StatusMappingConfig = {
   caseSensitive: false
 };
 
+/** Default metadata mappings */
+export const DEFAULT_METADATA_MAPPINGS: MetadataMappingConfig[] = [];
+
 /** Complete default FileSource configuration */
 export const DEFAULT_FILE_SOURCE_CONFIG: FileSourceConfiguration = {
   enabled: false, // Disabled by default for backward compatibility
@@ -148,6 +152,7 @@ export const DEFAULT_FILE_SOURCE_CONFIG: FileSourceConfiguration = {
     templates: DEFAULT_TEMPLATE_CONFIG,
     paths: DEFAULT_PATH_CONFIG
   },
+  metadataMappings: [...DEFAULT_METADATA_MAPPINGS],
   fileTaskProperties: DEFAULT_FILE_TASK_PROPERTIES,
   relationships: DEFAULT_RELATIONSHIPS_CONFIG,
   performance: DEFAULT_PERFORMANCE_CONFIG,
@@ -177,8 +182,8 @@ export class FileSourceConfig {
    */
   updateConfig(updates: Partial<FileSourceConfiguration>): void {
     const newConfig = this.mergeWithDefaults(updates);
-    const hasChanged = JSON.stringify(newConfig) !== JSON.stringify(this.config);
-    
+    const hasChanged = !this.deepEqual(newConfig, this.config);
+
     if (hasChanged) {
       this.config = newConfig;
       this.notifyListeners();
@@ -279,6 +284,26 @@ export class FileSourceConfig {
       }
     }
 
+    if (config.metadataMappings) {
+      config.metadataMappings.forEach((mapping, index) => {
+        const sourceKey =
+          typeof mapping?.sourceKey === "string"
+            ? mapping.sourceKey.trim()
+            : "";
+        const targetKey =
+          typeof mapping?.targetKey === "string"
+            ? mapping.targetKey.trim()
+            : "";
+
+        if (!sourceKey) {
+          errors.push(`Metadata mapping ${index + 1} requires a source key`);
+        }
+        if (!targetKey) {
+          errors.push(`Metadata mapping ${index + 1} requires a target key`);
+        }
+      });
+    }
+
     // Validate status mapping config
     if (config.statusMapping?.enabled) {
       const mapping = config.statusMapping;
@@ -304,38 +329,112 @@ export class FileSourceConfig {
       recognitionStrategies: {
         metadata: {
           ...DEFAULT_METADATA_CONFIG,
-          ...partial.recognitionStrategies?.metadata
+          ...partial.recognitionStrategies?.metadata,
         },
         tags: {
           ...DEFAULT_TAG_CONFIG,
-          ...partial.recognitionStrategies?.tags
+          ...partial.recognitionStrategies?.tags,
         },
         templates: {
           ...DEFAULT_TEMPLATE_CONFIG,
-          ...partial.recognitionStrategies?.templates
+          ...partial.recognitionStrategies?.templates,
         },
         paths: {
           ...DEFAULT_PATH_CONFIG,
-          ...partial.recognitionStrategies?.paths
-        }
+          ...partial.recognitionStrategies?.paths,
+        },
       },
+      metadataMappings: this.normalizeMetadataMappings(
+        partial.metadataMappings ?? DEFAULT_METADATA_MAPPINGS,
+      ),
       fileTaskProperties: {
         ...DEFAULT_FILE_TASK_PROPERTIES,
-        ...partial.fileTaskProperties
+        ...partial.fileTaskProperties,
       },
       relationships: {
         ...DEFAULT_RELATIONSHIPS_CONFIG,
-        ...partial.relationships
+        ...partial.relationships,
       },
       performance: {
         ...DEFAULT_PERFORMANCE_CONFIG,
-        ...partial.performance
+        ...partial.performance,
       },
       statusMapping: {
         ...DEFAULT_STATUS_MAPPING_CONFIG,
-        ...partial.statusMapping
-      }
+        ...partial.statusMapping,
+      },
     };
+  }
+
+  /**
+   * Normalize metadata mappings: trim keys, drop invalid entries
+   */
+  private normalizeMetadataMappings(
+    mappings?: MetadataMappingConfig[] | null,
+  ): MetadataMappingConfig[] {
+    if (!Array.isArray(mappings)) {
+      return [];
+    }
+
+    const normalized: MetadataMappingConfig[] = [];
+
+    for (const mapping of mappings) {
+      if (!mapping) continue;
+      const sourceKey =
+        typeof mapping.sourceKey === "string" ? mapping.sourceKey.trim() : "";
+      const targetKey =
+        typeof mapping.targetKey === "string" ? mapping.targetKey.trim() : "";
+
+      if (!sourceKey || !targetKey) {
+        continue;
+      }
+
+      normalized.push({
+        sourceKey,
+        targetKey,
+        enabled: mapping.enabled !== false,
+      });
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Deep equality check for configuration objects
+   * @param obj1 First object to compare
+   * @param obj2 Second object to compare
+   * @returns True if objects are deeply equal
+   */
+  private deepEqual(obj1: any, obj2: any): boolean {
+    // Handle primitive types and null
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+
+    // Handle arrays
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+      if (obj1.length !== obj2.length) return false;
+      for (let i = 0; i < obj1.length; i++) {
+        if (!this.deepEqual(obj1[i], obj2[i])) return false;
+      }
+      return true;
+    }
+
+    // One is array, the other is not
+    if (Array.isArray(obj1) !== Array.isArray(obj2)) return false;
+
+    // Handle objects
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false;
+      if (!this.deepEqual(obj1[key], obj2[key])) return false;
+    }
+
+    return true;
   }
 
   /**

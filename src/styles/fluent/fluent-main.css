@@ -929,7 +929,7 @@ button.fluent-new-task-btn:hover {
 }
 
 @container (width < 800px) {
-	button.fluent-view-tab.clickable-icon span {
+	.tg-fluent-main-container button.fluent-view-tab.clickable-icon span {
 		display: none;
 	}
 }

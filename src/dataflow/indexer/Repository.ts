@@ -108,6 +108,13 @@ export class Repository {
 			console.log(
 				`[Repository] Loaded ${this.icsEvents.length} ICS events from storage`
 			);
+
+			// Load file tasks from storage
+			console.log("[Repository] Loading file tasks from storage...");
+			this.fileTasks = await this.storage.loadFileTasks();
+			console.log(
+				`[Repository] Loaded ${this.fileTasks.size} file tasks from storage`
+			);
 		} catch (error) {
 			console.error("[Repository] Error during initialization:", error);
 			// Continue with empty index on error
@@ -459,6 +466,9 @@ export class Repository {
 	async persist(): Promise<void> {
 		const snapshot = await this.indexer.getIndexSnapshot();
 		await this.storage.storeConsolidated(snapshot);
+
+		// Also persist file tasks
+		await this.storage.storeFileTasks(this.fileTasks);
 	}
 
 	/**

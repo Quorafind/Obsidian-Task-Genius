@@ -6,6 +6,7 @@ import {
 	Keymap,
 	Platform,
 	Workspace,
+	debounce,
 } from "obsidian";
 import { Task } from "@/types/task";
 import { MarkdownRendererComponent } from "@/components/ui/renderers/MarkdownRenderer";
@@ -212,7 +213,7 @@ export class TaskListItemComponent extends Component {
 			}
 		});
 
-		this.renderTaskItem();
+		this.debounceUpdateTaskItem();
 		this.updateSelectionVisualState();
 	}
 
@@ -280,8 +281,6 @@ export class TaskListItemComponent extends Component {
 
 		// Priority indicator if available
 		if (this.task.metadata.priority) {
-			console.log("priority", this.task.metadata.priority);
-
 			// Convert priority to numeric value
 			let numericPriority: number;
 			if (typeof this.task.metadata.priority === "string") {
@@ -929,9 +928,13 @@ export class TaskListItemComponent extends Component {
 		});
 	}
 
+	private debounceUpdateTaskItem = debounce(() => {
+		this.renderTaskItem();
+	}, 200);
+
 	private updateTaskDisplay() {
 		// Re-render the entire task item
-		this.renderTaskItem();
+		this.debounceUpdateTaskItem();
 	}
 
 	public getTask(): Task {

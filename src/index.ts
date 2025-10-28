@@ -915,67 +915,67 @@ export default class TaskProgressBarPlugin extends Plugin {
 		});
 
 		if (this.settings.enableIndexer) {
-			// Add command to refresh the task index
-			this.addCommand({
-				id: "refresh-task-index",
-				name: t("Refresh task index"),
-				callback: async () => {
-					try {
-						new Notice(t("Refreshing task index..."));
+			// // Add command to refresh the task index
+			// this.addCommand({
+			// 	id: "refresh-task-index",
+			// 	name: t("Refresh task index"),
+			// 	callback: async () => {
+			// 		try {
+			// 			new Notice(t("Refreshing task index..."));
 
-						// Check if dataflow is enabled
-						if (
-							this.settings?.enableIndexer &&
-							this.dataflowOrchestrator
-						) {
-							// Use dataflow orchestrator for refresh
-							console.log(
-								"[Command] Refreshing task index via dataflow",
-							);
+			// 			// Check if dataflow is enabled
+			// 			if (
+			// 				this.settings?.enableIndexer &&
+			// 				this.dataflowOrchestrator
+			// 			) {
+			// 				// Use dataflow orchestrator for refresh
+			// 				console.log(
+			// 					"[Command] Refreshing task index via dataflow",
+			// 				);
 
-							// Re-scan all files to refresh the index
-							const files = this.app.vault.getMarkdownFiles();
-							const canvasFiles = this.app.vault
-								.getFiles()
-								.filter((f) => f.extension === "canvas");
-							const allFiles = [...files, ...canvasFiles];
+			// 				// Re-scan all files to refresh the index
+			// 				const files = this.app.vault.getMarkdownFiles();
+			// 				const canvasFiles = this.app.vault
+			// 					.getFiles()
+			// 					.filter((f) => f.extension === "canvas");
+			// 				const allFiles = [...files, ...canvasFiles];
 
-							// Process files in batches
-							const batchSize = 50;
-							for (
-								let i = 0;
-								i < allFiles.length;
-								i += batchSize
-							) {
-								const batch = allFiles.slice(i, i + batchSize);
-								await Promise.all(
-									batch.map((file) =>
-										(
-											this.dataflowOrchestrator as any
-										).processFileImmediate(file),
-									),
-								);
-							}
+			// 				// Process files in batches
+			// 				const batchSize = 50;
+			// 				for (
+			// 					let i = 0;
+			// 					i < allFiles.length;
+			// 					i += batchSize
+			// 				) {
+			// 					const batch = allFiles.slice(i, i + batchSize);
+			// 					await Promise.all(
+			// 						batch.map((file) =>
+			// 							(
+			// 								this.dataflowOrchestrator as any
+			// 							).processFileImmediate(file),
+			// 						),
+			// 					);
+			// 				}
 
-							// Refresh ICS events if available
-							const icsSource = (this.dataflowOrchestrator as any)
-								.icsSource;
-							if (icsSource) {
-								await icsSource.refresh();
-							}
-						}
-						// else {
-						// 	// Use legacy task manager
-						// 	await this.taskManager.initialize();
-						// }
+			// 				// Refresh ICS events if available
+			// 				const icsSource = (this.dataflowOrchestrator as any)
+			// 					.icsSource;
+			// 				if (icsSource) {
+			// 					await icsSource.refresh();
+			// 				}
+			// 			}
+			// 			// else {
+			// 			// 	// Use legacy task manager
+			// 			// 	await this.taskManager.initialize();
+			// 			// }
 
-						new Notice(t("Task index refreshed"));
-					} catch (error) {
-						console.error("Failed to refresh task index:", error);
-						new Notice(t("Failed to refresh task index"));
-					}
-				},
-			});
+			// 			new Notice(t("Task index refreshed"));
+			// 		} catch (error) {
+			// 			console.error("Failed to refresh task index:", error);
+			// 			new Notice(t("Failed to refresh task index"));
+			// 		}
+			// 	},
+			// });
 
 			// Add command to force reindex all tasks by clearing cache
 			this.addCommand({
@@ -1825,10 +1825,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				await this.saveSettings();
 			}
 		} catch (error) {
-			console.error(
-				"[TG] Failed to check migration onboarding:",
-				error,
-			);
+			console.error("[TG] Failed to check migration onboarding:", error);
 		}
 	}
 

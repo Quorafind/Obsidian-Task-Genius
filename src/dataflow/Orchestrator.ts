@@ -1377,12 +1377,9 @@ export class DataflowOrchestrator {
 	/**
 	 * Process multiple files in batch using workers for parallel processing
 	 */
-	async processBatch(
-		files: TFile[],
-		useWorkers: boolean = true,
-	): Promise<void> {
+	async processBatch(files: TFile[], useWorkers = true): Promise<void> {
 		const updates = new Map<string, Task[]>();
-		let skippedCount = 0;
+		const skippedCount = 0;
 
 		// Decide whether to use workers based on batch size and configuration
 		const shouldUseWorkers = useWorkers && files.length > 5; // Use workers for batches > 5 files

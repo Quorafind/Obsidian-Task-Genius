@@ -48,6 +48,7 @@ export const Keys = {
 	augmented: (path: string) => `tasks.augmented:${path}`,
 	consolidated: () => `consolidated:taskIndex`,
 	icsEvents: () => `ics:events`,
+	fileTasks: () => `file:tasks`,
 	meta: {
 		version: () => `meta:version`,
 		schemaVersion: () => `meta:schemaVersion`,
@@ -283,6 +284,45 @@ export class Storage {
 		} catch (error) {
 			console.error("[Storage] Error loading ICS events:", error);
 			return [];
+		}
+	}
+
+	/**
+	 * Store file tasks (from FileSource)
+	 */
+	async storeFileTasks(tasks: Map<string, Task>): Promise<void> {
+		const record = {
+			time: Date.now(),
+			version: this.currentVersion,
+			schema: this.schemaVersion,
+			data: Array.from(tasks.entries()),
+		};
+
+		await this.cache.storeFile(Keys.fileTasks(), record);
+		console.log(`[Storage] Stored ${tasks.size} file tasks`);
+	}
+
+	/**
+	 * Load file tasks (from FileSource)
+	 */
+	async loadFileTasks(): Promise<Map<string, Task>> {
+		try {
+			const cached = await this.cache.loadFile<any>(Keys.fileTasks());
+			if (!cached || !cached.data) {
+				return new Map();
+			}
+
+			// Check version compatibility
+			if (!this.isVersionValid(cached.data)) {
+				await this.cache.removeFile(Keys.fileTasks());
+				return new Map();
+			}
+
+			const entries = cached.data.data || [];
+			return new Map(entries);
+		} catch (error) {
+			console.error("[Storage] Error loading file tasks:", error);
+			return new Map();
 		}
 	}
 

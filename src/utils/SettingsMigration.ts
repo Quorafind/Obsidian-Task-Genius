@@ -268,6 +268,7 @@ function createDefaultFileSourceConfig(): FileSourceConfiguration {
         matchMode: "prefix"
       }
     },
+    metadataMappings: [],
     fileTaskProperties: {
       contentSource: "filename",
       stripExtension: true,
