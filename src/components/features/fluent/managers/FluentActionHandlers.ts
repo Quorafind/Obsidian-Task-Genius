@@ -207,10 +207,14 @@ export class FluentActionHandlers extends Component {
 		task: Task,
 		newStatusMark: string,
 	): Promise<void> {
+		console.log(`[FluentActionHandlers] Processing kanban status update for task ${task.id}`);
+		console.log(`[FluentActionHandlers] Status change: ${task.status} -> ${newStatusMark}`);
+
 		const isCompleted = this.isCompletedMark(newStatusMark);
 		const completedDate = isCompleted ? Date.now() : undefined;
 
 		if (task.status !== newStatusMark || task.completed !== isCompleted) {
+			console.log('[FluentActionHandlers] Status change detected, calling handleTaskUpdate...');
 			await this.handleTaskUpdate(task, {
 				...task,
 				status: newStatusMark,
@@ -220,6 +224,9 @@ export class FluentActionHandlers extends Component {
 					completedDate: completedDate,
 				},
 			});
+			console.log('[FluentActionHandlers] handleTaskUpdate completed');
+		} else {
+			console.log('[FluentActionHandlers] No status change needed, skipping update');
 		}
 	}
 
