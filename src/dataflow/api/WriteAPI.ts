@@ -879,6 +879,159 @@ export class WriteAPI {
 		// Will be updated if file is renamed
 		let newFilePath = originalTask.filePath;
 
+		// Get file source configuration
+		const fileSourceConfig = this.plugin.settings.fileSource;
+
+		// Helper function to get the actual frontmatter key for a standard field
+		// This handles custom metadata mappings (e.g., "proj" -> "project")
+		const getFrontmatterKey = (standardKey: string): string => {
+			const metadataMappings = fileSourceConfig?.metadataMappings || [];
+
+			// Find an enabled mapping where targetKey matches the standard key
+			const mapping = metadataMappings.find(
+				(m) => m.enabled && m.targetKey === standardKey && m.sourceKey
+			);
+
+			// Return the source key if mapping exists, otherwise use standard key
+			return mapping ? mapping.sourceKey : standardKey;
+		};
+
+		// Handle status/completed updates by writing to frontmatter
+		const hasStatusUpdate = updates.status !== undefined && updates.status !== originalTask.status;
+		const hasCompletedUpdate = updates.completed !== undefined && updates.completed !== originalTask.completed;
+		const hasMetadataUpdates = updates.metadata !== undefined;
+
+		if (hasStatusUpdate || hasCompletedUpdate || hasMetadataUpdates) {
+			try {
+				await this.app.fileManager.processFrontMatter(file, (fm) => {
+					// Handle status update
+					if (hasStatusUpdate && updates.status !== undefined) {
+						// Map status symbol to metadata value using statusMapping
+						const statusMapping = fileSourceConfig?.statusMapping;
+						let statusValue = updates.status;
+
+						if (statusMapping?.enabled && statusMapping.symbolToMetadata) {
+							statusValue = statusMapping.symbolToMetadata[updates.status] || updates.status;
+						}
+
+						// Use custom field name if mapped
+						const statusKey = getFrontmatterKey('status');
+						(fm as any)[statusKey] = statusValue;
+						console.log(`[WriteAPI][FileSource] Updated ${statusKey}: ${originalTask.status} -> ${statusValue} (symbol: ${updates.status})`);
+					}
+
+					// Handle metadata updates
+					if (hasMetadataUpdates && updates.metadata) {
+						const metadata = updates.metadata;
+
+						// Priority
+						if (metadata.priority !== undefined) {
+							const priorityKey = getFrontmatterKey('priority');
+							if (metadata.priority === null || metadata.priority === 0) {
+								delete (fm as any)[priorityKey];
+							} else {
+								(fm as any)[priorityKey] = metadata.priority;
+							}
+						}
+
+						// Dates
+						if (metadata.dueDate !== undefined) {
+							const dueDateKey = getFrontmatterKey('dueDate');
+							if (metadata.dueDate) {
+								(fm as any)[dueDateKey] = new Date(metadata.dueDate).toISOString().split('T')[0];
+							} else {
+								delete (fm as any)[dueDateKey];
+							}
+						}
+
+						if (metadata.startDate !== undefined) {
+							const startDateKey = getFrontmatterKey('startDate');
+							if (metadata.startDate) {
+								(fm as any)[startDateKey] = new Date(metadata.startDate).toISOString().split('T')[0];
+							} else {
+								delete (fm as any)[startDateKey];
+							}
+						}
+
+						if (metadata.scheduledDate !== undefined) {
+							const scheduledDateKey = getFrontmatterKey('scheduledDate');
+							if (metadata.scheduledDate) {
+								(fm as any)[scheduledDateKey] = new Date(metadata.scheduledDate).toISOString().split('T')[0];
+							} else {
+								delete (fm as any)[scheduledDateKey];
+							}
+						}
+
+						if (metadata.completedDate !== undefined) {
+							const completedDateKey = getFrontmatterKey('completedDate');
+							if (metadata.completedDate) {
+								(fm as any)[completedDateKey] = new Date(metadata.completedDate).toISOString().split('T')[0];
+							} else {
+								delete (fm as any)[completedDateKey];
+							}
+						}
+
+						// Project and context
+						if (metadata.project !== undefined) {
+							const projectKey = getFrontmatterKey('project');
+							if (metadata.project) {
+								(fm as any)[projectKey] = metadata.project;
+							} else {
+								delete (fm as any)[projectKey];
+							}
+						}
+
+						if (metadata.context !== undefined) {
+							const contextKey = getFrontmatterKey('context');
+							if (metadata.context) {
+								(fm as any)[contextKey] = metadata.context;
+							} else {
+								delete (fm as any)[contextKey];
+							}
+						}
+
+						// Tags
+						if (metadata.tags !== undefined) {
+							const tagsKey = getFrontmatterKey('tags');
+							if (Array.isArray(metadata.tags) && metadata.tags.length > 0) {
+								(fm as any)[tagsKey] = metadata.tags;
+							} else {
+								delete (fm as any)[tagsKey];
+							}
+						}
+
+						// Area
+						if (metadata.area !== undefined) {
+							const areaKey = getFrontmatterKey('area');
+							if (metadata.area) {
+								(fm as any)[areaKey] = metadata.area;
+							} else {
+								delete (fm as any)[areaKey];
+							}
+						}
+
+						// Recurrence
+						if (metadata.recurrence !== undefined) {
+							const recurrenceKey = getFrontmatterKey('recurrence');
+							if (metadata.recurrence) {
+								(fm as any)[recurrenceKey] = metadata.recurrence;
+							} else {
+								delete (fm as any)[recurrenceKey];
+							}
+						}
+					}
+				});
+
+				console.log(`[WriteAPI][FileSource] Updated frontmatter for file-source task: ${file.path}`);
+			} catch (error) {
+				console.error(
+					"WriteAPI: Error updating file-source task frontmatter:",
+					error,
+				);
+				return { success: false, error: String(error) };
+			}
+		}
+
 		// Handle content updates (i.e., renaming the file itself)
 		if (
 			updates.content !== undefined &&
