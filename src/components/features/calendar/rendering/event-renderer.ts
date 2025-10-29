@@ -1,5 +1,5 @@
 import { App, Component, debounce, moment } from "obsidian";
-import { CalendarEvent } from '@/components/features/calendar/index'; // Adjust path as needed
+import { CalendarEvent } from "@/components/features/calendar/index"; // Adjust path as needed
 import { EventLayout, determineEventColor } from "../algorithm"; // Adjust path as needed
 import {
 	clearAllMarks,
@@ -126,16 +126,16 @@ export class CalendarEventComponent extends Component {
 			}${
 				this.event.metadata.dueDate
 					? `\nDue: ${moment(this.event.metadata.dueDate).format(
-							"YYYY-MM-DD"
-					  )}`
+							"YYYY-MM-DD",
+						)}`
 					: ""
 			}${
 				this.event.metadata.startDate
 					? `\nStart: ${moment(this.event.metadata.startDate).format(
-							"YYYY-MM-DD"
-					  )}`
+							"YYYY-MM-DD",
+						)}`
 					: ""
-			}`
+			}`,
 		);
 	}
 
@@ -168,7 +168,7 @@ export class CalendarEventComponent extends Component {
 		const checkbox = createTaskCheckbox(
 			this.event.status,
 			this.event,
-			this.eventEl
+			this.eventEl,
 		);
 
 		this.registerDomEvent(checkbox, "click", (ev) => {
@@ -191,11 +191,15 @@ export class CalendarEventComponent extends Component {
 		this.markdownRenderer = new MarkdownRendererComponent(
 			this.app,
 			titleContainer,
-			this.event.filePath
+			this.event.filePath,
 		);
 		this.addChild(this.markdownRenderer);
 
-		this.markdownRenderer.render(this.event.title);
+		this.markdownRenderer.render(
+			this.event.metadata.source === "file-source"
+				? this.event.originalMarkdown
+				: this.event.title,
+		);
 
 		if (this.positioningHints?.isMultiDay) {
 			this.eventEl.addClass("is-multi-day");
@@ -211,7 +215,7 @@ export class CalendarEventComponent extends Component {
 	private renderTimedEvent(): void {
 		this.eventEl.toggleClass(
 			["calendar-event-timed", "calendar-event"],
-			true
+			true,
 		);
 		if (this.viewType === "week-timed") {
 			this.eventEl.addClass("calendar-event-timed-week");
@@ -235,7 +239,7 @@ export class CalendarEventComponent extends Component {
 			// Only warn if layout is missing for week-timed
 			console.warn(
 				"Timed event render called without layout info for event:",
-				this.event.id
+				this.event.id,
 			);
 			// Provide some default fallback style
 			this.eventEl.style.position = "relative"; // Avoid breaking layout completely
@@ -254,7 +258,7 @@ export class CalendarEventComponent extends Component {
 		const checkbox = createTaskCheckbox(
 			this.event.status,
 			this.event,
-			this.eventEl
+			this.eventEl,
 		);
 
 		this.registerDomEvent(checkbox, "click", (ev) => {
@@ -274,7 +278,7 @@ export class CalendarEventComponent extends Component {
 		this.markdownRenderer = new MarkdownRendererComponent(
 			this.app,
 			titleEl,
-			this.event.filePath
+			this.event.filePath,
 		);
 		this.addChild(this.markdownRenderer);
 
@@ -297,7 +301,7 @@ export class CalendarEventComponent extends Component {
 		const checkbox = createTaskCheckbox(
 			this.event.status,
 			this.event,
-			this.eventEl
+			this.eventEl,
 		);
 
 		this.registerDomEvent(checkbox, "click", (ev) => {
@@ -323,7 +327,7 @@ export class CalendarEventComponent extends Component {
 		this.markdownRenderer = new MarkdownRendererComponent(
 			this.app,
 			titleEl,
-			this.event.filePath
+			this.event.filePath,
 		);
 		this.addChild(this.markdownRenderer);
 
@@ -364,7 +368,7 @@ export function renderCalendarEvent(params: RenderEventParams): {
 		"contextmenu",
 		(ev) => {
 			params.onEventContextMenu?.(ev, params.event);
-		}
+		},
 	);
 	return { eventEl: eventComponent.eventEl, component: eventComponent };
 }

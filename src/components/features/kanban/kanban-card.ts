@@ -30,9 +30,9 @@ export class KanbanCardComponent extends Component {
 			onTaskContextMenu?: (ev: MouseEvent, task: Task) => void;
 			onFilterApply?: (
 				filterType: string,
-				value: string | number | string[]
+				value: string | number | string[],
 			) => void;
-		} = {}
+		} = {},
 	) {
 		super();
 		this.plugin = plugin;
@@ -51,7 +51,7 @@ export class KanbanCardComponent extends Component {
 		const metadata = this.task.metadata || {};
 		if (metadata.priority) {
 			const sanitizedPriority = sanitizePriorityForClass(
-				metadata.priority
+				metadata.priority,
 			);
 			if (sanitizedPriority) {
 				this.element.classList.add(`priority-${sanitizedPriority}`);
@@ -67,7 +67,7 @@ export class KanbanCardComponent extends Component {
 				const checkbox = createTaskCheckbox(
 					this.task.status,
 					this.task,
-					el
+					el,
 				);
 
 				this.registerDomEvent(checkbox, "click", (ev) => {
@@ -86,7 +86,7 @@ export class KanbanCardComponent extends Component {
 				if (
 					(
 						this.plugin.settings.viewConfiguration.find(
-							(v) => v.id === "kanban"
+							(v) => v.id === "kanban",
 						)?.specificConfig as KanbanSpecificConfig
 					)?.showCheckbox
 				) {
@@ -96,7 +96,7 @@ export class KanbanCardComponent extends Component {
 				}
 
 				this.contentEl = el.createDiv("tg-kanban-card-content");
-			}
+			},
 		);
 		this.renderMarkdown();
 
@@ -126,14 +126,16 @@ export class KanbanCardComponent extends Component {
 		this.markdownRenderer = new MarkdownRendererComponent(
 			this.app,
 			this.contentEl,
-			this.task.filePath
+			this.task.filePath,
 		);
 		this.addChild(this.markdownRenderer);
 
 		// Render the markdown content (use originalMarkdown or just description)
 		// Using originalMarkdown might be too much, maybe just the description part?
 		this.markdownRenderer.render(
-			this.task.content || this.task.originalMarkdown
+			this.task.metadata.source === "file-source"
+				? this.task.originalMarkdown
+				: this.task.content || this.task.originalMarkdown,
 		);
 	}
 
@@ -189,7 +191,7 @@ export class KanbanCardComponent extends Component {
 		dueEl.textContent = `${dateText}`;
 		dueEl.setAttribute(
 			"aria-label",
-			`Due: ${dueDate.toLocaleDateString()}`
+			`Due: ${dueDate.toLocaleDateString()}`,
 		);
 	}
 
@@ -201,11 +203,11 @@ export class KanbanCardComponent extends Component {
 		const completedDate = new Date(metadata.completedDate || "");
 		completedEl.textContent = `Done: ${completedDate.toLocaleDateString(
 			undefined,
-			{ month: "short", day: "numeric" }
+			{ month: "short", day: "numeric" },
 		)}`;
 		completedEl.setAttribute(
 			"aria-label",
-			`Completed: ${completedDate.toLocaleDateString()}`
+			`Completed: ${completedDate.toLocaleDateString()}`,
 		);
 	}
 
@@ -321,7 +323,7 @@ export class KanbanCardComponent extends Component {
 		// Fallback: check for CSS custom properties set by other tag color plugins
 		const computedStyle = getComputedStyle(document.body);
 		const tagColorVar = computedStyle.getPropertyValue(
-			`--tag-color-${tagName}`
+			`--tag-color-${tagName}`,
 		);
 		if (tagColorVar) {
 			tagEl.style.setProperty("--tag-color", tagColorVar);
@@ -348,7 +350,7 @@ export class KanbanCardComponent extends Component {
 		if (oldMetadata.priority !== newMetadata.priority) {
 			if (oldMetadata.priority) {
 				const oldSanitized = sanitizePriorityForClass(
-					oldMetadata.priority
+					oldMetadata.priority,
 				);
 				if (oldSanitized) {
 					this.element.classList.remove(`priority-${oldSanitized}`);
@@ -356,7 +358,7 @@ export class KanbanCardComponent extends Component {
 			}
 			if (newMetadata.priority) {
 				const newSanitized = sanitizePriorityForClass(
-					newMetadata.priority
+					newMetadata.priority,
 				);
 				if (newSanitized) {
 					this.element.classList.add(`priority-${newSanitized}`);
