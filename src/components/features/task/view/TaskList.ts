@@ -2,7 +2,6 @@ import { App, Component } from "obsidian";
 import { Task } from "@/types/task";
 import { TaskListItemComponent } from "./listItem";
 import { TaskTreeItemComponent } from "./treeItem";
-import { tasksToTree } from "@/utils/ui/tree-view-utils";
 import { t } from "@/translations/helper";
 import TaskProgressBarPlugin from "@/index";
 
@@ -22,7 +21,7 @@ export class TaskListRendererComponent extends Component {
 		private containerEl: HTMLElement, // The HTML element to render tasks into
 		private plugin: TaskProgressBarPlugin,
 		private app: App,
-		private context: string // Context identifier (e.g., "projects", "review")
+		private context: string, // Context identifier (e.g., "projects", "review")
 	) {
 		super();
 		// Add this renderer as a child of the parent component
@@ -43,7 +42,7 @@ export class TaskListRendererComponent extends Component {
 		isTreeView: boolean,
 		allTasksMap: Map<string, Task>, // Make it optional but required for tree view
 		emptyMessage: string = t("No tasks found."),
-		append: boolean = false
+		append: boolean = false,
 	) {
 		if (!append) {
 			this.cleanupComponents();
@@ -62,7 +61,7 @@ export class TaskListRendererComponent extends Component {
 			// Fallback: if tree view is requested but no map provided, build it from section tasks
 			// This might lead to incomplete trees if parents are outside the section.
 			console.warn(
-				"TaskListRendererComponent: allTasksMap not provided for tree view. Tree may be incomplete."
+				"TaskListRendererComponent: allTasksMap not provided for tree view. Tree may be incomplete.",
 			);
 			this.allTasksMap = new Map(tasks.map((task) => [task.id, task]));
 		}
@@ -70,10 +69,10 @@ export class TaskListRendererComponent extends Component {
 		if (isTreeView) {
 			if (!this.allTasksMap || this.allTasksMap.size === 0) {
 				console.error(
-					"TaskListRendererComponent: Cannot render tree view without allTasksMap."
+					"TaskListRendererComponent: Cannot render tree view without allTasksMap.",
 				);
 				this.renderEmptyState(
-					"Error: Task data unavailable for tree view."
+					"Error: Task data unavailable for tree view.",
 				); // Show error
 				return;
 			}
@@ -90,7 +89,7 @@ export class TaskListRendererComponent extends Component {
 				task,
 				this.context,
 				this.app,
-				this.plugin
+				this.plugin,
 			);
 
 			// Set up event handlers
@@ -109,13 +108,13 @@ export class TaskListRendererComponent extends Component {
 					"TaskListRendererComponent onTaskUpdate",
 					this.onTaskUpdate,
 					originalTask.content,
-					updatedTask.content
+					updatedTask.content,
 				);
 				if (this.onTaskUpdate) {
 					console.log(
 						"TaskListRendererComponent onTaskUpdate",
 						originalTask.content,
-						updatedTask.content
+						updatedTask.content,
 					);
 					await this.onTaskUpdate(originalTask, updatedTask);
 				}
@@ -141,7 +140,7 @@ export class TaskListRendererComponent extends Component {
 
 	private renderTreeView(
 		sectionTasks: Task[],
-		allTasksMap: Map<string, Task>
+		allTasksMap: Map<string, Task>,
 	) {
 		const fragment = document.createDocumentFragment();
 		const sectionTaskIds = new Set(sectionTasks.map((t) => t.id)); // IDs of tasks belonging to this section
@@ -151,7 +150,7 @@ export class TaskListRendererComponent extends Component {
 		const markSubtreeAsProcessed = (
 			rootTask: Task,
 			sectionTaskIds: Set<string>,
-			processedTaskIds: Set<string>
+			processedTaskIds: Set<string>,
 		) => {
 			if (sectionTaskIds.has(rootTask.id)) {
 				processedTaskIds.add(rootTask.id);
@@ -164,7 +163,7 @@ export class TaskListRendererComponent extends Component {
 						markSubtreeAsProcessed(
 							childTask,
 							sectionTaskIds,
-							processedTaskIds
+							processedTaskIds,
 						);
 					}
 				});
@@ -197,11 +196,11 @@ export class TaskListRendererComponent extends Component {
 						!sectionTaskIds.has(currentTask.metadata.parent)
 					) {
 						const parentTask = allTasksMap.get(
-							currentTask.metadata.parent
+							currentTask.metadata.parent,
 						);
 						if (!parentTask) {
 							console.warn(
-								`Parent task ${currentTask.metadata.parent} not found in allTasksMap.`
+								`Parent task ${currentTask.metadata.parent} not found in allTasksMap.`,
 							);
 							break;
 						}
@@ -219,7 +218,7 @@ export class TaskListRendererComponent extends Component {
 				markSubtreeAsProcessed(
 					actualRoot,
 					sectionTaskIds,
-					processedTaskIds
+					processedTaskIds,
 				);
 			}
 		}
@@ -238,7 +237,7 @@ export class TaskListRendererComponent extends Component {
 						directChildren.push(childTask);
 					} else {
 						console.warn(
-							`Child task ${childId} (parent: ${rootTask.id}) not found in allTasksMap.`
+							`Child task ${childId} (parent: ${rootTask.id}) not found in allTasksMap.`,
 						);
 					}
 				});
@@ -253,7 +252,7 @@ export class TaskListRendererComponent extends Component {
 				0, // Root level is 0
 				directChildren, // Pass the actual children from the full map
 				allTasksMap, // Pass the full map for recursive building
-				this.plugin
+				this.plugin,
 			);
 
 			// Set up event handlers
@@ -302,7 +301,7 @@ export class TaskListRendererComponent extends Component {
 
 		// Try updating in list view components
 		const listItemComponent = this.taskComponents.find(
-			(c) => c.getTask().id === updatedTask.id
+			(c) => c.getTask().id === updatedTask.id,
 		);
 		if (listItemComponent) {
 			listItemComponent.updateTask(updatedTask);

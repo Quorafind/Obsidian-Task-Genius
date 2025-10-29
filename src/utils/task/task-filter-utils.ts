@@ -530,7 +530,9 @@ export function filterTasks(
 	// --- 基本筛选：隐藏已完成和空白任务 ---
 	// 注意：这些是基础过滤条件，始终应用
 	if (viewConfig.hideCompletedAndAbandonedTasks) {
-		filtered = filtered.filter((task) => !task.completed);
+		filtered = filtered.filter((task) =>
+			isNotCompleted(plugin, task, viewId),
+		);
 	}
 
 	if (viewConfig.filterBlanks) {

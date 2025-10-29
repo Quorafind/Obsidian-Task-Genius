@@ -110,7 +110,7 @@ export function clearAllMarks(markdown: string): string {
 		const escapedSymbol = symbol.replace(/[.*+?^${}()|[\\\]]/g, "\\$&");
 		const regex = new RegExp(
 			`${escapedSymbol}\\uFE0F? *\\d{4}-\\d{2}-\\d{2}`, // Use escaped symbol
-			"gu"
+			"gu",
 		);
 		cleanedMarkdown = cleanedMarkdown.replace(regex, "");
 	});
@@ -119,7 +119,7 @@ export function clearAllMarks(markdown: string): string {
 	// First remove priority emojis anywhere in the text (with optional variation selector)
 	cleanedMarkdown = cleanedMarkdown.replace(
 		/(?:🔺|⏫|🔼|🔽|⏬️?|\[#[A-E]\])/gu,
-		""
+		"",
 	);
 
 	// Remove standalone exclamation marks (priority indicators)
@@ -138,7 +138,7 @@ export function clearAllMarks(markdown: string): string {
 		const escapedRecurrenceSymbol =
 			DEFAULT_SYMBOLS.recurrenceSymbol.replace(
 				/[.*+?^${}()|[\\\]]/g,
-				"\\$&"
+				"\\$&",
 			);
 		// Create a string of escaped date/completion symbols for the lookahead
 		const escapedOtherSymbols = symbolsToRemove
@@ -152,9 +152,9 @@ export function clearAllMarks(markdown: string): string {
 
 		const recurrenceRegex = new RegExp(
 			`${escapedRecurrenceSymbol}\\uFE0F? *.*?` +
-			// Lookahead for: space followed by (any date/completion/recurrence symbol OR non-date symbols OR @ OR #) OR end of string
-			`(?=\s(?:[${escapedOtherSymbols}${escapedNonDateSymbols}${escapedRecurrenceSymbol}]|@|#)|$)`,
-			"gu"
+				// Lookahead for: space followed by (any date/completion/recurrence symbol OR non-date symbols OR @ OR #) OR end of string
+				`(?=\s(?:[${escapedOtherSymbols}${escapedNonDateSymbols}${escapedRecurrenceSymbol}]|@|#)|$)`,
+			"gu",
 		);
 		cleanedMarkdown = cleanedMarkdown.replace(recurrenceRegex, "");
 	}
@@ -163,7 +163,7 @@ export function clearAllMarks(markdown: string): string {
 	cleanedMarkdown = cleanedMarkdown.replace(
 		/\[(?:due|📅|completion|✅|created|➕|start|🛫|scheduled|⏳|cancelled|❌|id|🆔|dependsOn|⛔|onCompletion|🏁|priority|repeat|recurrence|🔁|project|context)::\s*[^\]]+\]/gi,
 		// Corrected the emoji in the previous attempt
-		""
+		"",
 	);
 
 	// --- General Cleaning ---
@@ -202,7 +202,7 @@ export function clearAllMarks(markdown: string): string {
 		const overlaps = preservedSegments.some(
 			(ps) =>
 				Math.max(ps.index, currentStart) <
-				Math.min(ps.index + ps.length, currentEnd)
+				Math.min(ps.index + ps.length, currentEnd),
 		);
 		if (!overlaps) {
 			preservedSegments.push({
@@ -222,7 +222,7 @@ export function clearAllMarks(markdown: string): string {
 		const overlaps = preservedSegments.some(
 			(ps) =>
 				Math.max(ps.index, currentStart) <
-				Math.min(ps.index + ps.length, currentEnd)
+				Math.min(ps.index + ps.length, currentEnd),
 		);
 		if (!overlaps) {
 			preservedSegments.push({
@@ -268,7 +268,7 @@ export function clearAllMarks(markdown: string): string {
 	// Remove any remaining simple tags but preserve special tags like #123-123-123
 	// Also ignore escaped \# (do not treat as tag)
 	tempMarkdown = (function removeSimpleTagsIgnoringEscapes(
-		input: string
+		input: string,
 	): string {
 		let out = "";
 		let i = 0;
@@ -326,7 +326,7 @@ export function clearAllMarks(markdown: string): string {
 	// Task marker and final cleaning (applied to the string with links/code restored)
 	tempMarkdown = tempMarkdown.replace(
 		/^([\s>]*)?(-|\d+\.|\*|\+)\s\[([^\[\]]{1})\]\s*/,
-		""
+		"",
 	);
 	tempMarkdown = tempMarkdown.replace(/^# /, "");
 	tempMarkdown = tempMarkdown.replace(/\s+/g, " ").trim();
@@ -343,15 +343,15 @@ export class MarkdownRendererComponent extends Component {
 	private container: HTMLElement;
 	private sourcePath: string;
 	private currentFile: TFile | null = null;
-	private renderQueue: Array<{ markdown: string; blockId?: string }> = [];
-	private isRendering: boolean = false;
+	private renderQueue: Array<{ markdown: string; contentId?: string }> = [];
+	private isRendering = false;
 	private blockElements: Map<string, HTMLElement> = new Map();
 
 	constructor(
 		private app: App,
 		container: HTMLElement,
-		sourcePath: string = "",
-		private hideMarks: boolean = true
+		sourcePath = "",
+		private hideMarks: boolean = true,
 	) {
 		super();
 		this.container = container;
@@ -381,7 +381,7 @@ export class MarkdownRendererComponent extends Component {
 	 */
 	public async render(
 		markdown: string,
-		clearContainer: boolean = true
+		clearContainer = true,
 	): Promise<void> {
 		if (clearContainer) {
 			this.clear();
@@ -392,15 +392,15 @@ export class MarkdownRendererComponent extends Component {
 
 		// Create block elements for each content block
 		for (let i = 0; i < blocks.length; i++) {
-			const blockId = `block-${Date.now()}-${i}`;
+			const contentId = `content-${Date.now()}-${i}`;
 			const blockEl = this.container.createEl("div", {
 				cls: ["markdown-block", "markdown-renderer"],
 			});
-			blockEl.dataset.blockId = blockId;
-			this.blockElements.set(blockId, blockEl);
+			blockEl.dataset.contentId = contentId;
+			this.blockElements.set(contentId, blockEl);
 
 			// Queue this block for rendering
-			this.queueRender(blocks[i], blockId);
+			this.queueRender(blocks[i], contentId);
 		}
 
 		// Start processing the queue
@@ -425,8 +425,8 @@ export class MarkdownRendererComponent extends Component {
 	/**
 	 * Queue a markdown block for rendering
 	 */
-	private queueRender(markdown: string, blockId?: string): void {
-		this.renderQueue.push({markdown, blockId});
+	private queueRender(markdown: string, contentId?: string): void {
+		this.renderQueue.push({ markdown, contentId });
 		this.processRenderQueue();
 	}
 
@@ -445,11 +445,11 @@ export class MarkdownRendererComponent extends Component {
 				const item = this.renderQueue.shift();
 				if (!item) continue;
 
-				const {markdown, blockId} = item;
+				const { markdown, contentId } = item;
 
-				if (blockId) {
+				if (contentId) {
 					// Render to a specific block
-					const blockEl = this.blockElements.get(blockId);
+					const blockEl = this.blockElements.get(contentId);
 					if (blockEl) {
 						blockEl.empty();
 						await ObsidianMarkdownRenderer.render(
@@ -457,7 +457,7 @@ export class MarkdownRendererComponent extends Component {
 							markdown,
 							blockEl,
 							this.sourcePath,
-							this
+							this,
 						);
 					}
 				} else {
@@ -467,7 +467,7 @@ export class MarkdownRendererComponent extends Component {
 						markdown,
 						this.container,
 						this.sourcePath,
-						this
+						this,
 					);
 				}
 
@@ -481,12 +481,12 @@ export class MarkdownRendererComponent extends Component {
 
 	/**
 	 * Update a specific block with new content
-	 * @param blockId The ID of the block to update
+	 * @param contentId The ID of the block to update
 	 * @param markdown The new markdown content
 	 */
-	public updateBlock(blockId: string, markdown: string): void {
-		if (this.blockElements.has(blockId)) {
-			this.queueRender(markdown, blockId);
+	public updateBlock(contentId: string, markdown: string): void {
+		if (this.blockElements.has(contentId)) {
+			this.queueRender(markdown, contentId);
 		}
 	}
 
@@ -507,26 +507,26 @@ export class MarkdownRendererComponent extends Component {
 	 * @returns The ID of the new block
 	 */
 	public addBlock(markdown: string): string {
-		const blockId = `block-${Date.now()}-${this.blockElements.size}`;
+		const contentId = `content-${Date.now()}-${this.blockElements.size}`;
 		const blockEl = this.container.createEl("div", {
 			cls: "markdown-block",
 		});
-		blockEl.dataset.blockId = blockId;
-		this.blockElements.set(blockId, blockEl);
+		blockEl.dataset.contentId = contentId;
+		this.blockElements.set(contentId, blockEl);
 
-		this.queueRender(markdown, blockId);
-		return blockId;
+		this.queueRender(markdown, contentId);
+		return contentId;
 	}
 
 	/**
 	 * Remove a specific block
-	 * @param blockId The ID of the block to remove
+	 * @param contentId The ID of the block to remove
 	 */
-	public removeBlock(blockId: string): void {
-		const blockEl = this.blockElements.get(blockId);
+	public removeBlock(contentId: string): void {
+		const blockEl = this.blockElements.get(contentId);
 		if (blockEl) {
 			blockEl.remove();
-			this.blockElements.delete(blockId);
+			this.blockElements.delete(contentId);
 		}
 	}
 

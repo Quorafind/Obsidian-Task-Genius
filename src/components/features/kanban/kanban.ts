@@ -27,12 +27,6 @@ import {
 	isProjectReadonly,
 } from "@/utils/task/task-operations";
 
-// CSS classes for drop indicators
-const DROP_INDICATOR_BEFORE_CLASS = "tg-kanban-card--drop-indicator-before";
-const DROP_INDICATOR_AFTER_CLASS = "tg-kanban-card--drop-indicator-after";
-const DROP_INDICATOR_EMPTY_CLASS =
-	"tg-kanban-column-content--drop-indicator-empty";
-
 export interface KanbanSortOption {
 	field:
 		| "priority"
@@ -60,7 +54,7 @@ export class KanbanComponent extends Component {
 	private params: {
 		onTaskStatusUpdate?: (
 			taskId: string,
-			newStatusMark: string
+			newStatusMark: string,
 		) => Promise<void>;
 		onTaskSelected?: (task: Task) => void;
 		onTaskCompleted?: (task: Task) => void;
@@ -85,13 +79,13 @@ export class KanbanComponent extends Component {
 		params: {
 			onTaskStatusUpdate?: (
 				taskId: string,
-				newStatusMark: string
+				newStatusMark: string,
 			) => Promise<void>;
 			onTaskSelected?: (task: Task) => void;
 			onTaskCompleted?: (task: Task) => void;
 			onTaskContextMenu?: (ev: MouseEvent, task: Task) => void;
 		} = {},
-		viewId = "kanban" // 新增：视图ID参数
+		viewId = "kanban", // 新增：视图ID参数
 	) {
 		super();
 		this.app = app;
@@ -105,16 +99,18 @@ export class KanbanComponent extends Component {
 	/**
 	 * Set configuration override from Bases view config
 	 */
-	public setConfigOverride(config: Partial<KanbanSpecificConfig> | null): void {
+	public setConfigOverride(
+		config: Partial<KanbanSpecificConfig> | null,
+	): void {
 		const isChanged = this.hasConfigOverrideChanged(config);
 		this.configOverride = config;
-		console.log('[Kanban] setConfigOverride received', config);
+		console.log("[Kanban] setConfigOverride received", config);
 
 		if (isChanged) {
 			// Refresh derived state from effective config (sort/hide/column order)
 			this.loadKanbanConfig();
 			const eff = this.getEffectiveKanbanConfig();
-			console.log('[Kanban] effective config after override', eff);
+			console.log("[Kanban] effective config after override", eff);
 			if (this.columnContainerEl) {
 				// Rebuild columns with the new configuration so changes like groupBy
 				// take effect immediately without requiring a data refresh.
@@ -125,9 +121,11 @@ export class KanbanComponent extends Component {
 
 	private getEffectiveKanbanConfig(): KanbanSpecificConfig | undefined {
 		const pluginConfig = this.plugin.settings.viewConfiguration.find(
-			(v) => v.id === this.currentViewId
+			(v) => v.id === this.currentViewId,
 		)?.specificConfig as KanbanSpecificConfig;
-		return this.configOverride ? {...(pluginConfig ?? {}), ...this.configOverride} : pluginConfig;
+		return this.configOverride
+			? { ...(pluginConfig ?? {}), ...this.configOverride }
+			: pluginConfig;
 	}
 
 	override onload() {
@@ -173,7 +171,7 @@ export class KanbanComponent extends Component {
 	}
 
 	private hasConfigOverrideChanged(
-		nextConfig: Partial<KanbanSpecificConfig> | null
+		nextConfig: Partial<KanbanSpecificConfig> | null,
 	): boolean {
 		if (!this.configOverride && !nextConfig) {
 			return false;
@@ -185,7 +183,8 @@ export class KanbanComponent extends Component {
 
 		try {
 			return (
-				JSON.stringify(this.configOverride) !== JSON.stringify(nextConfig)
+				JSON.stringify(this.configOverride) !==
+				JSON.stringify(nextConfig)
 			);
 		} catch (error) {
 			console.warn("Failed to compare kanban config overrides:", error);
@@ -211,7 +210,7 @@ export class KanbanComponent extends Component {
 			},
 			(el) => {
 				setIcon(el, "arrow-up-down");
-			}
+			},
 		);
 
 		this.registerDomEvent(sortButton, "click", (event) => {
@@ -265,7 +264,7 @@ export class KanbanComponent extends Component {
 					item.setTitle(option.label)
 						.setChecked(
 							option.field === this.sortOption.field &&
-							option.order === this.sortOption.order
+								option.order === this.sortOption.order,
 						)
 						.onClick(() => {
 							this.sortOption = option;
@@ -296,7 +295,7 @@ export class KanbanComponent extends Component {
 					this.applyFiltersAndRender(); // Re-render when filters change
 				},
 			},
-			this.plugin // Pass plugin instance
+			this.plugin, // Pass plugin instance
 		);
 
 		this.addChild(this.filterComponent); // Register as child component
@@ -312,7 +311,7 @@ export class KanbanComponent extends Component {
 			this.filterComponent.updateFilterOptions(this.allTasks);
 		} else {
 			console.warn(
-				"Filter component not initialized when setting tasks."
+				"Filter component not initialized when setting tasks.",
 			);
 			// Options will be built when renderFilterControls is called if it hasn't been yet.
 			// If renderFilterControls already ran, this might indicate an issue.
@@ -375,7 +374,7 @@ export class KanbanComponent extends Component {
 							return task.filePath === filter.value;
 						default:
 							console.warn(
-								`Unknown filter category in Kanban: ${filter.category}`
+								`Unknown filter category in Kanban: ${filter.category}`,
 							);
 							return true;
 					}
@@ -417,7 +416,7 @@ export class KanbanComponent extends Component {
 
 	// Allow multiple symbols to represent the same logical status (e.g., In Progress: "/" and ">")
 	private getAllowedMarksForStatusName(
-		statusName: string
+		statusName: string,
 	): Set<string> | null {
 		if (!statusName) return null;
 		const s = statusName.trim().toLowerCase();
@@ -444,7 +443,7 @@ export class KanbanComponent extends Component {
 			raw
 				.split("|")
 				.map((ch: string) => ch.trim())
-				.filter((ch: string) => ch.length === 1)
+				.filter((ch: string) => ch.length === 1),
 		);
 		return set.size > 0 ? set : null;
 	}
@@ -452,7 +451,7 @@ export class KanbanComponent extends Component {
 	// Handle filter application from clickable metadata
 	private handleFilterApply = (
 		filterType: string,
-		value: string | number | string[]
+		value: string | number | string[],
 	) => {
 		// Convert value to string for consistent handling
 		let stringValue = Array.isArray(value) ? value[0] : value.toString();
@@ -474,7 +473,7 @@ export class KanbanComponent extends Component {
 
 		// Check if filter already exists
 		const existingFilterIndex = this.activeFilters.findIndex(
-			(f) => f.category === filterType && f.value === stringValue
+			(f) => f.category === filterType && f.value === stringValue,
 		);
 
 		if (existingFilterIndex === -1) {
@@ -491,7 +490,7 @@ export class KanbanComponent extends Component {
 				this.activeFilters.map((f) => ({
 					category: f.category,
 					value: f.value,
-				}))
+				})),
 			);
 		}
 
@@ -534,7 +533,7 @@ export class KanbanComponent extends Component {
 
 		// Resolve effective config (Bases override wins over plugin settings)
 		const kanbanConfig = this.getEffectiveKanbanConfig();
-		console.log('[Kanban] renderColumns effective config', kanbanConfig);
+		console.log("[Kanban] renderColumns effective config", kanbanConfig);
 
 		const groupBy = kanbanConfig?.groupBy || "status";
 
@@ -588,7 +587,7 @@ export class KanbanComponent extends Component {
 		statusNames = [...spaceStatus, ...otherStatuses, ...xStatus];
 
 		// Apply saved column order to status names
-		const statusColumns = statusNames.map((name) => ({title: name}));
+		const statusColumns = statusNames.map((name) => ({ title: name }));
 		const orderedStatusColumns = this.applyColumnOrder(statusColumns);
 		const orderedStatusNames = orderedStatusColumns.map((col) => col.title);
 
@@ -605,10 +604,10 @@ export class KanbanComponent extends Component {
 					...this.params,
 					onTaskStatusUpdate: (
 						taskId: string,
-						newStatusMark: string
+						newStatusMark: string,
 					) => this.handleStatusUpdate(taskId, newStatusMark),
 					onFilterApply: this.handleFilterApply,
-				}
+				},
 			);
 			this.addChild(column);
 			this.columns.push(column);
@@ -617,7 +616,7 @@ export class KanbanComponent extends Component {
 
 	private renderCustomColumns(
 		groupBy: string,
-		customColumns?: KanbanColumnConfig[]
+		customColumns?: KanbanColumnConfig[],
 	) {
 		let columnConfigs: { title: string; value: any; id: string }[] = [];
 
@@ -641,7 +640,7 @@ export class KanbanComponent extends Component {
 		orderedColumnConfigs.forEach((config) => {
 			const tasksForColumn = this.getTasksForProperty(
 				groupBy,
-				config.value
+				config.value,
 			);
 
 			const column = new KanbanColumnComponent(
@@ -657,10 +656,10 @@ export class KanbanComponent extends Component {
 							taskId,
 							groupBy,
 							config.value,
-							newValue
+							newValue,
 						),
 					onFilterApply: this.handleFilterApply,
-				}
+				},
 			);
 			this.addChild(column);
 			this.columns.push(column);
@@ -668,17 +667,17 @@ export class KanbanComponent extends Component {
 	}
 
 	private generateDefaultColumns(
-		groupBy: string
+		groupBy: string,
 	): { title: string; value: any; id: string }[] {
 		switch (groupBy) {
 			case "priority":
 				return [
-					{title: "🔺 Highest", value: 5, id: "priority-5"},
-					{title: "⏫ High", value: 4, id: "priority-4"},
-					{title: "🔼 Medium", value: 3, id: "priority-3"},
-					{title: "🔽 Low", value: 2, id: "priority-2"},
-					{title: "⏬ Lowest", value: 1, id: "priority-1"},
-					{title: "No Priority", value: null, id: "priority-none"},
+					{ title: "🔺 Highest", value: 5, id: "priority-5" },
+					{ title: "⏫ High", value: 4, id: "priority-4" },
+					{ title: "🔼 Medium", value: 3, id: "priority-3" },
+					{ title: "🔽 Low", value: 2, id: "priority-2" },
+					{ title: "⏬ Lowest", value: 1, id: "priority-1" },
+					{ title: "No Priority", value: null, id: "priority-none" },
 				];
 			case "tags":
 				// Get unique tags from all tasks
@@ -719,7 +718,7 @@ export class KanbanComponent extends Component {
 						title: project,
 						value: project,
 						id: `project-${project}`,
-					})
+					}),
 				);
 				projectColumns.push({
 					title: "No Project",
@@ -741,7 +740,7 @@ export class KanbanComponent extends Component {
 						title: `@${context}`,
 						value: context,
 						id: `context-${context}`,
-					})
+					}),
 				);
 				contextColumns.push({
 					title: "No Context",
@@ -758,7 +757,7 @@ export class KanbanComponent extends Component {
 						value: "overdue",
 						id: `${groupBy}-overdue`,
 					},
-					{title: "Today", value: "today", id: `${groupBy}-today`},
+					{ title: "Today", value: "today", id: `${groupBy}-today` },
 					{
 						title: "Tomorrow",
 						value: "tomorrow",
@@ -774,8 +773,8 @@ export class KanbanComponent extends Component {
 						value: "nextWeek",
 						id: `${groupBy}-nextWeek`,
 					},
-					{title: "Later", value: "later", id: `${groupBy}-later`},
-					{title: "No Date", value: null, id: `${groupBy}-none`},
+					{ title: "Later", value: "later", id: `${groupBy}-later` },
+					{ title: "No Date", value: null, id: `${groupBy}-none` },
 				];
 			case "filePath":
 				// Get unique file paths from all tasks
@@ -791,7 +790,7 @@ export class KanbanComponent extends Component {
 					id: `path-${path.replace(/[^a-zA-Z0-9]/g, "-")}`,
 				}));
 			default:
-				return [{title: "All Tasks", value: null, id: "all"}];
+				return [{ title: "All Tasks", value: null, id: "all" }];
 		}
 	}
 
@@ -826,9 +825,9 @@ export class KanbanComponent extends Component {
 	private compareTasks(
 		a: Task,
 		b: Task,
-		sortOption: KanbanSortOption
+		sortOption: KanbanSortOption,
 	): number {
-		const {field, order} = sortOption;
+		const { field, order } = sortOption;
 		let comparison = 0;
 
 		// Ensure both tasks have metadata property
@@ -918,8 +917,8 @@ export class KanbanComponent extends Component {
 				dropTargetColumnContent.closest(".tg-kanban-column");
 			const targetColumnTitle = targetColumnEl
 				? (targetColumnEl as HTMLElement).querySelector(
-					".tg-kanban-column-title"
-				)?.textContent
+						".tg-kanban-column-title",
+					)?.textContent
 				: null;
 
 			// Get source column information
@@ -927,66 +926,67 @@ export class KanbanComponent extends Component {
 				sourceColumnContent.closest(".tg-kanban-column");
 			const sourceColumnTitle = sourceColumnEl
 				? (sourceColumnEl as HTMLElement).querySelector(
-					".tg-kanban-column-title"
-				)?.textContent
+						".tg-kanban-column-title",
+					)?.textContent
 				: null;
 
 			if (targetColumnTitle && sourceColumnTitle) {
 				const kanbanConfig =
 					this.plugin.settings.viewConfiguration.find(
-						(v) => v.id === this.currentViewId
+						(v) => v.id === this.currentViewId,
 					)?.specificConfig as KanbanSpecificConfig;
 
 				const groupByPlugin = kanbanConfig?.groupBy || "status";
-				const groupBy = (this.getEffectiveKanbanConfig()?.groupBy) || groupByPlugin;
+				const groupBy =
+					this.getEffectiveKanbanConfig()?.groupBy || groupByPlugin;
 
 				if (groupBy === "status") {
 					// Handle status-based grouping (original logic)
 					const targetStatusMark = this.resolveStatusMark(
-						(targetColumnTitle || "").trim()
+						(targetColumnTitle || "").trim(),
 					);
 					if (targetStatusMark !== undefined) {
 						console.log(
-							`Kanban requesting status update for task ${taskId} to status ${targetColumnTitle} (mark: ${targetStatusMark})`
+							`Kanban requesting status update for task ${taskId} to status ${targetColumnTitle} (mark: ${targetStatusMark})`,
 						);
 						await this.handleStatusUpdate(taskId, targetStatusMark);
 					} else {
 						console.warn(
-							`Could not find status mark for status name: ${targetColumnTitle}`
+							`Could not find status mark for status name: ${targetColumnTitle}`,
 						);
 					}
 				} else {
-					const effectiveCustomColumns = (this.getEffectiveKanbanConfig()?.customColumns) || kanbanConfig?.customColumns;
+					const effectiveCustomColumns =
+						this.getEffectiveKanbanConfig()?.customColumns ||
+						kanbanConfig?.customColumns;
 
 					// Handle property-based grouping
 					const targetValue = this.getColumnValueFromTitle(
 						targetColumnTitle,
 						groupBy,
-						effectiveCustomColumns
+						effectiveCustomColumns,
 					);
 					const sourceValue = this.getColumnValueFromTitle(
 						sourceColumnTitle,
 						groupBy,
-						effectiveCustomColumns
+						effectiveCustomColumns,
 					);
 					console.log(
-						`Kanban requesting ${groupBy} update for task ${taskId} from ${sourceValue} to value: ${targetValue}`
+						`Kanban requesting ${groupBy} update for task ${taskId} from ${sourceValue} to value: ${targetValue}`,
 					);
 					await this.handlePropertyUpdate(
 						taskId,
 						groupBy,
 						sourceValue,
-						targetValue
+						targetValue,
 					);
 				}
 
-				// After update, select the moved task so the status panel (details) reflects changes
-				const movedTask =
-					this.allTasks.find((t) => t.id === taskId) ||
-					this.tasks.find((t) => t.id === taskId);
-				if (movedTask && this.params?.onTaskSelected) {
-					this.params.onTaskSelected(movedTask);
-				}
+				// Don't auto-select task after drag to avoid unwanted detail panel opening
+				// Users can manually click the card if they want to see details
+				//
+				// Previously: Auto-selected moved task so status panel reflects changes
+				// Issue: This opens detail panel after every drag operation, disrupting workflow
 			}
 		}
 	}
@@ -1001,10 +1001,10 @@ export class KanbanComponent extends Component {
 				order: kanbanConfig.defaultSortOrder || "desc",
 				label: this.getSortOptionLabel(
 					kanbanConfig.defaultSortField || "priority",
-					kanbanConfig.defaultSortOrder || "desc"
+					kanbanConfig.defaultSortOrder || "desc",
 				),
 			};
-			console.log('[Kanban] loadKanbanConfig applied', {
+			console.log("[Kanban] loadKanbanConfig applied", {
 				hideEmptyColumns: this.hideEmptyColumns,
 				defaultSortField: this.sortOption.field,
 				defaultSortOrder: this.sortOption.order,
@@ -1044,7 +1044,7 @@ export class KanbanComponent extends Component {
 		if (typeof exact === "string") return exact;
 		// Try case-insensitive match
 		for (const [name, mark] of Object.entries(
-			this.plugin.settings.taskStatusMarks
+			this.plugin.settings.taskStatusMarks,
 		)) {
 			if (name.toLowerCase() === trimmed.toLowerCase()) {
 				return mark as string;
@@ -1059,14 +1059,23 @@ export class KanbanComponent extends Component {
 
 	private async handleStatusUpdate(
 		taskId: string,
-		newStatusMark: string
+		newStatusMark: string,
 	): Promise<void> {
+		console.log(`[Kanban] handleStatusUpdate called: taskId=${taskId}, mark=${newStatusMark}`);
+		console.log('[Kanban] onTaskStatusUpdate callback exists:', !!this.params.onTaskStatusUpdate);
+
 		if (this.params.onTaskStatusUpdate) {
 			try {
+				console.log('[Kanban] Calling onTaskStatusUpdate callback...');
 				await this.params.onTaskStatusUpdate(taskId, newStatusMark);
+				console.log('[Kanban] onTaskStatusUpdate callback completed successfully');
 			} catch (error) {
-				console.error("Failed to update task status:", error);
+				console.error("[Kanban] Failed to update task status:", error);
+				console.error("[Kanban] Error details:", error.stack);
 			}
+		} else {
+			console.error('[Kanban] CRITICAL: onTaskStatusUpdate callback is not defined!');
+			console.error('[Kanban] this.params:', this.params);
 		}
 	}
 
@@ -1074,7 +1083,7 @@ export class KanbanComponent extends Component {
 		taskId: string,
 		groupBy: string,
 		oldValue: any,
-		newValue: string
+		newValue: string,
 	): Promise<void> {
 		// This method will handle updating task properties when dragged between columns
 		if (groupBy === "status") {
@@ -1086,7 +1095,7 @@ export class KanbanComponent extends Component {
 		const taskToUpdate = this.allTasks.find((task) => task.id === taskId);
 		if (!taskToUpdate) {
 			console.warn(
-				`Task with ID ${taskId} not found for property update`
+				`Task with ID ${taskId} not found for property update`,
 			);
 			return;
 		}
@@ -1094,7 +1103,7 @@ export class KanbanComponent extends Component {
 		taskToUpdate.metadata = taskToUpdate.metadata || {};
 
 		// Create updated task object
-		const updatedTask = {...taskToUpdate};
+		const updatedTask = { ...taskToUpdate };
 
 		// Update the specific property based on groupBy type
 		switch (groupBy) {
@@ -1130,7 +1139,7 @@ export class KanbanComponent extends Component {
 						];
 
 						currentTags = currentTags.filter(
-							(tag) => !oldTagVariants.includes(tag)
+							(tag) => !oldTagVariants.includes(tag),
 						);
 						console.log("Tags after removing old:", currentTags);
 					}
@@ -1146,7 +1155,7 @@ export class KanbanComponent extends Component {
 					];
 
 					const hasNewTag = currentTags.some((tag) =>
-						newTagVariants.includes(tag)
+						newTagVariants.includes(tag),
 					);
 					if (!hasNewTag) {
 						// Add the tag in the same format as existing tags, or without # if no existing tags
@@ -1194,7 +1203,7 @@ export class KanbanComponent extends Component {
 				break;
 			default:
 				console.warn(
-					`Unsupported property type for update: ${groupBy}`
+					`Unsupported property type for update: ${groupBy}`,
 				);
 				return;
 		}
@@ -1205,7 +1214,7 @@ export class KanbanComponent extends Component {
 				`Updating task ${taskId} ${groupBy} from:`,
 				oldValue,
 				"to:",
-				newValue
+				newValue,
 			);
 			if (this.plugin.writeAPI) {
 				const result = await this.plugin.writeAPI.updateTask({
@@ -1215,7 +1224,7 @@ export class KanbanComponent extends Component {
 				if (!result.success) {
 					console.error(
 						`Failed to update task ${taskId} property ${groupBy}:`,
-						result.error
+						result.error,
 					);
 				}
 			} else {
@@ -1224,7 +1233,7 @@ export class KanbanComponent extends Component {
 		} catch (error) {
 			console.error(
 				`Failed to update task ${taskId} property ${groupBy}:`,
-				error
+				error,
 			);
 		}
 	}
@@ -1246,7 +1255,7 @@ export class KanbanComponent extends Component {
 					return (
 						metadata.tags &&
 						metadata.tags.some(
-							(tag) => typeof tag === "string" && tag === value
+							(tag) => typeof tag === "string" && tag === value,
 						)
 					);
 				case "project":
@@ -1281,18 +1290,18 @@ export class KanbanComponent extends Component {
 	private matchesDateCategory(
 		task: Task,
 		dateField: string,
-		category: string
+		category: string,
 	): boolean {
 		const now = new Date();
 		const today = new Date(
 			now.getFullYear(),
 			now.getMonth(),
-			now.getDate()
+			now.getDate(),
 		);
 		const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 		const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 		const twoWeeksFromNow = new Date(
-			today.getTime() + 14 * 24 * 60 * 60 * 1000
+			today.getTime() + 14 * 24 * 60 * 60 * 1000,
 		);
 
 		const metadata = task.metadata || {};
@@ -1324,7 +1333,7 @@ export class KanbanComponent extends Component {
 				return (
 					taskDateObj >= tomorrow &&
 					taskDateObj <
-					new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000)
+						new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000)
 				);
 			case "thisWeek":
 				return taskDateObj >= tomorrow && taskDateObj < weekFromNow;
@@ -1346,7 +1355,7 @@ export class KanbanComponent extends Component {
 	private getColumnValueFromTitle(
 		title: string,
 		groupBy: string,
-		customColumns?: KanbanColumnConfig[]
+		customColumns?: KanbanColumnConfig[],
 	): any {
 		console.log("customColumns", customColumns);
 		if (customColumns && customColumns.length > 0) {
@@ -1393,7 +1402,7 @@ export class KanbanComponent extends Component {
 	}
 
 	private convertDateCategoryToTimestamp(
-		category: string
+		category: string,
 	): number | undefined {
 		if (category === null || category === "" || category === "none") {
 			return undefined;
@@ -1403,7 +1412,7 @@ export class KanbanComponent extends Component {
 		const today = new Date(
 			now.getFullYear(),
 			now.getMonth(),
-			now.getDate()
+			now.getDate(),
 		);
 
 		switch (category) {
@@ -1415,19 +1424,19 @@ export class KanbanComponent extends Component {
 				return today.getTime();
 			case "tomorrow":
 				return new Date(
-					today.getTime() + 24 * 60 * 60 * 1000
+					today.getTime() + 24 * 60 * 60 * 1000,
 				).getTime();
 			case "thisWeek":
 				// Set to end of this week (Sunday)
 				const daysUntilSunday = 7 - today.getDay();
 				return new Date(
-					today.getTime() + daysUntilSunday * 24 * 60 * 60 * 1000
+					today.getTime() + daysUntilSunday * 24 * 60 * 60 * 1000,
 				).getTime();
 			case "nextWeek":
 				// Set to end of next week
 				const daysUntilNextSunday = 14 - today.getDay();
 				return new Date(
-					today.getTime() + daysUntilNextSunday * 24 * 60 * 60 * 1000
+					today.getTime() + daysUntilNextSunday * 24 * 60 * 60 * 1000,
 				).getTime();
 			case "later":
 				// Set to one month from now
@@ -1448,7 +1457,7 @@ export class KanbanComponent extends Component {
 				// We need to check against the current column configuration
 				const kanbanConfig =
 					this.plugin.settings.viewConfiguration.find(
-						(v) => v.id === this.currentViewId
+						(v) => v.id === this.currentViewId,
 					)?.specificConfig as KanbanSpecificConfig;
 
 				if (
@@ -1469,7 +1478,7 @@ export class KanbanComponent extends Component {
 								metadata.tags.some(
 									(tag) =>
 										typeof tag === "string" &&
-										tag === column.value
+										tag === column.value,
 								)
 							) {
 								return column.value;
@@ -1483,7 +1492,7 @@ export class KanbanComponent extends Component {
 					}
 					// Return the first string tag (for simplicity, as we need to determine which column it came from)
 					const firstStringTag = metadata.tags.find(
-						(tag) => typeof tag === "string"
+						(tag) => typeof tag === "string",
 					);
 					return firstStringTag || "";
 				}
@@ -1516,12 +1525,12 @@ export class KanbanComponent extends Component {
 		const today = new Date(
 			now.getFullYear(),
 			now.getMonth(),
-			now.getDate()
+			now.getDate(),
 		);
 		const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 		const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 		const twoWeeksFromNow = new Date(
-			today.getTime() + 14 * 24 * 60 * 60 * 1000
+			today.getTime() + 14 * 24 * 60 * 60 * 1000,
 		);
 
 		const taskDate = new Date(timestamp);
@@ -1563,7 +1572,7 @@ export class KanbanComponent extends Component {
 		} catch (error) {
 			console.warn(
 				"Failed to load column order from localStorage:",
-				error
+				error,
 			);
 			this.columnOrder = [];
 		}
@@ -1580,7 +1589,7 @@ export class KanbanComponent extends Component {
 	}
 
 	private applyColumnOrder<T extends { title: string; id?: string }>(
-		columns: T[]
+		columns: T[],
 	): T[] {
 		try {
 			if (this.columnOrder.length === 0) {
@@ -1589,7 +1598,7 @@ export class KanbanComponent extends Component {
 
 			if (!Array.isArray(columns)) {
 				console.warn(
-					"Invalid columns array provided to applyColumnOrder"
+					"Invalid columns array provided to applyColumnOrder",
 				);
 				return [];
 			}
@@ -1603,11 +1612,11 @@ export class KanbanComponent extends Component {
 					const columnIndex = remainingColumns.findIndex(
 						(col) =>
 							(col.id && col.id === orderedId) ||
-							col.title === orderedId
+							col.title === orderedId,
 					);
 					if (columnIndex !== -1) {
 						orderedColumns.push(
-							remainingColumns.splice(columnIndex, 1)[0]
+							remainingColumns.splice(columnIndex, 1)[0],
 						);
 					}
 				}
@@ -1667,12 +1676,12 @@ export class KanbanComponent extends Component {
 
 			columnElements.forEach((columnEl) => {
 				const columnTitle = (columnEl as HTMLElement).querySelector(
-					".tg-kanban-column-title"
+					".tg-kanban-column-title",
 				)?.textContent;
 				if (columnTitle) {
 					// Use the data-status-name attribute if available, otherwise use title
 					const statusName = (columnEl as HTMLElement).getAttribute(
-						"data-status-name"
+						"data-status-name",
 					);
 					const columnId = statusName || columnTitle;
 

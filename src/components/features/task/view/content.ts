@@ -177,6 +177,8 @@ export class ContentComponent extends Component {
 		if (viewToggleBtn) {
 			setIcon(viewToggleBtn, this.isTreeView ? "git-branch" : "list");
 		}
+
+		console.log("toggle view mode");
 		// Save the new view mode state
 		saveViewMode(this.app, this.currentViewId, this.isTreeView);
 		this.refreshTaskList(); // Refresh list completely on view mode change
@@ -258,11 +260,6 @@ export class ContentComponent extends Component {
 		const viewConfig = getViewSettingOrDefault(this.plugin, viewId);
 		let title = t(viewConfig.name);
 
-		// Special handling for project view title (if needed, maybe handled by component itself)
-		// if (viewId === "projects" && this.selectedProjectForView) {
-		// 	const projectName = this.selectedProjectForView.split("/").pop();
-		// 	title = projectName || t("Project");
-		// }
 		this.titleEl.setText(title);
 
 		// Re-initialize view mode for the new view
@@ -374,6 +371,7 @@ export class ContentComponent extends Component {
 	}
 
 	private refreshTaskList() {
+		console.log("refreshing");
 		// Defer rendering if container is not visible yet (e.g., view hidden during init)
 		if (!this.isContainerVisible()) {
 			this.pendingForceRefresh = true;

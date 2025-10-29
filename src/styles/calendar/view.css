@@ -179,6 +179,7 @@
 .full-calendar-container .calendar-event {
 	/* Example style for an event */
 	background-color: var(--interactive-accent);
+	--bold-color: var(--text-on-accent);
 	color: var(--text-on-accent);
 	border-radius: var(--radius-s);
 	padding: 2px 4px;
@@ -300,7 +301,9 @@
 	/* margin-bottom: var(--size-4-2); */
 	width: 100%; /* Ensure it takes full width */
 	border-radius: var(--radius-s);
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease;
 }
 
 .full-calendar-container .calendar-event-timed:hover {
@@ -445,24 +448,49 @@
 }
 
 /* Adjust grid layouts when weekends are hidden */
-.full-calendar-container .calendar-view-container.hide-weekends .calendar-weekday-header {
-	grid-template-columns: repeat(5, 1fr) !important; /* 5 columns instead of 7 when weekends hidden */
+.full-calendar-container
+	.calendar-view-container.hide-weekends
+	.calendar-weekday-header {
+	grid-template-columns: repeat(
+		5,
+		1fr
+	) !important; /* 5 columns instead of 7 when weekends hidden */
 }
 
-.full-calendar-container .calendar-view-container.hide-weekends .calendar-month-grid {
-	grid-template-columns: repeat(5, 1fr) !important; /* 5 columns instead of 7 when weekends hidden */
+.full-calendar-container
+	.calendar-view-container.hide-weekends
+	.calendar-month-grid {
+	grid-template-columns: repeat(
+		5,
+		1fr
+	) !important; /* 5 columns instead of 7 when weekends hidden */
 }
 
-.full-calendar-container .calendar-view-container.hide-weekends .calendar-week-header {
-	grid-template-columns: repeat(5, 1fr) !important; /* 5 columns instead of 7 when weekends hidden */
+.full-calendar-container
+	.calendar-view-container.hide-weekends
+	.calendar-week-header {
+	grid-template-columns: repeat(
+		5,
+		1fr
+	) !important; /* 5 columns instead of 7 when weekends hidden */
 }
 
-.full-calendar-container .calendar-view-container.hide-weekends .calendar-week-grid {
-	grid-template-columns: repeat(5, 1fr) !important; /* 5 columns instead of 7 when weekends hidden */
+.full-calendar-container
+	.calendar-view-container.hide-weekends
+	.calendar-week-grid {
+	grid-template-columns: repeat(
+		5,
+		1fr
+	) !important; /* 5 columns instead of 7 when weekends hidden */
 }
 
-.full-calendar-container .calendar-view-container.hide-weekends .mini-month-grid {
-	grid-template-columns: repeat(5, 1fr) !important; /* 5 columns instead of 7 when weekends hidden */
+.full-calendar-container
+	.calendar-view-container.hide-weekends
+	.mini-month-grid {
+	grid-template-columns: repeat(
+		5,
+		1fr
+	) !important; /* 5 columns instead of 7 when weekends hidden */
 }
 
 /* Note: Weekend elements are not created when hideWeekends is enabled,
@@ -637,7 +665,9 @@
 /* Make calendar events draggable */
 .calendar-events-container .calendar-event {
 	cursor: grab;
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 .calendar-events-container .calendar-event:hover {
