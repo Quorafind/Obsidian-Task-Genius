@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 
 
+## [9.9.4](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.3...9.9.4) (2025-10-30)
+
+### Features
+
+* **rendering:** use originalMarkdown for file-source tasks ([20838fd](https://github.com/Quorafind/Obsidian-Task-Genius/commit/20838fd))
+* **file-source:** add frontmatter update support in WriteAPI ([d1132e1](https://github.com/Quorafind/Obsidian-Task-Genius/commit/d1132e1))
+* **file-source:** add metadata field mapping configuration ([f7456af](https://github.com/Quorafind/Obsidian-Task-Genius/commit/f7456af))
+
+### Bug Fixes
+
+* **file-source:** remove project tag when deriving project from tags ([4f0dc24](https://github.com/Quorafind/Obsidian-Task-Genius/commit/4f0dc24))
+* project tag is not recognized when index file tasks ([66e1f6a](https://github.com/Quorafind/Obsidian-Task-Genius/commit/66e1f6a))
+* tag input event issue ([4d04384](https://github.com/Quorafind/Obsidian-Task-Genius/commit/4d04384))
+
+### Refactors
+
+* **task-view:** remove debouncing from task list rendering ([dc74b9c](https://github.com/Quorafind/Obsidian-Task-Genius/commit/dc74b9c))
+
+### Styles
+
+* format code with prettier ([bc3a1d3](https://github.com/Quorafind/Obsidian-Task-Genius/commit/bc3a1d3))
+
 ## [9.9.3](https://github.com/Quorafind/Obsidian-Task-Genius/compare/9.9.2...9.9.3) (2025-10-26)
 
 ### Features
