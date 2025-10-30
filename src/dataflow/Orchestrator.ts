@@ -237,6 +237,7 @@ export class DataflowOrchestrator {
 				app,
 				this.plugin.settings.fileSource,
 				this.fileFilterManager,
+				this.plugin,
 			);
 			console.log(
 				"[DataflowOrchestrator] FileSource constructed with filterManager=",
@@ -918,6 +919,7 @@ export class DataflowOrchestrator {
 				this.app,
 				settings.fileSource,
 				this.fileFilterManager,
+				this.plugin,
 			);
 			this.fileSource.initialize().catch((error) => {
 				console.error(
