@@ -360,6 +360,26 @@ describe('FileSource', () => {
       
       expect(task).toBeNull();
     });
+
+    it('should remove project tag when used to derive project metadata', async () => {
+      const fileCache = {
+        frontmatter: {
+          tags: ['context/foo']
+        },
+        tags: [
+          { tag: '#project/Alpha' },
+          { tag: '#task' }
+        ]
+      };
+      mockApp.metadataCache.getFileCache.mockReturnValue(fileCache);
+
+      const task = await fileSource.createFileTask('test.md');
+
+      expect(task).toBeTruthy();
+      expect(task!.metadata.project).toBe('Alpha');
+      expect(task!.metadata.tags).toEqual(expect.arrayContaining(['#task', '#context/foo']));
+      expect(task!.metadata.tags).not.toContain('#project/Alpha');
+    });
   });
 
   describe('statistics', () => {

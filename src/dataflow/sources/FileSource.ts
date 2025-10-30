@@ -6,7 +6,7 @@
  */
 
 import type { App, TFile, EventRef, CachedMetadata } from "obsidian";
-import TaskProgressBarPlugin from "@/index";
+import type TaskProgressBarPlugin from "@/index";
 import type { Task } from "@/types/task";
 import type {
 	FileSourceConfiguration,
@@ -869,13 +869,24 @@ export class FileSource {
 		// Extract project from tags as a fallback (only if not in frontmatter)
 		// Note: In FileSource mode, context and area come ONLY from frontmatter,
 		// not from tags like #context/xxx or #area/xxx
-		const projectFromTags = this.extractProjectFromTags(allTags);
+		const projectTagExtraction = this.extractProjectFromTags(allTags);
+		const projectFromTags = projectTagExtraction.project;
 
 		// Priority order for project:
 		// 1. Direct frontmatter field (project: xxx) - highest priority
 		// 2. Metadata mapping (e.g., custom_project mapped to project via metadataMappings)
 		// 3. Tag extraction (#project/xxx) - lowest priority, only if frontmatter has nothing
 		const projectValue = resolvedFrontmatter.project ?? projectFromTags;
+
+		const shouldStripProjectTags =
+			!resolvedFrontmatter.project &&
+			Boolean(projectFromTags) &&
+			projectTagExtraction.matchedTags.length > 0;
+		const tagsForMetadata = shouldStripProjectTags
+			? allTags.filter(
+					(tag) => !projectTagExtraction.matchedTags.includes(tag)
+			  )
+			: allTags;
 
 		// Extract standard task metadata
 		const metadata: Partial<FileSourceTaskMetadata> = {
@@ -903,7 +914,7 @@ export class FileSource {
 			// Context and area: ONLY from frontmatter (direct or mapped via metadataMappings)
 			context: resolvedFrontmatter.context,
 			area: resolvedFrontmatter.area,
-			tags: allTags,
+			tags: tagsForMetadata,
 			status: status,
 			children: [],
 		};
@@ -917,9 +928,20 @@ export class FileSource {
 	 * Note: context and area are NOT extracted from tags in FileSource mode,
 	 * they should be defined directly in frontmatter (context: xxx, area: xxx)
 	 */
-	private extractProjectFromTags(tags: string[]): string | undefined {
+	private extractProjectFromTags(tags: string[]): {
+		project?: string;
+		matchedTags: string[];
+	} {
 		// Get configurable project prefix from plugin settings, with fallback default
-		const projectPrefix = "project";
+		const configuredPrefix =
+			this.plugin?.settings?.projectTagPrefix?.["tasks"];
+		const projectPrefix =
+			typeof configuredPrefix === "string" && configuredPrefix.trim()
+				? configuredPrefix.trim()
+				: "project";
+
+		const matchedTags: string[] = [];
+		let projectValue: string | undefined;
 
 		for (const tag of tags) {
 			if (!tag || typeof tag !== "string") continue;
@@ -933,21 +955,27 @@ export class FileSource {
 					.toLowerCase()
 					.startsWith(`${projectPrefix.toLowerCase()}/`)
 			) {
-				// Extract the value using the actual prefix length (preserving case in the value)
-				const slashIndex = tagWithoutHash.indexOf("/");
-				if (slashIndex !== -1) {
-					const value = tagWithoutHash.substring(slashIndex + 1);
-					if (value) {
-						console.log(
-							`[FileSource] Extracted project from tag: ${value}`
-						);
-						return value;
+				matchedTags.push(tag);
+				if (!projectValue) {
+					// Extract the value using the actual prefix length (preserving case in the value)
+					const slashIndex = tagWithoutHash.indexOf("/");
+					if (slashIndex !== -1) {
+						const value = tagWithoutHash.substring(slashIndex + 1);
+						if (value) {
+							projectValue = value;
+						}
 					}
 				}
 			}
 		}
 
-		return undefined;
+		if (projectValue) {
+			console.log(
+				`[FileSource] Extracted project from tag: ${projectValue}`
+			);
+		}
+
+		return { project: projectValue, matchedTags };
 	}
 
 	/**
