@@ -22,7 +22,7 @@ const CACHE_DURATION = 30000; // 30 seconds
 // Helper function to get cached data
 export async function getCachedData(
 	plugin: TaskProgressBarPlugin,
-	forceRefresh: boolean = false
+	forceRefresh: boolean = false,
 ): Promise<GlobalAutoCompleteCache> {
 	const now = Date.now();
 
@@ -33,7 +33,7 @@ export async function getCachedData(
 	if (!globalCache || now - globalCache.lastUpdate > CACHE_DURATION) {
 		// Fetch fresh data
 		const tags = Object.keys(plugin.app.metadataCache.getTags() || {}).map(
-			(tag) => tag.substring(1) // Remove # prefix
+			(tag) => tag.substring(1), // Remove # prefix
 		);
 
 		// Get projects and contexts from dataflow using the new convenience method
@@ -49,7 +49,7 @@ export async function getCachedData(
 			} catch (error) {
 				console.warn(
 					"Failed to get projects/contexts from dataflow:",
-					error
+					error,
 				);
 			}
 		}
@@ -92,7 +92,10 @@ export async function getCachedData(
 }
 
 abstract class BaseSuggest<T> extends AbstractInputSuggest<T> {
-	constructor(app: App, public inputEl: HTMLInputElement) {
+	constructor(
+		app: App,
+		public inputEl: HTMLInputElement,
+	) {
 		super(app, inputEl);
 	}
 
@@ -124,7 +127,7 @@ class CustomSuggest extends BaseSuggest<string> {
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		availableChoices: string[]
+		availableChoices: string[],
 	) {
 		super(app, inputEl);
 		this.availableChoices = availableChoices;
@@ -138,8 +141,8 @@ class CustomSuggest extends BaseSuggest<string> {
 		return this.availableChoices
 			.filter(
 				(
-					cmd: string // Add type to cmd
-				) => fuzzySearch(cmd.toLowerCase()) // Call the returned function
+					cmd: string, // Add type to cmd
+				) => fuzzySearch(cmd.toLowerCase()), // Call the returned function
 			)
 			.slice(0, 100);
 	}
@@ -160,7 +163,7 @@ export class ProjectSuggest extends CustomSuggest {
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
 	) {
 		// Initialize with empty list, will be populated asynchronously
 		super(app, inputEl, []);
@@ -178,7 +181,7 @@ export class ProjectSuggest extends CustomSuggest {
 			} catch (e) {
 				console.warn(
 					"ProjectSuggest: failed to refresh projects on focus",
-					e
+					e,
 				);
 			}
 		});
@@ -192,7 +195,7 @@ export class ContextSuggest extends CustomSuggest {
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
 	) {
 		// Initialize with empty list, will be populated asynchronously
 		super(app, inputEl, []);
@@ -207,11 +210,22 @@ export class ContextSuggest extends CustomSuggest {
 /**
  * TagSuggest - Provides autocomplete for tag names
  */
+export const TAG_COMMIT_EVENT = "task-progress-bar:tag-commit";
+
 export class TagSuggest extends CustomSuggest {
+	private readonly detailedKeydownHandler = (event: KeyboardEvent) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			event.stopPropagation();
+			this.commitDetailedTag();
+		}
+	};
+
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
+		readonly isDetailed: boolean = false,
 	) {
 		// Initialize with empty list, will be populated asynchronously
 		super(app, inputEl, []);
@@ -220,10 +234,30 @@ export class TagSuggest extends CustomSuggest {
 		getCachedData(plugin).then((cachedData) => {
 			this.availableChoices = cachedData.tags;
 		});
+
+		if (this.isDetailed) {
+			inputEl.addEventListener("keydown", this.detailedKeydownHandler);
+		}
 	}
 
 	// Override getSuggestions to handle comma-separated tags
 	getSuggestions(query: string): string[] {
+		if (this.isDetailed) {
+			const currentTagInput = query
+				.trim()
+				.replace(/^#+/, "")
+				.toLowerCase();
+
+			if (!currentTagInput) {
+				return this.availableChoices.slice(0, 100);
+			}
+
+			const fuzzySearch = prepareFuzzySearch(currentTagInput);
+			return this.availableChoices
+				.filter((tag) => fuzzySearch(tag.toLowerCase()))
+				.slice(0, 100);
+		}
+
 		const parts = query.split(",");
 		const currentTagInput = parts[parts.length - 1].trim();
 
@@ -239,6 +273,10 @@ export class TagSuggest extends CustomSuggest {
 
 	// Override to add # prefix and keep previous tags
 	getSuggestionValue(item: string): string {
+		if (this.isDetailed) {
+			return `#${item}`;
+		}
+
 		const currentValue = this.inputEl.value;
 		const parts = currentValue.split(",");
 
@@ -253,13 +291,58 @@ export class TagSuggest extends CustomSuggest {
 	getSuggestionText(item: string): string {
 		return `#${item}`;
 	}
+
+	// Override to intercept selection in detailed mode
+	selectSuggestion(item: string, evt: MouseEvent | KeyboardEvent): void {
+		super.selectSuggestion(item, evt);
+		if (this.isDetailed) {
+			this.commitDetailedTag();
+		}
+	}
+
+	private commitDetailedTag(): void {
+		if (!this.isDetailed) {
+			return;
+		}
+
+		const rawValue = this.inputEl.value.trim();
+		if (!rawValue) {
+			this.resetDetailedInput();
+			return;
+		}
+
+		const normalized = rawValue
+			.replace(/^#+/, "")
+			.replace(/[,\s]+$/g, "")
+			.trim();
+
+		if (!normalized) {
+			this.resetDetailedInput();
+			return;
+		}
+
+		this.inputEl.dispatchEvent(
+			new CustomEvent(TAG_COMMIT_EVENT, {
+				detail: { tag: normalized },
+				bubbles: true,
+			}),
+		);
+
+		this.resetDetailedInput();
+	}
+
+	private resetDetailedInput(): void {
+		this.inputEl.value = "";
+		this.inputEl.trigger("input");
+		this.close();
+	}
 }
 
 export class SingleFolderSuggest extends CustomSuggest {
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
 	) {
 		const folders = app.vault.getAllFolders();
 		const paths = folders.map((file) => file.path);
@@ -278,7 +361,7 @@ export class FolderSuggest extends CustomSuggest {
 		app: App,
 		inputEl: HTMLInputElement,
 		plugin: TaskProgressBarPlugin,
-		outputType: "single" | "multiple" = "multiple"
+		outputType: "single" | "multiple" = "multiple",
 	) {
 		// Get all markdown files in the vault
 		const folders = app.vault.getAllFolders();
@@ -299,7 +382,7 @@ export class FolderSuggest extends CustomSuggest {
 			}
 
 			const fuzzySearch = prepareFuzzySearch(
-				currentPathInput.toLowerCase()
+				currentPathInput.toLowerCase(),
 			);
 			return this.availableChoices
 				.filter((path) => fuzzySearch(path.toLowerCase()))
@@ -357,7 +440,7 @@ export class ImageSuggest extends CustomSuggest {
 	constructor(
 		app: App,
 		inputEl: HTMLInputElement,
-		plugin: TaskProgressBarPlugin
+		plugin: TaskProgressBarPlugin,
 	) {
 		// Get all images in the vault
 		const images = app.vault
@@ -369,7 +452,7 @@ export class ImageSuggest extends CustomSuggest {
 					file.extension === "jpeg" ||
 					file.extension === "gif" ||
 					file.extension === "svg" ||
-					file.extension === "webp"
+					file.extension === "webp",
 			);
 		const paths = images.map((file) => file.path);
 		super(app, inputEl, paths);
@@ -388,7 +471,7 @@ export class FileSuggest extends AbstractInputSuggest<TFile> {
 		app: App,
 		inputEl: HTMLInputElement | HTMLDivElement,
 		options: QuickCaptureOptions,
-		onFileSelected?: (file: TFile) => void
+		onFileSelected?: (file: TFile) => void,
 	) {
 		super(app, inputEl);
 		this.suggestEl.addClass("quick-capture-file-suggest");
@@ -429,7 +512,7 @@ export class FileSuggest extends AbstractInputSuggest<TFile> {
 			})
 			.filter(
 				(match): match is { file: TFile; score: number } =>
-					match !== null
+					match !== null,
 			)
 			.sort((a, b) => {
 				// Sort by score (higher is better)
@@ -459,7 +542,7 @@ export class SimpleFileSuggest extends AbstractInputSuggest<TFile> {
 	constructor(
 		inputEl: HTMLInputElement,
 		plugin: TaskProgressBarPlugin,
-		onFileSelected?: (file: TFile) => void
+		onFileSelected?: (file: TFile) => void,
 	) {
 		super(plugin.app, inputEl);
 		this.onFileSelected = onFileSelected || (() => {});
@@ -480,7 +563,7 @@ export class SimpleFileSuggest extends AbstractInputSuggest<TFile> {
 			})
 			.filter(
 				(match): match is { file: TFile; score: number } =>
-					match !== null
+					match !== null,
 			)
 			.sort((a, b) => {
 				// Sort by score (higher is better)

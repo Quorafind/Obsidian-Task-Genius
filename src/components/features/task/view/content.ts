@@ -1,4 +1,4 @@
-import { App, Component, setIcon } from "obsidian";
+import { App, Component, setIcon, debounce } from "obsidian";
 import { Task } from "@/types/task";
 import { TaskListItemComponent } from "./listItem"; // Re-import needed components
 import { ViewMode, getViewSettingOrDefault } from "@/common/setting-definition"; // 导入 SortCriterion
@@ -181,7 +181,7 @@ export class ContentComponent extends Component {
 		console.log("toggle view mode");
 		// Save the new view mode state
 		saveViewMode(this.app, this.currentViewId, this.isTreeView);
-		this.refreshTaskList(); // Refresh list completely on view mode change
+		this.debounceRefreshTaskList(); // Refresh list completely on view mode change
 	}
 
 	public setIsTreeView(isTree: boolean) {
@@ -193,7 +193,7 @@ export class ContentComponent extends Component {
 			if (viewToggleBtn) {
 				setIcon(viewToggleBtn, this.isTreeView ? "git-branch" : "list");
 			}
-			this.refreshTaskList();
+			this.debounceRefreshTaskList();
 		}
 	}
 
@@ -218,7 +218,7 @@ export class ContentComponent extends Component {
 			this.notFilteredTasks = notFilteredTasks;
 			updateSignatures();
 			this.applyFilters();
-			this.refreshTaskList();
+			this.debounceRefreshTaskList();
 			return;
 		}
 
@@ -248,7 +248,7 @@ export class ContentComponent extends Component {
 		this.lastAllTasksSignature = nextAllSignature;
 		this.lastNotFilteredTasksSignature = nextNotFilteredSignature;
 		this.applyFilters();
-		this.refreshTaskList();
+		this.debounceRefreshTaskList();
 	}
 
 	// Updated method signature
@@ -266,7 +266,7 @@ export class ContentComponent extends Component {
 		this.initializeViewMode();
 
 		this.applyFilters();
-		this.refreshTaskList();
+		this.debounceRefreshTaskList();
 	}
 
 	private applyFilters() {
@@ -329,7 +329,7 @@ export class ContentComponent extends Component {
 
 	private filterTasks(query: string) {
 		this.applyFilters(); // Re-apply all filters including the new text query
-		this.refreshTaskList();
+		this.debounceRefreshTaskList();
 	}
 
 	private computeTaskSignature(tasks: Task[]): string {
@@ -369,6 +369,8 @@ export class ContentComponent extends Component {
 		const rect = this.containerEl.getBoundingClientRect();
 		return rect.width > 0 && rect.height > 0;
 	}
+
+	private debounceRefreshTaskList = debounce(this.refreshTaskList, 700);
 
 	private refreshTaskList() {
 		console.log("refreshing");

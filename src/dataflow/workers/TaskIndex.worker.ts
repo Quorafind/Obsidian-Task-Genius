@@ -35,14 +35,14 @@ function parseTasksWithConfigurableParser(
 
 		// Debug: show incoming prefixes and effective specialTagPrefixes keys
 		try {
-			console.debug("[TG][Worker] incoming prefixes", {
+			console.debug("[Task Genius][Worker] incoming prefixes", {
 				preferMetadataFormat: settings.preferMetadataFormat,
 				projectTagPrefix: settings.projectTagPrefix,
 				contextTagPrefix: settings.contextTagPrefix,
 				areaTagPrefix: settings.areaTagPrefix,
 			});
 			console.debug(
-				"[TG][Worker] specialTagPrefixes keys (before)",
+				"[Task Genius][Worker] specialTagPrefixes keys (before)",
 				Object.keys(config.specialTagPrefixes || {}),
 			);
 		} catch {}
@@ -63,7 +63,7 @@ function parseTasksWithConfigurableParser(
 			};
 			try {
 				console.debug(
-					"[TG][Worker] specialTagPrefixes keys (after)",
+					"[Task Genius][Worker] specialTagPrefixes keys (after)",
 					Object.keys(config.specialTagPrefixes),
 				);
 			} catch {}

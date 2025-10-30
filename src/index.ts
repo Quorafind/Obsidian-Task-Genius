@@ -215,7 +215,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 	private iconsDeferred = false;
 
 	async onload() {
-		console.time("[TG] onload");
+		console.time("[Task Genius] onload");
 		await this.loadSettings();
 
 		// Initialize version manager first
@@ -323,7 +323,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		);
 
 		this.app.workspace.onLayoutReady(async () => {
-			console.time("[TG] onLayoutReady");
+			console.time("[Task Genius] onLayoutReady");
 
 			await this.initializeDeferredStartup();
 
@@ -443,14 +443,14 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 			this.maybeShowChangelog();
 
-			console.timeEnd("[TG] onLayoutReady");
+			console.timeEnd("[Task Genius] onLayoutReady");
 		});
 
 		await this.migratePresetTaskFiltersIfNeeded();
 
 		this.registerCoreCommands();
 
-		console.timeEnd("[TG] onload");
+		console.timeEnd("[Task Genius] onload");
 	}
 
 	private async initializeDeferredStartup(): Promise<void> {
@@ -461,7 +461,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			return;
 		}
 
-		console.time("[TG] initializeIndexer");
+		console.time("[Task Genius] initializeIndexer");
 
 		await this.ensureFluentIntegration();
 
@@ -475,7 +475,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 		const dataflowInitialized = await this.initializeDataflowOrchestrator();
 		if (!dataflowInitialized) {
 			this.scheduleExtendedCommands();
-			console.timeEnd("[TG] initializeIndexer");
+			console.timeEnd("[Task Genius] initializeIndexer");
 			return;
 		}
 
@@ -497,7 +497,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 
 		this.scheduleExtendedCommands();
 
-		console.timeEnd("[TG] initializeIndexer");
+		console.timeEnd("[Task Genius] initializeIndexer");
 	}
 
 	private async ensureFluentIntegration(): Promise<void> {
@@ -829,7 +829,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			return;
 		}
 
-		console.time("[TG] migratePresetTaskFilters");
+		console.time("[Task Genius] migratePresetTaskFilters");
 		this.settings.taskFilter.presetTaskFilters = presets.map(
 			(preset: any) => {
 				if (preset.options) {
@@ -839,7 +839,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			},
 		);
 		await this.saveSettings();
-		console.timeEnd("[TG] migratePresetTaskFilters");
+		console.timeEnd("[Task Genius] migratePresetTaskFilters");
 	}
 
 	registerCommands() {
@@ -1814,7 +1814,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 				lastVersion !== "9.9.0"
 			) {
 				console.log(
-					`[TG] Migration detected: ${previousVersion} -> ${currentVersion}, opening onboarding`,
+					`[Task Genius] Migration detected: ${previousVersion} -> ${currentVersion}, opening onboarding`,
 				);
 
 				// Directly open onboarding view (same pattern as maybeShowChangelog)
@@ -1825,7 +1825,10 @@ export default class TaskProgressBarPlugin extends Plugin {
 				await this.saveSettings();
 			}
 		} catch (error) {
-			console.error("[TG] Failed to check migration onboarding:", error);
+			console.error(
+				"[Task Genius] Failed to check migration onboarding:",
+				error,
+			);
 		}
 	}
 
@@ -1853,7 +1856,7 @@ export default class TaskProgressBarPlugin extends Plugin {
 			const isBeta = manifestVersion.toLowerCase().includes("beta");
 			this.changelogManager.openChangelog(manifestVersion, isBeta);
 		} catch (error) {
-			console.error("[TG] Failed to show changelog:", error);
+			console.error("[Task Genius] Failed to show changelog:", error);
 		}
 	}
 

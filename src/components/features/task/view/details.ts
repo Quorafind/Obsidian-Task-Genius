@@ -1,13 +1,9 @@
 import {
 	Component,
 	ExtraButtonComponent,
-	TFile,
-	ButtonComponent,
 	DropdownComponent,
 	TextComponent,
-	moment,
 	App,
-	Menu,
 	debounce,
 	Platform,
 } from "obsidian";
@@ -22,6 +18,7 @@ import {
 	ContextSuggest,
 	ProjectSuggest,
 	TagSuggest,
+	TAG_COMMIT_EVENT,
 } from "@/components/ui/inputs/AutoComplete";
 import { FileTask } from "@/types/file-task";
 import {
@@ -108,8 +105,8 @@ export class TaskDetailsComponent extends Component {
 	public containerEl: HTMLElement;
 	private contentEl: HTMLElement;
 	public currentTask: Task | null = null;
-	private isVisible: boolean = true;
-	private isEditing: boolean = false;
+	private isVisible = true;
+	private isEditing = false;
 	private editFormEl: HTMLElement | null = null;
 
 	// Events
@@ -328,6 +325,8 @@ export class TaskDetailsComponent extends Component {
 			cls: "details-edit-form",
 		});
 
+		let requestSave = () => {};
+
 		// Task content/title
 		const contentField = this.createFormField(
 			this.editFormEl,
@@ -421,26 +420,124 @@ export class TaskDetailsComponent extends Component {
 		new ProjectSuggest(this.app, projectInput.inputEl, this.plugin);
 
 		// Tags field
+		let currentTags = (task.metadata.tags ?? [])
+			.map((tag) => (tag.startsWith("#") ? tag.slice(1) : tag))
+			.filter((tag) => tag);
+
 		const tagsField = this.createFormField(this.editFormEl, t("Tags"));
-		const tagsInput = new TextComponent(tagsField);
-		console.log("tagsInput", tagsInput, task.metadata.tags);
-		// Remove # prefix from tags when displaying them
-		tagsInput.setValue(
-			task.metadata.tags
-				? task.metadata.tags
-						.map((tag) =>
-							tag.startsWith("#") ? tag.slice(1) : tag
-						)
-						.join(", ")
-				: ""
+		const tagsContainer = tagsField.createDiv({ cls: "tags-editor" });
+		const tagsList = tagsContainer.createDiv({ cls: "tags-editor__list" });
+		const addTagButton = new ExtraButtonComponent(tagsContainer).setIcon(
+			"plus"
 		);
+		const tagInputWrapper = tagsContainer.createDiv({
+			cls: "tags-editor__input tags-editor__input--hidden",
+		});
+		const tagInput = new TextComponent(tagInputWrapper);
+		tagInput.setPlaceholder(t("Add tag"));
+		new TagSuggest(this.app, tagInput.inputEl, this.plugin, true);
+
+		const hideTagInput = () => {
+			tagInput.setValue("");
+			tagInputWrapper.addClass("tags-editor__input--hidden");
+		};
+
+		const renderTags = () => {
+			tagsList.empty();
+
+			if (currentTags.length === 0) {
+				tagsList.createSpan({
+					cls: "tags-editor__empty",
+					text: t("No tags"),
+				});
+				return;
+			}
+
+			currentTags.forEach((tag, index) => {
+				const tagChip = tagsList.createDiv({
+					cls: "tags-editor__tag",
+				});
+				tagChip.createSpan({
+					cls: "tags-editor__tag-label",
+					text: `#${tag}`,
+				});
+
+				new ExtraButtonComponent(tagChip)
+					.setIcon("x")
+					.setTooltip(t("Remove tag"))
+					.onClick(() => {
+						currentTags.splice(index, 1);
+						renderTags();
+						requestSave();
+					});
+			});
+		};
+
+		const addTag = (rawValue: string) => {
+			const trimmedValue = rawValue.trim();
+			if (!trimmedValue) {
+				hideTagInput();
+				return;
+			}
+
+			const normalized = trimmedValue
+				.replace(/^#+/, "")
+				.replace(/[,\s]+$/g, "")
+				.trim();
+
+			if (!normalized) {
+				hideTagInput();
+				return;
+			}
+
+			const exists = currentTags.some(
+				(existing) =>
+					existing.toLowerCase() === normalized.toLowerCase()
+			);
+			if (exists) {
+				hideTagInput();
+				return;
+			}
+
+			currentTags.push(normalized);
+			renderTags();
+			hideTagInput();
+			requestSave();
+		};
+
+		const addTagFromInput = () => addTag(tagInput.getValue());
+
+		this.registerDomEvent(
+			tagInput.inputEl,
+			TAG_COMMIT_EVENT as keyof HTMLElementEventMap,
+			(event) => {
+				event.stopPropagation();
+				const customEvent = event as CustomEvent<{ tag: string }>;
+				addTag(customEvent.detail?.tag ?? "");
+			}
+		);
+
+		addTagButton.onClick(() => {
+			tagInputWrapper.removeClass("tags-editor__input--hidden");
+			tagInput.inputEl.focus();
+		});
+
+		this.registerDomEvent(tagInput.inputEl, "keydown", (event) => {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				hideTagInput();
+			}
+		});
+
+		this.registerDomEvent(tagInput.inputEl, "blur", () => {
+			addTagFromInput();
+		});
+
 		tagsField
 			.createSpan({ cls: "field-description" })
-			.setText(
-				t("Comma separated") + " " + t("e.g. #tag1, #tag2, #tag3")
-			);
+			.setText(t("Click + to add tags. Click × on a tag to remove it."));
 
-		new TagSuggest(this.app, tagsInput.inputEl, this.plugin);
+		renderTags();
 
 		// Context field
 		const contextField = this.createFormField(
@@ -559,17 +656,10 @@ export class TaskDetailsComponent extends Component {
 				metadata.project = task.metadata.project;
 			}
 
-			// Parse and update tags (remove # prefix if present)
-			const tagsValue = tagsInput.getValue();
-			metadata.tags = tagsValue
-				? tagsValue
-						.split(",")
-						.map((tag) => tag.trim())
-						.map((tag) =>
-							tag.startsWith("#") ? tag.slice(1) : tag
-						) // Remove # prefix if present
-						.filter((tag) => tag)
-				: [];
+			// Update tags from current list
+			metadata.tags = currentTags
+				.map((tag) => tag.trim())
+				.filter((tag) => tag.length > 0);
 
 			// Update context
 			const contextValue = contextInput.getValue();
@@ -700,6 +790,8 @@ export class TaskDetailsComponent extends Component {
 			}
 		}, 800); // 1500ms debounce time - allow time for multi-field editing
 
+		requestSave = () => saveTask();
+
 		// Use OnCompletionConfigurator directly
 		const onCompletionConfigurator = new OnCompletionConfigurator(
 			onCompletionField,
@@ -803,7 +895,7 @@ export class TaskDetailsComponent extends Component {
 		// Register all input elements
 		registerBlurEvent(contentInput.inputEl);
 		registerBlurEvent(projectInput.inputEl);
-		registerBlurEvent(tagsInput.inputEl);
+		registerBlurEvent(tagInput.inputEl);
 		registerBlurEvent(contextInput.inputEl);
 		registerBlurEvent(priorityDropdown.selectEl);
 		// Remove blur events for date inputs to prevent duplicate saves

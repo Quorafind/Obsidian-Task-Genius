@@ -252,7 +252,6 @@ export class SettingsSearchComponent extends Component {
 			nameEl.addClass("tg-settings-search-result-name");
 			nameEl.textContent = result.item.name;
 
-			// 所属分类和标签页
 			const metaEl = resultEl.createDiv();
 			metaEl.addClass("tg-settings-search-result-meta");
 
@@ -272,12 +271,10 @@ export class SettingsSearchComponent extends Component {
 				);
 			}
 
-			// 使用 registerDomEvent 注册点击事件
 			this.registerDomEvent(resultEl, "click", () => {
 				this.selectResult(result);
 			});
 
-			// 使用 registerDomEvent 注册鼠标悬停事件
 			this.registerDomEvent(resultEl, "mouseenter", () => {
 				this.setSelectedIndex(index);
 			});

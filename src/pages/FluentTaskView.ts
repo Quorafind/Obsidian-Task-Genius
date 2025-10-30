@@ -1,4 +1,4 @@
-import { debounce, ItemView, Scope, WorkspaceLeaf } from "obsidian";
+import { debounce, ItemView, Scope, WorkspaceLeaf, setIcon } from "obsidian";
 import TaskProgressBarPlugin from "@/index";
 import { Task } from "@/types/task";
 import "@/styles/fluent/fluent-main.css";
@@ -29,6 +29,7 @@ import { FluentGestureManager } from "@/components/features/fluent/managers/Flue
 import { FluentWorkspaceStateManager } from "@/components/features/fluent/managers/FluentWorkspaceStateManager";
 import { FluentActionHandlers } from "@/components/features/fluent/managers/FluentActionHandlers";
 import { TaskSelectionManager } from "@/components/features/task/selection/TaskSelectionManager";
+import { getViewSettingOrDefault } from "@/common/setting-definition";
 
 export const FLUENT_TASK_VIEW = "fluent-task-genius-view";
 
@@ -156,12 +157,12 @@ export class FluentTaskView extends ItemView {
 				!leafId.startsWith("view-config-") &&
 				leafId !== "global-filter"
 			) {
-				console.log("[TG] Filter changed from live component");
+				console.log("[Task Genius] Filter changed from live component");
 				this.liveFilterState = filterState;
 				this.currentFilterState = filterState;
 			} else if (!leafId) {
 				// No leafId means it's also a live filter change
-				console.log("[TG] Filter changed (no leafId)");
+				console.log("[Task Genius] Filter changed (no leafId)");
 				this.liveFilterState = filterState;
 				this.currentFilterState = filterState;
 			}
@@ -189,7 +190,7 @@ export class FluentTaskView extends ItemView {
 				}
 			} catch (e) {
 				console.warn(
-					"[TG] Failed to sync selectedProject from filter state",
+					"[Task Genius] Failed to sync selectedProject from filter state",
 					e,
 				);
 			}
@@ -280,7 +281,7 @@ export class FluentTaskView extends ItemView {
 	 * Main initialization method
 	 */
 	async onOpen() {
-		console.log("[TG] onOpen started");
+		console.log("[Task Genius] onOpen started");
 		this.isInitializing = true;
 
 		try {
@@ -289,7 +290,7 @@ export class FluentTaskView extends ItemView {
 			// ====================
 			if (this.DEBUG_MODE) {
 				console.log(
-					"[TG] Initializing UI, managers, structure, and events...",
+					"[Task Genius] Initializing UI, managers, structure, and events...",
 				);
 			}
 
@@ -320,7 +321,7 @@ export class FluentTaskView extends ItemView {
 
 			if (this.DEBUG_MODE) {
 				console.log(
-					"[TG] ✅ UI, managers, structure, and events initialized",
+					"[Task Genius] ✅ UI, managers, structure, and events initialized",
 				);
 			}
 
@@ -328,7 +329,7 @@ export class FluentTaskView extends ItemView {
 			// PHASE 5: Restore Workspace State
 			// ====================
 			if (this.DEBUG_MODE) {
-				console.log("[TG] Restoring workspace state...");
+				console.log("[Task Genius] Restoring workspace state...");
 			}
 
 			const savedWorkspaceId =
@@ -338,7 +339,7 @@ export class FluentTaskView extends ItemView {
 				this.viewState.currentWorkspace = savedWorkspaceId;
 				if (this.DEBUG_MODE) {
 					console.log(
-						`[TG] Restored workspace ID: ${savedWorkspaceId}`,
+						`[Task Genius] Restored workspace ID: ${savedWorkspaceId}`,
 					);
 				}
 			}
@@ -404,11 +405,11 @@ export class FluentTaskView extends ItemView {
 			// ====================
 			// PHASE 6: Load Data (KEY PHASE)
 			// ====================
-			console.log("[TG] Loading tasks...");
+			console.log("[Task Genius] Loading tasks...");
 			await this.dataManager.loadTasks(false); // Will trigger onTasksLoaded callback
 			await this.dataManager.registerDataflowListeners();
 			console.log(
-				`[TG] ✅ Loaded ${this.tasks.length} tasks, ${this.filteredTasks.length} after filters`,
+				`[Task Genius] ✅ Loaded ${this.tasks.length} tasks, ${this.filteredTasks.length} after filters`,
 			);
 
 			// ====================
@@ -419,12 +420,12 @@ export class FluentTaskView extends ItemView {
 
 			// Check window size and auto-collapse sidebar if needed
 			if (this.DEBUG_MODE) {
-				console.log("[TG] Checking sidebar collapse...");
+				console.log("[Task Genius] Checking sidebar collapse...");
 			}
 			this.layoutManager.checkAndCollapseSidebar();
 		} catch (error) {
-			console.error("[TG] ❌ Initialization error:", error);
-			console.error("[TG] Error stack:", (error as Error).stack);
+			console.error("[Task Genius] ❌ Initialization error:", error);
+			console.error("[Task Genius] Error stack:", (error as Error).stack);
 			this.loadError =
 				(error as Error).message || "Failed to initialize view";
 		} finally {
@@ -433,17 +434,17 @@ export class FluentTaskView extends ItemView {
 			// ====================
 			if (this.DEBUG_MODE) {
 				console.log(
-					`[TG] Finalizing (isInitializing was ${this.isInitializing})`,
+					`[Task Genius] Finalizing (isInitializing was ${this.isInitializing})`,
 				);
 			}
 
 			this.isInitializing = false;
 
 			if (this.DEBUG_MODE) {
-				console.log("[TG] Calling final updateView()...");
+				console.log("[Task Genius] Calling final updateView()...");
 			}
 			this.updateView();
-			console.log("[TG] ✅ Initialization complete");
+			console.log("[Task Genius] ✅ Initialization complete");
 		}
 	}
 
@@ -491,7 +492,9 @@ export class FluentTaskView extends ItemView {
 				}
 			},
 			onUpdateNeeded: (source) => {
-				console.log(`[TG] Update needed from source: ${source}`);
+				console.log(
+					`[Task Genius] Update needed from source: ${source}`,
+				);
 				// Re-apply filters and update view
 				this.filteredTasks = this.dataManager.applyFilters(this.tasks);
 				this.updateView();
@@ -559,7 +562,7 @@ export class FluentTaskView extends ItemView {
 				// This enables the full project overview mode
 				if (viewId === "projects") {
 					console.log(
-						"[TG] Navigating to projects overview - clearing project selection",
+						"[Task Genius] Navigating to projects overview - clearing project selection",
 					);
 					this.viewState.selectedProject = undefined;
 
@@ -595,7 +598,10 @@ export class FluentTaskView extends ItemView {
 							);
 						}
 					} catch (e) {
-						console.warn("[TG] Failed to clear project filter", e);
+						console.warn(
+							"[Task Genius] Failed to clear project filter",
+							e,
+						);
 					}
 				}
 
@@ -617,7 +623,7 @@ export class FluentTaskView extends ItemView {
 				this.updateView();
 			},
 			onProjectSelected: (projectId) => {
-				console.log(`[TG] Project selected: ${projectId}`);
+				console.log(`[Task Genius] Project selected: ${projectId}`);
 				this.viewState.selectedProject = projectId;
 
 				// Switch to projects view
@@ -687,7 +693,7 @@ export class FluentTaskView extends ItemView {
 					);
 				} catch (e) {
 					console.warn(
-						"[TG] Failed to project-sync filter UI state",
+						"[Task Genius] Failed to project-sync filter UI state",
 						e,
 					);
 					// If filter sync fails, still update the view
@@ -751,14 +757,14 @@ export class FluentTaskView extends ItemView {
 		// Trigger initial workspace leaf width update
 		this.updateWorkspaceLeafWidth();
 
-		console.log("[TG] Managers initialized");
+		console.log("[Task Genius] Managers initialized");
 	}
 
 	/**
 	 * Build UI structure - MUST match original DOM structure for CSS
 	 */
 	private async buildUIStructure() {
-		console.log("[TG] Building UI structure");
+		console.log("[Task Genius] Building UI structure");
 
 		// Create layout structure (exact same as original)
 		const layoutContainer = this.rootContainerEl.createDiv({
@@ -845,7 +851,7 @@ export class FluentTaskView extends ItemView {
 		} else {
 			sidebarEl.hide();
 			console.log(
-				"[TG] Using workspace side leaves: skip in-view sidebar",
+				"[Task Genius] Using workspace side leaves: skip in-view sidebar",
 			);
 		}
 
@@ -868,7 +874,7 @@ export class FluentTaskView extends ItemView {
 		this.addChild(this.topNavigation);
 
 		// Initialize view components
-		console.log("[TG] Initializing view components");
+		console.log("[Task Genius] Initializing view components");
 		this.componentManager = new FluentComponentManager(
 			this.app,
 			this.plugin,
@@ -891,20 +897,33 @@ export class FluentTaskView extends ItemView {
 					this.actionHandlers.handleTaskContextMenu(event, task);
 				},
 				onKanbanTaskStatusUpdate: (taskId, newStatusMark) => {
-					console.log(`[FluentTaskView] Kanban status update callback received: taskId=${taskId}, mark=${newStatusMark}`);
-					console.log(`[FluentTaskView] Current task list size: ${this.tasks.length}`);
+					console.log(
+						`[FluentTaskView] Kanban status update callback received: taskId=${taskId}, mark=${newStatusMark}`,
+					);
+					console.log(
+						`[FluentTaskView] Current task list size: ${this.tasks.length}`,
+					);
 
 					const task = this.tasks.find((t) => t.id === taskId);
 					if (task) {
-						console.log('[FluentTaskView] Task found, delegating to action handler');
+						console.log(
+							"[FluentTaskView] Task found, delegating to action handler",
+						);
 						this.actionHandlers.handleKanbanTaskStatusUpdate(
 							task,
 							newStatusMark,
 						);
 					} else {
-						console.error(`[FluentTaskView] CRITICAL: Task ${taskId} not found in local task list`);
-						console.error('[FluentTaskView] Available task IDs:', this.tasks.slice(0, 5).map(t => t.id));
-						console.error('[FluentTaskView] This indicates a synchronization issue between kanban and main view');
+						console.error(
+							`[FluentTaskView] CRITICAL: Task ${taskId} not found in local task list`,
+						);
+						console.error(
+							"[FluentTaskView] Available task IDs:",
+							this.tasks.slice(0, 5).map((t) => t.id),
+						);
+						console.error(
+							"[FluentTaskView] This indicates a synchronization issue between kanban and main view",
+						);
 					}
 				},
 			},
@@ -914,7 +933,7 @@ export class FluentTaskView extends ItemView {
 		this.componentManager.initializeViewComponents();
 
 		// Sidebar toggle in header and responsive collapse
-		console.log("[TG] Creating sidebar toggle");
+		console.log("[Task Genius] Creating sidebar toggle");
 		this.layoutManager.createSidebarToggle();
 
 		// Create task count mark
@@ -937,10 +956,10 @@ export class FluentTaskView extends ItemView {
 		});
 
 		// Create action buttons in Obsidian view header
-		console.log("[TG] Creating action buttons");
+		console.log("[Task Genius] Creating action buttons");
 		this.layoutManager.createActionButtons();
 
-		console.log("[TG] UI structure built");
+		console.log("[Task Genius] UI structure built");
 	}
 
 	/**
@@ -1110,12 +1129,12 @@ export class FluentTaskView extends ItemView {
 	 */
 	private updateView() {
 		if (this.isInitializing) {
-			console.log("[TG] Skip update during initialization");
+			console.log("[Task Genius] Skip update during initialization");
 			return;
 		}
 
 		console.log(
-			`[TG] Proceeding with view update for ${this.currentViewId}`,
+			`[Task Genius] Proceeding with view update for ${this.currentViewId}`,
 		);
 
 		// Update top navigation available modes based on current view
@@ -1186,7 +1205,7 @@ export class FluentTaskView extends ItemView {
 	 * Reset all active filters
 	 */
 	private resetCurrentFilter(): void {
-		console.log("[TG] Resetting filter");
+		console.log("[Task Genius] Resetting filter");
 
 		// Clear filter states
 		this.liveFilterState = null;
@@ -1237,7 +1256,7 @@ export class FluentTaskView extends ItemView {
 	 * Clean up on close
 	 */
 	async onClose() {
-		console.log("[TG] onClose started");
+		console.log("[Task Genius] onClose started");
 
 		// Save workspace layout before closing
 		this.workspaceStateManager.saveWorkspaceLayout();
@@ -1250,6 +1269,6 @@ export class FluentTaskView extends ItemView {
 		// Clear selection
 		this.actionHandlers.clearSelection();
 
-		console.log("[TG] onClose completed");
+		console.log("[Task Genius] onClose completed");
 	}
 }

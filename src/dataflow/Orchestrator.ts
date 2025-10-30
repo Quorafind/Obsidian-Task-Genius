@@ -1333,7 +1333,7 @@ export class DataflowOrchestrator {
 
 			// Debug: log effective specialTagPrefixes for verification
 			console.debug(
-				"[TG] Parser specialTagPrefixes:",
+				"[Task Genius] Parser specialTagPrefixes:",
 				parserConfig.specialTagPrefixes,
 			);
 

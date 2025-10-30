@@ -37,9 +37,9 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 	private targetFileEl: HTMLDivElement | null = null;
 	private editorContainer: HTMLElement | null = null;
 
-	constructor(app: App, plugin: TaskProgressBarPlugin) {
+	constructor(app: App, plugin: TaskProgressBarPlugin, metadata?: TaskMetadata) {
 		// Default to checkbox mode for task creation
-		super(app, plugin, "checkbox");
+		super(app, plugin, "checkbox", metadata);
 
 		this.minimalSuggest = plugin.minimalQuickCaptureSuggest;
 
@@ -48,6 +48,11 @@ export class MinimalQuickCaptureModal extends BaseQuickCaptureModal {
 		this.taskMetadata.location =
 			(targetType === "custom-file" ? "file" : targetType) || "fixed";
 		this.taskMetadata.targetFile = this.getTargetFile();
+
+		// Merge passed metadata with existing taskMetadata
+		if (metadata) {
+			this.taskMetadata = { ...this.taskMetadata, ...metadata };
+		}
 	}
 
 	onOpen() {

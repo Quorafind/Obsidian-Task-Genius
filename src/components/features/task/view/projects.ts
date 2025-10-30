@@ -4,6 +4,7 @@ import {
 	setIcon,
 	ExtraButtonComponent,
 	Platform,
+	Notice,
 } from "obsidian";
 import { Task, TgProject } from "@/types/task";
 import { t } from "@/translations/helper";
@@ -23,6 +24,7 @@ import {
 	formatProgressText,
 	ProgressData,
 } from "@/editor-extensions/ui-widgets/progress-bar-widget";
+import { QuickCaptureModal } from "@/components/features/quick-capture/modals/QuickCaptureModalWithSwitch";
 
 interface SelectedProjects {
 	projects: string[];
@@ -270,6 +272,32 @@ export class ProjectsComponent extends Component {
 			cls: "projects-task-count",
 		});
 		taskCountEl.setText(`0 ${t("tasks")}`);
+
+		// Add quick capture button to add task to current project
+		const addTaskButton = headerTopRightRow.createDiv({
+			cls: "projects-add-task-btn clickable-icon",
+			attr: { "aria-label": t("Add task to project") },
+		});
+		setIcon(addTaskButton, "plus");
+
+		this.registerDomEvent(addTaskButton, "click", () => {
+			// Get the currently selected single project
+			const selectedProject =
+				this.selectedProjects.projects.length === 1
+					? this.selectedProjects.projects[0]
+					: undefined;
+
+			if (selectedProject) {
+				new QuickCaptureModal(
+					this.app,
+					this.plugin,
+					{ project: selectedProject },
+					true
+				).open();
+			} else {
+				new Notice(t("Please select a single project first"));
+			}
+		});
 
 		// Add view toggle button
 		const viewToggleBtn = headerTopRightRow.createDiv({

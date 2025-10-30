@@ -40,55 +40,83 @@ const KEY_GET_DROP = "task-genius/workspace-dnd:getDropLocation";
  * Install a runtime monkey-patch for Obsidian's internal drag handling,
  * using monkey-around for co-operative, removable patches.
  */
-export function installWorkspaceDragMonitor(plugin: TaskProgressBarPlugin): void {
+export function installWorkspaceDragMonitor(
+	plugin: TaskProgressBarPlugin,
+): void {
 	const unpatch = around(Workspace.prototype as any, {
 		onDragLeaf(old: Function | undefined) {
-			return dedupe(KEY_ON_DRAG, old as Function, function (this: any, e: DragEvent, leaf: any) {
-				const restricted = isRestrictedLeaf(leaf);
-				// Mark workspace as currently dragging a restricted leaf until drop/dragend
-				if (restricted) setRestrictState(this, true);
-				if (restricted) {
-					const vt = leaf?.view?.getViewType?.();
-					console.debug("[TG][MonkeyPatch] onDragLeaf(restricted)", vt);
-				} else {
-					console.debug("[TG][MonkeyPatch] onDragLeaf");
-				}
-				// Install one-shot cleanup on drop/dragend
-				const ws = this;
-				if (restricted) {
-					const cleanup = () => {
-						setRestrictState(ws, false);
-						window.removeEventListener("dragend", cleanup, true);
-						window.removeEventListener("drop", cleanup, true);
-					};
-					window.addEventListener("dragend", cleanup, true);
-					window.addEventListener("drop", cleanup, true);
-				}
-				return old && old.apply(this, [e, leaf]);
-			});
+			return dedupe(
+				KEY_ON_DRAG,
+				old as Function,
+				function (this: any, e: DragEvent, leaf: any) {
+					const restricted = isRestrictedLeaf(leaf);
+					// Mark workspace as currently dragging a restricted leaf until drop/dragend
+					if (restricted) setRestrictState(this, true);
+					if (restricted) {
+						const vt = leaf?.view?.getViewType?.();
+						console.debug(
+							"[Task Genius] onDragLeaf(restricted)",
+							vt,
+						);
+					} else {
+						console.debug("[Task Genius] onDragLeaf");
+					}
+					// Install one-shot cleanup on drop/dragend
+					const ws = this;
+					if (restricted) {
+						const cleanup = () => {
+							setRestrictState(ws, false);
+							window.removeEventListener(
+								"dragend",
+								cleanup,
+								true,
+							);
+							window.removeEventListener("drop", cleanup, true);
+						};
+						window.addEventListener("dragend", cleanup, true);
+						window.addEventListener("drop", cleanup, true);
+					}
+					return old && old.apply(this, [e, leaf]);
+				},
+			);
 		},
 
 		getDropLocation(old: Function | undefined) {
-			return dedupe(KEY_GET_DROP, old as Function, function (this: any, ...args: any[]) {
-				const target = old && old.apply(this, args);
+			return dedupe(
+				KEY_GET_DROP,
+				old as Function,
+				function (this: any, ...args: any[]) {
+					const target = old && old.apply(this, args);
 
-				try {
-					if (getRestrictState(this) && target) {
-						const root = typeof target?.getRoot === "function" ? target.getRoot() : undefined;
-						const isCenterRegion = root && root === this.rootSplit && target !== this.leftSplit && target !== this.rightSplit;
-						if (isCenterRegion) {
-							console.debug("[TG][MonkeyPatch] Blocked center drop location for restricted leaf");
-							return null;
+					try {
+						if (getRestrictState(this) && target) {
+							const root =
+								typeof target?.getRoot === "function"
+									? target.getRoot()
+									: undefined;
+							const isCenterRegion =
+								root &&
+								root === this.rootSplit &&
+								target !== this.leftSplit &&
+								target !== this.rightSplit;
+							if (isCenterRegion) {
+								console.debug(
+									"[Task Genius] Blocked center drop location for restricted leaf",
+								);
+								return null;
+							}
 						}
+					} catch (err) {
+						console.warn(
+							"[Task Genius] getDropLocation patch error",
+							err,
+						);
 					}
-				} catch (err) {
-					console.warn("[TG][MonkeyPatch] getDropLocation patch error", err);
-				}
-				return target;
-			});
+					return target;
+				},
+			);
 		},
 	});
 
 	plugin.register(unpatch);
 }
-
