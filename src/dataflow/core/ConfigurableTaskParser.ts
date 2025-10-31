@@ -750,6 +750,7 @@ export class MarkdownTaskParser {
 			id: "id",
 			dependsOn: "dependsOn",
 			onCompletion: "onCompletion",
+			repeat: "recurrence",
 		};
 
 		// Apply key mapping if it exists
